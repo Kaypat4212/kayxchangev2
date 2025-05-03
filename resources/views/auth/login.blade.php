@@ -5,28 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login | KayXchange</title>
 
+  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <style>
-    /* body {
-      background-color: #f8f9fa;
-      transition: background-color 0.5s, color 0.5s;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 0;
-    } */
-
     .dark-mode {
-      background-color: #121212;
+      background-color:rgb(0, 0, 0);
       color: #ffffff;
     }
 
-    /* Blob form */
+    .card > a{
+      color: green;
+    }
+
     .card {
       max-width: 100%;
       margin: 20px auto;
+      margin-top: 200px;
       padding: 50px;
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
       border-radius: 0% 10% 20% 10%;
@@ -36,7 +31,6 @@
       animation: blobAnimation 10s infinite;
     }
 
-    /* Glowing effect */
     .card::before {
       content: '';
       position: absolute;
@@ -65,26 +59,14 @@
       }
     }
 
-    /* Blob animation */
     @keyframes blobAnimation {
-      0% {
-        border-radius: 30% 50% 50% 10%;
-      }
-      25% {
-        border-radius: 20% 10% 10% 10%;
-      }
-      50% {
-        border-radius: 10% 10% 40% 20%;
-      }
-      75% {
-        border-radius: 0% 10% 20% 20%;
-      }
-      100% {
-        border-radius: 0% 10% 20% 0%;
-      }
+      0% { border-radius: 30% 50% 50% 10%; }
+      25% { border-radius: 20% 10% 10% 10%; }
+      50% { border-radius: 10% 10% 40% 20%; }
+      75% { border-radius: 0% 10% 20% 20%; }
+      100% { border-radius: 0% 10% 20% 0%; }
     }
 
-    /* Animated form elements */
     .form-control {
       transition: all 0.3s ease-in-out;
     }
@@ -115,7 +97,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Responsive Design */
     .container {
       display: flex;
       justify-content: center;
@@ -154,7 +135,6 @@
       box-shadow: 9px 0px 5px 2px darkgreen;
     }
 
-    /* Footer Styles */
     footer {
       background-color: #f1f1f1;
       text-align: center;
@@ -180,11 +160,16 @@
   </style>
 </head>
 <body>
-
+@if(session('status'))
+    <script type="text/javascript">
+        toastr.success("{{ session('status') }}");
+    </script>
+@endif
+<!-- Navbar -->
 <nav class="navbar navbar-expand-lg bg-light fixed-top">
   <div class="container-fluid">
     <a class="navbar-brand" href="#">
-      <img src="/assets/favicon.png" alt="Logo" style="width: 60px;">
+      <img src="/assets/favicon.png" alt="Logo">
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
             aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -201,7 +186,11 @@
         <li class="nav-item">
           <a class="nav-link" href="#">Services</a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+             data-bs-toggle="dropdown" aria-expanded="false">
+            Crypto
+          </a>
           <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
             <li><a class="dropdown-item" href="#">Buy Crypto</a></li>
             <li><a class="dropdown-item" href="#">Sell Crypto</a></li>
@@ -214,9 +203,15 @@
   </div>
 </nav>
 
+
+
+
+
+<!-- Login Form -->
 <div class="container">
   <div class="card p-4">
     <h3 class="text-center">Login</h3>
+
     @if (session('status'))
       <div class="alert alert-success mb-4">{{ session('status') }}</div>
     @endif
@@ -245,32 +240,39 @@
 
       <div class="form-check mb-3">
         <input id="remember_me" type="checkbox" class="form-check-input" name="remember">
-        <label for="remember_me" class="form-check-label">Remember me</label>
+        <label for="remember_me" class="form-check-label text-success">Remember me</label>
       </div>
 
       <div class="d-flex justify-content-between align-items-center">
         @if (Route::has('password.request'))
-          <a href="{{ route('password.request') }}" class="text-decoration-none">Forgot your password?</a>
+          <a href="{{ route('password.request') }}" class="text-decoration-none text-success">Forgot your password?</a>
         @endif
       </div>
 
       <div class="d-flex justify-content-between align-items-center mt-3">
-        <a href="{{ route('register') }}" class="text-decoration-none">Don't have an account? Register</a>
-        <button type="submit" class="btn btn-success"> <span>Log in</span></button>
+        <a href="{{ route('register') }}" class="text-decoration-none text-success">Don't have an account? Register</a> 
       </div>
+      <br>
+        <button type="submit" class="btn btn-success"> <span>Log in</span></button>
     </form>
   </div>
 </div>
 
 <!-- Footer -->
+<footer>
+  <p>&copy; {{ date('Y') }} KayXchange. All rights reserved. <a href="#">Privacy Policy</a></p>
+</footer>
 
+<!-- Bootstrap JS (required for dropdown and navbar toggling) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- Optional JavaScript -->
 <script>
   function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
   }
 
-  // ✅ Close navbar after clicking a nav-link (mobile)
+  // Collapse navbar on link click (for mobile)
   document.addEventListener("DOMContentLoaded", function () {
     const navLinks = document.querySelectorAll('.nav-link');
     const navbarCollapse = document.querySelector('.navbar-collapse');
@@ -279,11 +281,21 @@
       link.addEventListener('click', function () {
         if (navbarCollapse.classList.contains('show')) {
           const bootstrapCollapse = new bootstrap.Collapse(navbarCollapse);
-          bootstrapCollapse.hide(); // Hide the navbar after clicking a link
+          bootstrapCollapse.hide();
         }
       });
     });
   });
+</script>
+
+<script>
+  toastr.options = {
+    "positionClass": "toast-top-right", // Positioning
+    "timeOut": "500", // Duration for the toast
+};
+
+toastr.success("{{ session('status') }}");
+
 </script>
 
 </body>

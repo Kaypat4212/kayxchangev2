@@ -1,26 +1,30 @@
 @extends('layout')
 
 @section('content')
-<div class="container text-center">
-    <div class="card bg-white shadow-sm p-3">
-        <h5>Welcome, {{ Auth::user()->name }}</h5>
-        <p>Balance: ${{ Auth::user()->balance }}</p>
+<div class="container py-4">
+    <div class="row justify-content-center mb-4">
+        <div class="col-lg-6 col-md-8">
+            <div class="card dashboard-card shadow-sm text-center animate-fade p-4">
+                <h5 class="text-success fw-bold mb-2">Welcome, {{ Auth::user()->name }}</h5>
+                <p class="fs-5 text-dark">Balance: <span class="text-success">${{ Auth::user()->balance }}</span></p>
+            </div>
+        </div>
     </div>
-   <div class="container">
-   <div class="d-flex justify-content-center mb-5 gap-3 mt-4">
-        <button class="btn crypto-btn" onclick="navigateTo('buy')">Buy Crypto</button>
-        <button class="btn crypto-btn1" onclick="navigateTo('sell')">Sell Crypto</button>
+
+    <div class="row justify-content-center mb-5">
+        <div class="col-auto d-flex gap-3 flex-wrap justify-content-center">
+            <button class="btn btn-success px-4 py-2" onclick="navigateTo('buy')">Buy Crypto</button>
+            <button class="btn btn-outline-success px-4 py-2" onclick="navigateTo('sell')">Sell Crypto</button>
+        </div>
     </div>
-    <div class="d-flex justify-content-center mb-5 gap-3 mt-4">
-        <button class="btn crypto-btn" onclick="navigateTo('buy')">Airtime</button>
-        <button class="btn crypto-btn1" onclick="navigateTo('sell')">Data </button>
-    </div>
-   </div>
-    <div class="col-md m-auto-6 mt-3">
-        <div class="card bg-white shadow-sm p-3">
-            <h5>Current Crypto Prices</h5>
-            <div id="prices-container">
-                <p>Loading...</p>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="card dashboard-card shadow-sm animate-slide-up p-4">
+                <h5 class="text-success mb-3 text-center">Current Crypto Prices</h5>
+                <div id="prices-container" class="text-center">
+                    <p>Loading...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -28,7 +32,6 @@
 
 <script>
     function navigateTo(page) {
-        document.getElementById("loader").style.display = "block";
         window.location.href = `/${page}`;
     }
 
@@ -36,16 +39,22 @@
         fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,tether,litecoin,binancecoin')
             .then(response => response.json())
             .then(data => {
-                let pricesContainer = document.getElementById('prices-container');
+                const pricesContainer = document.getElementById('prices-container');
                 pricesContainer.innerHTML = '';
                 data.forEach(coin => {
-                    pricesContainer.innerHTML += `<p><img src="${coin.image}" width="20"> ${coin.name}: $${coin.current_price}</p>`;
+                    pricesContainer.innerHTML += `
+                        <div class="d-flex align-items-center justify-content-between border-bottom py-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="${coin.image}" width="28" alt="${coin.name}" />
+                                <strong class="text-dark">${coin.name}</strong>
+                            </div>
+                            <span class="text-success fw-semibold">$${coin.current_price.toLocaleString()}</span>
+                        </div>`;
                 });
             })
             .catch(() => {
-                document.getElementById('prices-container').innerHTML = '<p>Error loading prices</p>';
+                document.getElementById('prices-container').innerHTML = '<p class="text-danger">Error loading prices</p>';
             });
     });
 </script>
-
 @endsection

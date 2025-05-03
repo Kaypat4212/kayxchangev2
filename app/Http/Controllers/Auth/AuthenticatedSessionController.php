@@ -43,6 +43,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+          // Store a session variable for toast message
+        session()->flash('status', 'You have been logged out successfully.');
+
+        return redirect('/login');
     }
 }
