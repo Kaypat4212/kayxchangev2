@@ -13,6 +13,11 @@ class SellController extends Controller
     /**
      * Step 1: Show coin and amount input page
      */
+    public function showSellForm()
+{
+    return view('sell.step1'); // Or whatever your first form step view is
+}
+
     public function step1()
     {
         return view('sell.step1');
