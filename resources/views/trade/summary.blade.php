@@ -6,8 +6,8 @@
 
     <ul class="text-gray-700 mb-4 space-y-2">
         <li><strong>Coin:</strong> {{ $trade->coin }}</li>
-        <li><strong>Amount (USD):</strong> ${{ $trade->amount }}</li>
-        <li><strong>Naira Equivalent:</strong> ₦{{ number_format($nairaEquivalent, 2) }}</li>
+        <li><strong>Amount (USD):</strong> ${{ number_format($trade->usd_amount, 2) }}</li>
+        <li><strong>Naira Equivalent:</strong> ₦{{ number_format($trade->nairaEquivalent, 2) }}</li>
         <li><strong>Status:</strong> <span class="text-yellow-600">{{ $trade->status }}</span></li>
         <li><strong>Wallet:</strong> {{ $walletMap[$trade->coin] ?? 'N/A' }}</li>
     </ul>

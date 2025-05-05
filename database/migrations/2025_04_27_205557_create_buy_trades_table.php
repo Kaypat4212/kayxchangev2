@@ -19,6 +19,7 @@ class CreateBuyTradesTable extends Migration
             $table->string('wallet_address')->nullable();
             $table->string('payment_proof')->nullable();
             $table->string('coin')->nullable();
+            $table->string('network');
             $table->string('status')->default('pending');
             $table->timestamps();
         });

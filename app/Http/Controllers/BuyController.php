@@ -10,85 +10,137 @@ class BuyController extends Controller
 {
     public function submit(Request $request)
     {
+        // Define valid networks for each coin
+        $validNetworks = [
+            'BTC' => ['Bitcoin', 'Lightning'],
+            'ETH' => ['ERC20'],
+            'USDT' => ['ERC20', 'BEP20', 'TRC20'],
+        ];
+
+        // Validate the form inputs
         $request->validate([
             'coin' => 'required|in:BTC,ETH,USDT',
             'amount' => 'required|numeric|min:1',
             'wallet_address' => 'required|string|max:255',
+            'network' => ['required', 'string', function ($attribute, $value, $fail) use ($request, $validNetworks) {
+                $coin = $request->input('coin');
+                if (!in_array($value, $validNetworks[$coin] ?? [])) {
+                    $fail('The selected network is not compatible with the chosen coin.');
+                }
+            }],
         ]);
 
-        // Rates
+        // Coin rates
         $rates = [
             'BTC' => 1600,
             'ETH' => 1500,
             'USDT' => 1400,
         ];
 
+        // Get rate based on the selected coin
         $rate = $rates[$request->coin];
 
+        // Calculate USD and Naira amounts based on input type
         if ($request->input('input_type') == 'naira') {
-            // User entered in Naira
             $naira_amount = $request->amount;
             $usd_amount = $request->amount / $rate;
         } else {
-            // User entered in USD
             $usd_amount = $request->amount;
             $naira_amount = $request->amount * $rate;
         }
 
+        // Create a new BuyTrade record
         $buyTrade = BuyTrade::create([
-            'user_id' => auth()->id(), // if using auth
+            'user_id' => auth()->id(),
             'coin' => $request->coin,
             'usd_amount' => $usd_amount,
             'naira_amount' => $naira_amount,
             'wallet_address' => $request->wallet_address,
+            'network' => $request->network,
             'status' => 'pending',
         ]);
 
-        return redirect()->route('buy.payment', ['id' => $buyTrade->id]);
+        // Redirect to the trade summary page
+        return redirect()->route('buy.summary', ['id' => $buyTrade->id])
+            ->with('success', 'Please review your trade details.');
+    }
+
+    public function summary($id)
+    {
+        // Fetch trade details
+        $trade = BuyTrade::findOrFail($id);
+
+        // Ensure the user owns the trade
+        if ($trade->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        // Render the trade summary page
+        return view('buy.trade_summary', compact('trade'));
     }
 
     public function paymentPage($id)
     {
-        // Fetch the trade details
-    $trade = BuyTrade::findOrFail($id);
-    
-    // Fetch account details (adjust this based on how you store account info)
-    $accountDetails = AccountDetail::find(1); // Replace with the actual logic to fetch account details
+        // Fetch trade details
+        $trade = BuyTrade::findOrFail($id);
 
-    // Pass both the trade and account details to the view
-    return view('buy.payment', compact('trade', 'accountDetails'));
+        // Ensure the user owns the trade
+        if ($trade->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        // Fetch account details
+        $accountDetails = AccountDetail::first();
+
+        // Pass trade and account details to the view
+        return view('buy.payment', compact('trade', 'accountDetails'));
     }
 
     public function uploadPayment(Request $request, $id)
     {
+        // Validate payment proof file
         $request->validate([
             'payment_proof' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         $trade = BuyTrade::findOrFail($id);
 
+        // Ensure the user owns the trade
+        if ($trade->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        // Save payment proof file
         if ($request->hasFile('payment_proof')) {
             $imagePath = $request->file('payment_proof')->store('payment_proofs', 'public');
             $trade->payment_proof = $imagePath;
             $trade->save();
         }
 
-        return redirect()->route('buy.success')->with('success', 'Payment proof uploaded successfully.');
+        // Flash success message and redirect
+        return redirect()->route('buy.success', ['id' => $trade->id])
+    ->with('success', 'Payment proof uploaded successfully!');
     }
 
-    public function success()
+    public function success($id = null)
     {
-        return view('buy.success');
+        $trade = $id ? BuyTrade::findOrFail($id) : null;
+        if ($trade && $trade->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access.');
+        }
+        return view('buy.success', compact('trade'));
     }
 
     public function updateStatus(Request $request, $id)
     {
         $trade = BuyTrade::findOrFail($id);
+
+        // Update trade status
         $trade->update([
             'status' => $request->status
         ]);
 
+        // Flash success message and return
         return back()->with('success', 'Trade status updated successfully.');
     }
-    
 }

@@ -32,6 +32,7 @@ class AdminController extends Controller
         return redirect()->route('admin.login')->withErrors(['email' => 'Invalid credentials.']);
     }
 
+    
     public function dashboard()
     {
         $totalUsers = User::count();
@@ -73,4 +74,6 @@ class AdminController extends Controller
         ]);
         return back()->with('success', 'Sell trade status updated.');
     }
+
+    
 }
