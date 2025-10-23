@@ -13,6 +13,14 @@ return new class extends Migration
     {
         Schema::create('sells', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('coin');
+            $table->decimal('amount', 15, 2);
+            $table->decimal('rate', 10, 2);
+            $table->decimal('total', 15, 2);
+            $table->string('status')->default('pending');
+            $table->string('payment_method');
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }

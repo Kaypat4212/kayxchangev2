@@ -20,6 +20,21 @@ class SellTrade extends Model
         'account_number',
         'bank_name',
         'payment_method',
+        'usd_amount', 
+        'naira_amount',
+        'wallet_address',
+        'payment_proof',
+        'transaction_ref',
     ];
-    
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'usd_amount' => 'decimal:2',
+        'naira_amount' => 'decimal:2',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

@@ -4,12 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buy Trade | Kay Xchange</title>
+    <title>Buy Trade - KayXchange</title>
     <!-- Toastr CSS -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" rel="stylesheet">
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @include('components.navbar-head')
     <style>
         .crypto-btn,
         .crypto-btn1 {
@@ -41,38 +40,7 @@
 
 <body class="bg-light">
 
-    <!-- Bootstrap Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-        <div class="container-fluid">
-            <!-- Logo -->
-            <a class="navbar-brand" href="/dashboard">
-                <img src="/Assests/favicon.png" alt="Logo" width="50" height="50">
-            </a>
-
-            <!-- Navbar Toggler (for mobile) -->
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <!-- Navbar Links -->
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li><a class="nav-link scrollto active" href="/">Home</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/dashboard">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/rates">Rates</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">Settings</a></li>
-
-                    <!-- Logout Button -->
-                    <li class="nav-item">
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="btn btn-danger">Logout</button>
-                        </form>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    @include('components.navbar')
 
     <!-- Loader -->
     <div id="loader">
@@ -85,7 +53,17 @@
     </div>
 <!-- Toastr JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.min.js"></script>
 
+<script>
+    if (typeof TronWeb === 'undefined') {
+        console.error('TronWeb library is not loaded');
+    } else {
+        console.log('TronWeb library loaded successfully');
+    }
+</script>
+
+@include('components.navbar-scripts')
 </body>
 
 </html>

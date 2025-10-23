@@ -1,39 +1,50 @@
 @extends('layouts.header')
 
+<nav class="navbar navbar-expand-lg bg-body-tertiary sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <img width="40px" src="/Assests/favicon.png" alt="KayXchange" class="me-2">
+            KayXchange
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#layoutNavbarNav" aria-controls="layoutNavbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="layoutNavbarNav">
+            <div class="navbar-nav me-auto">
+                <a class="nav-link @if(request()->is('/')) active @endif" @if(request()->is('/')) aria-current="page" @endif href="/">Home</a>
+                <a class="nav-link @if(request()->is('rate')) active @endif" @if(request()->is('rate')) aria-current="page" @endif href="/rate">Exchange Rates</a>
+                <a class="nav-link @if(request()->is('blog*')) active @endif" @if(request()->is('blog*')) aria-current="page" @endif href="/blog">Blog</a>
+                <a class="nav-link @if(request()->is('faqs*')) active @endif" @if(request()->is('faqs*')) aria-current="page" @endif href="/faqs">FAQs</a>
+                <a class="nav-link @if(request()->is('about*')) active @endif" @if(request()->is('about*')) aria-current="page" @endif href="/about">About Us</a>
+                
+                <!-- More Dropdown -->
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-three-dots me-1"></i>More
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/Learn.html"><i class="bi bi-book me-2"></i>Learn</a></li>
+                        <li><a class="dropdown-item" href="/blog.html"><i class="bi bi-newspaper me-2"></i>Blog</a></li>
+                        <li><a class="dropdown-item" href="/alts.html"><i class="bi bi-currency-exchange me-2"></i>Alts</a></li>
+                        <li><a class="dropdown-item" href="/Fiats.html"><i class="bi bi-bank me-2"></i>Fiats</a></li>
+                    </ul>
+                </div>
+            </div>
 
-<nav id="navbar" class="navbar">
+            <!-- Right side navigation -->
+            <div class="d-flex align-items-center">
+                <a class="btn btn-outline-primary me-2" href="/login">
+                  <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                </a>
+                <a class="btn btn-primary" href="/register">
+                  <i class="bi bi-person-plus me-1"></i>Register
+                </a>
 
-<ul>
-    <li><a class="nav-link scrollto active" href="/index.html">Home</a></li>
-    <li><a class="nav-link scrollto" href="/Rates.html">Exchange Rates</a></li>
-    <li><a class="nav-link scrollto" href="/blog.html">Blog</a></li>
-    <li><a class="nav-link scrollto" href="/Faqs.html">Faqs</a></li>
-    <li><a class="nav-link scrollto" href="/About-us.html">About us</a></li>
-    <li><a href="/blog.html">Learn</a></li>
-    <li class="dropdown"><a href="#"><span>More</span> <i class="bi bi-chevron-down"></i></a>
-        <ul>
-            <li><a href="/Learn.html">Learn</a></li>
-            <li class="dropdown"><a href="/blog.html"><span>Blog</span> <i class="bi bi-chevron-right"></i></a>
-                <ul>
-                    <li><a href="/Blogpost/introductiontoblockchain.html">Introduction to cryptocurrency</a></li>
-                    <li><a href="/Blogpost/Typesofcryptocurrency.html">Types of cryptocurrency</a></li>
-                    <li><a href="/Blogpost/Thebasicsofcryptocurrency.html">The basics of cryptocurrency</a></li>
-                    <!-- <li><a href="#">Deep Drop Down 4</a></li>
-  <li><a href="#">Deep Drop Down 5</a></li> -->
-                </ul>
-            </li>
-            <li><a href="/alts.html">Alts</a></li>
-            <li><a href="/Fiats.html">Fiats</a></li>
-            <!-- <li><a href="#"></a></li> -->
-        </ul>
-    </li>
-
-    <li><a class="getstarted mx-4" href="/register">Register</a></li>
-    <li><a class="getstarted mx-4" href="/login">Login</a></li>
-    <div class="d-flex justify-content-center">
-        <a href=""><img width="120px" src="/Assests/appstore.png" alt=""></a>
+                <!-- Dark Mode Toggle Button -->
+                <button id="toggle-mode" class="btn btn-outline-secondary ms-2" title="Toggle Dark Mode">
+                  <i class="bi bi-moon-stars-fill" id="mode-icon"></i>
+                </button>
+            </div>
+        </div>
     </div>
-</ul>
-<i class="bi bi-list mobile-nav-toggle"></i>
 </nav>
-<!-- .navbar -->

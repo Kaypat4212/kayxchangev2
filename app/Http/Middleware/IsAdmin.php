@@ -10,10 +10,16 @@ class IsAdmin
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!Auth::check() || !Auth::user()->is_admin) {
-            abort(403, 'Unauthorized access');
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'Please log in to continue.');
+        }
+
+        if (!Auth::user()->is_admin) {
+            return redirect()->route('dashboard')->with('error', 'You do not have admin privileges.');
         }
 
         return $next($request);
     }
 }
+
+

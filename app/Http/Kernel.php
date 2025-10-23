@@ -67,5 +67,6 @@ class Kernel extends HttpKernel
 
         // ✅ Admin middleware alias added
         'is_admin' => \App\Http\Middleware\IsAdmin::class,
+        'admin' => \App\Http\Middleware\AdminMiddleware::class,
     ];
 }

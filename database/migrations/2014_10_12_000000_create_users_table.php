@@ -17,6 +17,18 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->decimal('balance', 15, 2)->default(0);
+            $table->boolean('is_admin')->default(false);
+            $table->boolean('kyc_verified')->default(false);
+            $table->string('bank_name')->nullable();
+            $table->string('account_number')->nullable();
+            $table->string('account_name')->nullable();
+            $table->string('bank_code')->nullable();
+            $table->string('referral_code')->unique()->nullable();
+            $table->string('referred_by')->nullable();
+            $table->string('telegram_username')->nullable();
+            $table->string('telegram_chat_id')->nullable();
+            $table->string('profile_picture')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

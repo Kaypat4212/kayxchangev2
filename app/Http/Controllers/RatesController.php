@@ -10,15 +10,22 @@ class RatesController extends Controller
     // Display the rates page
     public function index()
     {
+  
+        
         return view('rates.index');
     }
 
     // Display the rates for cryptocurrencies
     public function cryptoRates()
     {
-        // Fetch all rates for cryptocurrencies
-        $rates = Rate::all();
-        return view('rates.crypto', compact('rates'));
+     try {
+            $rates = CryptoRate::all(['coin', 'buy_rate', 'sell_rate']);
+            Log::info('Fetched crypto rates: ' . json_encode($rates));
+            return view('rates.crypto', compact('rates'));
+        } catch (\Exception $e) {
+            Log::error('Error fetching crypto rates: ' . $e->getMessage());
+            return view('rates.crypto', ['rates' => [], 'error' => 'Unable to fetch rates']);
+        }
     }
 
     // Display the rates for gift cards

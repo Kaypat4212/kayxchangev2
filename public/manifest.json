@@ -1,0 +1,45 @@
+{
+    "name": "KayXchange - Crypto Trading Platform",
+    "short_name": "KayXchange",
+    "description": "The best Nigerian digital assets exchange and bill payment platform",
+    "theme_color": "#00c851",
+    "background_color": "#0f1419",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "start_url": "/dashboard",
+    "categories": ["finance", "business"],
+    "lang": "en",
+    "dir": "ltr",
+    "icons": [
+        {
+            "src": "/assets/favicon.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/assets/favicon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Buy Crypto",
+            "short_name": "Buy",
+            "description": "Quickly buy cryptocurrency",
+            "url": "/buy",
+            "icons": [{"src": "/assets/favicon.png", "sizes": "96x96"}]
+        },
+        {
+            "name": "Sell Crypto",
+            "short_name": "Sell", 
+            "description": "Quickly sell cryptocurrency",
+            "url": "/sell",
+            "icons": [{"src": "/assets/favicon.png", "sizes": "96x96"}]
+        }
+    ],
+    "prefer_related_applications": false
+}

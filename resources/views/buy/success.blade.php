@@ -2,7 +2,11 @@
 
 @section('content')
 <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4 sm:p-6">
-    <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 transform transition-all hover:shadow-blue-500/20 duration-300 text-center">
+    
+    <div class="w-full max-w-s bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 transform transition-all hover:shadow-blue-500/20 duration-300 text-center">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-3">Your Buy Trade Was Successfully Submitted!</h2>
+                 <p class="text-sm sm:text-base text-gray-300 mb-3">You have successfully bought ${{ number_format($trade->usd_amount, 2) }} of {{ $trade->coin }}. <br> 
+                            <p class="text-xs sm:text-sm text-gray-400 mb-4">Equivalent to ₦{{ number_format($trade->naira_amount, 2) }}.</p>
         <!-- Success SVG -->
         <div class="mb-4 sm:mb-6">
             <svg class="w-20 h-20 sm:w-24 sm:h-24 mx-auto" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -23,27 +27,32 @@
         </div>
 
         <!-- Success Message -->
-        <h2 class="text-xl sm:text-2xl font-bold text-white mb-3">Buy Trade Successful!</h2>
-        <p class="text-sm sm:text-base text-gray-300 mb-3">You have successfully bought ${{ number_format($trade->usd_amount, 2) }} of {{ $trade->coin }}.</p>
-        <p class="text-xs sm:text-sm text-gray-400 mb-4">Equivalent to ₦{{ number_format($trade->naira_amount, 2) }}. Your transaction is being processed.</p>
-        <p class="text-xs sm:text-sm text-gray-400 mb-6">Please check your <a href="{{ route('dashboard') }}" class="text-blue-400 hover:underline">transaction history</a> to monitor the status of your trade.</p>
+
+        <h5 class="text-xl sm:text-2xl font-bold text-white mb-3">Your trade is currently under review. </h5>
+       
+
+<p class="text-xs sm:text-sm text-gray-400 mb-4">It will be marked as successful once our admin team verifies and approves the payment proof. You’ll be notified upon approval.</p>
+        <p class="text-xs sm:text-sm text-gray-400 mb-6">Please check your <a href="{{ route('transactions.history') }}" class="text-blue-400 text-decoration-none hover:underline">transaction history</a> to monitor the status of your trade.</p>
 
         <!-- Support Information -->
         <div class="mb-4 sm:mb-6">
             <p class="text-xs sm:text-sm text-gray-400">Need assistance? Contact our support team:</p>
-            <a href="mailto:support@kayxchange.com" class="text-blue-400 hover:underline font-semibold text-xs sm:text-sm">support@kayxchange.com</a>
+            <a href="mailto:support@kayxchange.com" class="text-blue-400 text-decoration-none hover:underline font-semibold text-xs sm:text-sm">support@kayxchange.com</a>
         </div>
 
-        <!-- Dashboard Button -->
-        <a href="{{ route('dashboard') }}" class="w-full bg-gradient-to-r from-blue-600 to-teal-500 p-3 rounded-lg font-semibold text-white shadow-md hover:from-blue-700 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 inline-block mb-4 text-sm sm:text-base">
-            Go to Dashboard
-        </a>
+      
 
-        <!-- Live Chat Prompt -->
-        <p class="text-xs sm:text-sm text-gray-400">For immediate help, use our live chat below.</p>
+        <!-- Live Chat Prompt
+        <p class="text-xs mt-4 mb-5 sm:text-sm text-gray-400">For immediate help, use our live chat below.</p> -->
     </div>
 </div>
 
+<div class="container text-center">
+      <!-- Dashboard Button -->
+      <a href="{{ route('dashboard') }}" class="w-full bg-gradient-to-r text-decoration-none from-blue-600 to-teal-500 p-3 rounded-lg font-semibold text-white shadow-md hover:from-blue-700 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 inline-block mb-4 text-sm sm:text-base">
+            Go to Dashboard
+        </a>
+</div>
 <style>
     /* Consistent and responsive styling */
 body {
@@ -60,15 +69,16 @@ body {
     padding: 1rem;
 }
 
-.max-w-md {
+.max-w-s {
     background-color: #1f2937;
     border-radius: 1rem;
     padding: 1.5rem;
+    margin: auto;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.max-w-md:hover {
+.max-w-s:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.3);
 }
@@ -202,6 +212,7 @@ body {
         s0.parentNode.insertBefore(s1, s0);
     })();
 </script>
+ @include('footer')
 @endsection
 
 @section('scripts')
@@ -215,4 +226,6 @@ body {
             toastr.error('{!! e(session('error')) !!}');
         </script>
     @endif
+
+   
 @endsection

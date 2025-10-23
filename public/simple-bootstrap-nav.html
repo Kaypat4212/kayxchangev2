@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Bootstrap Navbar - KayXchange</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Exact Bootstrap Navbar Structure as Requested -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+            <img width="40px" src="/Assests/favicon.png" alt="KayXchange" class="me-2">
+            KayXchange
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+          <div class="navbar-nav">
+            <a class="nav-link active" aria-current="page" href="/">Home</a>
+            <a class="nav-link" href="/rate">Exchange Rates</a>
+            <a class="nav-link" href="/blog">Blog</a>
+            <a class="nav-link" href="/about">About Us</a>
+            <a class="nav-link" href="/register">Register</a>
+            <a class="nav-link" href="/login">Login</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content -->
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-12">
+                <div class="jumbotron bg-light p-5 rounded">
+                    <h1 class="display-4">✅ Simple Bootstrap Navbar</h1>
+                    <p class="lead">This is the exact Bootstrap navbar structure you requested:</p>
+                    <pre class="bg-dark text-light p-3 rounded"><code>&lt;nav class="navbar navbar-expand-lg bg-body-tertiary"&gt;
+  &lt;div class="container-fluid"&gt;
+    &lt;a class="navbar-brand" href="#"&gt;Navbar&lt;/a&gt;
+    &lt;button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation"&gt;
+      &lt;span class="navbar-toggler-icon"&gt;&lt;/span&gt;
+    &lt;/button&gt;
+    &lt;div class="collapse navbar-collapse" id="navbarNavAltMarkup"&gt;
+      &lt;div class="navbar-nav"&gt;
+        &lt;a class="nav-link active" aria-current="page" href="#"&gt;Home&lt;/a&gt;
+        &lt;a class="nav-link" href="#"&gt;Features&lt;/a&gt;
+        &lt;a class="nav-link" href="#"&gt;Pricing&lt;/a&gt;
+        &lt;a class="nav-link disabled" aria-disabled="true"&gt;Disabled&lt;/a&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/nav&gt;</code></pre>
+                    <hr class="my-4">
+                    <p>The navbar components have been updated to use this exact structure with KayXchange branding and navigation links.</p>
+                    <div class="alert alert-success" role="alert">
+                        <h4 class="alert-heading">✅ Updated Components:</h4>
+                        <ul class="mb-0">
+                            <li><strong>navbar.blade.php</strong> - Regular user navigation</li>
+                            <li><strong>admin-navbar.blade.php</strong> - Admin panel navigation</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Instructions -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📱 Mobile Test Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>Resize your browser window to mobile size (less than 992px)</li>
+                            <li>The navbar will automatically collapse to show the hamburger menu</li>
+                            <li>Click the hamburger menu (three lines) to expand the navigation</li>
+                            <li>Click on any navigation link or outside the menu to close it</li>
+                        </ol>
+                        <p class="text-muted mb-0">This uses pure Bootstrap 5 functionality - no custom JavaScript required!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

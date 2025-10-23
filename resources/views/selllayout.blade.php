@@ -4,10 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sell Trade | Kay Xchange</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <style>
+    <title>Sell Trade - KayXchange</title>
+    @include('components.navbar-head')
+</head>
+
+<body class="bg-light">
+<style>
         .crypto-btn,
         .crypto-btn1 {
             width: 120px;
@@ -34,43 +36,7 @@
             transform: translate(-50%, -50%);
         }
     </style>
-</head>
-
-<body class="bg-light">
-
-    <!-- Bootstrap Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-        <div class="container-fluid">
-            <!-- Logo -->
-            <a class="navbar-brand" href="/dashboard">
-                <img src="/Assests/favicon.png" alt="Logo" width="50" height="50">
-            </a>
-
-            <!-- Navbar Toggler (for mobile) -->
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <!-- Navbar Links -->
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li><a class="nav-link scrollto active" href="/">Home</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/dashboard">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/rates">Rates</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/buy">Buy Crypto</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/settings">Settings</a></li>
-
-                    <!-- Logout Button -->
-                    <li class="nav-item">
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="btn btn-danger">Logout</button>
-                        </form>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    @include('components.navbar')
 
     <!-- Loader -->
     <div id="loader">
@@ -82,6 +48,7 @@
         @yield('content')
     </div>
 
+    @include('components.navbar-scripts')
 </body>
 
 </html>

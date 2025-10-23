@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Navigation Test - KayXchange</title>
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Main Styles -->
+    <link href="/assets/css/style.css" rel="stylesheet">
+    
+    <!-- Enhanced Mobile Navigation -->
+    <link href="/css/mobile-nav.css" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .test-content {
+            margin-top: 100px;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .test-section {
+            background: #f8f9fa;
+            margin: 20px 0;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .mobile-test-note {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #bee5eb;
+        }
+        
+        .feature-list {
+            text-align: left;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .feature-list li {
+            margin: 10px 0;
+            padding-left: 10px;
+        }
+        
+        .test-buttons {
+            margin: 30px 0;
+        }
+        
+        .test-btn {
+            background: #00831a;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .test-btn:hover {
+            background: #005c13;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Enhanced Mobile Navigation Styles -->
+    <link href="/css/mobile-nav.css" rel="stylesheet">
+
+    <!-- ======= Test Header ======= -->
+    <header id="header" class="header fixed-top">
+        <div class="container-fluid container-xl d-flex align-items-center justify-content-between">
+            <a href="/" class="logo d-flex align-items-center">
+                <img width="70px" src="/Assests/favicon.png" alt="KayXchange">
+            </a>
+
+            <nav id="navbar" class="navbar">
+                <ul>
+                    <li><a href="/" class="active">Home</a></li>
+                    <li><a href="/dashboard">Dashboard</a></li>
+                    <li><a href="/deposits/create">Deposit</a></li>
+                    <li><a href="/deposits">My Deposits</a></li>
+                    <li><a href="/rate">Rates</a></li>
+                    <li><a href="/buy">Buy Crypto</a></li>
+                    <li><a href="/sell">Sell Crypto</a></li>
+                    <li><a href="/settings">Settings</a></li>
+                    <li><a href="/referrals">Referrals</a></li>
+                    <li><a class="getstarted mx-4" href="/register">Register</a></li>
+                    <li><a class="getstarted mx-4" href="/login">Login</a></li>
+                </ul>
+                <i class="bi bi-list mobile-nav-toggle" aria-label="Toggle mobile navigation"></i>
+            </nav>
+        </div>
+    </header><!-- End Header -->
+
+    <main class="test-content">
+        <h1>🔥 Enhanced Mobile Navigation Test</h1>
+        <p>The mobile navigation has been completely redesigned for better user experience!</p>
+        
+        <div class="mobile-test-note">
+            <strong>📱 Test Instructions:</strong> Resize your browser window to mobile size (less than 991px) or use browser developer tools to simulate mobile devices to see the new mobile navigation in action.
+        </div>
+        
+        <div class="test-section">
+            <h2>✨ New Features</h2>
+            <ul class="feature-list">
+                <li>🎯 <strong>Better Responsive Design</strong> - Triggers at 991px instead of 1200px</li>
+                <li>🍔 <strong>Improved Hamburger Menu</strong> - Better styling and hover effects</li>
+                <li>📱 <strong>Side Panel Navigation</strong> - No longer takes full screen</li>
+                <li>🌟 <strong>Smooth Animations</strong> - Slide-in effects and smooth transitions</li>
+                <li>🎨 <strong>Beautiful Design</strong> - Modern header with logo and gradient</li>
+                <li>🔗 <strong>Navigation Icons</strong> - Font Awesome icons for each menu item</li>
+                <li>♿ <strong>Accessibility</strong> - ARIA labels, focus management, keyboard navigation</li>
+                <li>📱 <strong>Touch Friendly</strong> - Optimized touch targets and interactions</li>
+                <li>🌙 <strong>Dark Mode Support</strong> - Automatic dark theme detection</li>
+                <li>⌨️ <strong>Keyboard Shortcuts</strong> - ESC to close, TAB navigation</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎛️ Test Functions</h2>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="simulateMobile()">📱 Simulate Mobile</button>
+                <button class="test-btn" onclick="simulateTablet()">📱 Simulate Tablet</button>
+                <button class="test-btn" onclick="simulateDesktop()">🖥️ Simulate Desktop</button>
+                <button class="test-btn" onclick="toggleMobileNav()">🍔 Toggle Mobile Nav</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 What's Been Fixed</h2>
+            <ul class="feature-list">
+                <li>❌ <strong>Old:</strong> Mobile nav triggered at 1200px (too wide)</li>
+                <li>✅ <strong>New:</strong> Mobile nav triggers at 991px (proper tablet/mobile breakpoint)</li>
+                <li>❌ <strong>Old:</strong> Full-screen mobile menu overlay</li>
+                <li>✅ <strong>New:</strong> Side panel that doesn't cover entire screen</li>
+                <li>❌ <strong>Old:</strong> Basic hamburger menu with poor styling</li>
+                <li>✅ <strong>New:</strong> Enhanced hamburger with hover effects and animations</li>
+                <li>❌ <strong>Old:</strong> No smooth transitions or animations</li>
+                <li>✅ <strong>New:</strong> Smooth slide-in animations and transitions</li>
+                <li>❌ <strong>Old:</strong> Poor mobile usability and touch targets</li>
+                <li>✅ <strong>New:</strong> Touch-optimized interface with proper target sizes</li>
+            </ul>
+        </div>
+    </main>
+
+    <!-- Enhanced Mobile Navigation Script -->
+    <script src="/js/mobile-nav.js"></script>
+    
+    <script>
+        function simulateMobile() {
+            document.body.style.width = '375px';
+            document.body.style.margin = '0 auto';
+            document.body.style.border = '2px solid #ccc';
+            alert('📱 Mobile view simulated! The mobile navigation should now be active.');
+        }
+        
+        function simulateTablet() {
+            document.body.style.width = '768px';
+            document.body.style.margin = '0 auto';
+            document.body.style.border = '2px solid #ccc';
+            alert('📱 Tablet view simulated! Check if mobile nav appears.');
+        }
+        
+        function simulateDesktop() {
+            document.body.style.width = '100%';
+            document.body.style.margin = '0';
+            document.body.style.border = 'none';
+            alert('🖥️ Desktop view restored!');
+        }
+        
+        function toggleMobileNav() {
+            const toggle = document.querySelector('.mobile-nav-toggle');
+            if (toggle) {
+                toggle.click();
+            } else {
+                alert('Mobile navigation toggle not found. Try resizing to mobile view first.');
+            }
+        }
+        
+        // Show current viewport size
+        function showViewportSize() {
+            const width = window.innerWidth;
+            const status = width <= 991 ? 'Mobile/Tablet' : 'Desktop';
+            console.log(`Viewport: ${width}px (${status})`);
+        }
+        
+        window.addEventListener('resize', showViewportSize);
+        showViewportSize();
+    </script>
+</body>
+</html>

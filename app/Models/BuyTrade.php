@@ -11,6 +11,7 @@ class BuyTrade extends Model
 
     protected $fillable = [
         'user_id',
+        'name',
         'coin',
         'usd_amount',
         'naira_amount',
@@ -18,5 +19,8 @@ class BuyTrade extends Model
         'wallet_address',
         'payment_proof',
         'status',
+        'ip_address',
+        'transaction_ref',
+        'transaction_type',
     ];
 }

@@ -1,7 +1,9 @@
 <?php
 
 namespace App\Providers;
-
+use App\Observers\UserObserver;
+use App\Models\User;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -17,8 +19,11 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
+
+     
     public function boot(): void
     {
-        //
+        Paginator::useBootstrapFour(); // Use Bootstrap 4 pagination
+         User::observe(UserObserver::class);
     }
 }

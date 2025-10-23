@@ -384,7 +384,7 @@ section {
   color: #fff;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 991px) {
   .mobile-nav-toggle {
     display: block;
   }
@@ -394,15 +394,9 @@ section {
   }
 }
 
+/* Old mobile nav styles - overridden by mobile-nav.css */
 .navbar-mobile {
-  position: fixed;
-  overflow: hidden;
-  top: 0;
-  right: 0;
-  left: 0;
-  bottom: 0;
-  background:#00831a;
-  transition: 0.3s;
+  display: none !important;
 }
 
 .navbar-mobile .mobile-nav-toggle {
