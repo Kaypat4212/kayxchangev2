@@ -22,6 +22,42 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 
 /*
 |--------------------------------------------------------------------------
+| Resolve Application Base Path
+|--------------------------------------------------------------------------
+|
+| Shared hosting deployments often place this public directory under
+| public_html while the Laravel app lives in a sibling folder. We try a
+| small set of safe candidate paths and pick the first valid installation.
+|
+*/
+
+$basePathCandidates = [
+    realpath(__DIR__.'/..'),
+    realpath(__DIR__.'/../kayxchangev2'),
+    realpath(__DIR__.'/../../kayxchangev2'),
+    realpath(__DIR__.'/../laravel'),
+    realpath(__DIR__.'/../../laravel'),
+];
+
+$resolvedBasePath = null;
+foreach ($basePathCandidates as $candidate) {
+    if (!$candidate) {
+        continue;
+    }
+
+    if (file_exists($candidate.'/vendor/autoload.php') && file_exists($candidate.'/bootstrap/app.php')) {
+        $resolvedBasePath = $candidate;
+        break;
+    }
+}
+
+if ($resolvedBasePath === null) {
+    http_response_code(500);
+    exit('Laravel bootstrap files were not found.');
+}
+
+/*
+|--------------------------------------------------------------------------
 | Register The Auto Loader
 |--------------------------------------------------------------------------
 |
@@ -31,7 +67,7 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 |
 */
 
-require __DIR__.'/../vendor/autoload.php';
+require $resolvedBasePath.'/vendor/autoload.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -44,7 +80,7 @@ require __DIR__.'/../vendor/autoload.php';
 |
 */
 
-$app = require_once __DIR__.'/../bootstrap/app.php';
+$app = require_once $resolvedBasePath.'/bootstrap/app.php';
 
 $kernel = $app->make(Kernel::class);
 
