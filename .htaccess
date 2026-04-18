@@ -3,9 +3,6 @@ DirectoryIndex public/index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Disable MultiViews to prevent path negotiation issues
-    Options -MultiViews
-
     # Do not rewrite if request is already targeting /public
     RewriteCond %{REQUEST_URI} !^/public/
 
