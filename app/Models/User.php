@@ -47,6 +47,7 @@ class User extends Authenticatable
         'role',
         'telegram_username',
         'telegram_notifications',
+        'telegram_ai_enabled',
         'telegram_chat_id',
         'telegram_verified',
         'onboarding_completed',

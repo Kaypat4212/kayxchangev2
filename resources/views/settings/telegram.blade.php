@@ -156,6 +156,16 @@ body { background: var(--kx-dark); color: var(--kx-text); }
 /* Divider */
 .tg-divider { border: none; border-top: 1px solid var(--kx-border); margin: 1.25rem 0; }
 
+/* AI toggle (reuse kx-toggle style) */
+.tg-toggle { position: relative; display: inline-block; width: 48px; height: 26px; }
+.tg-toggle input { display: none; }
+.tg-toggle-slider { position: absolute; inset: 0; background: var(--kx-card2,#1e2535);
+    border: 1px solid var(--kx-border); border-radius: 26px; cursor: pointer; transition: 0.3s; }
+.tg-toggle-slider::before { content: ''; position: absolute; width: 20px; height: 20px;
+    background: var(--kx-muted,#7a8599); border-radius: 50%; top: 2px; left: 2px; transition: 0.3s; }
+.tg-toggle input:checked + .tg-toggle-slider { background: rgba(168,85,247,0.2); border-color: #a855f7; }
+.tg-toggle input:checked + .tg-toggle-slider::before { background: #a855f7; transform: translateX(22px); }
+
 /* Pill badge */
 .tg-pill {
     display: inline-flex; align-items: center; gap: .3rem;
@@ -404,6 +414,60 @@ body { background: var(--kx-dark); color: var(--kx-text); }
             </div>
         @endif
     </div>
+
+{{-- AI Trade Assistant Section --}}
+@if(Auth::user()->telegram_chat_id && Auth::user()->telegram_verified)
+<div class="tg-card" style="margin-top:1.5rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;">
+        <div style="width:38px;height:38px;border-radius:8px;background:rgba(168,85,247,0.15);
+            display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-robot" style="color:#a855f7;font-size:1rem;"></i>
+        </div>
+        <div>
+            <p style="font-size:.9rem;color:#fff;font-weight:700;margin:0;">AI Trade Assistant (KAI)</p>
+            <p style="font-size:.77rem;color:var(--kx-muted);margin:0;">
+                Chat with KAI in the Telegram bot for trade advice, rate queries &amp; platform help.
+            </p>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ route('settings.telegram.ai.update') }}">
+        @csrf
+        @method('PUT')
+
+        <div style="background:var(--kx-card2,#1e2535);border:1px solid rgba(255,255,255,0.07);
+            border-radius:10px;padding:1rem 1.25rem;display:flex;align-items:center;
+            justify-content:space-between;gap:1rem;">
+            <div>
+                <p style="font-size:.85rem;font-weight:600;color:#fff;margin:0 0 .2rem;">
+                    Enable AI Assistant
+                </p>
+                <p style="font-size:.76rem;color:var(--kx-muted);margin:0;">
+                    Type <code style="color:#a855f7;">/ai</code> in the bot to start chatting.
+                </p>
+            </div>
+            <label class="tg-toggle">
+                <input type="checkbox" name="telegram_ai_enabled" value="1"
+                    {{ Auth::user()->telegram_ai_enabled ? 'checked' : '' }}>
+                <span class="tg-toggle-slider"></span>
+            </label>
+        </div>
+
+        <div style="margin-top:.75rem;display:flex;justify-content:flex-end;">
+            <button type="submit" class="tg-btn-primary" style="padding:8px 20px;font-size:.82rem;">
+                <i class="fas fa-save"></i> Save AI Preference
+            </button>
+        </div>
+    </form>
+
+    <div style="margin-top:1rem;background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.2);
+        border-radius:8px;padding:.9rem 1rem;font-size:.78rem;color:#c4b5fd;line-height:1.6;">
+        <strong>💡 What can KAI do?</strong><br>
+        Ask about current BTC/USDT/ETH rates, get buying and selling guidance, check your balance,
+        understand your trade history, and get general platform help — all in natural language inside Telegram.
+    </div>
+</div>
+@endif
 
 </div>
 

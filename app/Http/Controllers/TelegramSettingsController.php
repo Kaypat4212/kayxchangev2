@@ -190,4 +190,20 @@ class TelegramSettingsController extends Controller
             ]);
         }
     }
+
+    /**
+     * Update the user's AI assistant preference.
+     */
+    public function updateAi(Request $request)
+    {
+        $user = User::find(Auth::id());
+
+        $user->update([
+            'telegram_ai_enabled' => $request->boolean('telegram_ai_enabled'),
+        ]);
+
+        $status = $user->telegram_ai_enabled ? 'enabled' : 'disabled';
+
+        return redirect()->back()->with('success', "AI Trade Assistant {$status} successfully.");
+    }
 }

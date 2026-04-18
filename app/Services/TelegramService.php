@@ -465,7 +465,7 @@ class TelegramService
         // Extract the first word (command without arguments)
         $command = strtolower(explode(' ', $text)[0]);
 
-        $known = ['start', 'register', 'rates', 'buy', 'sell', 'balance', 'trades', 'verify', 'help', 'cancel'];
+        $known = ['start', 'register', 'rates', 'buy', 'sell', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai'];
 
         return in_array($command, $known, true) ? $command : null;
     }
@@ -574,6 +574,7 @@ class TelegramService
                         'trades'   => $this->handleTradesCommand($chatId),
                         'verify'   => $this->handleVerifyCommand($chatId, $text, $username),
                         'help'     => $this->handleHelpCommand($chatId),
+                        'ai'       => $this->handleAiChatCommand($chatId),
                         default    => $this->handleUnknownCommand($chatId),
                     };
                     return true;
@@ -583,6 +584,9 @@ class TelegramService
                 $state = $this->getState($chatId);
                 if ($state !== null) {
                     switch ($state) {
+                        case 'ai_chat':
+                            $this->handleAiChatInput($chatId, $text);
+                            return true;
                         case 'sell_amount':
                             $this->handleSellAmountInput($chatId, $text);
                             return true;
@@ -726,6 +730,7 @@ class TelegramService
                     'cmd_balance'  => $this->handleBalanceCommand($chatId),
                     'cmd_trades'   => $this->handleTradesCommand($chatId),
                     'cmd_help'     => $this->handleHelpCommand($chatId),
+                    'cmd_ai'       => $this->handleAiChatCommand($chatId),
                     default        => null,
                 };
             }
@@ -792,6 +797,9 @@ class TelegramService
                     [
                         ['text' => '📋 My Trades',    'callback_data' => 'cmd_trades'],
                         $this->linkButton('🌐 Dashboard', '/dashboard', 'cmd_start'),
+                    ],
+                    [
+                        ['text' => '🤖 AI Assistant', 'callback_data' => 'cmd_ai'],
                     ],
                 ],
             ];
@@ -2763,6 +2771,103 @@ class TelegramService
             ]);
             throw $e;
         }
+    }
+
+    // ────────────────────────── AI Chat handlers ───────────────────────────────
+
+    /**
+     * Enter AI chat mode via /ai command.
+     */
+    private function handleAiChatCommand(int $chatId): void
+    {
+        $aiService = app(\App\Services\TelegramAiBotService::class);
+
+        if (!$aiService->isEnabled()) {
+            $this->sendMessage($chatId,
+                "⚙️ The AI Trade Assistant is currently disabled. Check back later!");
+            return;
+        }
+
+        $user = User::where('telegram_chat_id', $chatId)->first();
+
+        if (!$user) {
+            $this->sendMessage($chatId,
+                "🔗 *Link Your Account First*\n\nSend your KayXchange email address to link your account before using the AI assistant.");
+            return;
+        }
+
+        if (!$user->telegram_ai_enabled) {
+            $this->sendMessage($chatId,
+                "🤖 *AI Assistant Disabled*\n\n" .
+                "You have disabled the AI Trade Assistant on your account.\n\n" .
+                "To enable it, visit your Telegram settings on the KayXchange website.");
+            return;
+        }
+
+        $this->setState($chatId, 'ai_chat');
+
+        $welcomeMsg = trim(\App\Models\SiteContent::where('key', 'ai_bot_welcome_message')->value('value') ?? '');
+        if (empty($welcomeMsg)) {
+            $welcomeMsg = "🤖 *KAI — KayXchange AI Assistant*\n\nHello {$user->name}! I can help you with:\n" .
+                          "• Current crypto rates\n" .
+                          "• Buy/Sell guidance\n" .
+                          "• Platform questions\n" .
+                          "• Trade history & balance info\n\n" .
+                          "Just type your question below. Type /cancel to exit AI mode.";
+        }
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '🪙 Current Rates',   'callback_data' => 'cmd_rates'],
+                    ['text' => '💰 My Balance',       'callback_data' => 'cmd_balance'],
+                ],
+                [
+                    ['text' => '❌ Exit AI Mode',     'callback_data' => 'cancel'],
+                ],
+            ],
+        ];
+
+        $this->sendMessage($chatId, $welcomeMsg, 'Markdown', $keyboard);
+    }
+
+    /**
+     * Handle text messages when the user is in ai_chat state.
+     */
+    private function handleAiChatInput(int $chatId, string $text): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+
+        if (!$user) {
+            $this->clearState($chatId);
+            $this->sendMessage($chatId, "🔗 Please link your account first by sending your email address.");
+            return;
+        }
+
+        // Show typing indicator
+        try {
+            Http::post("{$this->apiUrl}/sendChatAction", [
+                'chat_id' => $chatId,
+                'action'  => 'typing',
+            ]);
+        } catch (\Exception $e) {}
+
+        $aiService = app(\App\Services\TelegramAiBotService::class);
+        $reply     = $aiService->chat($chatId, $user, $text);
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '💸 Buy Crypto',    'callback_data' => 'cmd_buy'],
+                    ['text' => '💵 Sell Crypto',   'callback_data' => 'cmd_sell'],
+                ],
+                [
+                    ['text' => '❌ Exit AI Mode',  'callback_data' => 'cancel'],
+                ],
+            ],
+        ];
+
+        $this->sendMessage($chatId, $reply, 'Markdown', $keyboard);
     }
 
     /**

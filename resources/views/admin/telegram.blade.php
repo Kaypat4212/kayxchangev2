@@ -91,6 +91,9 @@
                 <span class="kx-dot {{ $isProduction ? 'kx-dot-green' : 'kx-dot-amber' }}"></span>
                 {{ $isProduction ? 'Production Mode' : 'Development Mode' }}
             </span>
+            <a href="{{ route('admin.telegram.ai-config') }}" class="kx-btn" style="background:rgba(168,85,247,0.15);color:#a855f7;border:1px solid rgba(168,85,247,0.3);padding:7px 14px;font-size:0.82rem;">
+                🤖 AI Bot Config
+            </a>
         </div>
     </div>
 

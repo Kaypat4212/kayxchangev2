@@ -3,13 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\FeatureRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
+use App\Models\BugReport;
 
-class FeatureRequestController extends Controller
+class BugReportController extends Controller
 {
     public function __construct()
     {
@@ -18,7 +17,7 @@ class FeatureRequestController extends Controller
 
     public function showForm()
     {
-        return view('feature-request');
+        return view('bug-report');
     }
 
     public function submit(Request $request)
@@ -26,8 +25,9 @@ class FeatureRequestController extends Controller
         $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'required|string|min:20|max:5000',
-            'category'    => 'required|in:trading,ui,payments,security,notification,other',
-            'priority'    => 'required|in:low,medium,high',
+            'severity'    => 'required|in:low,medium,high,critical',
+            'category'    => 'required|in:general,ui,payment,trade,account,other',
+            'page_url'    => 'nullable|url|max:500',
             'attachment'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,gif,webp|max:5120',
         ]);
 
@@ -36,27 +36,30 @@ class FeatureRequestController extends Controller
                 'user_id'     => Auth::id(),
                 'title'       => $request->title,
                 'description' => $request->description,
+                'severity'    => $request->severity,
                 'category'    => $request->category,
-                'priority'    => $request->priority,
-                'status'      => 'pending',
+                'page_url'    => $request->page_url,
+                'browser'     => substr($request->userAgent() ?? '', 0, 255),
+                'status'      => 'open',
             ];
 
             if ($request->hasFile('attachment')) {
                 $data['attachment'] = $request->file('attachment')
-                    ->store('feature_request_attachments', 'public');
+                    ->store('bug_report_attachments', 'public');
             }
 
-            $featureRequest = FeatureRequest::create($data);
+            $bug = BugReport::create($data);
 
-            $user         = Auth::user();
-            $priority_icon = match($request->priority) {
-                'high' => '🔴', 'medium' => '🟡', default => '🟢'
+            // Telegram alert to admin
+            $user    = Auth::user();
+            $severity_icon = match($request->severity) {
+                'critical' => '🔴', 'high' => '🟠', 'medium' => '🟡', default => '🟢'
             };
-            $message = "{$priority_icon} *New Feature Request* #{$featureRequest->id}\n\n"
+            $message = "{$severity_icon} *New Bug Report* #{$bug->id}\n\n"
                 . "👤 {$user->name} ({$user->email})\n"
-                . "🏷️ Category: {$featureRequest->category} | Priority: {$featureRequest->priority}\n"
-                . "📝 {$featureRequest->title}\n\n"
-                . substr($featureRequest->description, 0, 200) . (strlen($featureRequest->description) > 200 ? '…' : '');
+                . "📌 Severity: *{$bug->severity}* | Category: {$bug->category}\n"
+                . "📝 {$bug->title}\n\n"
+                . substr($bug->description, 0, 200) . (strlen($bug->description) > 200 ? '…' : '');
 
             $botToken = env('TELEGRAM_BOT_TOKEN');
             $chatId   = env('TELEGRAM_CHAT_ID');
@@ -68,24 +71,24 @@ class FeatureRequestController extends Controller
                 ]);
             }
 
-            return redirect()->route('feature.request.form')
-                ->with('success', "Feature request #{$featureRequest->id} submitted! Thank you for your feedback.");
+            return redirect()->route('bug.report.form')
+                ->with('success', "Bug report #{$bug->id} submitted! Our team will investigate.");
         } catch (\Exception $e) {
-            Log::error('Feature request submission failed', [
+            Log::error('Bug report submission failed', [
                 'error'   => $e->getMessage(),
                 'user_id' => Auth::id(),
             ]);
             return back()->withInput()
-                ->withErrors(['error' => 'Failed to submit request. Please try again.']);
+                ->withErrors(['error' => 'Failed to submit report. Please try again.']);
         }
     }
 
-    public function myRequests()
+    public function myReports()
     {
-        $requests = FeatureRequest::where('user_id', Auth::id())
+        $reports = BugReport::where('user_id', Auth::id())
             ->latest()
             ->paginate(10);
 
-        return view('feature-requests-history', compact('requests'));
+        return view('bug-reports-history', compact('reports'));
     }
 }

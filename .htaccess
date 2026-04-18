@@ -1,0 +1,11 @@
+DirectoryIndex public/index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Prevent rewriting already-public paths
+    RewriteCond %{REQUEST_URI} !^/public/
+
+    # Pass all non-public requests into Laravel public directory
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
+</IfModule>

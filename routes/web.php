@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\{
     ProfileController,
     RatesController,
@@ -35,8 +36,11 @@ use App\Http\Controllers\Admin\AdminGiftCardRateController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\BlogAiController;
 use App\Http\Controllers\Admin\AdminAiController;
+use App\Http\Controllers\Admin\AdminAiBotController;
 use App\Http\Controllers\Admin\ReferralSettingsController;
 use App\Http\Controllers\Admin\NotificationAiController;
+use App\Http\Controllers\BugReportController;
+use App\Http\Controllers\Admin\AdminTerminalController;
 use App\Http\Controllers\UserAiController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\CryptoRateupdateController;
@@ -133,6 +137,10 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('telegram/file/{fileId}', [AdminTelegramController::class, 'serveFile'])->name('admin.telegram.file')
          ->where('fileId', '[A-Za-z0-9_\-]+');
     Route::post('telegram/ai-suggest',   [AdminTelegramController::class, 'aiSuggestReply'])->name('admin.telegram.ai-suggest');
+    // AI Bot Config
+    Route::get('telegram/ai-config',       [AdminAiBotController::class, 'index'])->name('admin.telegram.ai-config');
+    Route::put('telegram/ai-config',       [AdminAiBotController::class, 'update'])->name('admin.telegram.ai-config.update');
+    Route::post('telegram/ai-config/test', [AdminAiBotController::class, 'testChat'])->name('admin.telegram.ai-config.test');
 
     Route::get('deposits', [AdminDepositController::class, 'index'])->name('admin.deposits.index');
     Route::put('deposits/{deposit}', [AdminDepositController::class, 'update'])->name('admin.deposits.update');
@@ -301,15 +309,15 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
 
     // Manual trigger: scan pending sell trades for confirmed crypto receipts
     Route::post('/run-crypto-monitor', function () {
-        \Artisan::call('monitor:sell-trades');
-        $output = trim(\Artisan::output());
+        Artisan::call('monitor:sell-trades');
+        $output = trim(Artisan::output());
         return response()->json(['message' => $output ?: 'Scan complete.']);
     })->name('admin.run-crypto-monitor');
 
     // Manual trigger: escalate pending trades above configured threshold
     Route::post('/run-trade-escalation', function () {
-        \Artisan::call('trades:escalate-pending');
-        $output = trim(\Artisan::output());
+        Artisan::call('trades:escalate-pending');
+        $output = trim(Artisan::output());
         return response()->json(['message' => $output ?: 'Escalation scan complete.']);
     })->name('admin.run-trade-escalation');
 
@@ -387,6 +395,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings/telegram', [TelegramSettingsController::class, 'show'])->name('settings.telegram');
     Route::put('/settings/telegram', [TelegramSettingsController::class, 'update'])->name('settings.telegram.update');
     Route::post('/settings/telegram/test', [TelegramSettingsController::class, 'test'])->name('settings.telegram.test');
+    Route::put('/settings/telegram/ai',    [TelegramSettingsController::class, 'updateAi'])->name('settings.telegram.ai.update');
     
     // Debug route removed for security - use 'php artisan route:list' or logging instead
     // Route::get('/debug-env', function () { ... });
@@ -452,6 +461,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/feature-request', [FeatureRequestController::class, 'showForm'])->name('feature.request.form');
     Route::post('/feature-request', [FeatureRequestController::class, 'submit'])->name('feature.request.submit');
+    Route::get('/feature-requests/history', [FeatureRequestController::class, 'myRequests'])->name('feature.request.history');
+
+    Route::get('/bug-report', [BugReportController::class, 'showForm'])->name('bug.report.form');
+    Route::post('/bug-report', [BugReportController::class, 'submit'])->name('bug.report.submit');
+    Route::get('/bug-reports/history', [BugReportController::class, 'myReports'])->name('bug.report.history');
 });
 
 // Feature Request Routes
@@ -482,6 +496,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/{id}/mark-read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('mark-read');
         Route::delete('/{id}',         [App\Http\Controllers\NotificationController::class, 'delete'])->name('delete');
     });
+});
+
+// Admin Terminal + Feedback Moderation
+Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/terminal', [AdminTerminalController::class, 'index'])->name('admin.terminal');
+    Route::post('/terminal/unlock', [AdminTerminalController::class, 'unlock'])->name('admin.terminal.unlock');
+    Route::post('/terminal/lock', [AdminTerminalController::class, 'lock'])->name('admin.terminal.lock');
+    Route::post('/terminal/artisan', [AdminTerminalController::class, 'runArtisan'])->name('admin.terminal.artisan');
+
+    Route::get('/bug-reports', [AdminTerminalController::class, 'bugReports'])->name('admin.bug-reports');
+    Route::patch('/bug-reports/{bugReport}', [AdminTerminalController::class, 'updateBugReport'])->name('admin.bug-reports.update');
+
+    Route::get('/feature-requests', [AdminTerminalController::class, 'featureRequests'])->name('admin.feature-requests');
+    Route::patch('/feature-requests/{featureRequest}', [AdminTerminalController::class, 'updateFeatureRequest'])->name('admin.feature-requests.update');
 });
 
 // Route::get('/paystack/banks', [PaystackController::class, 'getBanks'])->name('paystack.banks');
