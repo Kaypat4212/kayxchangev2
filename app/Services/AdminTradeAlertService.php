@@ -83,10 +83,10 @@ class AdminTradeAlertService
             ],
         ];
 
-        // Add approve/reject quick-action buttons for sell and buy trades (when trade_id is provided)
+        // Add approve/reject quick-action buttons for sell, buy, and withdrawal trades (when trade_id is provided)
         if ($tradeId) {
             $type = strtolower($tradeType);
-            if (in_array($type, ['sell', 'buy'])) {
+            if (in_array($type, ['sell', 'buy', 'withdrawal'])) {
                 $actionButtons[] = [
                     ['text' => '✅ Approve',  'callback_data' => "approve_{$type}:{$tradeId}"],
                     ['text' => '❌ Reject',   'callback_data' => "reject_{$type}:{$tradeId}"],
@@ -100,6 +100,15 @@ class AdminTradeAlertService
             $vipChatId = (string) config('trade_alerts.vip_chat_id', '');
             if (!empty($vipChatId)) {
                 $this->sendTelegram("💎 *VIP ROUTED ALERT*\n\n" . $message, $vipChatId, $actionButtons);
+            }
+        }
+
+        // Dedicated high-risk escalation alert (separate channel, more prominent)
+        if ($risk['is_high_risk']) {
+            try {
+                $this->sendHighRiskEscalationAlert($tradeType, $data, $risk);
+            } catch (\Throwable $e) {
+                Log::warning('AdminTradeAlertService: high-risk escalation failed', ['error' => $e->getMessage()]);
             }
         }
 
@@ -317,5 +326,97 @@ class AdminTradeAlertService
         }
         Cache::put($cacheKey, true, now()->addHours(12));
         return true;
+    }
+
+    /**
+     * Send a Telegram escalation alert for high-risk trades to the escalation channel.
+     * Called automatically from sendTriggeredAlert() when fraud score >= threshold.
+     */
+    public function sendHighRiskEscalationAlert(string $tradeType, array $data, array $risk): void
+    {
+        if (!config('trade_alerts.enabled', true)) {
+            return;
+        }
+
+        $escChatId = (string) config('trade_alerts.escalation_chat_id', '');
+        if (empty($escChatId)) {
+            $escChatId = $this->chatId;
+        }
+        if (empty($escChatId)) {
+            return;
+        }
+
+        $signals = !empty($risk['signals']) ? implode(', ', $risk['signals']) : 'None';
+        $tradeId = $data['trade_id'] ?? null;
+
+        $lines = [
+            '🔴 FRAUD SCORE: ' . $risk['score'] . '/100 (' . strtoupper($risk['level']) . ')',
+            'Trade Type: ' . strtoupper($tradeType),
+            'Ref: ' . ($data['reference'] ?? 'N/A'),
+            'User: ' . ($data['user_name'] ?? 'N/A') . ' (' . ($data['user_email'] ?? 'N/A') . ')',
+            'Amount (NGN): ' . ($data['naira_amount'] ?? 'N/A'),
+            'Risk Signals: ' . $signals,
+            'Time: ' . now()->format('Y-m-d H:i:s'),
+        ];
+
+        $message = "🚨🚨 *HIGH\\-RISK TRADE ESCALATION*\n\n"
+            . implode("\n", array_map(fn($l) => $this->escapeMarkdown($l), $lines));
+
+        $buttons = [
+            [
+                ['text' => '🌐 View Trade', 'url' => rtrim((string) config('app.url'), '/') . '/admin/trades?ref=' . urlencode((string) ($data['reference'] ?? ''))],
+                ['text' => '🔔 Notifications', 'url' => rtrim((string) config('app.url'), '/') . '/admin/notifications?status=unread'],
+            ],
+        ];
+
+        if ($tradeId && in_array(strtolower($tradeType), ['sell', 'buy', 'withdrawal'])) {
+            $type = strtolower($tradeType);
+            $buttons[] = [
+                ['text' => '✅ Approve', 'callback_data' => "approve_{$type}:{$tradeId}"],
+                ['text' => '❌ Reject',  'callback_data' => "reject_{$type}:{$tradeId}"],
+            ];
+        }
+
+        $this->sendTelegram($message, $escChatId, $buttons);
+    }
+
+    /**
+     * Send a Telegram alert to admins when a user opens/escalates a support chat.
+     * Should be called from ChatController when a new user message arrives.
+     *
+     * @param  \App\Models\User  $user          The user who sent the support message
+     * @param  string            $preview       First 200 chars of the message
+     * @param  int               $unreadCount   Total unread messages from this user
+     */
+    public function sendSupportChatAlert(\App\Models\User $user, string $preview, int $unreadCount = 1): void
+    {
+        if (!config('trade_alerts.enabled', true)) {
+            return;
+        }
+
+        if (empty($this->token) || empty($this->chatId)) {
+            return;
+        }
+
+        $lines = [
+            'User: ' . $user->name . ' (' . $user->email . ')',
+            'Unread messages: ' . $unreadCount,
+            'Message: ' . substr($preview, 0, 200),
+            'Time: ' . now()->format('Y-m-d H:i:s'),
+        ];
+
+        $message = "💬 *New Support Message*\n\n"
+            . implode("\n", array_map(fn($l) => $this->escapeMarkdown($l), $lines));
+
+        $adminChatUrl = rtrim((string) config('app.url'), '/') . '/admin/chat/' . $user->id;
+
+        $buttons = [
+            [
+                ['text' => '💬 Open Chat',     'url' => $adminChatUrl],
+                ['text' => '👤 User Profile',  'url' => rtrim((string) config('app.url'), '/') . '/admin/users/' . $user->id],
+            ],
+        ];
+
+        $this->sendTelegram($message, $this->chatId, $buttons);
     }
 }

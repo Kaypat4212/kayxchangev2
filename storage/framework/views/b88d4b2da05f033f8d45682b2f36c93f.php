@@ -209,7 +209,11 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div style="font-size:.72rem;color:var(--kx-muted)"><?php echo e($user->email ?? '—'); ?></div>
                     </td>
                     <td><span class="kx-badge kx-badge-green" style="font-family:monospace"><?php echo e(strtoupper($t->coin ?? '—')); ?></span></td>
-                    <td style="color:var(--kx-blue);font-size:.82rem">$<?php echo e(number_format($t->usd_amount ?? 0, 2)); ?></td>
+                    <td style="color:var(--kx-blue);font-size:.82rem">
+                        $<?php echo e(number_format($t->usd_amount ?? 0, 2)); ?>
+
+                        <div class="kx-crypto-sub" data-coin="<?php echo e(strtoupper($t->coin ?? '')); ?>" data-usd="<?php echo e($t->usd_amount ?? 0); ?>" style="font-size:.68rem;color:#f7931a;margin-top:.1rem"></div>
+                    </td>
                     <td style="font-weight:700">₦<?php echo e(number_format($t->naira_amount ?? 0, 2)); ?></td>
                     <td style="font-size:.74rem;color:var(--kx-muted);white-space:nowrap"><?php echo e($t->payment_method ?? 'Bank Transfer'); ?></td>
                     <td>
@@ -326,7 +330,12 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div style="font-size:.72rem;color:var(--kx-muted)"><?php echo e($user->email ?? '—'); ?></div>
                     </td>
                     <td><span class="kx-badge kx-badge-yellow" style="font-family:monospace"><?php echo e(strtoupper($t->coin ?? '—')); ?></span></td>
-                    <td style="font-weight:700">₦<?php echo e(number_format($t->naira_amount ?? $t->amount ?? 0, 2)); ?></td>
+                    <td style="font-weight:700">
+                        ₦<?php echo e(number_format($t->naira_amount ?? $t->amount ?? 0, 2)); ?>
+
+                        <div style="font-size:.72rem;color:var(--kx-blue);margin-top:.1rem">$<?php echo e(number_format($t->usd_amount ?? 0, 2)); ?></div>
+                        <div class="kx-crypto-sub" data-coin="<?php echo e(strtoupper($t->coin ?? '')); ?>" data-usd="<?php echo e($t->usd_amount ?? 0); ?>" style="font-size:.68rem;color:var(--kx-yellow);margin-top:.05rem"></div>
+                    </td>
                     <td>
                         
                         <?php if($t->bank_name || $t->account_number): ?>
@@ -408,7 +417,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                 <button type="button"
                                     class="btn-kx-green"
                                     style="padding:.3rem .6rem;font-size:.72rem"
-                                    onclick="handleSellApprove(<?php echo e($t->id); ?>,'<?php echo e(addslashes($user->name ?? $t->name ?? 'N/A')); ?>','<?php echo e(addslashes($t->bank_name ?? '—')); ?>','<?php echo e(addslashes($t->account_number ?? '—')); ?>','<?php echo e(addslashes($t->account_name ?? '—')); ?>','<?php echo e(addslashes($t->wallet_address ?? '—')); ?>','<?php echo e(strtoupper($t->coin ?? '')); ?>','<?php echo e(number_format($t->naira_amount ?? $t->amount ?? 0,2)); ?>')">
+                                    onclick="handleSellApprove(<?php echo e($t->id); ?>,'<?php echo e(addslashes($user->name ?? $t->name ?? 'N/A')); ?>','<?php echo e(addslashes($t->bank_name ?? '—')); ?>','<?php echo e(addslashes($t->account_number ?? '—')); ?>','<?php echo e(addslashes($t->account_name ?? '—')); ?>','<?php echo e(addslashes($t->wallet_address ?? '—')); ?>','<?php echo e(strtoupper($t->coin ?? '')); ?>','<?php echo e(number_format($t->naira_amount ?? $t->amount ?? 0,2)); ?>','<?php echo e(number_format($t->usd_amount ?? 0,2)); ?>')">
                                     <i class="bi bi-save"></i>
                                 </button>
                             </form>
@@ -535,6 +544,10 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div><div class="lbl">Coin</div><div class="val" id="bc-coin"></div></div>
                         <div><div class="lbl">USD Amount</div><div class="val" id="bc-usd"></div></div>
                         <div><div class="lbl">Naira Amount</div><div class="val" id="bc-naira"></div></div>
+                        <div style="grid-column:1/-1;background:rgba(247,147,26,.08);border:1px solid rgba(247,147,26,.25);border-radius:8px;padding:.6rem .875rem;margin-top:.25rem">
+                            <div class="lbl" style="color:#f7931a"><i class="bi bi-send me-1"></i>Crypto Qty to Send</div>
+                            <div class="val" id="bc-crypto" style="color:#f7931a;font-size:1.15rem;font-weight:800;letter-spacing:.02em">—</div>
+                        </div>
                     </div>
                 </div>
 
@@ -594,6 +607,10 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div><div class="lbl">Coin Sold</div><div class="val" id="sc-coin"></div></div>
                         <div><div class="lbl">Naira to Pay</div><div class="val" id="sc-naira" style="color:var(--kx-yellow)"></div></div>
                         <div><div class="lbl">USD Value</div><div class="val" id="sc-usd"></div></div>
+                        <div style="grid-column:1/-1;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:.6rem .875rem;margin-top:.25rem">
+                            <div class="lbl" style="color:var(--kx-yellow)"><i class="bi bi-arrow-down-circle me-1"></i>Crypto Qty Received</div>
+                            <div class="val" id="sc-crypto" style="color:var(--kx-yellow);font-size:1.15rem;font-weight:800;letter-spacing:.02em">—</div>
+                        </div>
                     </div>
                 </div>
 
@@ -649,6 +666,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <div class="kx-info-item"><div class="lbl">Network</div><div class="val" id="bd-network"></div></div>
                     <div class="kx-info-item"><div class="lbl">USD Amount</div><div class="val" id="bd-usd"></div></div>
                     <div class="kx-info-item"><div class="lbl">Naira Amount</div><div class="val" id="bd-naira"></div></div>
+                    <div class="kx-info-item" style="background:rgba(247,147,26,.07);border-color:rgba(247,147,26,.2)"><div class="lbl" style="color:#f7931a">Crypto Qty</div><div class="val" id="bd-crypto" style="color:#f7931a;font-size:1rem;font-weight:800">—</div></div>
                     <div class="kx-info-item" style="grid-column:1/-1"><div class="lbl">Destination Wallet</div><div class="val" id="bd-wallet" style="font-family:monospace;font-size:.82rem"></div></div>
                     <div class="kx-info-item"><div class="lbl">Payment Method</div><div class="val" id="bd-method"></div></div>
                     <div class="kx-info-item"><div class="lbl">Status</div><div class="val" id="bd-status"></div></div>
@@ -685,6 +703,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <div class="kx-info-item"><div class="lbl">Payment Method</div><div class="val" id="sd-method"></div></div>
                     <div class="kx-info-item"><div class="lbl">USD Value</div><div class="val" id="sd-usd"></div></div>
                     <div class="kx-info-item"><div class="lbl">Naira Payout</div><div class="val" id="sd-naira" style="color:var(--kx-yellow)"></div></div>
+                    <div class="kx-info-item" style="background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.2)"><div class="lbl" style="color:var(--kx-yellow)">Crypto Qty</div><div class="val" id="sd-crypto" style="color:var(--kx-yellow);font-size:1rem;font-weight:800">—</div></div>
                     <div class="kx-info-item" style="grid-column:1/-1"><div class="lbl">Wallet Address (Sent From)</div><div class="val" id="sd-wallet" style="font-family:monospace;font-size:.82rem"></div></div>
                 </div>
                 
@@ -715,6 +734,25 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 <script>
 // ── Active buy/sell form tracker ──────────────
 let _activeBuyId = null, _activeSellId = null;
+
+// ── Live crypto USD prices (for qty display) ───
+let _kxAdminCryptoPrices = { BTC: 65000, ETH: 3500, USDT: 1.0 };
+fetch('/api/crypto-prices').then(r => r.json()).then(d => {
+    _kxAdminCryptoPrices = d;
+    // Fill crypto sub-texts in tables
+    document.querySelectorAll('.kx-crypto-sub[data-coin][data-usd]').forEach(el => {
+        const coin = el.dataset.coin;
+        const usd  = parseFloat(el.dataset.usd) || 0;
+        if(coin && usd > 0) el.textContent = '\u2248 ' + getCryptoQty(coin, usd);
+    });
+}).catch(() => {});
+
+function getCryptoQty(coin, usd) {
+    const price    = _kxAdminCryptoPrices[coin] || 1;
+    const qty      = parseFloat(usd) / price;
+    const decimals = coin === 'USDT' ? 2 : (coin === 'BTC' ? 8 : 6);
+    return qty.toFixed(decimals) + ' ' + coin;
+}
 
 // ── Tab switching ──────────────────────────────
 function switchTab(name, btn){
@@ -784,8 +822,8 @@ function openBuyDetail(d){
     document.getElementById('bd-coin').textContent   = d.coin;
     document.getElementById('bd-network').textContent= d.network;
     document.getElementById('bd-usd').textContent    = '$'+d.usd;
-    document.getElementById('bd-naira').textContent  = '₦'+d.naira;
-    document.getElementById('bd-wallet').textContent  = d.wallet;
+    document.getElementById('bd-naira').textContent  = '₦'+d.naira;    const bdCrypto = document.getElementById('bd-crypto');
+    if(bdCrypto) bdCrypto.textContent = '\u2248 ' + getCryptoQty(d.coin, d.usd);    document.getElementById('bd-wallet').textContent  = d.wallet;
     document.getElementById('bd-method').textContent  = d.method || 'Bank Transfer';
     document.getElementById('bd-status').textContent  = d.status;
     const pa = document.getElementById('bd-proof-area');
@@ -811,6 +849,7 @@ function handleBuyApprove(id, user, bank, accNum, accName, wallet, coin, naira, 
     document.getElementById('bc-accnum').textContent   = accNum;
     document.getElementById('bc-accname').textContent  = accName;
     document.getElementById('bc-coin-chk').textContent = coin;
+    document.getElementById('bc-crypto').textContent    = '\u2248 ' + getCryptoQty(coin, usd);
     // Show/hide checklist
     const isCompleting = ['completed','approved','successful'].includes(newStatus);
     const cl = document.getElementById('bc-checklist-area');
@@ -843,8 +882,8 @@ function openSellDetail(d){
     document.getElementById('sd-coin').textContent    = d.coin;
     document.getElementById('sd-method').textContent  = d.method;
     document.getElementById('sd-usd').textContent     = '$'+d.usd;
-    document.getElementById('sd-naira').textContent   = '₦'+d.naira;
-    document.getElementById('sd-wallet').textContent  = d.wallet;
+    document.getElementById('sd-naira').textContent   = '₦'+d.naira;    const sdCrypto = document.getElementById('sd-crypto');
+    if(sdCrypto) sdCrypto.textContent = '\u2248 ' + getCryptoQty(d.coin, d.usd);    document.getElementById('sd-wallet').textContent  = d.wallet;
     document.getElementById('sd-bank').textContent    = d.bank;
     document.getElementById('sd-accnum').textContent  = d.accNum;
     document.getElementById('sd-accname').textContent = d.accName;
@@ -856,7 +895,7 @@ function openSellDetail(d){
 }
 
 // ── SELL TRADE: handle save click ─────────────
-function handleSellApprove(id, user, bank, accNum, accName, wallet, coin, naira){
+function handleSellApprove(id, user, bank, accNum, accName, wallet, coin, naira, usd){
     const selEl = document.getElementById('sell-sel-'+id);
     const newStatus = selEl.value;
     _activeSellId = id;
@@ -865,6 +904,8 @@ function handleSellApprove(id, user, bank, accNum, accName, wallet, coin, naira)
     document.getElementById('sc-user').textContent      = user;
     document.getElementById('sc-coin').textContent      = coin;
     document.getElementById('sc-naira').textContent     = '₦'+naira;
+    document.getElementById('sc-usd').textContent       = usd ? '$'+usd : '—';
+    document.getElementById('sc-crypto').textContent    = usd ? '≈ '+getCryptoQty(coin, usd) : '—';
     document.getElementById('sc-wallet').textContent    = wallet;
     document.getElementById('sc-bank').textContent      = bank;
     document.getElementById('sc-accnum').textContent    = accNum;

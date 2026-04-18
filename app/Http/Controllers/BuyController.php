@@ -8,7 +8,9 @@ use App\Models\BuyTrade;
 use App\Models\CryptoRate;
 use App\Models\CompanyAccount;
 use App\Services\AdminTradeAlertService;
+use App\Services\CoinGeckoService;
 use App\Mail\TradeNotification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -30,6 +32,11 @@ class BuyController extends Controller
      */
     public function show()
     {
+        if (!auth()->user()->kyc_verified) {
+            return redirect()->route('kyc.form')
+                ->with('error', 'KYC verification is required before you can buy crypto.');
+        }
+
         $rates = CryptoRate::pluck('buy_rate', 'coin')->toArray();
         $defaultRates = ['BTC' => 1600, 'ETH' => 1500, 'USDT' => 1400];
         $rates = array_merge($defaultRates, $rates);
@@ -48,6 +55,11 @@ class BuyController extends Controller
      */
     public function submit(BuyCryptoRequest $request)
     {
+        if (!auth()->user()->kyc_verified) {
+            return redirect()->route('kyc.form')
+                ->with('error', 'KYC verification is required before you can buy crypto.');
+        }
+
         // Fetch current rates or use defaults
         $rates = CryptoRate::pluck('buy_rate', 'coin')->toArray();
         $defaultRates = ['BTC' => 1600, 'ETH' => 1500, 'USDT' => 1400];
@@ -405,7 +417,35 @@ class BuyController extends Controller
         if ($trade->user_id !== auth()->id()) {
             abort(403, 'Unauthorized access.');
         }
-        return view('buy.summary', compact('trade'));
+        $cryptoPrices = $this->fetchCryptoUsdPrices();
+        return view('buy.summary', compact('trade', 'cryptoPrices'));
+    }
+
+    /**
+     * Return live BTC/ETH/USDT USD prices (cached 2 min) for JS/Blade use.
+     */
+    public function cryptoPricesApi()
+    {
+        return response()->json($this->fetchCryptoUsdPrices());
+    }
+
+    private function fetchCryptoUsdPrices(): array
+    {
+        return Cache::remember('buy_crypto_usd_prices', 120, function () {
+            try {
+                $data = app(CoinGeckoService::class)->getCryptoPrices(['bitcoin', 'ethereum', 'tether']);
+                $map = ['BTC' => 65000.0, 'ETH' => 3500.0, 'USDT' => 1.0];
+                foreach ($data as $item) {
+                    if ($item['id'] === 'bitcoin')  $map['BTC']  = (float) ($item['price_usd'] ?? 65000);
+                    if ($item['id'] === 'ethereum') $map['ETH']  = (float) ($item['price_usd'] ?? 3500);
+                    if ($item['id'] === 'tether')   $map['USDT'] = (float) ($item['price_usd'] ?? 1.0);
+                }
+                return $map;
+            } catch (\Throwable $e) {
+                Log::warning('CoinGecko price fetch failed: ' . $e->getMessage());
+                return ['BTC' => 65000.0, 'ETH' => 3500.0, 'USDT' => 1.0];
+            }
+        });
     }
 
     /**

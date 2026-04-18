@@ -41,6 +41,9 @@
         <a class="nav-link <?php if(request()->is('admin/telegram*')): ?> active <?php endif; ?>" href="<?php echo e(url('/admin/telegram')); ?>">
           <i class="bi bi-telegram me-1"></i>Telegram Bot
         </a>
+        <a class="nav-link <?php if(request()->is('admin/chat*')): ?> active <?php endif; ?>" href="<?php echo e(route('admin.chat')); ?>">
+          <i class="bi bi-headset me-1"></i>Support Inbox
+        </a>
 
         
         <div class="nav-item dropdown">

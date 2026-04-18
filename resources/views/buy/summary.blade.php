@@ -47,6 +47,8 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 .amount-highlight .ah-label{font-size:.75rem;color:var(--kx-muted);margin-bottom:.2rem;}
 .amount-highlight .ah-value{font-size:1.4rem;font-weight:700;color:var(--kx-green);}
 .amount-highlight .ah-sub{font-size:.8rem;color:var(--kx-muted);}
+.amount-highlight .ah-crypto{font-size:.85rem;font-weight:700;margin-top:.3rem;}
+.ah-crypto.btc{color:#f7931a;} .ah-crypto.eth{color:#627eea;} .ah-crypto.usdt{color:#26a17b;}
 
 /* Buttons */
 .btn-kx-primary{background:var(--kx-green);border:none;color:#000;font-weight:700;border-radius:10px;padding:.8rem 1.5rem;font-size:.95rem;width:100%;transition:all .2s;display:block;text-align:center;text-decoration:none;}
@@ -102,6 +104,13 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             <div class="ah-label">You're paying</div>
             <div class="ah-value">₦{{ number_format($trade->naira_amount, 2) }}</div>
             <div class="ah-sub">≈ ${{ number_format($trade->usd_amount, 2) }} USD</div>
+            @php
+                $coinKey = strtolower($trade->coin);
+                $coinPrice = $cryptoPrices[$trade->coin] ?? 1;
+                $decimals = $trade->coin === 'USDT' ? 2 : ($trade->coin === 'BTC' ? 8 : 6);
+                $cryptoQty = $trade->usd_amount / $coinPrice;
+            @endphp
+            <div class="ah-crypto {{ $coinKey }}">≈ {{ number_format($cryptoQty, $decimals) }} {{ $trade->coin }}</div>
         </div>
     </div>
 

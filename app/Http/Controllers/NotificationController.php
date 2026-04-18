@@ -35,10 +35,32 @@ class NotificationController extends Controller
     public function show($id)
     {
         $notification = Notification::forUser(Auth::id())
+            ->with('admin:id,name,email')
             ->findOrFail($id);
 
         if (!$notification->is_read) {
             $notification->markAsRead();
+        }
+
+        if (request()->expectsJson() || request()->wantsJson()) {
+            $data = is_array($notification->data) ? $notification->data : [];
+
+            return response()->json([
+                'id' => $notification->id,
+                'type' => $notification->type,
+                'title' => $notification->title,
+                'message' => $notification->message,
+                'data' => $data,
+                'is_read' => (bool) $notification->is_read,
+                'is_broadcast' => (bool) $notification->is_broadcast,
+                'time_ago' => $notification->time_ago,
+                'created_at' => optional($notification->created_at)->toIso8601String(),
+                'read_at' => optional($notification->read_at)->toIso8601String(),
+                'expires_at' => optional($notification->expires_at)->toIso8601String(),
+                'source' => $notification->is_broadcast
+                    ? 'System Broadcast'
+                    : ($notification->admin?->name ? 'Admin: ' . $notification->admin->name : 'Account Alert'),
+            ]);
         }
 
         return view('notifications.show', compact('notification'));
@@ -255,18 +277,23 @@ class NotificationController extends Controller
     // API methods for real-time updates
     public function apiIndex(Request $request)
     {
-        $user = Auth::user();
-        $limit = $request->get('limit', 10);
-        
-        $notifications = Notification::forUser($user->id)
-            ->notExpired()
-            ->orderBy('created_at', 'desc')
-            ->limit($limit)
-            ->get();
+        try {
+            $user = Auth::user();
+            $limit = min((int) $request->get('limit', 10), 50);
 
-        return response()->json([
-            'notifications' => $notifications,
-            'unread_count' => $this->computeUnreadCount($user->id)
-        ]);
+            $notifications = Notification::forUser($user->id)
+                ->notExpired()
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+
+            return response()->json([
+                'notifications' => $notifications,
+                'unread_count' => $this->computeUnreadCount($user->id)
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Notification apiIndex error: ' . $e->getMessage());
+            return response()->json(['notifications' => [], 'unread_count' => 0], 200);
+        }
     }
 }

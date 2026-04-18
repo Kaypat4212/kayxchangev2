@@ -158,15 +158,21 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     </td>
                     <td style="font-size:.75rem;color:var(--kx-muted)">{{ $dep->admin_note ?? '—' }}</td>
                     <td>
-                        <form action="{{ route('admin.deposits.update.post', $dep) }}" method="POST">
+                        <form id="dep-form-{{ $dep->id }}" action="{{ route('admin.deposits.update.post', $dep) }}" method="POST">
                             @csrf
                             <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
-                                <select name="status" class="kx-input" style="width:110px;padding:.3rem .5rem!important;font-size:.75rem!important">
+                                <select name="status" id="dep-sel-{{ $dep->id }}" class="kx-input" style="width:110px;padding:.3rem .5rem!important;font-size:.75rem!important">
                                     <option value="approved"  {{ $dep->status === 'approved'  ? 'selected':'' }}>Approve</option>
                                     <option value="cancelled" {{ $dep->status === 'cancelled' ? 'selected':'' }}>Cancel</option>
                                 </select>
-                                <input type="text" name="admin_note" class="kx-input" style="width:120px" placeholder="Note…" value="{{ $dep->admin_note }}">
-                                <button type="submit" class="btn-kx-green" style="padding:.3rem .65rem;font-size:.72rem"><i class="bi bi-save"></i></button>
+                                <input type="text" name="admin_note" id="dep-note-{{ $dep->id }}" class="kx-input" style="width:120px" placeholder="Note…" value="{{ $dep->admin_note }}">
+                                <button type="button"
+                                    class="btn-kx-green"
+                                    style="padding:.3rem .65rem;font-size:.72rem"
+                                    onclick="openDepConfirm({{ $dep->id }},'{{ addslashes($dep->user->name ?? 'N/A') }}','{{ number_format($dep->amount, 2) }}','{{ addslashes($dep->payment_method ?? 'Bank Transfer') }}')"
+                                    title="Review &amp; Save">
+                                    <i class="bi bi-eye"></i> Review
+                                </button>
                             </div>
                         </form>
                     </td>
@@ -179,7 +185,76 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
         </div>
     </div>
 </div>
+
+{{-- Deposit Confirmation Modal --}}
+<div class="modal fade" id="depConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="depm-title" style="font-size:.95rem;font-weight:700;color:#fff"></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {{-- Amount highlight --}}
+                <div style="background:var(--kx-card2);border:1px solid rgba(56,189,248,.3);border-radius:12px;padding:1rem 1.25rem;text-align:center;margin-bottom:1rem">
+                    <div style="font-size:.72rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">Deposit Amount</div>
+                    <div id="depm-amount" style="font-size:1.6rem;font-weight:800;color:var(--kx-blue)">&#8212;</div>
+                </div>
+                {{-- Details --}}
+                <div style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:10px;padding:.875rem 1rem">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+                        <div><div style="font-size:.68rem;color:var(--kx-muted);text-transform:uppercase">User</div><div style="font-weight:700;color:#fff" id="depm-user"></div></div>
+                        <div><div style="font-size:.68rem;color:var(--kx-muted);text-transform:uppercase">Method</div><div style="font-weight:600;color:#fff" id="depm-method"></div></div>
+                        <div style="grid-column:1/-1"><div style="font-size:.68rem;color:var(--kx-muted);text-transform:uppercase">Action</div><div style="font-weight:700" id="depm-action"></div></div>
+                    </div>
+                </div>
+                <p style="font-size:.8rem;color:var(--kx-muted);margin-top:.875rem;margin-bottom:0"><i class="bi bi-info-circle me-1"></i>This will update the deposit status. Ensure you have verified the payment proof before approving.</p>
+            </div>
+            <div class="modal-footer" style="justify-content:flex-end;gap:.5rem">
+                <button type="button" class="btn-kx-outline" data-bs-dismiss="modal">Go Back</button>
+                <button type="button" id="depm-confirm-btn" class="btn-kx-green"><i class="bi bi-check-circle me-1"></i>Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+let _depPendingId = null;
+
+function openDepConfirm(id, user, amount, method) {
+    _depPendingId = id;
+    const sel    = document.getElementById('dep-sel-' + id);
+    const action = sel ? sel.value : 'approved';
+    const isApprove = action === 'approved' || action === 'approve';
+
+    document.getElementById('depm-title').innerHTML =
+        isApprove
+        ? '<i class="bi bi-bank me-2" style="color:var(--kx-blue)"></i>Approve Deposit'
+        : '<i class="bi bi-x-circle me-2" style="color:#ef4444"></i>Cancel Deposit';
+    document.getElementById('depm-amount').textContent  = '\u20a6' + amount;
+    document.getElementById('depm-user').textContent    = user;
+    document.getElementById('depm-method').textContent  = method;
+    const actionEl = document.getElementById('depm-action');
+    if(isApprove) {
+        actionEl.style.color = '#00cc00';
+        actionEl.textContent = 'Approve — Credit user wallet with \u20a6' + amount;
+    } else {
+        actionEl.style.color = '#ef4444';
+        actionEl.textContent = 'Cancel — Deposit will be marked cancelled';
+    }
+    const btn = document.getElementById('depm-confirm-btn');
+    btn.style.background = isApprove ? '#00cc00' : '#ef4444';
+    btn.style.color = isApprove ? '#000' : '#fff';
+    new bootstrap.Modal(document.getElementById('depConfirmModal')).show();
+}
+
+document.getElementById('depm-confirm-btn').addEventListener('click', function() {
+    if(_depPendingId !== null) {
+        bootstrap.Modal.getInstance(document.getElementById('depConfirmModal'))?.hide();
+        setTimeout(() => document.getElementById('dep-form-' + _depPendingId)?.submit(), 180);
+    }
+});
+
 document.getElementById('dSearch').addEventListener('input', function(){
     const q = this.value.toLowerCase();
     document.querySelectorAll('#dTable tbody tr').forEach(r=>{ r.style.display=r.textContent.toLowerCase().includes(q)?'':'none'; });

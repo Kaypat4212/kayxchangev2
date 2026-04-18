@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Mail\TradeNotification;
 use App\Models\Kyc;
 use App\Models\User;
+use App\Services\TelegramService;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class KycController extends Controller
@@ -122,25 +122,29 @@ class KycController extends Controller
 
     private function sendTelegramNotification($user, $kyc)
     {
-        $botToken = env('TELEGRAM_BOT_TOKEN');
-        $chatId = env('TELEGRAM_CHAT_ID');
-        
-        if (!$botToken || !$chatId) {
-            Log::warning('Telegram notification not configured');
-            return;
-        }
+        $message = "🆕 *New KYC Submission*\n\n";
+        $message .= "👤 User: {$user->name}\n";
+        $message .= "📧 Email: {$user->email}\n";
+        $message .= "🆔 Submission: #{$kyc->id}\n";
+        $message .= "🕒 Time: " . now()->format('Y-m-d H:i:s');
 
-        $message = "New KYC Submission\n";
-        $message .= "User: {$user->name}\n";
-        $message .= "Email: {$user->email}\n";
-        $message .= "Submission ID: {$kyc->id}\n";
-        $message .= "View: " . route('admin.kyc');
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '✅ Approve KYC', 'callback_data' => "approve_kyc:{$kyc->id}"],
+                    ['text' => '❌ Reject KYC', 'callback_data' => "reject_kyc:{$kyc->id}"],
+                ],
+                [
+                    ['text' => '🌐 Open KYC Queue', 'url' => route('admin.kyc')],
+                ],
+            ],
+        ];
 
         try {
-            Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
-                'chat_id' => $chatId,
-                'text' => $message,
-            ]);
+            $sent = app(TelegramService::class)->sendToAdminChats($message, $keyboard);
+            if ($sent === 0) {
+                Log::warning('No admin Telegram chat configured to receive KYC alerts.');
+            }
         } catch (\Exception $e) {
             Log::error('Telegram notification failed: ' . $e->getMessage());
         }

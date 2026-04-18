@@ -193,6 +193,11 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="kx-nav-link @if(request()->is('support/chat')) kx-active @endif" href="{{ route('support.chat') }}">
+            <i class="bi bi-headset"></i>Support
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('referrals')) kx-active @endif" href="{{ url('/referrals') }}">
             <i class="bi bi-people-fill"></i>Referrals
           </a>

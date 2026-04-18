@@ -209,7 +209,10 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div style="font-size:.72rem;color:var(--kx-muted)">{{ $user->email ?? '—' }}</div>
                     </td>
                     <td><span class="kx-badge kx-badge-green" style="font-family:monospace">{{ strtoupper($t->coin ?? '—') }}</span></td>
-                    <td style="color:var(--kx-blue);font-size:.82rem">${{ number_format($t->usd_amount ?? 0, 2) }}</td>
+                    <td style="color:var(--kx-blue);font-size:.82rem">
+                        ${{ number_format($t->usd_amount ?? 0, 2) }}
+                        <div class="kx-crypto-sub" data-coin="{{ strtoupper($t->coin ?? '') }}" data-usd="{{ $t->usd_amount ?? 0 }}" style="font-size:.68rem;color:#f7931a;margin-top:.1rem"></div>
+                    </td>
                     <td style="font-weight:700">₦{{ number_format($t->naira_amount ?? 0, 2) }}</td>
                     <td style="font-size:.74rem;color:var(--kx-muted);white-space:nowrap">{{ $t->payment_method ?? 'Bank Transfer' }}</td>
                     <td>
@@ -260,6 +263,8 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                     usd:'{{ number_format($t->usd_amount ?? 0,2) }}',
                                     naira:'{{ number_format($t->naira_amount ?? 0,2) }}',
                                     proof:'{{ $t->payment_proof ? asset('storage/'.$t->payment_proof) : '' }}',
+                                    adminProof:'{{ $t->admin_payment_proof ? asset('storage/'.$t->admin_payment_proof) : '' }}',
+                                    txid:'{{ addslashes($t->blockchain_txid ?? '—') }}',
                                     method:'{{ addslashes($t->payment_method ?? 'Bank Transfer') }}',
                                     status:'{{ $s }}'
                                 })">
@@ -276,7 +281,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                 <button type="button"
                                     class="btn-kx-green"
                                     style="padding:.3rem .6rem;font-size:.72rem"
-                                    onclick="handleBuyApprove({{ $t->id }},'{{ addslashes($user->name ?? $t->name ?? 'N/A') }}','{{ addslashes($user->bank_name ?? 'N/A') }}','{{ addslashes($user->account_number ?? 'N/A') }}','{{ addslashes($user->account_name ?? 'N/A') }}','{{ addslashes($t->wallet_address ?? 'N/A') }}','{{ strtoupper($t->coin ?? '') }}','{{ number_format($t->naira_amount ?? 0,2) }}','{{ number_format($t->usd_amount ?? 0,2) }}')">
+                                    onclick="handleBuyApprove({{ $t->id }},'{{ addslashes($user->name ?? $t->name ?? 'N/A') }}','{{ addslashes($user->bank_name ?? 'N/A') }}','{{ addslashes($user->account_number ?? 'N/A') }}','{{ addslashes($user->account_name ?? 'N/A') }}','{{ addslashes($t->wallet_address ?? 'N/A') }}','{{ strtoupper($t->coin ?? '') }}','{{ number_format($t->naira_amount ?? 0,2) }}','{{ number_format($t->usd_amount ?? 0,2) }}','{{ addslashes($t->blockchain_txid ?? '') }}','{{ $t->admin_payment_proof ? asset('storage/'.$t->admin_payment_proof) : '' }}')">
                                     <i class="bi bi-save"></i>
                                 </button>
                             </form>
@@ -326,7 +331,11 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div style="font-size:.72rem;color:var(--kx-muted)">{{ $user->email ?? '—' }}</div>
                     </td>
                     <td><span class="kx-badge kx-badge-yellow" style="font-family:monospace">{{ strtoupper($t->coin ?? '—') }}</span></td>
-                    <td style="font-weight:700">₦{{ number_format($t->naira_amount ?? $t->amount ?? 0, 2) }}</td>
+                    <td style="font-weight:700">
+                        ₦{{ number_format($t->naira_amount ?? $t->amount ?? 0, 2) }}
+                        <div style="font-size:.72rem;color:var(--kx-blue);margin-top:.1rem">${{ number_format($t->usd_amount ?? 0, 2) }}</div>
+                        <div class="kx-crypto-sub" data-coin="{{ strtoupper($t->coin ?? '') }}" data-usd="{{ $t->usd_amount ?? 0 }}" style="font-size:.68rem;color:var(--kx-yellow);margin-top:.05rem"></div>
+                    </td>
                     <td>
                         {{-- Sell trade: show where admin must PAY the user --}}
                         @if($t->bank_name || $t->account_number)
@@ -408,7 +417,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                 <button type="button"
                                     class="btn-kx-green"
                                     style="padding:.3rem .6rem;font-size:.72rem"
-                                    onclick="handleSellApprove({{ $t->id }},'{{ addslashes($user->name ?? $t->name ?? 'N/A') }}','{{ addslashes($t->bank_name ?? '—') }}','{{ addslashes($t->account_number ?? '—') }}','{{ addslashes($t->account_name ?? '—') }}','{{ addslashes($t->wallet_address ?? '—') }}','{{ strtoupper($t->coin ?? '') }}','{{ number_format($t->naira_amount ?? $t->amount ?? 0,2) }}')">
+                                    onclick="handleSellApprove({{ $t->id }},'{{ addslashes($user->name ?? $t->name ?? 'N/A') }}','{{ addslashes($t->bank_name ?? '—') }}','{{ addslashes($t->account_number ?? '—') }}','{{ addslashes($t->account_name ?? '—') }}','{{ addslashes($t->wallet_address ?? '—') }}','{{ strtoupper($t->coin ?? '') }}','{{ number_format($t->naira_amount ?? $t->amount ?? 0,2) }}','{{ number_format($t->usd_amount ?? 0,2) }}')">
                                     <i class="bi bi-save"></i>
                                 </button>
                             </form>
@@ -535,6 +544,10 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div><div class="lbl">Coin</div><div class="val" id="bc-coin"></div></div>
                         <div><div class="lbl">USD Amount</div><div class="val" id="bc-usd"></div></div>
                         <div><div class="lbl">Naira Amount</div><div class="val" id="bc-naira"></div></div>
+                        <div style="grid-column:1/-1;background:rgba(247,147,26,.08);border:1px solid rgba(247,147,26,.25);border-radius:8px;padding:.6rem .875rem;margin-top:.25rem">
+                            <div class="lbl" style="color:#f7931a"><i class="bi bi-send me-1"></i>Crypto Qty to Send</div>
+                            <div class="val" id="bc-crypto" style="color:#f7931a;font-size:1.15rem;font-weight:800;letter-spacing:.02em">—</div>
+                        </div>
                     </div>
                 </div>
 
@@ -553,6 +566,27 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div><div class="lbl">Account Name</div><div class="val" id="bc-accname"></div></div>
                     </div>
                 </div>
+
+                <form id="buy-modal-form" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" id="bc-status-hidden" value="pending">
+                    <input type="hidden" id="bc-existing-proof" value="">
+
+                    <div class="kx-confirm-box">
+                        <div style="margin-bottom:.5rem"><span class="kx-badge kx-badge-green" style="font-size:.7rem"><i class="bi bi-receipt-cutoff me-1"></i>Admin Delivery Evidence</span></div>
+                        <div class="mb-2">
+                            <label for="bc-txid" class="form-label" style="font-size:.76rem;color:var(--kx-muted)">Blockchain TXID (optional if image proof is provided)</label>
+                            <input type="text" id="bc-txid" name="blockchain_txid" class="form-control kx-input" placeholder="Paste transaction hash">
+                        </div>
+                        <div class="mb-1">
+                            <label for="bc-proof" class="form-label" style="font-size:.76rem;color:var(--kx-muted)">Payment Proof Image (required when TXID is empty for completed status)</label>
+                            <input type="file" id="bc-proof" name="admin_payment_proof" class="form-control kx-input" accept="image/png,image/jpeg,image/webp">
+                        </div>
+                        <div id="bc-existing-proof-wrap" style="display:none;font-size:.74rem;color:var(--kx-muted)">
+                            Existing proof on file: <a id="bc-existing-proof-link" href="#" target="_blank" style="color:var(--kx-blue)">View current proof</a>
+                        </div>
+                    </div>
+                </form>
 
                 {{-- Checklist (only shown when completing) --}}
                 <div id="bc-checklist-area" class="kx-checklist" style="display:none">
@@ -594,6 +628,10 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div><div class="lbl">Coin Sold</div><div class="val" id="sc-coin"></div></div>
                         <div><div class="lbl">Naira to Pay</div><div class="val" id="sc-naira" style="color:var(--kx-yellow)"></div></div>
                         <div><div class="lbl">USD Value</div><div class="val" id="sc-usd"></div></div>
+                        <div style="grid-column:1/-1;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:.6rem .875rem;margin-top:.25rem">
+                            <div class="lbl" style="color:var(--kx-yellow)"><i class="bi bi-arrow-down-circle me-1"></i>Crypto Qty Received</div>
+                            <div class="val" id="sc-crypto" style="color:var(--kx-yellow);font-size:1.15rem;font-weight:800;letter-spacing:.02em">—</div>
+                        </div>
                     </div>
                 </div>
 
@@ -649,6 +687,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <div class="kx-info-item"><div class="lbl">Network</div><div class="val" id="bd-network"></div></div>
                     <div class="kx-info-item"><div class="lbl">USD Amount</div><div class="val" id="bd-usd"></div></div>
                     <div class="kx-info-item"><div class="lbl">Naira Amount</div><div class="val" id="bd-naira"></div></div>
+                    <div class="kx-info-item" style="background:rgba(247,147,26,.07);border-color:rgba(247,147,26,.2)"><div class="lbl" style="color:#f7931a">Crypto Qty</div><div class="val" id="bd-crypto" style="color:#f7931a;font-size:1rem;font-weight:800">—</div></div>
                     <div class="kx-info-item" style="grid-column:1/-1"><div class="lbl">Destination Wallet</div><div class="val" id="bd-wallet" style="font-family:monospace;font-size:.82rem"></div></div>
                     <div class="kx-info-item"><div class="lbl">Payment Method</div><div class="val" id="bd-method"></div></div>
                     <div class="kx-info-item"><div class="lbl">Status</div><div class="val" id="bd-status"></div></div>
@@ -658,6 +697,10 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <a id="bd-proof-link" href="#" target="_blank">
                         <img id="bd-proof-img" src="" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--kx-border)">
                     </a>
+                </div>
+                <div class="mt-3" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                    <div class="kx-info-item"><div class="lbl">Blockchain TXID</div><div class="val" id="bd-txid" style="font-family:monospace;font-size:.76rem"></div></div>
+                    <div class="kx-info-item"><div class="lbl">Admin Payment Proof</div><div class="val" id="bd-admin-proof-wrap"><span style="color:var(--kx-muted)">—</span></div></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -685,6 +728,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <div class="kx-info-item"><div class="lbl">Payment Method</div><div class="val" id="sd-method"></div></div>
                     <div class="kx-info-item"><div class="lbl">USD Value</div><div class="val" id="sd-usd"></div></div>
                     <div class="kx-info-item"><div class="lbl">Naira Payout</div><div class="val" id="sd-naira" style="color:var(--kx-yellow)"></div></div>
+                    <div class="kx-info-item" style="background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.2)"><div class="lbl" style="color:var(--kx-yellow)">Crypto Qty</div><div class="val" id="sd-crypto" style="color:var(--kx-yellow);font-size:1rem;font-weight:800">—</div></div>
                     <div class="kx-info-item" style="grid-column:1/-1"><div class="lbl">Wallet Address (Sent From)</div><div class="val" id="sd-wallet" style="font-family:monospace;font-size:.82rem"></div></div>
                 </div>
                 {{-- Bank account box — "PAY TO THIS ACCOUNT" --}}
@@ -715,6 +759,25 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 <script>
 // ── Active buy/sell form tracker ──────────────
 let _activeBuyId = null, _activeSellId = null;
+
+// ── Live crypto USD prices (for qty display) ───
+let _kxAdminCryptoPrices = { BTC: 65000, ETH: 3500, USDT: 1.0 };
+fetch('/api/crypto-prices').then(r => r.json()).then(d => {
+    _kxAdminCryptoPrices = d;
+    // Fill crypto sub-texts in tables
+    document.querySelectorAll('.kx-crypto-sub[data-coin][data-usd]').forEach(el => {
+        const coin = el.dataset.coin;
+        const usd  = parseFloat(el.dataset.usd) || 0;
+        if(coin && usd > 0) el.textContent = '\u2248 ' + getCryptoQty(coin, usd);
+    });
+}).catch(() => {});
+
+function getCryptoQty(coin, usd) {
+    const price    = _kxAdminCryptoPrices[coin] || 1;
+    const qty      = parseFloat(usd) / price;
+    const decimals = coin === 'USDT' ? 2 : (coin === 'BTC' ? 8 : 6);
+    return qty.toFixed(decimals) + ' ' + coin;
+}
 
 // ── Tab switching ──────────────────────────────
 function switchTab(name, btn){
@@ -784,24 +847,39 @@ function openBuyDetail(d){
     document.getElementById('bd-coin').textContent   = d.coin;
     document.getElementById('bd-network').textContent= d.network;
     document.getElementById('bd-usd').textContent    = '$'+d.usd;
-    document.getElementById('bd-naira').textContent  = '₦'+d.naira;
-    document.getElementById('bd-wallet').textContent  = d.wallet;
+    document.getElementById('bd-naira').textContent  = '₦'+d.naira;    const bdCrypto = document.getElementById('bd-crypto');
+    if(bdCrypto) bdCrypto.textContent = '\u2248 ' + getCryptoQty(d.coin, d.usd);    document.getElementById('bd-wallet').textContent  = d.wallet;
     document.getElementById('bd-method').textContent  = d.method || 'Bank Transfer';
     document.getElementById('bd-status').textContent  = d.status;
+    document.getElementById('bd-txid').textContent = d.txid || '—';
     const pa = document.getElementById('bd-proof-area');
     if(d.proof){ pa.style.display='block'; document.getElementById('bd-proof-img').src=d.proof; document.getElementById('bd-proof-link').href=d.proof; }
     else { pa.style.display='none'; }
+
+    const adminProofWrap = document.getElementById('bd-admin-proof-wrap');
+    if (d.adminProof) {
+        adminProofWrap.innerHTML = `<a href="${d.adminProof}" target="_blank" style="color:var(--kx-blue)">View admin proof image</a>`;
+    } else {
+        adminProofWrap.innerHTML = '<span style="color:var(--kx-muted)">—</span>';
+    }
+
     new bootstrap.Modal(document.getElementById('buyDetailModal')).show();
 }
 
 // ── BUY TRADE: handle save click ──────────────
-function handleBuyApprove(id, user, bank, accNum, accName, wallet, coin, naira, usd){
+function handleBuyApprove(id, user, bank, accNum, accName, wallet, coin, naira, usd, txid, existingProofUrl){
     const selEl = document.getElementById('buy-sel-'+id);
     const newStatus = selEl.value;
     _activeBuyId = id;
+    const rowForm = document.getElementById('buy-form-'+id);
+    const modalForm = document.getElementById('buy-modal-form');
+    if (rowForm && modalForm) {
+        modalForm.action = rowForm.action;
+    }
     // Populate modal
     document.getElementById('bc-id').textContent       = id;
     document.getElementById('bc-newstatus').textContent = newStatus.toUpperCase();
+    document.getElementById('bc-status-hidden').value = newStatus;
     document.getElementById('bc-user').textContent     = user;
     document.getElementById('bc-coin').textContent     = coin;
     document.getElementById('bc-usd').textContent      = '$'+usd;
@@ -811,6 +889,19 @@ function handleBuyApprove(id, user, bank, accNum, accName, wallet, coin, naira, 
     document.getElementById('bc-accnum').textContent   = accNum;
     document.getElementById('bc-accname').textContent  = accName;
     document.getElementById('bc-coin-chk').textContent = coin;
+    document.getElementById('bc-crypto').textContent    = '\u2248 ' + getCryptoQty(coin, usd);
+    document.getElementById('bc-txid').value = txid || '';
+    document.getElementById('bc-proof').value = '';
+    document.getElementById('bc-existing-proof').value = existingProofUrl || '';
+    const existingWrap = document.getElementById('bc-existing-proof-wrap');
+    const existingLink = document.getElementById('bc-existing-proof-link');
+    if (existingProofUrl) {
+        existingWrap.style.display = 'block';
+        existingLink.href = existingProofUrl;
+    } else {
+        existingWrap.style.display = 'none';
+        existingLink.href = '#';
+    }
     // Show/hide checklist
     const isCompleting = ['completed','approved','successful'].includes(newStatus);
     const cl = document.getElementById('bc-checklist-area');
@@ -830,8 +921,19 @@ function checkBuyReady(){
 }
 function submitBuyForm(){
     if(_activeBuyId !== null){
-        bootstrap.Modal.getInstance(document.getElementById('buyConfirmModal'))?.hide();
-        document.getElementById('buy-form-'+_activeBuyId).submit();
+        const status = document.getElementById('bc-status-hidden').value;
+        const txid = (document.getElementById('bc-txid').value || '').trim();
+        const proofInput = document.getElementById('bc-proof');
+        const hasNewProof = proofInput && proofInput.files && proofInput.files.length > 0;
+        const existingProof = document.getElementById('bc-existing-proof').value;
+        const isCompleting = ['completed','approved','successful'].includes(status);
+
+        if (isCompleting && !txid && !hasNewProof && !existingProof) {
+            alert('Upload payment proof image or provide blockchain TXID before completing this trade.');
+            return;
+        }
+
+        document.getElementById('buy-modal-form').submit();
     }
 }
 
@@ -843,8 +945,8 @@ function openSellDetail(d){
     document.getElementById('sd-coin').textContent    = d.coin;
     document.getElementById('sd-method').textContent  = d.method;
     document.getElementById('sd-usd').textContent     = '$'+d.usd;
-    document.getElementById('sd-naira').textContent   = '₦'+d.naira;
-    document.getElementById('sd-wallet').textContent  = d.wallet;
+    document.getElementById('sd-naira').textContent   = '₦'+d.naira;    const sdCrypto = document.getElementById('sd-crypto');
+    if(sdCrypto) sdCrypto.textContent = '\u2248 ' + getCryptoQty(d.coin, d.usd);    document.getElementById('sd-wallet').textContent  = d.wallet;
     document.getElementById('sd-bank').textContent    = d.bank;
     document.getElementById('sd-accnum').textContent  = d.accNum;
     document.getElementById('sd-accname').textContent = d.accName;
@@ -856,7 +958,7 @@ function openSellDetail(d){
 }
 
 // ── SELL TRADE: handle save click ─────────────
-function handleSellApprove(id, user, bank, accNum, accName, wallet, coin, naira){
+function handleSellApprove(id, user, bank, accNum, accName, wallet, coin, naira, usd){
     const selEl = document.getElementById('sell-sel-'+id);
     const newStatus = selEl.value;
     _activeSellId = id;
@@ -865,6 +967,8 @@ function handleSellApprove(id, user, bank, accNum, accName, wallet, coin, naira)
     document.getElementById('sc-user').textContent      = user;
     document.getElementById('sc-coin').textContent      = coin;
     document.getElementById('sc-naira').textContent     = '₦'+naira;
+    document.getElementById('sc-usd').textContent       = usd ? '$'+usd : '—';
+    document.getElementById('sc-crypto').textContent    = usd ? '≈ '+getCryptoQty(coin, usd) : '—';
     document.getElementById('sc-wallet').textContent    = wallet;
     document.getElementById('sc-bank').textContent      = bank;
     document.getElementById('sc-accnum').textContent    = accNum;

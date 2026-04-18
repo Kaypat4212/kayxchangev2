@@ -210,6 +210,7 @@
     font-size:.85rem; margin-bottom:1.25rem;
 }
 .kx-alert-err { background:rgba(220,53,69,0.1); border:1px solid rgba(220,53,69,0.25); color:#ffb3b3; }
+.kx-alert-info { background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); color:#b8e9ff; }
 
 /* ── Toast ── */
 #kxToast {
@@ -269,6 +270,12 @@
     <div class="kx-alert kx-alert-err" id="sessionErrBox">
         <i class="bi bi-exclamation-circle-fill" style="flex-shrink:0;margin-top:2px"></i>
         <span>{{ session('error') }}</span>
+    </div>
+    @endif
+    @if(!(auth()->user()?->kyc_verified))
+    <div class="kx-alert kx-alert-info">
+        <i class="bi bi-info-circle-fill" style="flex-shrink:0;margin-top:2px"></i>
+        <span>Unverified users can sell up to <strong>₦500,000</strong> per trade. Complete KYC to unlock higher limits.</span>
     </div>
     @endif
 

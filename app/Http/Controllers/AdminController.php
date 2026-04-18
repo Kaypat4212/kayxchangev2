@@ -8,6 +8,7 @@ use App\Models\Deposit;
 use App\Models\Kyc;
 use App\Models\Referral;
 use App\Models\SellTrade;
+use App\Models\SiteContent;
 use App\Services\AdminTradeAlertService;
 use App\Mail\TradeNotification;
 use Illuminate\Support\Facades\Gate;
@@ -18,6 +19,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
@@ -61,8 +63,32 @@ class AdminController extends Controller
         $totalUsers = User::count();
         $totalReferrals = Referral::count();
         $totalReferralRewards = Referral::where('status', 'completed')->sum('reward_amount');
+        $siteMode = SiteContent::get('site_mode', 'production');
 
-        return view('admin.dashboard', compact('totalUsers', 'totalReferrals', 'totalReferralRewards'));
+        return view('admin.dashboard', compact('totalUsers', 'totalReferrals', 'totalReferralRewards', 'siteMode'));
+    }
+
+    public function toggleSiteMode(Request $request)
+    {
+        $current = SiteContent::get('site_mode', 'production');
+        $next    = $current === 'production' ? 'developer' : 'production';
+
+        SiteContent::updateOrCreate(
+            ['key' => 'site_mode'],
+            ['group' => 'system', 'label' => 'Site Mode', 'value' => $next]
+        );
+
+        Log::info('Site mode changed', [
+            'from'       => $current,
+            'to'         => $next,
+            'changed_by' => auth()->id(),
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['mode' => $next, 'message' => 'Mode switched to ' . ucfirst($next)]);
+        }
+
+        return back()->with('success', 'Site mode switched to ' . ucfirst($next) . '.');
     }
 
     public function getPendingCounts()
@@ -121,7 +147,41 @@ class AdminController extends Controller
         try {
             $trade = BuyTrade::findOrFail($id);
             $oldStatus = $trade->status;
-            $trade->update(['status' => $request->status]);
+            $isCompleting = in_array($request->input('status'), ['completed', 'approved', 'successful'], true);
+
+            $validationRules = [
+                'status' => ['required', 'in:pending,completed,rejected,approved,successful'],
+                'blockchain_txid' => ['nullable', 'string', 'max:255'],
+                'admin_payment_proof' => [
+                    $isCompleting && !$request->filled('blockchain_txid') ? 'required' : 'nullable',
+                    'image',
+                    'mimes:jpg,jpeg,png,webp',
+                    'max:5120',
+                ],
+            ];
+
+            $validated = $request->validate($validationRules, [
+                'admin_payment_proof.required' => 'Payment proof is required when no blockchain TXID is provided.',
+            ]);
+
+            $updatePayload = [
+                'status' => $validated['status'],
+                'blockchain_txid' => $validated['blockchain_txid'] ?? null,
+            ];
+
+            if ($request->hasFile('admin_payment_proof')) {
+                if ($trade->admin_payment_proof) {
+                    Storage::disk('public')->delete($trade->admin_payment_proof);
+                }
+                $updatePayload['admin_payment_proof'] = $request->file('admin_payment_proof')->store('admin-buy-proofs', 'public');
+            }
+
+            if ($isCompleting) {
+                $updatePayload['approved_by_admin_id'] = Auth::id();
+                $updatePayload['approved_at'] = now();
+            }
+
+            $trade->update($updatePayload);
 
             if (in_array($request->status, ['completed', 'rejected']) && $oldStatus !== $request->status) {
                 try {

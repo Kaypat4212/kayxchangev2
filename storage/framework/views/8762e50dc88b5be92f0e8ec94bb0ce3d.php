@@ -52,6 +52,16 @@
     .kx-db-badge-ok  { background:rgba(0,204,0,0.12); border:1px solid rgba(0,204,0,0.28); color:#00cc00; }
     .kx-db-badge-warn{ background:rgba(255,165,0,0.12); border:1px solid rgba(255,165,0,0.28); color:#ffa500; }
 
+    /* ===== KYC Banner ===== */
+    .kx-kyc-banner { background:linear-gradient(135deg,rgba(255,140,0,0.12) 0%,rgba(255,100,0,0.08) 100%); border:1.5px solid rgba(255,140,0,0.35); border-radius:14px; padding:1rem 1.25rem; animation:kx-pulse-border 2.5s ease-in-out infinite; }
+    @keyframes kx-pulse-border { 0%,100% { border-color:rgba(255,140,0,0.35); } 50% { border-color:rgba(255,140,0,0.7); } }
+    .kx-kyc-icon { width:44px;height:44px;border-radius:12px;background:rgba(255,140,0,0.15);display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:#ffa040;flex-shrink:0; }
+    .kx-kyc-title { font-size:0.9rem;font-weight:700;color:#ffb347;margin-bottom:2px; }
+    .kx-kyc-sub { font-size:0.77rem;color:rgba(255,255,255,0.55);line-height:1.4; }
+    .kx-kyc-btn { display:inline-flex;align-items:center;background:rgba(255,140,0,0.18);border:1px solid rgba(255,140,0,0.45);color:#ffb347;font-size:0.78rem;font-weight:700;padding:8px 16px;border-radius:10px;text-decoration:none;white-space:nowrap;transition:all .2s; }
+    .kx-kyc-btn:hover { background:rgba(255,140,0,0.3);color:#ffd080;border-color:rgba(255,160,0,0.7); }
+    @media(max-width:576px) { .kx-kyc-btn { width:100%;justify-content:center;margin-top:.5rem; } }
+
     /* ===== Balance Card ===== */
     .kx-balance-card {
         background: linear-gradient(135deg, rgba(0,70,0,0.65) 0%, rgba(0,30,0,0.9) 100%);
@@ -218,6 +228,24 @@
 <div class="kx-db">
     <div class="container-xl">
 
+        
+        <?php if(!Auth::user()->kyc_verified): ?>
+        <div class="kx-kyc-banner mb-4" id="kx-kyc-banner">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="kx-kyc-icon">
+                    <i class="bi bi-shield-exclamation"></i>
+                </div>
+                <div class="kx-kyc-content">
+                    <div class="kx-kyc-title">Complete KYC Verification</div>
+                    <div class="kx-kyc-sub">Verify your identity to unlock full trading features — buy crypto, higher limits &amp; faster processing.</div>
+                </div>
+                <a href="<?php echo e(route('kyc.form')); ?>" class="kx-kyc-btn ms-auto">
+                    <i class="bi bi-arrow-right-circle-fill me-1"></i>Verify Now
+                </a>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- ===== Dashboard Header ===== -->
         <div class="kx-db-head">
             <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -229,6 +257,9 @@
                             <span class="kx-db-badge kx-db-badge-ok"><i class="bi bi-patch-check-fill"></i>KYC Verified</span>
                         <?php else: ?>
                             <span class="kx-db-badge kx-db-badge-warn"><i class="bi bi-exclamation-triangle-fill"></i>KYC Pending</span>
+                            <a href="<?php echo e(route('kyc.form')); ?>" class="btn btn-sm" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.32);color:#fbbf24;border-radius:999px;font-size:.72rem;font-weight:600;padding:.22rem .65rem;">
+                                <i class="bi bi-arrow-right-circle me-1"></i>Verify Now
+                            </a>
                         <?php endif; ?>
                         <span style="font-size:0.72rem;color:rgba(255,255,255,0.26)"><?php echo e(now()->format('l, d M Y')); ?></span>
                     </div>
@@ -484,9 +515,13 @@
 
     // ---- Notifications ----
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const notifApiUrl = <?php echo json_encode(route('notifications.api'), 15, 512) ?>;
+    const notifIndexUrl = <?php echo json_encode(route('notifications.index'), 15, 512) ?>;
+    const notifMarkAllUrl = <?php echo json_encode(route('notifications.mark-all-read'), 15, 512) ?>;
+    const notifBaseUrl = <?php echo json_encode(url('/notifications'), 15, 512) ?>;
 
     function loadNotifications() {
-        fetch('/notifications/api?limit=10', {
+        fetch(`${notifApiUrl}?limit=10`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(r => { if (!r.ok) throw r.status; return r.json(); })
@@ -548,7 +583,7 @@
                 <button onclick="markAllRead()" class="btn btn-sm w-50" style="font-size:0.73rem;background:rgba(0,204,0,0.1);color:#00cc00;border:1px solid rgba(0,204,0,0.25);border-radius:8px">
                     <i class="bi bi-check2-all me-1"></i>Mark all read
                 </button>
-                <a href="/notifications" class="btn btn-sm w-50" style="font-size:0.73rem;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.1);border-radius:8px">
+                <a href="${notifIndexUrl}" class="btn btn-sm w-50" style="font-size:0.73rem;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.1);border-radius:8px">
                     View all
                 </a>
             </li>`;
@@ -564,7 +599,7 @@
             el.addEventListener('click', function () {
                 const id = this.dataset.id;
                 if (this.dataset.read === '0') {
-                    fetch(`/notifications/${id}/mark-read`, {
+                    fetch(`${notifBaseUrl}/${id}/mark-read`, {
                         method: 'POST',
                         headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
                     }).then(() => loadNotifications());
@@ -574,7 +609,7 @@
     }
 
     function markAllRead() {
-        fetch('/notifications/mark-all-read', {
+        fetch(notifMarkAllUrl, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
         }).then(() => loadNotifications());

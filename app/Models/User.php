@@ -53,6 +53,8 @@ class User extends Authenticatable
         'transaction_pin',
         'pin_attempts',
         'pin_locked_until',
+        'referral_code',
+        'referred_by',
     ];
 
     /**
@@ -98,15 +100,30 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'referred_by', 'referral_code');
     }
 
+    public function sentMessages()
+    {
+        return $this->hasMany(\App\Models\ChatMessage::class, 'sender_id');
+    }
+
+    public function receivedMessages()
+    {
+        return $this->hasMany(\App\Models\ChatMessage::class, 'receiver_id');
+    }
+
     public function wallet()
     {
         return $this->hasOne(Wallet::class);
     }
 
+    public function specialReferralCodes()
+    {
+        return $this->hasMany(SpecialReferralCode::class, 'owner_user_id');
+    }
+
     public static function generateReferralCode()
     {
         do {
-            $code = Str::random(8);
+            $code = Str::upper(Str::random(8));
         } while (self::where('referral_code', $code)->exists());
 
         return $code;

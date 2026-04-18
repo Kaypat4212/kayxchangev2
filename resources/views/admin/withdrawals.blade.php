@@ -128,18 +128,22 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <td>
                         @if($w->status === 'pending')
                         <div class="d-flex gap-1">
-                            <form action="{{ route('withdrawals.updateStatus', $w->id) }}" method="POST" style="display:inline">
+                            <form id="wd-approve-{{ $w->id }}" action="{{ route('withdrawals.updateStatus', $w->id) }}" method="POST" style="display:inline">
                                 @csrf @method('PATCH')
                                 <input type="hidden" name="status" value="approved">
-                                <button type="submit" class="btn-kx-approve" onclick="return confirm('Approve this withdrawal?')">
-                                    <i class="bi bi-check-lg"></i>
+                                <button type="button" class="btn-kx-approve"
+                                    onclick="openWdConfirm('approve',{{ $w->id }},'{{ addslashes($w->user->name ?? 'N/A') }}','{{ number_format($w->amount, 2) }}','{{ addslashes($bank['bank_name'] ?? '—') }}','{{ addslashes($bank['account_number'] ?? '—') }}','{{ addslashes($bank['account_name'] ?? '—') }}')"
+                                    title="Approve Withdrawal">
+                                    <i class="bi bi-check-lg"></i> Approve
                                 </button>
                             </form>
-                            <form action="{{ route('withdrawals.updateStatus', $w->id) }}" method="POST" style="display:inline">
+                            <form id="wd-cancel-{{ $w->id }}" action="{{ route('withdrawals.updateStatus', $w->id) }}" method="POST" style="display:inline">
                                 @csrf @method('PATCH')
                                 <input type="hidden" name="status" value="cancelled">
-                                <button type="submit" class="btn-kx-danger" onclick="return confirm('Cancel this withdrawal?')">
-                                    <i class="bi bi-x-lg"></i>
+                                <button type="button" class="btn-kx-danger"
+                                    onclick="openWdConfirm('cancel',{{ $w->id }},'{{ addslashes($w->user->name ?? 'N/A') }}','{{ number_format($w->amount, 2) }}','{{ addslashes($bank['bank_name'] ?? '—') }}','{{ addslashes($bank['account_number'] ?? '—') }}','{{ addslashes($bank['account_name'] ?? '—') }}')"
+                                    title="Cancel Withdrawal">
+                                    <i class="bi bi-x-lg"></i> Cancel
                                 </button>
                             </form>
                         </div>
@@ -156,7 +160,81 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
         </div>
     </div>
 </div>
+
+{{-- Withdrawal Confirmation Modal --}}
+<div class="modal fade" id="wdConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="wdm-title" style="font-size:.95rem;font-weight:700;color:#fff"></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {{-- Amount highlight box --}}
+                <div style="background:var(--kx-card2);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:1rem 1.25rem;text-align:center;margin-bottom:1rem">
+                    <div style="font-size:.72rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">Amount to Process</div>
+                    <div id="wdm-amount" style="font-size:1.6rem;font-weight:800;color:var(--kx-yellow)">&#8212;</div>
+                </div>
+                {{-- User + bank details --}}
+                <div style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:10px;padding:.875rem 1rem">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+                        <div><div style="font-size:.68rem;color:var(--kx-muted);text-transform:uppercase">User</div><div style="font-weight:700;color:#fff" id="wdm-user"></div></div>
+                        <div><div style="font-size:.68rem;color:var(--kx-muted);text-transform:uppercase">Bank</div><div style="font-weight:600;color:#fff" id="wdm-bank"></div></div>
+                        <div><div style="font-size:.68rem;color:var(--kx-muted);text-transform:uppercase">Account No.</div><div style="font-weight:700;color:var(--kx-blue);font-family:monospace" id="wdm-accnum"></div></div>
+                        <div><div style="font-size:.68rem;color:var(--kx-muted);text-transform:uppercase">Account Name</div><div style="font-weight:600;color:#fff" id="wdm-accname"></div></div>
+                    </div>
+                </div>
+                <div id="wdm-action-note" style="margin-top:.85rem;font-size:.82rem;font-weight:600;padding:.6rem .875rem;border-radius:8px"></div>
+            </div>
+            <div class="modal-footer" style="justify-content:flex-end;gap:.5rem">
+                <button type="button" class="btn-kx-outline" data-bs-dismiss="modal">Go Back</button>
+                <button type="button" id="wdm-confirm-btn" class="btn-kx-green">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+let _wdPendingFormId = null;
+
+function openWdConfirm(action, id, user, amount, bank, accNum, accName) {
+    const isApprove = action === 'approve';
+    _wdPendingFormId = (isApprove ? 'wd-approve-' : 'wd-cancel-') + id;
+    document.getElementById('wdm-title').innerHTML =
+        isApprove
+        ? '<i class="bi bi-check-circle me-2" style="color:#00cc00"></i>Approve Withdrawal'
+        : '<i class="bi bi-x-circle me-2" style="color:#ef4444"></i>Cancel Withdrawal';
+    document.getElementById('wdm-amount').textContent  = '\u20a6' + amount;
+    document.getElementById('wdm-user').textContent    = user;
+    document.getElementById('wdm-bank').textContent    = bank;
+    document.getElementById('wdm-accnum').textContent  = accNum;
+    document.getElementById('wdm-accname').textContent = accName;
+    const note = document.getElementById('wdm-action-note');
+    if(isApprove) {
+        note.style.background = 'rgba(0,204,0,.08)';
+        note.style.border = '1px solid rgba(0,204,0,.25)';
+        note.style.color = '#00cc00';
+        note.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Confirm you have transferred <strong>\u20a6'+amount+'</strong> to the account above.';
+    } else {
+        note.style.background = 'rgba(239,68,68,.08)';
+        note.style.border = '1px solid rgba(239,68,68,.25)';
+        note.style.color = '#ef4444';
+        note.innerHTML = '<i class="bi bi-x-circle me-1"></i>This withdrawal will be marked as cancelled.';
+    }
+    const btn = document.getElementById('wdm-confirm-btn');
+    btn.style.background = isApprove ? '#00cc00' : '#ef4444';
+    btn.style.color = isApprove ? '#000' : '#fff';
+    btn.textContent = isApprove ? '\u2713 Approve & Process' : 'Cancel Withdrawal';
+    new bootstrap.Modal(document.getElementById('wdConfirmModal')).show();
+}
+
+document.getElementById('wdm-confirm-btn').addEventListener('click', function() {
+    if(_wdPendingFormId) {
+        bootstrap.Modal.getInstance(document.getElementById('wdConfirmModal'))?.hide();
+        setTimeout(() => document.getElementById(_wdPendingFormId)?.submit(), 180);
+    }
+});
+
 document.getElementById('wSearch').addEventListener('input', function(){
     const q = this.value.toLowerCase();
     document.querySelectorAll('#wTable tbody tr').forEach(r => { r.style.display = r.textContent.toLowerCase().includes(q)?'':'none'; });

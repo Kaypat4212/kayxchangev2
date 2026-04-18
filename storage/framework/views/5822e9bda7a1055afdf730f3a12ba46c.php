@@ -100,6 +100,10 @@
     color: #6c757d;
     margin-bottom: 0.25rem;
     line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .notification-time {
@@ -121,6 +125,9 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const notificationsApiUrl = <?php echo json_encode(route('notifications.api'), 15, 512) ?>;
+    const markAllReadUrl = <?php echo json_encode(route('notifications.mark-all-read'), 15, 512) ?>;
+    const notificationBaseUrl = <?php echo json_encode(url('/notifications'), 15, 512) ?>;
     const dropdown = document.getElementById('notificationDropdown');
     const badge = document.getElementById('notificationBadge');
     const notificationList = document.getElementById('notificationList');
@@ -144,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function loadNotifications() {
         isLoading = true;
-        fetch('/api/notifications?limit=5')
+        fetch(`${notificationsApiUrl}?limit=5`)
         .then(response => response.json())
         .then(data => {
             notifications = data.notifications;
@@ -165,13 +172,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const html = notifications.map(notification => `
+        const html = notifications.map(notification => {
+            const title = escapeHtml(truncate(notification.title || '', 45));
+            const message = escapeHtml(truncate(notification.message || '', 95));
+            return `
             <li class="notification-item ${notification.is_read ? '' : 'unread'}" data-id="${notification.id}">
                 <div class="notification-content">
                     <div class="notification-icon ${notification.icon}"></div>
                     <div class="notification-details">
-                        <div class="notification-title">${notification.title}</div>
-                        <div class="notification-message">${notification.message}</div>
+                        <div class="notification-title">${title}</div>
+                        <div class="notification-message">${message}</div>
                         <div class="notification-time">${notification.time_ago}</div>
                         ${!notification.is_read ? `
                         <div class="notification-actions">
@@ -186,7 +196,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             </li>
-        `).join('');
+        `;
+        }).join('');
         
         notificationList.innerHTML = html;
         
@@ -224,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function markAsRead(id) {
-        fetch(`/notifications/${id}/mark-read`, {
+        fetch(`${notificationBaseUrl}/${id}/mark-read`, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
@@ -240,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function deleteNotification(id) {
         if (confirm('Delete this notification?')) {
-            fetch(`/notifications/${id}/delete`, {
+            fetch(`${notificationBaseUrl}/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
@@ -257,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function markAllAsRead() {
         if (confirm('Mark all notifications as read?')) {
-            fetch('/notifications/mark-all-read', {
+            fetch(markAllReadUrl, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
@@ -270,6 +281,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+    }
+
+    function truncate(text, max) {
+        const s = String(text || '');
+        return s.length > max ? s.slice(0, max - 1) + '…' : s;
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
     
     // Auto-refresh every 30 seconds

@@ -120,16 +120,17 @@ class WithdrawalController extends Controller
             // Standardized admin alert + in-app badge notification
             try {
                 app(AdminTradeAlertService::class)->sendTriggeredAlert('withdrawal', [
-                    'user_id' => $user->id,
-                    'reference' => $withdrawal->reference,
-                    'user_name' => $user->name,
-                    'user_email' => $user->email,
-                    'coin' => 'NGN',
-                    'usd_amount' => 'N/A',
+                    'trade_id'    => $withdrawal->id,
+                    'user_id'     => $user->id,
+                    'reference'   => $withdrawal->reference,
+                    'user_name'   => $user->name,
+                    'user_email'  => $user->email,
+                    'coin'        => 'NGN',
+                    'usd_amount'  => 'N/A',
                     'naira_amount' => number_format((float) $withdrawal->amount, 2),
                     'wallet_address' => 'N/A',
-                    'network' => 'Bank Transfer',
-                    'status' => $withdrawal->status,
+                    'network'     => 'Bank Transfer',
+                    'status'      => $withdrawal->status,
                 ]);
             } catch (\Throwable $alertEx) {
                 Log::warning('Withdrawal admin alert failed: ' . $alertEx->getMessage());

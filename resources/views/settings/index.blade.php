@@ -168,6 +168,17 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
         <i class="bi bi-chevron-right st-row-arrow"></i>
     </a>
 
+    @if(!auth()->user()->kyc_verified)
+    <a href="{{ route('kyc.form') }}" class="st-row">
+        <div class="st-row-icon amber"><i class="bi bi-shield-check"></i></div>
+        <div class="st-row-body">
+            <div class="st-row-title">Complete KYC Verification</div>
+            <div class="st-row-sub">Submit your verification details to unlock full account features</div>
+        </div>
+        <i class="bi bi-chevron-right st-row-arrow"></i>
+    </a>
+    @endif
+
     {{-- Security --}}
     <div class="st-section-label mt-3">Security</div>
 
@@ -200,11 +211,20 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
             <div class="st-row-title">Telegram Notifications</div>
             <div class="st-row-sub">
                 @if(auth()->user()->telegram_verified)
-                    Connected as <span style="color:#29b6f6;">@{{ auth()->user()->telegram_username }}</span>
+                    Connected as <span style="color:#29b6f6;">{{ '@' . auth()->user()->telegram_username }}</span>
                 @else
                     Connect Telegram to receive trade alerts
                 @endif
             </div>
+        </div>
+        <i class="bi bi-chevron-right st-row-arrow"></i>
+    </a>
+
+    <a href="{{ route('support.chat') }}" class="st-row">
+        <div class="st-row-icon green"><i class="bi bi-headset"></i></div>
+        <div class="st-row-body">
+            <div class="st-row-title">Support Chat</div>
+            <div class="st-row-sub">Talk to admin support about trades, KYC, deposits and withdrawals</div>
         </div>
         <i class="bi bi-chevron-right st-row-arrow"></i>
     </a>

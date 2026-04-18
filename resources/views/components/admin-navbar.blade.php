@@ -41,6 +41,12 @@
         <a class="nav-link @if(request()->is('admin/telegram*')) active @endif" href="{{ url('/admin/telegram') }}">
           <i class="bi bi-telegram me-1"></i>Telegram Bot
         </a>
+        <a class="nav-link @if(request()->is('admin/chat*')) active @endif" href="{{ route('admin.chat') }}">
+          <i class="bi bi-headset me-1"></i>Support Inbox
+        </a>
+        <a class="nav-link @if(request()->is('admin/referrals/settings*')) active @endif" href="{{ route('admin.referrals.settings') }}">
+          <i class="bi bi-megaphone me-1"></i>Referrals
+        </a>
 
         {{-- Settings dropdown --}}
         <div class="nav-item dropdown">

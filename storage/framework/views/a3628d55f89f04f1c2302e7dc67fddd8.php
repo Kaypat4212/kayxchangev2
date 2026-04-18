@@ -193,6 +193,11 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="kx-nav-link <?php if(request()->is('support/chat')): ?> kx-active <?php endif; ?>" href="<?php echo e(route('support.chat')); ?>">
+            <i class="bi bi-headset"></i>Support
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="kx-nav-link <?php if(request()->is('referrals')): ?> kx-active <?php endif; ?>" href="<?php echo e(url('/referrals')); ?>">
             <i class="bi bi-people-fill"></i>Referrals
           </a>

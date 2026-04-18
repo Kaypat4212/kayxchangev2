@@ -31,6 +31,8 @@ class Notification extends Model
         'expires_at' => 'datetime'
     ];
 
+    protected $appends = ['time_ago', 'icon'];
+
     // Relationships
     public function user()
     {
@@ -57,7 +59,15 @@ class Notification extends Model
     {
         return $query->where(function($q) use ($userId) {
             $q->where('user_id', $userId)
-              ->orWhere('is_broadcast', true);
+              ->orWhere(function ($bq) {
+                  // User inbox should not include admin trade-management broadcasts.
+                  $bq->where('is_broadcast', true)
+                     ->whereNull('admin_id')
+                     ->where('type', '!=', 'trade_update')
+                     ->whereNull('data->trade_type')
+                     ->whereNull('data->reference')
+                     ->whereNull('data->pending_minutes');
+              });
         });
     }
 

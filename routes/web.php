@@ -35,6 +35,7 @@ use App\Http\Controllers\Admin\AdminGiftCardRateController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\BlogAiController;
 use App\Http\Controllers\Admin\AdminAiController;
+use App\Http\Controllers\Admin\ReferralSettingsController;
 use App\Http\Controllers\Admin\NotificationAiController;
 use App\Http\Controllers\UserAiController;
 use App\Http\Controllers\Api\TransactionController;
@@ -296,6 +297,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/company-account',  [AdminController::class, 'getCompanyAccount'])->name('admin.company-account');
     Route::post('/company-account', [AdminController::class, 'updateCompanyAccount'])->name('admin.company-account.update');
     Route::get('/pending-counts',   [AdminController::class, 'getPendingCounts'])->name('admin.pending-counts');
+    Route::post('/site-mode',       [AdminController::class, 'toggleSiteMode'])->name('admin.site-mode.toggle');
 
     // Manual trigger: scan pending sell trades for confirmed crypto receipts
     Route::post('/run-crypto-monitor', function () {
@@ -310,6 +312,13 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         $output = trim(\Artisan::output());
         return response()->json(['message' => $output ?: 'Escalation scan complete.']);
     })->name('admin.run-trade-escalation');
+
+    // Referral settings and special referral code management
+    Route::get('/referrals/settings', [ReferralSettingsController::class, 'index'])->name('admin.referrals.settings');
+    Route::put('/referrals/settings/defaults', [ReferralSettingsController::class, 'updateDefaults'])->name('admin.referrals.defaults.update');
+    Route::post('/referrals/settings/codes', [ReferralSettingsController::class, 'storeCode'])->name('admin.referrals.codes.store');
+    Route::put('/referrals/settings/codes/{specialReferralCode}', [ReferralSettingsController::class, 'updateCode'])->name('admin.referrals.codes.update');
+    Route::delete('/referrals/settings/codes/{specialReferralCode}', [ReferralSettingsController::class, 'destroyCode'])->name('admin.referrals.codes.destroy');
 
     // ── Admin AI Routes ──────────────────────────────────────────────────────
     Route::prefix('ai')->name('ai.')->group(function () {
@@ -390,11 +399,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/admin/chat', [ChatController::class, 'adminChat'])->name('admin.chat');
-        Route::post('/chat/send/admin', [ChatController::class, 'sendMessage'])->name('chat.send.admin');
+        Route::post('/chat/send/admin', [ChatController::class, 'adminReply'])->name('chat.send.admin');
     });
 
     // Buy Routes
     Route::get('/buy', [CryptoController::class, 'buy'])->name('buy');
+    Route::get('/api/crypto-prices', [BuyController::class, 'cryptoPricesApi'])->name('api.crypto.prices');
     Route::post('/buy/submit', [BuyController::class, 'submit'])->name('buy.submit');
     Route::get('/buy/summary/{id}', [BuyController::class, 'summary'])->name('buy.summary');
     Route::get('/buy/payment/{id}', [BuyController::class, 'paymentPage'])->name('buy.payment');
@@ -451,6 +461,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/support/chat', [ChatController::class, 'supportChat'])->name('support.chat');
     Route::get('/settings/edit-bank', [EditBankController::class, 'showEditBankForm'])->name('edit-bank');
     Route::post('/settings/update-bank', [EditBankController::class, 'updateBankDetails'])->name('update.bank');
     Route::get('/paystack/banks', [EditBankController::class, 'getPaystackBanks'])->name('paystack.banks');
@@ -459,6 +470,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
     Route::get('/chat/history', [ChatController::class, 'getHistory'])->name('chat.history');
     Route::get('/chat/history/{userId}', [ChatController::class, 'getHistory'])->name('chat.history.user');
+    Route::get('/chat/poll', [ChatController::class, 'pollNew'])->name('chat.poll');
     
     // Notification Routes
     Route::prefix('notifications')->name('notifications.')->group(function () {

@@ -221,14 +221,111 @@
     .kx-spin { display: none; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.3); border-top-color: #000; border-radius: 50%; animation: kxspin 0.7s linear infinite; flex-shrink: 0; }
     @keyframes kxspin { to { transform: rotate(360deg); } }
 
+    .kx-mode-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        cursor: pointer;
+        border: none;
+        transition: background 0.25s, box-shadow 0.25s, transform 0.15s;
+        white-space: nowrap;
+    }
+    .kx-mode-badge.mode-production {
+        background: rgba(0,204,0,0.15);
+        color: var(--kx-green);
+        border: 1px solid rgba(0,204,0,0.35);
+    }
+    .kx-mode-badge.mode-production:hover {
+        background: rgba(0,204,0,0.28);
+        box-shadow: 0 0 0 3px var(--kx-green-glow);
+        transform: translateY(-1px);
+    }
+    .kx-mode-badge.mode-developer {
+        background: rgba(251,191,36,0.15);
+        color: var(--kx-amber);
+        border: 1px solid rgba(251,191,36,0.35);
+    }
+    .kx-mode-badge.mode-developer:hover {
+        background: rgba(251,191,36,0.28);
+        box-shadow: 0 0 0 3px rgba(251,191,36,0.2);
+        transform: translateY(-1px);
+    }
+    .kx-mode-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .mode-production .kx-mode-dot { background: var(--kx-green); animation: pulse-dot 1.6s ease infinite; }
+    .mode-developer  .kx-mode-dot { background: var(--kx-amber); }
+    .kx-mode-confirm-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+    .kx-mode-confirm-overlay.active { display: flex; }
+    .kx-mode-confirm-box {
+        background: var(--kx-card2);
+        border: 1px solid var(--kx-border);
+        border-radius: 16px;
+        padding: 28px 32px;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+    }
+    .kx-mode-confirm-icon {
+        font-size: 2.5rem;
+        margin-bottom: 14px;
+    }
+    .kx-mode-confirm-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .kx-mode-confirm-text  { font-size: 0.84rem; color: var(--kx-muted); margin-bottom: 22px; line-height: 1.6; }
+    .kx-mode-confirm-btns  { display: flex; gap: 10px; justify-content: center; }
+    .btn-kx-cancel {
+        background: var(--kx-card); color: var(--kx-muted);
+        border: 1px solid var(--kx-border); border-radius: 8px;
+        padding: 9px 22px; cursor: pointer; font-size: 0.875rem;
+        transition: background 0.2s;
+    }
+    .btn-kx-cancel:hover { background: #252e40; color: #fff; }
+    .btn-kx-amber {
+        background: var(--kx-amber); color: #000;
+        border: none; border-radius: 8px;
+        padding: 9px 22px; cursor: pointer; font-weight: 700; font-size: 0.875rem;
+        transition: background 0.2s, transform 0.15s;
+    }
+    .btn-kx-amber:hover { background: #e6a800; transform: translateY(-1px); }
+
     @media (max-width: 767px) {
         .kx-welcome { padding: 18px; }
         .kx-welcome-title { font-size: 1.1rem; }
         .kx-stat-val { font-size: 1.25rem; }
         .rate-row { grid-template-columns: 1fr 1fr; }
         .rate-row > div:first-child { grid-column: 1/-1; }
+        .kx-mode-badge span:not(.kx-mode-dot) { display: none; }
     }
 </style>
+
+<!-- MODE CONFIRM OVERLAY -->
+<div id="kx-mode-overlay" class="kx-mode-confirm-overlay">
+    <div class="kx-mode-confirm-box">
+        <div id="kx-mode-confirm-icon" class="kx-mode-confirm-icon">🔄</div>
+        <div id="kx-mode-confirm-title" class="kx-mode-confirm-title">Switch Site Mode?</div>
+        <div id="kx-mode-confirm-text" class="kx-mode-confirm-text"></div>
+        <div class="kx-mode-confirm-btns">
+            <button class="btn-kx-cancel" onclick="document.getElementById('kx-mode-overlay').classList.remove('active')">Cancel</button>
+            <button id="kx-mode-confirm-btn" class="btn-kx-amber">Yes, Switch Mode</button>
+        </div>
+        <div id="kx-mode-post-msg" class="mt-3" style="display:none;font-size:0.82rem"></div>
+    </div>
+</div>
 
 <!-- WELCOME BAR -->
 <div class="kx-welcome">
@@ -243,10 +340,27 @@
                 <span id="kx-clock"></span>
             </div>
         </div>
-        <div class="col-auto d-none d-md-flex gap-2">
+        <div class="col-auto d-none d-md-flex gap-2 align-items-center">
+            @php $siteMode = $siteMode ?? 'production'; @endphp
+            <button id="kx-mode-toggle-btn"
+                class="kx-mode-badge {{ $siteMode === 'developer' ? 'mode-developer' : 'mode-production' }}"
+                data-mode="{{ $siteMode }}"
+                title="Click to toggle site mode">
+                <span class="kx-mode-dot"></span>
+                <span>{{ $siteMode === 'developer' ? 'Developer Mode' : 'Production Mode' }}</span>
+                <i class="bi bi-arrow-repeat" style="font-size:0.7rem;opacity:0.7"></i>
+            </button>
             <a href="{{ url('/') }}" target="_blank" class="btn-kx-outline">
                 <i class="bi bi-eye"></i> View Site
             </a>
+        </div>
+        <div class="col-auto d-flex d-md-none">
+            <button id="kx-mode-toggle-btn-sm"
+                class="kx-mode-badge {{ $siteMode === 'developer' ? 'mode-developer' : 'mode-production' }}"
+                data-mode="{{ $siteMode }}"
+                title="Toggle site mode">
+                <span class="kx-mode-dot"></span>
+            </button>
         </div>
     </div>
 </div>
@@ -546,6 +660,82 @@ document.addEventListener('DOMContentLoaded', () => {
     tick(); setInterval(tick, 60000);
 
     const csrf = () => document.querySelector('meta[name="csrf-token"]').content;
+
+    // ── Site Mode Toggle ──────────────────────────────────────────────────────
+    const modeMessages = {
+        developer: {
+            icon: '🛠️',
+            title: 'Switch to Developer Mode?',
+            text: 'Developer mode enables detailed error output and debug tools. <strong>Do not enable this on a live user-facing site.</strong> All admin actions are still fully functional.',
+            btnLabel: 'Yes, enable Developer Mode',
+        },
+        production: {
+            icon: '🚀',
+            title: 'Switch to Production Mode?',
+            text: 'Production mode returns the site to normal operation with user-friendly errors and optimised performance.',
+            btnLabel: 'Yes, switch to Production',
+        }
+    };
+
+    function initModeToggle(btn) {
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            const current = btn.dataset.mode;
+            const next    = current === 'production' ? 'developer' : 'production';
+            const cfg     = modeMessages[next];
+            document.getElementById('kx-mode-confirm-icon').textContent  = cfg.icon;
+            document.getElementById('kx-mode-confirm-title').textContent = cfg.title;
+            document.getElementById('kx-mode-confirm-text').innerHTML    = cfg.text;
+            const confirmBtn = document.getElementById('kx-mode-confirm-btn');
+            confirmBtn.textContent = cfg.btnLabel;
+            confirmBtn.className   = next === 'developer' ? 'btn-kx-amber' : 'btn-kx-green';
+            document.getElementById('kx-mode-post-msg').style.display = 'none';
+            document.getElementById('kx-mode-overlay').classList.add('active');
+        });
+    }
+    initModeToggle(document.getElementById('kx-mode-toggle-btn'));
+    initModeToggle(document.getElementById('kx-mode-toggle-btn-sm'));
+
+    document.getElementById('kx-mode-confirm-btn').addEventListener('click', function () {
+        const desktopBtn = document.getElementById('kx-mode-toggle-btn');
+        const current    = desktopBtn ? desktopBtn.dataset.mode : 'production';
+        const next       = current === 'production' ? 'developer' : 'production';
+        const msgEl      = document.getElementById('kx-mode-post-msg');
+        this.disabled    = true;
+        this.textContent = 'Switching…';
+
+        fetch('{{ route("admin.site-mode.toggle") }}', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() }
+        })
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(data => {
+            const newMode  = data.mode;
+            const isDevMode = newMode === 'developer';
+            const cssClass = isDevMode ? 'mode-developer' : 'mode-production';
+            const label    = isDevMode ? 'Developer Mode' : 'Production Mode';
+            [document.getElementById('kx-mode-toggle-btn'), document.getElementById('kx-mode-toggle-btn-sm')].forEach(b => {
+                if (!b) return;
+                b.dataset.mode  = newMode;
+                b.className     = 'kx-mode-badge ' + cssClass;
+                const textSpan = b.querySelector('span:not(.kx-mode-dot)');
+                if (textSpan) textSpan.textContent = label;
+            });
+            msgEl.style.display = 'block';
+            msgEl.style.color   = isDevMode ? 'var(--kx-amber)' : 'var(--kx-green)';
+            msgEl.textContent   = '✓ Switched to ' + label;
+            setTimeout(() => document.getElementById('kx-mode-overlay').classList.remove('active'), 1200);
+        })
+        .catch(() => {
+            msgEl.style.display = 'block';
+            msgEl.style.color   = 'var(--kx-danger)';
+            msgEl.textContent   = '✗ Failed to switch mode. Please try again.';
+        })
+        .finally(() => {
+            this.disabled    = false;
+            this.textContent = modeMessages[next].btnLabel;
+        });
+    });
 
     // Pending counts
     const fetchCounts = () => {

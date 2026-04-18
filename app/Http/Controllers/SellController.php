@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Log;
 
 class SellController extends Controller
 {
+    private const UNVERIFIED_SELL_LIMIT_NGN = 500000;
+
     /**
      * Send a Telegram notification for a sell trade.
      *
@@ -276,6 +278,12 @@ class SellController extends Controller
             return back()->withErrors(['amount' => 'Submitted amounts do not match expected conversion.']);
         }
 
+        if (!Auth::user()->kyc_verified && $nairaAmount > self::UNVERIFIED_SELL_LIMIT_NGN) {
+            return back()->withErrors([
+                'amount' => 'Unverified users can sell up to ₦' . number_format(self::UNVERIFIED_SELL_LIMIT_NGN, 0) . ' per trade. Please complete KYC to increase your limit.'
+            ])->withInput();
+        }
+
         // Resolve network
         $network = $request->network;
         if (empty($network)) {
@@ -442,6 +450,11 @@ class SellController extends Controller
         DB::beginTransaction();
 
         try {
+            $nairaAmount = (float) Session::get('sell.naira_amount');
+            if (!$user->kyc_verified && $nairaAmount > self::UNVERIFIED_SELL_LIMIT_NGN) {
+                throw new \Exception('Unverified users can sell up to ₦' . number_format(self::UNVERIFIED_SELL_LIMIT_NGN, 0) . ' per trade. Please complete KYC to increase your limit.');
+            }
+
             $sellTrade = new SellTrade();
             $sellTrade->user_id = $user->id;
             $sellTrade->coin = Session::get('sell.coin');

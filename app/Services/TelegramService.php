@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\SellTrade;
 use App\Models\BuyTrade;
+use App\Models\Kyc;
 use App\Models\CryptoRate;
 use App\Models\TelegramBotMessage;
 
@@ -283,6 +284,38 @@ class TelegramService
             ]);
             return false;
         }
+    }
+
+    /**
+     * Send a message to all configured admin Telegram chats.
+     */
+    public function sendToAdminChats(string $message, ?array $keyboard = null, string $parseMode = 'Markdown'): int
+    {
+        $chatIds = [];
+
+        foreach (['TELEGRAM_CHAT_ID', 'KAYXCHANGE_TELEGRAM_CHAT_ID', 'TELEGRAM_OWNER_CHAT_ID'] as $envKey) {
+            $envChatId = env($envKey);
+            if (!empty($envChatId)) {
+                $chatIds[] = (string) $envChatId;
+            }
+        }
+
+        $adminChatIds = User::where('is_admin', true)
+            ->whereNotNull('telegram_chat_id')
+            ->pluck('telegram_chat_id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        $chatIds = array_values(array_unique(array_filter(array_merge($chatIds, $adminChatIds))));
+
+        $sent = 0;
+        foreach ($chatIds as $chatId) {
+            if ($this->sendMessage($chatId, $message, $parseMode, $keyboard)) {
+                $sent++;
+            }
+        }
+
+        return $sent;
     }
 
     /**
@@ -664,6 +697,22 @@ class TelegramService
                 }
                 if (str_starts_with($data, 'reject_buy:')) {
                     $this->handleAdminRejectBuy($chatId, (int) substr($data, 11), $messageId);
+                    return true;
+                }
+                if (str_starts_with($data, 'approve_kyc:')) {
+                    $this->handleAdminApproveKyc($chatId, (int) substr($data, 12), $messageId);
+                    return true;
+                }
+                if (str_starts_with($data, 'reject_kyc:')) {
+                    $this->handleAdminRejectKyc($chatId, (int) substr($data, 11), $messageId);
+                    return true;
+                }
+                if (str_starts_with($data, 'approve_withdrawal:')) {
+                    $this->handleAdminApproveWithdrawal($chatId, (int) substr($data, 19), $messageId);
+                    return true;
+                }
+                if (str_starts_with($data, 'reject_withdrawal:')) {
+                    $this->handleAdminRejectWithdrawal($chatId, (int) substr($data, 18), $messageId);
                     return true;
                 }
 
@@ -2356,7 +2405,214 @@ class TelegramService
         } catch (\Throwable $e) {}
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    public function handleAdminApproveKyc(int $chatId, int $kycId, ?int $messageId): void
+    {
+        if (!$this->isAdminChatId($chatId)) {
+            $this->sendMessage($chatId, "⛔ You are not authorised to perform this action.");
+            return;
+        }
+
+        $kyc = Kyc::with('user')->find($kycId);
+        if (!$kyc) {
+            $this->sendMessage($chatId, "❌ KYC submission #{$kycId} not found.");
+            return;
+        }
+
+        if ($kyc->status !== 'pending') {
+            $this->sendMessage($chatId, "⚠️ KYC #{$kycId} is already *{$kyc->status}*.", 'Markdown');
+            return;
+        }
+
+        $kyc->status = 'approved';
+        $kyc->save();
+
+        if ($kyc->user) {
+            $kyc->user->kyc_verified = 1;
+            $kyc->user->save();
+        }
+
+        if ($messageId) {
+            $name = $kyc->user->name ?? 'Unknown User';
+            $this->editMessage($chatId, $messageId,
+                "✅ *KYC APPROVED* — Submission #{$kycId}\n" .
+                "User: {$name}\n" .
+                "Status: approved");
+        }
+
+        if ($kyc->user && $kyc->user->telegram_chat_id) {
+            $this->sendMessage((int)$kyc->user->telegram_chat_id,
+                "✅ *KYC Approved*\n\nYour verification has been approved. You can now enjoy full account access.",
+                'Markdown');
+        }
+    }
+
+    public function handleAdminRejectKyc(int $chatId, int $kycId, ?int $messageId): void
+    {
+        if (!$this->isAdminChatId($chatId)) {
+            $this->sendMessage($chatId, "⛔ You are not authorised to perform this action.");
+            return;
+        }
+
+        $kyc = Kyc::with('user')->find($kycId);
+        if (!$kyc) {
+            $this->sendMessage($chatId, "❌ KYC submission #{$kycId} not found.");
+            return;
+        }
+
+        if ($kyc->status !== 'pending') {
+            $this->sendMessage($chatId, "⚠️ KYC #{$kycId} is already *{$kyc->status}*.", 'Markdown');
+            return;
+        }
+
+        $kyc->status = 'rejected';
+        $kyc->save();
+
+        if ($kyc->user) {
+            $kyc->user->kyc_verified = 0;
+            $kyc->user->save();
+        }
+
+        if ($messageId) {
+            $name = $kyc->user->name ?? 'Unknown User';
+            $this->editMessage($chatId, $messageId,
+                "❌ *KYC REJECTED* — Submission #{$kycId}\n" .
+                "User: {$name}\n" .
+                "Status: rejected");
+        }
+
+        if ($kyc->user && $kyc->user->telegram_chat_id) {
+            $this->sendMessage((int)$kyc->user->telegram_chat_id,
+                "❌ *KYC Rejected*\n\nYour verification could not be approved. Please re-upload clear documents from your dashboard.",
+                'Markdown');
+        }
+    }
+
+    public function handleAdminApproveWithdrawal(int $chatId, int $withdrawalId, ?int $messageId): void
+    {
+        if (!$this->isAdminChatId($chatId)) {
+            $this->sendMessage($chatId, "⛔ You are not authorised to perform this action.");
+            return;
+        }
+
+        $withdrawal = \App\Models\Withdrawal::with('user')->find($withdrawalId);
+        if (!$withdrawal) {
+            $this->sendMessage($chatId, "❌ Withdrawal #{$withdrawalId} not found.");
+            return;
+        }
+
+        if ($withdrawal->status !== 'pending') {
+            $this->sendMessage($chatId, "⚠️ Withdrawal #{$withdrawalId} is already *{$withdrawal->status}*.", 'Markdown');
+            return;
+        }
+
+        $user = $withdrawal->user;
+        if (!$user) {
+            $this->sendMessage($chatId, "❌ User for withdrawal #{$withdrawalId} not found.");
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            if ($user->balance < $withdrawal->amount) {
+                DB::rollBack();
+                $this->sendMessage($chatId, "❌ Insufficient balance — cannot approve withdrawal #{$withdrawalId}.");
+                return;
+            }
+
+            $user->balance -= $withdrawal->amount;
+            $user->save();
+
+            $withdrawal->status       = 'approved';
+            $withdrawal->processed_at = now();
+            $withdrawal->save();
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error("handleAdminApproveWithdrawal error: {$e->getMessage()}");
+            $this->sendMessage($chatId, "❌ Failed to approve withdrawal: {$e->getMessage()}");
+            return;
+        }
+
+        if ($messageId) {
+            $bd = is_array($withdrawal->bank_account)
+                ? $withdrawal->bank_account
+                : (json_decode($withdrawal->bank_account, true) ?? []);
+            $this->editMessage($chatId, $messageId,
+                "✅ *APPROVED* — Withdrawal #{$withdrawalId}\n" .
+                "Ref: {$withdrawal->reference}\n" .
+                "User: {$user->name} | ₦" . number_format($withdrawal->amount, 2) . "\n" .
+                "Bank: " . ($bd['bank_name'] ?? 'N/A') . " · " . ($bd['account_number'] ?? 'N/A'));
+        }
+
+        if ($user->telegram_chat_id) {
+            $this->sendMessage((int) $user->telegram_chat_id,
+                "✅ *Withdrawal Approved!*\n\n" .
+                "🔖 Ref: `{$withdrawal->reference}`\n" .
+                "💴 Amount: ₦" . number_format($withdrawal->amount, 2) . "\n\n" .
+                "Your payment is being processed to your bank account.",
+                'Markdown');
+        }
+
+        try {
+            app(AdminTradeAlertService::class)->sendStatusChangeAlert('withdrawal', [
+                'reference'  => $withdrawal->reference,
+                'user_name'  => $user->name,
+                'old_status' => 'pending',
+                'new_status' => 'approved',
+            ]);
+        } catch (\Throwable $e) {}
+    }
+
+    public function handleAdminRejectWithdrawal(int $chatId, int $withdrawalId, ?int $messageId): void
+    {
+        if (!$this->isAdminChatId($chatId)) {
+            $this->sendMessage($chatId, "⛔ You are not authorised to perform this action.");
+            return;
+        }
+
+        $withdrawal = \App\Models\Withdrawal::with('user')->find($withdrawalId);
+        if (!$withdrawal) {
+            $this->sendMessage($chatId, "❌ Withdrawal #{$withdrawalId} not found.");
+            return;
+        }
+
+        if ($withdrawal->status !== 'pending') {
+            $this->sendMessage($chatId, "⚠️ Withdrawal #{$withdrawalId} is already *{$withdrawal->status}*.", 'Markdown');
+            return;
+        }
+
+        $user          = $withdrawal->user;
+        $oldStatus     = $withdrawal->status;
+        $withdrawal->status       = 'cancelled';
+        $withdrawal->processed_at = now();
+        $withdrawal->save();
+
+        if ($messageId) {
+            $this->editMessage($chatId, $messageId,
+                "❌ *REJECTED* — Withdrawal #{$withdrawalId}\n" .
+                "Ref: {$withdrawal->reference}\n" .
+                "User: " . ($user->name ?? 'N/A') . " | ₦" . number_format($withdrawal->amount, 2));
+        }
+
+        if ($user && $user->telegram_chat_id) {
+            $this->sendMessage((int) $user->telegram_chat_id,
+                "❌ *Withdrawal Rejected*\n\n" .
+                "🔖 Ref: `{$withdrawal->reference}`\n" .
+                "💴 Amount: ₦" . number_format($withdrawal->amount, 2) . "\n\n" .
+                "Please contact support for more details.",
+                'Markdown');
+        }
+
+        try {
+            app(AdminTradeAlertService::class)->sendStatusChangeAlert('withdrawal', [
+                'reference'  => $withdrawal->reference,
+                'user_name'  => $user->name ?? 'N/A',
+                'old_status' => $oldStatus,
+                'new_status' => 'cancelled',
+            ]);
+        } catch (\Throwable $e) {}
+    }
 
     /**
      * Send trade completion notification

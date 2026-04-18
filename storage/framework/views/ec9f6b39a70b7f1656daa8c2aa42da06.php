@@ -69,6 +69,13 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 .conversion-box.visible{display:block;}
 .conversion-box .conv-label{font-size:.75rem;color:var(--kx-muted);margin-bottom:.25rem;}
 .conversion-box .conv-value{font-size:1.2rem;font-weight:700;color:var(--kx-green);}
+.conversion-box .conv-divider{border:none;border-top:1px solid rgba(0,204,0,.12);margin:.6rem 0;}
+.conversion-box .conv-crypto-label{font-size:.72rem;color:var(--kx-muted);margin-bottom:.15rem;}
+.conversion-box .conv-crypto-value{font-size:1rem;font-weight:700;color:#f7931a;letter-spacing:.02em;}
+.conversion-box .conv-crypto-value.eth{color:#627eea;}
+.conversion-box .conv-crypto-value.usdt{color:#26a17b;}
+.btn-toggle-crypto{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--kx-muted);font-size:.72rem;border-radius:6px;padding:.15rem .5rem;cursor:pointer;transition:all .2s;margin-top:.4rem;}
+.btn-toggle-crypto:hover{background:rgba(0,204,0,.1);color:var(--kx-green);border-color:rgba(0,204,0,.3);}
 
 /* Guidelines */
 .kx-guide{background:rgba(0,204,0,.05);border:1px solid rgba(0,204,0,.12);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;}
@@ -205,6 +212,10 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             <div class="conversion-box" id="conversionBox">
                 <div class="conv-label" id="convertedLabel">You&#8217;ll Pay (&#8358;)</div>
                 <div class="conv-value" id="convertedAmount">&#8212;</div>
+                <hr class="conv-divider">
+                <div class="conv-crypto-label">Crypto Equivalent</div>
+                <div class="conv-crypto-value" id="cryptoEquivAmount">&#8212;</div>
+                <button type="button" class="btn-toggle-crypto" id="toggleConvBtn" title="Toggle view"><i class="bi bi-arrow-left-right me-1"></i>Convert</button>
             </div>
 
             <button type="button" id="nextButton" class="btn-kx-primary" disabled>
@@ -410,6 +421,8 @@ unset($__errorArgs, $__bag); ?>
     const conversionBox    = document.getElementById('conversionBox');
     const convertedLabel   = document.getElementById('convertedLabel');
     const convertedAmountEl = document.getElementById('convertedAmount');
+    const cryptoEquivEl    = document.getElementById('cryptoEquivAmount');
+    const toggleConvBtn    = document.getElementById('toggleConvBtn');
     const step2CoinDisplay  = document.getElementById('step2CoinDisplay');
     const step2AmountDisplay = document.getElementById('step2AmountDisplay');
     const progressStep1    = document.getElementById('progressStep1');
@@ -420,6 +433,17 @@ unset($__errorArgs, $__bag); ?>
     let selectedCoin = '';
 
     const rates = <?php echo json_encode($rates ?? ['BTC' => 1600, 'ETH' => 1500, 'USDT' => 1400]); ?>;
+
+    // Live USD prices for crypto quantity calculation (fetched once, cached in memory)
+    let cryptoUsdPrices = { BTC: 65000, ETH: 3500, USDT: 1.0 };
+    fetch('/api/crypto-prices').then(r => r.json()).then(d => { cryptoUsdPrices = d; calculateConversion(); }).catch(() => {});
+
+    // Conversion view state: 'fiat' shows NGN/USD, 'crypto' shows coin quantity
+    let convView = 'fiat';
+    toggleConvBtn.addEventListener('click', function() {
+        convView = convView === 'fiat' ? 'crypto' : 'fiat';
+        updateConversionDisplay();
+    });
 
     const networks = {
         BTC:  [{ value: 'Bitcoin',  text: 'Bitcoin Network'  }],
@@ -532,17 +556,54 @@ unset($__errorArgs, $__bag); ?>
             return;
         }
         const rate = rates[coin];
+        // Calculate both amounts
+        let usdAmt, ngnAmt;
         if (isUSD) {
             if (amount < 10) { conversionBox.classList.remove('visible'); return; }
-            convertedLabel.textContent = "You'll Pay (\u20A6)";
-            convertedAmountEl.textContent = '\u20A6' + (amount * rate).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            usdAmt = amount;
+            ngnAmt = amount * rate;
         } else {
             if (amount < 14000) { conversionBox.classList.remove('visible'); return; }
-            convertedLabel.textContent = "You'll Receive (USD)";
-            convertedAmountEl.textContent = '$' + (amount / rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            ngnAmt = amount;
+            usdAmt = amount / rate;
         }
+        // Crypto quantity
+        const coinPrice = cryptoUsdPrices[coin] || 1;
+        const cryptoQty = usdAmt / coinPrice;
+        const decimals  = coin === 'USDT' ? 2 : (coin === 'BTC' ? 8 : 6);
+        const ticker    = coin === 'USDT' ? 'USDT' : coin;
+        // Store on element for view toggle
+        convertedAmountEl.dataset.ngn = '\u20A6' + ngnAmt.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        convertedAmountEl.dataset.usd = '$' + usdAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        cryptoEquivEl.dataset.qty = '\u2248 ' + cryptoQty.toFixed(decimals) + ' ' + ticker;
+        // Update crypto color class
+        const colorMap = { BTC: '', ETH: 'eth', USDT: 'usdt' };
+        cryptoEquivEl.className = 'conv-crypto-value' + (colorMap[coin] ? ' ' + colorMap[coin] : '');
+        updateConversionDisplay(usdAmt, ngnAmt, cryptoQty, decimals, ticker);
         conversionBox.classList.add('visible');
         nextButton.disabled = false;
+    }
+
+    function updateConversionDisplay(usdAmt, ngnAmt, cryptoQty, decimals, ticker) {
+        if (convView === 'crypto') {
+            convertedLabel.textContent = 'You\'ll Receive (' + (ticker || selectedCoin) + ')';
+            const qty  = cryptoEquivEl.dataset.qty || cryptoEquivEl.textContent;
+            convertedAmountEl.textContent = qty;
+            cryptoEquivEl.textContent = (ngnAmt != null)
+                ? '\u20A6' + (typeof ngnAmt === 'number' ? ngnAmt.toLocaleString('en-NG', {minimumFractionDigits:2,maximumFractionDigits:2}) : ngnAmt)
+                : (convertedAmountEl.dataset.ngn || '');
+            toggleConvBtn.innerHTML = '<i class="bi bi-arrow-left-right me-1"></i>Show NGN/USD';
+        } else {
+            if (isUSD) {
+                convertedLabel.textContent = 'You\'ll Pay (\u20A6)';
+                convertedAmountEl.textContent = convertedAmountEl.dataset.ngn || convertedAmountEl.textContent;
+            } else {
+                convertedLabel.textContent = 'You\'ll Receive (USD)';
+                convertedAmountEl.textContent = convertedAmountEl.dataset.usd || convertedAmountEl.textContent;
+            }
+            cryptoEquivEl.textContent = cryptoEquivEl.dataset.qty || cryptoEquivEl.textContent;
+            toggleConvBtn.innerHTML = '<i class="bi bi-arrow-left-right me-1"></i>Convert';
+        }
     }
 
     // Toggle USD/NGN
