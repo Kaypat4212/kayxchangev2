@@ -1,0 +1,1 @@
+<img width="150px" style="border: 7px solid white; border-radius: 50px;" class="m-auto" src="<?php echo e(asset('Assests/favicon.png')); ?>" alt=""><?php /**PATH C:\xampp\htdocs\kayxchangev2\resources\views\components\application-logo.blade.php ENDPATH**/ ?>

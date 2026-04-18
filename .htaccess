@@ -3,9 +3,21 @@ DirectoryIndex public/index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Prevent rewriting already-public paths
+    # Disable MultiViews to prevent path negotiation issues
+    Options -MultiViews
+
+    # Do not rewrite if request is already targeting /public
     RewriteCond %{REQUEST_URI} !^/public/
 
-    # Pass all non-public requests into Laravel public directory
+    # Do not rewrite if requested path exists in project root
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Route everything else into Laravel's public directory
     RewriteRule ^(.*)$ public/$1 [L,QSA]
+</IfModule>
+
+# Fallback when mod_rewrite is unavailable
+<IfModule !mod_rewrite.c>
+    RedirectMatch 302 ^/$ /public/
 </IfModule>

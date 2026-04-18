@@ -1,0 +1,185 @@
+<?php $__env->startSection('content'); ?>
+<?php
+    $withdrawal = $withdrawal;
+    $bank_details = $bank_details;
+?>
+
+<style>
+
+    :root {
+        --primary-green: #10b981;
+        --dark-bg: #1a1a1a;
+        --card-bg: #2c2c2c;
+        --text-muted: #a0a0a0;
+        --glow-color: rgba(16, 185, 129, 0.5);
+    }
+
+    body {
+        background-color: var(--dark-bg);
+        font-family: 'Poppins', sans-serif;
+        color: #ffffff;
+    }
+
+    .container {
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: linear-gradient(135deg, var(--dark-bg), #2a3a2a);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px var(--glow-color);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px var(--glow-color);
+    }
+
+    .header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .header h2 {
+        color: var(--primary-green);
+        font-weight: 600;
+        font-size: 1.75rem;
+    }
+
+    .header p {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+
+    .summary-box {
+        background: #14532d;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px var(--glow-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-box p {
+        margin: 0.5rem 0;
+        font-size: 0.95rem;
+    }
+
+    .summary-box strong {
+        color: var(--primary-green);
+    }
+
+    .btn-primary {
+        background-color: var(--primary-green);
+        border-color: var(--primary-green);
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: background 0.3s ease, transform 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #059669;
+        border-color: #059669;
+        transform: scale(1.05);
+    }
+
+    .toast {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        color: #ffffff;
+        font-size: 0.9rem;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .toast.error {
+        background: #ef4444;
+    }
+
+    .toast.success {
+        background: var(--primary-green);
+    }
+
+    .animate-fade {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    .animate-slide-up {
+        animation: slideUp 0.8s ease-in-out;
+    }
+
+    .animate-pulse {
+        animation: glowPulse 2s infinite;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes glowPulse {
+        0% { box-shadow: 0 0 5px var(--glow-color); }
+        50% { box-shadow: 0 0 20px var(--glow-color); }
+        100% { box-shadow: 0 0 5px var(--glow-color); }
+    }
+</style>
+
+<div id="toast" class="toast"></div>
+
+<div class="container animate-slide-up">
+    <div class="header">
+        <h2>Withdrawal Summary</h2>
+        <p>Review your withdrawal request details below.</p>
+    </div>
+
+    <div class="summary-box animate-fade">
+        <p><strong>Amount:</strong> ₦<?php echo e(number_format($withdrawal->amount, 2)); ?></p>
+        <p><strong>Reference:</strong> <?php echo e($withdrawal->reference); ?></p>
+        <p><strong>Status:</strong> <?php echo e(ucfirst($withdrawal->status)); ?></p>
+        <p><strong>Payment Method:</strong> <?php echo e(ucfirst($withdrawal->payment_method)); ?></p>
+        <p><strong>Bank Name:</strong> <?php echo e($bank_details['bank_name']); ?></p>
+        <p><strong>Account Number:</strong> <?php echo e($bank_details['account_number']); ?></p>
+        <p><strong>Account Name:</strong> <?php echo e($bank_details['account_name']); ?></p>
+        <p><strong>Submitted:</strong> <?php echo e($withdrawal->created_at->format('d M Y, H:i')); ?></p>
+    </div>
+
+    <div class="text-center">
+        <a href="<?php echo e(route('dashboard')); ?>" class="btn btn-primary animate-pulse">Back to Dashboard</a>
+    </div>
+</div>
+
+<script>
+    // Show toast notification
+    function showToast(message, type) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `toast ${type} animate-fade`;
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        // Display session messages
+        <?php if(session('success')): ?>
+            showToast('<?php echo e(session('success')); ?>', 'success');
+        <?php elseif(session('error')): ?>
+            showToast('<?php echo e(session('error')); ?>', 'error');
+        <?php endif; ?>
+    });
+</script>
+
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('selllayout', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\kayxchangev2\resources\views\withdraw\summary.blade.php ENDPATH**/ ?>
