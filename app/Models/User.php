@@ -13,6 +13,17 @@ use Laravel\Sanctum\HasApiTokens;
 // use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Str;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string|null $telegram_chat_id
+ * @property string|null $telegram_username
+ * @property bool $telegram_notifications
+ * @property bool $telegram_verified
+ * @property float $balance
+ * @property bool $kyc_verified
+ */
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
@@ -38,6 +49,10 @@ class User extends Authenticatable
         'telegram_notifications',
         'telegram_chat_id',
         'telegram_verified',
+        'onboarding_completed',
+        'transaction_pin',
+        'pin_attempts',
+        'pin_locked_until',
     ];
 
     /**
@@ -48,6 +63,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'transaction_pin',
     ];
 
     /**
@@ -58,6 +74,8 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'kyc_verified' => 'boolean',
+        'onboarding_completed' => 'boolean',
+        'pin_locked_until' => 'datetime',
         'password' => 'hashed',
         'is_admin' => 'boolean',
         'telegram_notifications' => 'boolean',

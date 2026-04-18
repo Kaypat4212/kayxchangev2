@@ -5,25 +5,22 @@ use App\Observers\UserObserver;
 use App\Models\User;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\View;
+use App\View\Composers\SiteContentComposer;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
-
-     
     public function boot(): void
     {
-        Paginator::useBootstrapFour(); // Use Bootstrap 4 pagination
-         User::observe(UserObserver::class);
+        Paginator::useBootstrapFour();
+        User::observe(UserObserver::class);
+
+        // Share homepage editable content with home/index views
+        View::composer(['home', 'index'], SiteContentComposer::class);
     }
 }

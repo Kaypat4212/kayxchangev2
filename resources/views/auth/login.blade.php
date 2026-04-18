@@ -1,707 +1,342 @@
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login - KayXchange</title>
-
-  <!-- Toastr CSS -->
+  <title>Sign In – KayXchange</title>
+  <link rel="icon" type="image/png" href="{{ asset('Assests/favicon.png') }}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ asset('assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
-  
-  @include('components.navbar-head')
-
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    .dark-mode {
-      background-color:rgb(0, 0, 0);
-      color: #ffffff;
-    }
-
-    .dark-mode .card {
-      background: #2d2d2d;
-      color: #ffffff;
-      border: 1px solid #444;
-    }
-
-    .dark-mode .form-control {
-      background: #333;
-      border-color: #555;
-      color: #ffffff;
-    }
-
-    .dark-mode .form-control:focus {
-      border-color: #00ff00;
-      box-shadow: 0 0 5px 2px rgba(0, 255, 0, 0.3);
-    }
-
-    .dark-mode .navbar {
-      background: #1a1a1a !important;
-      border-bottom: 2px solid #00ff00;
-    }
-
-    .dark-mode .navbar-nav .nav-link {
-      color: #ffffff !important;
-    }
-
-    .dark-mode .navbar-nav .nav-link:hover {
-      color: #00ff00 !important;
-    }
-
-    .dark-mode .navbar-brand {
-      color: #ffffff !important;
-    }
-
-    .card > a{
-      color: green;
-    }
-
-    .card {
-      max-width: 100%;
-      margin: 20px auto;
-      margin-top: 200px;
-      padding: 50px;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-      border-radius: 0% 10% 20% 10%;
-      background: #fff;
-      position: relative;
-      overflow: hidden;
-      animation: blobAnimation 10s infinite;
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: rgba(0, 255, 0, 0.2);
-      border-radius: 50%;
-      animation: glow 3s infinite linear;
-      z-index: -1;
-    }
-
-    @keyframes glow {
-      0% {
-        transform: rotate(0deg);
-        box-shadow: 0 0 20px 5px rgba(0, 255, 0, 0.5);
-      }
-      50% {
-        transform: rotate(180deg);
-        box-shadow: 0 0 100px 10px rgba(0, 255, 0, 0.8);
-      }
-      100% {
-        transform: rotate(360deg);
-        box-shadow: 0 0 120px 35px rgba(0, 255, 0, 0.5);
-      }
-    }
-
-    @keyframes blobAnimation {
-      0% { border-radius: 30% 50% 50% 10%; }
-      25% { border-radius: 20% 10% 10% 10%; }
-      50% { border-radius: 10% 10% 40% 20%; }
-      75% { border-radius: 0% 10% 20% 20%; }
-      100% { border-radius: 0% 10% 20% 0%; }
-    }
-
-    .form-control {
-      transition: all 0.3s ease-in-out;
-    }
-
-    .form-control:focus {
-      border-color: #00ff00;
-      box-shadow: 0 0 5px 2px rgba(0, 255, 0, 0.6);
-    }
-
-    button[type="submit"] {
-      transition: background-color 0.3s, transform 0.3s;
-    }
-
-    button[type="submit"]:hover {
-      background-color: #28a745;
-      transform: scale(1.05);
-    }
-
-    .animated-image {
-      width: 100px;
-      margin: 0 auto;
-      display: block;
-      animation: fadeIn 2s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    .card {
-      width: 90%;
-      max-width: 500px;
-      padding: 25px;
-    }
-
-    @media (max-width: 576px) {
-      .card {
-        width: 100%;
-        padding: 20px;
-      }
-
-      .navbar-brand img {
-        width: 40px;
-      }
-
-      .animated-image {
-        width: 80px;
-      }
-    }
-
-    .navbar-brand img {
-      width: 50px;
-    }
-
-    .navbar {
-      border-bottom: black 2px solid;
-      box-shadow: 9px 0px 5px 2px darkgreen;
-    }
-
-    footer {
-      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
-      color: #ffffff;
-      padding: 60px 0 30px;
-      margin-top: 50px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    footer::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: radial-gradient(circle at 20% 80%, rgba(0, 255, 0, 0.1) 0%, transparent 50%),
-                  radial-gradient(circle at 80% 20%, rgba(0, 255, 0, 0.1) 0%, transparent 50%);
-      pointer-events: none;
-    }
-
-    .footer-content {
-      position: relative;
-      z-index: 1;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
-
-    .footer-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 40px;
-      margin-bottom: 40px;
-    }
-
-    .footer-section h4 {
-      color: #00ff00;
-      font-size: 1.2rem;
-      font-weight: 600;
-      margin-bottom: 20px;
-      position: relative;
-    }
-
-    .footer-section h4::after {
-      content: '';
-      position: absolute;
-      bottom: -5px;
-      left: 0;
-      width: 50px;
-      height: 2px;
-      background: linear-gradient(90deg, #00ff00, transparent);
-    }
-
-    .footer-section p {
-      color: #cccccc;
-      line-height: 1.6;
-      margin-bottom: 15px;
-    }
-
-    .newsletter-form {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .newsletter-form input {
-      flex: 1;
-      padding: 12px 16px;
-      border: 1px solid #444;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.1);
-      color: #ffffff;
-      font-size: 14px;
-    }
-
-    .newsletter-form input::placeholder {
-      color: #aaaaaa;
-    }
-
-    .newsletter-form input:focus {
-      outline: none;
-      border-color: #00ff00;
-      box-shadow: 0 0 0 2px rgba(0, 255, 0, 0.2);
-    }
-
-    .newsletter-form button {
-      padding: 12px 24px;
-      background: linear-gradient(135deg, #00ff00, #28a745);
-      color: #000;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .newsletter-form button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
-    }
-
-    .social-links {
-      display: flex;
-      gap: 15px;
-      margin-top: 20px;
-    }
-
-    .social-links a {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 45px;
-      height: 45px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 50%;
-      color: #ffffff;
-      text-decoration: none;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .social-links a::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      background: rgba(0, 255, 0, 0.2);
-      border-radius: 50%;
-      transition: all 0.3s ease;
-      transform: translate(-50%, -50%);
-    }
-
-    .social-links a:hover::before {
-      width: 100%;
-      height: 100%;
-    }
-
-    .social-links a:hover {
-      color: #00ff00;
-      transform: translateY(-3px);
-      box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
-    }
-
-    .contact-info {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .contact-info li {
-      display: flex;
-      align-items: center;
-      margin-bottom: 12px;
-      color: #cccccc;
-    }
-
-    .contact-info i {
-      color: #00ff00;
-      margin-right: 12px;
-      width: 20px;
-      text-align: center;
-    }
-
-    .footer-bottom {
-      border-top: 1px solid #444;
-      padding-top: 30px;
-      text-align: center;
-    }
-
-    .footer-bottom p {
-      color: #888;
-      margin: 0;
-      font-size: 14px;
-    }
-
-    .footer-bottom a {
-      color: #00ff00;
-      text-decoration: none;
-      transition: color 0.3s ease;
-    }
-
-    .footer-bottom a:hover {
-      color: #28a745;
-      text-decoration: underline;
-    }
-
-    .trust-badges {
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      margin: 30px 0;
-      flex-wrap: wrap;
-    }
-
-    .trust-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #cccccc;
-      font-size: 14px;
-    }
-
-    .trust-badge i {
-      color: #00ff00;
-      font-size: 16px;
-    }
-
-    @media (max-width: 768px) {
-      .footer-grid {
-        grid-template-columns: 1fr;
-        gap: 30px;
-      }
-
-      .newsletter-form {
-        flex-direction: column;
-      }
-
-      .social-links {
-        justify-content: center;
-      }
-
-      .trust-badges {
-        gap: 20px;
-      }
-    }
-
-    /* Password toggle button styles */
-    #toggle-password {
-      cursor: pointer;
-      color: #28a745;
-      transition: color 0.3s ease;
-    }
-
-    #toggle-password:hover {
-      color: #1e7e34;
-    }
-
-    #toggle-password:focus {
-      box-shadow: none;
-      outline: none;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: ''Poppins'', sans-serif; }
+    body { background: #060e06; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; }
+    .lx-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: linear-gradient(rgba(0,204,0,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,204,0,0.035) 1px,transparent 1px); background-size: 55px 55px; }
+    .lx-orb1 { position: fixed; z-index: 0; pointer-events: none; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle,rgba(0,204,0,0.10) 0%,transparent 70%); top: -200px; right: -150px; filter: blur(80px); }
+    .lx-orb2 { position: fixed; z-index: 0; pointer-events: none; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle,rgba(0,100,0,0.12) 0%,transparent 70%); bottom: -140px; left: -100px; filter: blur(80px); }
+    .lx-topbar { position: relative; z-index: 10; background: rgba(8,14,8,0.96); backdrop-filter: blur(18px); border-bottom: 1px solid rgba(0,204,0,0.12); padding: 12px 0; }
+    .lx-brand { display: flex; align-items: center; gap: 10px; text-decoration: none !important; color: #fff; font-size: 1.15rem; font-weight: 700; }
+    .lx-brand img { width: 34px; height: 34px; border-radius: 8px; box-shadow: 0 0 12px rgba(0,204,0,0.4); }
+    .lx-brand span { color: #00cc00; }
+    .lx-theme-btn { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+    .lx-theme-btn:hover { background: rgba(0,204,0,0.15); border-color: rgba(0,204,0,0.35); color: #00cc00; }
+    .lx-back-link { font-size: 0.82rem; color: #00cc00; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+    .lx-back-link:hover { color: #00ff44; }
+    .lx-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 16px; position: relative; z-index: 2; }
+    .lx-wrap { display: grid; grid-template-columns: 1fr 1fr; max-width: 1000px; width: 100%; background: rgba(10,18,10,0.85); border: 1px solid rgba(0,204,0,0.14); border-radius: 24px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.55),0 0 0 1px rgba(0,204,0,0.06); animation: lx-in 0.45s ease both; }
+    @keyframes lx-in { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+    .lx-left { background: linear-gradient(160deg,#0a1a0a 0%,#051005 60%,#021002 100%); padding: 56px 44px; display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden; border-right: 1px solid rgba(0,204,0,0.10); }
+    .lx-left::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 30% 60%,rgba(0,204,0,0.09) 0%,transparent 60%); }
+    .lx-left-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; position: relative; }
+    .lx-left-logo img { width: 52px; height: 52px; border-radius: 14px; box-shadow: 0 0 22px rgba(0,204,0,0.45); }
+    .lx-left-logo-text { font-size: 1.5rem; font-weight: 800; color: #fff; }
+    .lx-left-logo-text span { color: #00cc00; }
+    .lx-left h2 { font-size: clamp(1.65rem,2.5vw,2.1rem); font-weight: 800; color: #fff; line-height: 1.22; margin-bottom: 14px; position: relative; }
+    .lx-left h2 em { font-style: normal; color: #00cc00; }
+    .lx-left p { font-size: 0.9rem; color: rgba(255,255,255,0.5); line-height: 1.75; margin-bottom: 34px; position: relative; }
+    .lx-left-features { list-style: none; padding: 0; margin: 0; position: relative; }
+    .lx-left-features li { display: flex; align-items: center; gap: 12px; font-size: 0.83rem; color: rgba(255,255,255,0.65); margin-bottom: 14px; }
+    .lx-left-features li i { width: 30px; height: 30px; border-radius: 50%; background: rgba(0,204,0,0.12); border: 1px solid rgba(0,204,0,0.25); color: #00cc00; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.8rem; }
+    .lx-left-coins { display: flex; gap: 10px; margin-top: 36px; flex-wrap: wrap; position: relative; }
+    .lx-coin-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 14px; font-size: 0.75rem; color: rgba(255,255,255,0.6); }
+    .lx-coin-pill .lx-ci { font-size: 1rem; font-weight: 800; }
+    .lx-ci-btc{color:#f7931a}.lx-ci-eth{color:#627eea}.lx-ci-usdt{color:#26a17b}.lx-ci-ltc{color:#b3b3b3}.lx-ci-xrp{color:#00aae4}
+    .lx-right { padding: 52px 44px; display: flex; flex-direction: column; justify-content: center; }
+    .lx-right-head { margin-bottom: 32px; }
+    .lx-right-head h1 { font-size: 1.75rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .lx-right-head p { font-size: 0.875rem; color: rgba(255,255,255,0.45); }
+    .lx-right-head p a { color: #00cc00; text-decoration: none; font-weight: 600; }
+    .lx-right-head p a:hover { color: #00ff44; }
+    .lx-label { font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.65); margin-bottom: 7px; display: block; letter-spacing: 0.03em; text-transform: uppercase; }
+    .lx-field { background: rgba(255,255,255,0.05) !important; border: 1.5px solid rgba(255,255,255,0.1) !important; border-radius: 12px !important; color: #fff !important; font-size: 0.92rem; padding: 12px 16px !important; transition: all 0.22s ease; width: 100%; font-family: ''Poppins'',sans-serif; }
+    .lx-field::placeholder { color: rgba(255,255,255,0.28); }
+    .lx-field:focus { background: rgba(0,204,0,0.05) !important; border-color: rgba(0,204,0,0.55) !important; box-shadow: 0 0 0 3px rgba(0,204,0,0.1) !important; outline: none; color: #fff !important; }
+    .lx-field.is-invalid { border-color: rgba(220,53,69,0.6) !important; box-shadow: 0 0 0 3px rgba(220,53,69,0.1) !important; }
+    .lx-pw-wrap { position: relative; }
+    .lx-pw-toggle { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: rgba(255,255,255,0.35); font-size: 0.9rem; transition: color 0.2s; }
+    .lx-pw-toggle:hover { color: #00cc00; }
+    .lx-row-extra { display: flex; align-items: center; justify-content: space-between; margin: 10px 0 24px; }
+    .lx-check-label { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: rgba(255,255,255,0.5); cursor: pointer; }
+    .lx-check { accent-color: #00cc00; cursor: pointer; width: 15px; height: 15px; }
+    .lx-forgot { font-size: 0.82rem; color: #00cc00; text-decoration: none; font-weight: 500; }
+    .lx-forgot:hover { color: #00ff44; text-decoration: underline; }
+    .lx-submit { width: 100%; background: linear-gradient(135deg,#00cc00,#008f11); color: #fff; border: none; border-radius: 12px; padding: 13px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.25s ease; box-shadow: 0 6px 22px rgba(0,204,0,0.3); display: flex; align-items: center; justify-content: center; gap: 8px; font-family: ''Poppins'',sans-serif; }
+    .lx-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(0,204,0,0.42); }
+    .lx-submit:active { transform: translateY(0); }
+    .lx-submit .lx-spin { display: none; }
+    .lx-submit.loading .lx-spin { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .lx-submit.loading .lx-txt { display: none; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .lx-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; font-size: 0.78rem; color: rgba(255,255,255,0.25); }
+    .lx-divider::before,.lx-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
+    .lx-socials { display: flex; gap: 10px; }
+    .lx-social-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px; font-size: 0.8rem; color: rgba(255,255,255,0.6); text-decoration: none; font-weight: 500; transition: all 0.2s ease; }
+    .lx-social-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.22); color: #fff; }
+    .lx-tg-login-wrap { display:flex; justify-content:center; margin:0 0 4px; min-height:46px; }
+    .lx-tg-error { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#fca5a5;
+        border-radius:10px; padding:11px 16px; font-size:0.82rem; margin-bottom:18px;
+        display:flex; align-items:flex-start; gap:8px; }
+    .lx-alert-success { background: rgba(0,204,0,0.12); border: 1px solid rgba(0,204,0,0.3); color: #86efac; border-radius: 10px; padding: 12px 16px; font-size: 0.85rem; margin-bottom: 22px; }
+    .lx-footer { position: relative; z-index: 2; background: rgba(6,12,6,0.9); border-top: 1px solid rgba(0,204,0,0.1); padding: 28px 0; }
+    .lx-footer-inner { max-width: 1000px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .lx-footer-copy { font-size: 0.78rem; color: rgba(255,255,255,0.3); }
+    .lx-footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
+    .lx-footer-links a { font-size: 0.78rem; color: rgba(255,255,255,0.35); text-decoration: none; transition: color 0.2s; }
+    .lx-footer-links a:hover { color: #00cc00; }
+    [data-bs-theme="light"] body { background: #f0f8f0; color: #111; }
+    [data-bs-theme="light"] .lx-bg { background-image: linear-gradient(rgba(0,153,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,153,0,0.04) 1px,transparent 1px); }
+    [data-bs-theme="light"] .lx-topbar { background: rgba(255,255,255,0.97); border-color: rgba(0,153,0,0.15); }
+    [data-bs-theme="light"] .lx-brand { color: #111; }
+    [data-bs-theme="light"] .lx-theme-btn { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); color: #555; }
+    [data-bs-theme="light"] .lx-wrap { background: #fff; border-color: rgba(0,153,0,0.15); box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
+    [data-bs-theme="light"] .lx-left { background: linear-gradient(160deg,#f0fff0 0%,#e8f8e8 100%); border-right-color: rgba(0,153,0,0.12); }
+    [data-bs-theme="light"] .lx-left::before { background: radial-gradient(circle at 30% 60%,rgba(0,153,0,0.07) 0%,transparent 60%); }
+    [data-bs-theme="light"] .lx-left-logo-text,[data-bs-theme="light"] .lx-left h2 { color: #0a1a0a; }
+    [data-bs-theme="light"] .lx-left p,[data-bs-theme="light"] .lx-left-features li { color: rgba(0,0,0,0.55); }
+    [data-bs-theme="light"] .lx-coin-pill { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.09); color: #555; }
+    [data-bs-theme="light"] .lx-right-head h1 { color: #0a1a0a; }
+    [data-bs-theme="light"] .lx-right-head p { color: rgba(0,0,0,0.45); }
+    [data-bs-theme="light"] .lx-label { color: rgba(0,0,0,0.6); }
+    [data-bs-theme="light"] .lx-field { background: rgba(0,0,0,0.03) !important; border-color: rgba(0,0,0,0.12) !important; color: #111 !important; }
+    [data-bs-theme="light"] .lx-field::placeholder { color: rgba(0,0,0,0.3); }
+    [data-bs-theme="light"] .lx-field:focus { background: rgba(0,153,0,0.04) !important; border-color: rgba(0,153,0,0.5) !important; }
+    [data-bs-theme="light"] .lx-pw-toggle { color: rgba(0,0,0,0.3); }
+    [data-bs-theme="light"] .lx-check-label { color: rgba(0,0,0,0.5); }
+    [data-bs-theme="light"] .lx-divider { color: rgba(0,0,0,0.2); }
+    [data-bs-theme="light"] .lx-divider::before,[data-bs-theme="light"] .lx-divider::after { background: rgba(0,0,0,0.1); }
+    [data-bs-theme="light"] .lx-social-btn { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.1); color: #555; }
+    [data-bs-theme="light"] .lx-social-btn:hover { background: rgba(0,0,0,0.07); color: #111; }
+    [data-bs-theme="light"] .lx-footer { background: rgba(240,248,240,0.97); border-color: rgba(0,153,0,0.12); }
+    [data-bs-theme="light"] .lx-footer-copy { color: rgba(0,0,0,0.3); }
+    [data-bs-theme="light"] .lx-footer-links a { color: rgba(0,0,0,0.35); }
+    @media (max-width:768px) { .lx-wrap{grid-template-columns:1fr} .lx-left{display:none} .lx-right{padding:38px 28px} }
+    @media (max-width:480px) { .lx-right{padding:28px 20px} .lx-socials{flex-direction:column} }
   </style>
 </head>
 <body>
-@if(session('status'))
-    <script type="text/javascript">
-        toastr.success("{{ session('status') }}");
-    </script>
-@endif
-@include('components.navbar')
+  <div class="lx-bg"></div>
+  <div class="lx-orb1"></div>
+  <div class="lx-orb2"></div>
 
-
-
-
-
-<!-- Login Form -->
-<div class="container">
-  <div class="card p-4">
-    <h3 class="text-center">Login</h3>
-
-    @if (session('status'))
-      <div class="alert alert-success mb-4">{{ session('status') }}</div>
-    @endif
-
-    <form method="POST" action="{{ route('login') }}">
-      <img src="{{ asset('assets/favicon.png') }}" alt="Login Illustration" class="animated-image mt-3 mb-4">
-      @csrf
-
-      <div class="mb-3">
-        <label for="email" class="form-label">Email</label>
-        <input id="email" type="email" class="form-control" name="email"
-               value="{{ old('email') }}" required autofocus autocomplete="username">
-        @error('email')
-          <div class="text-danger mt-1">{{ $message }}</div>
-        @enderror
+  <header class="lx-topbar">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a class="lx-brand" href="{{ url('/') }}">
+        <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+        Kay<span>Xchange</span>
+      </a>
+      <div class="d-flex align-items-center gap-3">
+        <a href="{{ url('/home') }}" class="lx-back-link"><i class="bi bi-arrow-left"></i>Back to Home</a>
+        <button id="lx-theme-btn" class="lx-theme-btn" title="Toggle theme">
+          <i class="bi bi-moon-stars-fill" id="lx-theme-icon"></i>
+        </button>
       </div>
+    </div>
+  </header>
 
-      <div class="mb-3">
-        <label for="password" class="form-label">Password</label>
-        <div class="position-relative">
-          <input id="password" type="password" class="form-control" name="password"
-                 required autocomplete="current-password">
-          <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent" 
-                  id="toggle-password" style="z-index: 10; padding: 0 10px;" aria-label="Toggle password visibility">
-            <i class="fas fa-eye" id="eye-icon"></i>
-          </button>
+  <main class="lx-main">
+    <div class="lx-wrap">
+
+      <div class="lx-left">
+        <div class="lx-left-logo">
+          <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+          <div class="lx-left-logo-text">Kay<span>Xchange</span></div>
         </div>
-        @error('password')
-          <div class="text-danger mt-1">{{ $message }}</div>
-        @enderror
+        <h2>Welcome<br>back, <em>trader.</em></h2>
+        <p>Sign in to access your dashboard, check live rates, and manage your crypto trades instantly.</p>
+        <ul class="lx-left-features">
+          <li><i class="bi bi-shield-check-fill"></i>Secure &amp; encrypted transactions</li>
+          <li><i class="bi bi-lightning-charge-fill"></i>Instant NGN settlements</li>
+          <li><i class="bi bi-graph-up-arrow"></i>Live crypto rates — BTC, ETH, USDT &amp; more</li>
+          <li><i class="bi bi-headset"></i>24/7 customer support</li>
+          <li><i class="bi bi-person-check-fill"></i>No KYC required to start</li>
+        </ul>
+        <div class="lx-left-coins">
+          <span class="lx-coin-pill"><span class="lx-ci lx-ci-btc">&#8383;</span>Bitcoin</span>
+          <span class="lx-coin-pill"><span class="lx-ci lx-ci-eth">&#926;</span>Ethereum</span>
+          <span class="lx-coin-pill"><span class="lx-ci lx-ci-usdt">&#8366;</span>USDT</span>
+          <span class="lx-coin-pill"><span class="lx-ci lx-ci-ltc">&#321;</span>Litecoin</span>
+          <span class="lx-coin-pill"><span class="lx-ci lx-ci-xrp">&#10005;</span>XRP</span>
+        </div>
       </div>
 
-      <div class="form-check mb-3">
-        <input id="remember_me" type="checkbox" class="form-check-input" name="remember">
-        <label for="remember_me" class="form-check-label text-success">Remember me</label>
-      </div>
+      <div class="lx-right">
+        <div class="lx-right-head">
+          <h1>Sign in</h1>
+          <p>New here? <a href="{{ route('register') }}">Create an account &rarr;</a></p>
+        </div>
 
-      <div class="d-flex justify-content-between align-items-center">
-        @if (Route::has('password.request'))
-          <a href="{{ route('password.request') }}" class="text-decoration-none text-success">Forgot your password?</a>
+        @if(session('status'))
+          <div class="lx-alert-success">
+            <i class="bi bi-check-circle me-2"></i>{{ session('status') }}
+          </div>
         @endif
-      </div>
 
-      <div class="d-flex justify-content-between align-items-center mt-3">
-        <a href="{{ route('register') }}" class="text-decoration-none text-success">Don't have an account? Register</a> 
-      </div>
-      <br>
-        <button type="submit" class="btn btn-success"> <span>Log in</span></button>
-    </form>
-  </div>
-</div>
+        <form method="POST" action="{{ route('login') }}" id="lx-login-form" novalidate>
+          @csrf
 
-<!-- Modern Footer -->
-<footer>
-  <div class="footer-content">
-    <div class="footer-grid">
-      <!-- Company Info -->
-      <div class="footer-section">
-        <h4>KayXchange</h4>
-        <p>Your trusted cryptocurrency exchange platform. Buy, sell, and trade digital assets securely with competitive rates and fast transactions.</p>
-        <div class="trust-badges">
-          <div class="trust-badge">
-            <i class="fas fa-shield-alt"></i>
-            <span>Secure</span>
+          <div class="mb-4">
+            <label for="email" class="lx-label">Email address</label>
+            <input id="email" name="email" type="email"
+              class="lx-field @error('email') is-invalid @enderror"
+              value="{{ old('email') }}"
+              placeholder="you@example.com"
+              required autofocus autocomplete="username">
+            @error('email')
+              <div class="lx-error"><i class="bi bi-exclamation-circle"></i>{{ $message }}</div>
+            @enderror
           </div>
-          <div class="trust-badge">
-            <i class="fas fa-clock"></i>
-            <span>24/7 Support</span>
+
+          <div class="mb-2">
+            <label for="password" class="lx-label">Password</label>
+            <div class="lx-pw-wrap">
+              <input id="password" name="password" type="password"
+                class="lx-field @error('password') is-invalid @enderror"
+                placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                required autocomplete="current-password"
+                style="padding-right:44px;">
+              <button type="button" class="lx-pw-toggle" id="lx-pw-toggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye" id="lx-eye-icon"></i>
+              </button>
+            </div>
+            @error('password')
+              <div class="lx-error"><i class="bi bi-exclamation-circle"></i>{{ $message }}</div>
+            @enderror
           </div>
-          <div class="trust-badge">
-            <i class="fas fa-lock"></i>
-            <span>Encrypted</span>
+
+          <div class="lx-row-extra">
+            <label class="lx-check-label">
+              <input type="checkbox" name="remember" id="remember_me" class="lx-check">
+              Remember me
+            </label>
+            @if(Route::has('password.request'))
+              <a href="{{ route('password.request') }}" class="lx-forgot">Forgot password?</a>
+            @endif
           </div>
-        </div>
-      </div>
 
-      <!-- Quick Links -->
-      <div class="footer-section">
-        <h4>Quick Links</h4>
-        <ul class="contact-info">
-          <li><a href="/rate" style="color: #cccccc; text-decoration: none;"><i class="fas fa-chart-line"></i> Exchange Rates</a></li>
-          <li><a href="/blog" style="color: #cccccc; text-decoration: none;"><i class="fas fa-blog"></i> Blog</a></li>
-          <li><a href="/faqs" style="color: #cccccc; text-decoration: none;"><i class="fas fa-question-circle"></i> FAQs</a></li>
-          <li><a href="/about" style="color: #cccccc; text-decoration: none;"><i class="fas fa-info-circle"></i> About Us</a></li>
-        </ul>
-      </div>
-
-      <!-- Contact Info -->
-      <div class="footer-section">
-        <h4>Contact Us</h4>
-        <ul class="contact-info">
-          <li><i class="fas fa-envelope"></i> support@kayxchange.com</li>
-          <li><i class="fas fa-phone"></i> +1 (555) 123-4567</li>
-          <li><i class="fas fa-map-marker-alt"></i> Lagos, Nigeria</li>
-          <li><i class="fas fa-clock"></i> Mon-Fri: 9AM-6PM GMT</li>
-        </ul>
-      </div>
-
-      <!-- Newsletter -->
-      <div class="footer-section">
-        <h4>Stay Updated</h4>
-        <p>Subscribe to our newsletter for the latest crypto news and market updates.</p>
-        <form class="newsletter-form" id="newsletter-form">
-          <input type="email" placeholder="Enter your email" required>
-          <button type="submit">Subscribe</button>
+          <button type="submit" class="lx-submit" id="lx-submit-btn">
+            <span class="lx-txt">Sign in &nbsp;<i class="bi bi-arrow-right-circle-fill"></i></span>
+            <span class="lx-spin"></span>
+          </button>
         </form>
-        <div class="social-links">
-          <a href="#" data-bs-toggle="tooltip" title="Follow us on Facebook"><i class="fab fa-facebook-f"></i></a>
-          <a href="#" data-bs-toggle="tooltip" title="Follow us on Twitter"><i class="fab fa-twitter"></i></a>
-          <a href="#" data-bs-toggle="tooltip" title="Follow us on Instagram"><i class="fab fa-instagram"></i></a>
-          <a href="#" data-bs-toggle="tooltip" title="Join our Telegram"><i class="fab fa-telegram-plane"></i></a>
-          <a href="#" data-bs-toggle="tooltip" title="Subscribe on YouTube"><i class="fab fa-youtube"></i></a>
+
+        {{-- Telegram Login --}}
+        @error('telegram')
+          <div class="lx-tg-error mt-3">
+            <i class="bi bi-telegram" style="font-size:1rem;flex-shrink:0"></i>
+            {{ $message }}
+          </div>
+        @enderror
+
+        <div class="lx-divider">or sign in with</div>
+
+        {{--
+          Telegram Login Widget (redirect / JS-callback mode).
+          Requires: BotFather → /setdomain → set to your app domain.
+          Local dev: use ngrok domain or set domain to the ngrok URL in BotFather.
+        --}}
+        <div class="lx-tg-login-wrap" id="tg-widget-wrap">
+          <script
+            async
+            src="https://telegram.org/js/telegram-widget.js?22"
+            data-telegram-login="{{ config('services.telegram.bot_username', 'TradewithkayxchangeBOT') }}"
+            data-size="large"
+            data-radius="10"
+            data-onauth="onTelegramAuth(user)"
+            data-request-access="write">
+          </script>
+        </div>
+
+        {{-- Hidden form that gets submitted by the JS widget callback --}}
+        <form id="tg-auth-form" method="POST" action="{{ route('telegram.login.callback') }}" style="display:none">
+          @csrf
+          <input type="hidden" name="id"         id="tg_f_id">
+          <input type="hidden" name="first_name" id="tg_f_first_name">
+          <input type="hidden" name="last_name"  id="tg_f_last_name">
+          <input type="hidden" name="username"   id="tg_f_username">
+          <input type="hidden" name="photo_url"  id="tg_f_photo_url">
+          <input type="hidden" name="auth_date"  id="tg_f_auth_date">
+          <input type="hidden" name="hash"       id="tg_f_hash">
+        </form>
+
+        <div class="lx-socials">
+          <a href="https://wa.me/+2349016740523" target="_blank" class="lx-social-btn">
+            <i class="bi bi-whatsapp" style="color:#25d366"></i> WhatsApp Trade
+          </a>
+          <a href="https://t.me/TradewithkayxchangeBOT" target="_blank" class="lx-social-btn">
+            <i class="bi bi-telegram" style="color:#0088cc"></i> Telegram Bot
+          </a>
         </div>
       </div>
+
     </div>
+  </main>
 
-    <div class="footer-bottom">
-      <p>&copy; {{ date('Y') }} KayXchange. All rights reserved. | <a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a> | <a href="#">Cookie Policy</a></p>
+  <footer class="lx-footer">
+    <div class="lx-footer-inner">
+      <p class="lx-footer-copy">&copy; {{ date('Y') }} KayXchange. All rights reserved.</p>
+      <nav class="lx-footer-links">
+        <a href="{{ url('/rate') }}">Rates</a>
+        <a href="{{ url('/blog') }}">Blog</a>
+        <a href="{{ url('/faqs') }}">FAQs</a>
+        <a href="{{ url('/about') }}">About</a>
+        <a href="{{ url('/privacy') }}">Privacy</a>
+        <a href="{{ url('/terms') }}">Terms</a>
+      </nav>
     </div>
-  </div>
-</footer>
+  </footer>
 
-<!-- Toastr JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-
-<!-- Optional JavaScript -->
-<script>
-  // Dark mode toggle functionality
-  const toggleButton = document.getElementById('toggle-mode');
-  const modeIcon = document.getElementById('mode-icon');
-  const body = document.body;
-
-  // Check for saved theme preference or default to light mode
-  const currentTheme = localStorage.getItem('theme') || 'light';
-  if (currentTheme === 'dark') {
-    body.classList.add('dark-mode');
-    if (modeIcon) modeIcon.classList.remove('bi-moon-stars-fill');
-    if (modeIcon) modeIcon.classList.add('bi-sun-fill');
-  }
-
-  if (toggleButton) {
-    toggleButton.addEventListener('click', function() {
-      body.classList.toggle('dark-mode');
-      
-      if (body.classList.contains('dark-mode')) {
-        localStorage.setItem('theme', 'dark');
-        if (modeIcon) {
-          modeIcon.classList.remove('bi-moon-stars-fill');
-          modeIcon.classList.add('bi-sun-fill');
-        }
-      } else {
-        localStorage.setItem('theme', 'light');
-        if (modeIcon) {
-          modeIcon.classList.remove('bi-sun-fill');
-          modeIcon.classList.add('bi-moon-stars-fill');
-        }
-      }
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+  <script>
+    (function(){
+      var html=document.documentElement;
+      var btn=document.getElementById('lx-theme-btn');
+      var icon=document.getElementById('lx-theme-icon');
+      var saved=localStorage.getItem('theme')||'dark';
+      html.setAttribute('data-bs-theme',saved);
+      if(icon) icon.className=saved==='dark'?'bi bi-moon-stars-fill':'bi bi-sun-fill';
+      if(btn){btn.addEventListener('click',function(){
+        var cur=html.getAttribute('data-bs-theme');
+        var next=cur==='dark'?'light':'dark';
+        html.setAttribute('data-bs-theme',next);
+        localStorage.setItem('theme',next);
+        if(icon) icon.className=next==='dark'?'bi bi-moon-stars-fill':'bi bi-sun-fill';
+      });}
+    })();
+    document.addEventListener('DOMContentLoaded',function(){
+      var t=document.getElementById('lx-pw-toggle');
+      var f=document.getElementById('password');
+      var i=document.getElementById('lx-eye-icon');
+      if(t&&f&&i){t.addEventListener('click',function(){
+        var show=f.type==='password';
+        f.type=show?'text':'password';
+        i.className=show?'bi bi-eye-slash':'bi bi-eye';
+      });}
+      var form=document.getElementById('lx-login-form');
+      var sub=document.getElementById('lx-submit-btn');
+      if(form&&sub){form.addEventListener('submit',function(){
+        sub.classList.add('loading');sub.disabled=true;
+      });}
     });
-  }
+    toastr.options={positionClass:'toast-top-right',timeOut:5000,extendedTimeOut:1000,showMethod:'slideDown',hideMethod:'slideUp',preventDuplicates:true};
+    @if(session('status')) toastr.success("{{ session('status') }}"); @endif
+    @if(session('error')) toastr.error("{{ session('error') }}"); @endif
 
-  // Newsletter form handling
-  const newsletterForm = document.getElementById('newsletter-form');
-  if (newsletterForm) {
-    newsletterForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const email = this.querySelector('input[type="email"]').value;
-      
-      // Simple email validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        toastr.error('Please enter a valid email address');
-        return;
-      }
-      
-      // Simulate subscription (replace with actual API call)
-      toastr.success('Thank you for subscribing! We\'ll keep you updated.');
-      this.reset();
-    });
-  }
-
-  // Initialize tooltips
-  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-  const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl);
-  });
-
-  // Back to top functionality
-  const backToTopBtn = document.getElementById('back-to-top');
-  if (backToTopBtn) {
-    window.addEventListener('scroll', function() {
-      if (window.pageYOffset > 300) {
-        backToTopBtn.style.display = 'block';
-      } else {
-        backToTopBtn.style.display = 'none';
-      }
-    });
-
-    backToTopBtn.addEventListener('click', function() {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
-
-  // Smooth scrolling for anchor links
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-      e.preventDefault();
-      const target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        target.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
-      }
-    });
-  });
-
-  document.addEventListener("DOMContentLoaded", function () {
-    // Password toggle functionality
-    const togglePasswordButton = document.getElementById('toggle-password');
-    const passwordField = document.getElementById('password');
-    const eyeIcon = document.getElementById('eye-icon');
-
-    if (togglePasswordButton && passwordField && eyeIcon) {
-      togglePasswordButton.addEventListener('click', function(e) {
-        e.preventDefault();
-        
-        const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
-        passwordField.setAttribute('type', type);
-        
-        // Toggle eye icon
-        if (type === 'text') {
-          eyeIcon.classList.remove('fa-eye');
-          eyeIcon.classList.add('fa-eye-slash');
-          togglePasswordButton.setAttribute('aria-label', 'Hide password');
-        } else {
-          eyeIcon.classList.remove('fa-eye-slash');
-          eyeIcon.classList.add('fa-eye');
-          togglePasswordButton.setAttribute('aria-label', 'Show password');
-        }
-      });
+    function onTelegramAuth(user) {
+      // Fill the hidden form and submit it
+      document.getElementById('tg_f_id').value         = user.id         || '';
+      document.getElementById('tg_f_first_name').value = user.first_name || '';
+      document.getElementById('tg_f_last_name').value  = user.last_name  || '';
+      document.getElementById('tg_f_username').value   = user.username   || '';
+      document.getElementById('tg_f_photo_url').value  = user.photo_url  || '';
+      document.getElementById('tg_f_auth_date').value  = user.auth_date  || '';
+      document.getElementById('tg_f_hash').value       = user.hash       || '';
+      document.getElementById('tg-auth-form').submit();
     }
-  });
-</script>
-
-@include('components.navbar-scripts')
-
-<script>
-  // Configure Toastr options
-  toastr.options = {
-    "positionClass": "toast-top-right",
-    "timeOut": "5000",
-    "extendedTimeOut": "1000",
-    "showMethod": "slideDown",
-    "hideMethod": "slideUp",
-    "preventDuplicates": true
-  };
-
-  // Show status message if present
-  @if(session('status'))
-    toastr.success("{{ session('status') }}");
-  @endif
-
-  @if(session('error'))
-    toastr.error("{{ session('error') }}");
-  @endif
-</script>
-
+  </script>
 </body>
 </html>

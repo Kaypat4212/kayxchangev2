@@ -44,6 +44,15 @@ class TelegramPollUpdates extends Command
         do {
             try {
                 $result = $telegramService->pollForUpdates();
+
+                // Webhook is active — stop the poller automatically
+                if ($result === 'webhook_conflict') {
+                    $this->error('🚫 A webhook is currently active. Polling cannot run alongside a webhook.');
+                    $this->warn('👉 To use polling: visit /api/telegram/setup-webhook?delete=1 to remove it first.');
+                    $this->warn('👉 Or just leave the webhook running — it handles all messages automatically.');
+                    return 1;
+                }
+
                 $pollCount++;
                 
                 if ($pollCount % 10 == 0) {

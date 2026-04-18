@@ -25,7 +25,7 @@ class NotificationController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'notifications' => $notifications,
-                'unread_count' => $this->getUnreadCount($user->id)
+                'unread_count' => $this->computeUnreadCount($user->id)
             ]);
         }
 
@@ -78,7 +78,7 @@ class NotificationController extends Controller
 
     public function getUnreadCount()
     {
-        $count = $this->getUnreadCount(Auth::id());
+        $count = $this->computeUnreadCount(Auth::id());
         return response()->json(['unread_count' => $count]);
     }
 
@@ -117,7 +117,8 @@ class NotificationController extends Controller
             ]);
         }
 
-        return view('admin.notifications.index', compact('notifications', 'stats'));
+        $users = User::select('id', 'name', 'email')->orderBy('name')->get();
+        return view('admin.notifications.index', compact('notifications', 'stats', 'users'));
     }
 
     public function adminCreate()
@@ -243,7 +244,7 @@ class NotificationController extends Controller
     }
 
     // Helper methods
-    private function getUnreadCount($userId)
+    private function computeUnreadCount($userId)
     {
         return Notification::forUser($userId)
             ->unread()
@@ -265,7 +266,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'notifications' => $notifications,
-            'unread_count' => $this->getUnreadCount($user->id)
+            'unread_count' => $this->computeUnreadCount($user->id)
         ]);
     }
 }

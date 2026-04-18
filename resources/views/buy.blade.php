@@ -1,805 +1,661 @@
 @extends('buylayout')
 
+@push('styles')
+<style>
+:root{
+    --kx-green:#00cc00;
+    --kx-dark:#0d1117;
+    --kx-card:#161b27;
+    --kx-card2:#1e2535;
+    --kx-border:rgba(255,255,255,0.07);
+    --kx-text:#e4e8f0;
+    --kx-muted:#7a8599;
+}
+body{background:var(--kx-dark);color:var(--kx-text);}
+
+.kx-hero{
+    background:linear-gradient(135deg,#0a1628 0%,#0d1f1a 100%);
+    border-bottom:1px solid var(--kx-border);
+    padding:1.5rem 1rem 1rem;
+    text-align:center;
+    margin-bottom:1.5rem;
+}
+.kx-hero h1{font-size:1.5rem;font-weight:700;color:#fff;margin:0 0 .25rem;}
+.kx-hero p{color:var(--kx-muted);font-size:.875rem;margin:0;}
+
+.kx-card{background:var(--kx-card);border:1px solid var(--kx-border);border-radius:16px;padding:1.5rem;margin-bottom:1rem;}
+
+/* Progress steps */
+.kx-steps{display:flex;gap:0;margin-bottom:1.5rem;}
+.kx-step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;}
+.kx-step:not(:last-child)::after{content:'';position:absolute;top:14px;left:50%;width:100%;height:2px;background:var(--kx-border);z-index:0;}
+.kx-step.active:not(:last-child)::after{background:var(--kx-green);}
+.step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;border:2px solid var(--kx-border);background:var(--kx-card2);color:var(--kx-muted);position:relative;z-index:1;}
+.kx-step.active .step-circle{border-color:var(--kx-green);background:rgba(0,204,0,.15);color:var(--kx-green);}
+.kx-step.done .step-circle{border-color:var(--kx-green);background:var(--kx-green);color:#000;}
+.step-label{font-size:.72rem;color:var(--kx-muted);margin-top:.3rem;text-align:center;}
+.kx-step.active .step-label{color:var(--kx-green);}
+
+/* Coin selector */
+.coin-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem;}
+.coin-card{background:var(--kx-card2);border:2px solid var(--kx-border);border-radius:12px;padding:.85rem .5rem;text-align:center;cursor:pointer;transition:all .2s;}
+.coin-card:hover{border-color:rgba(255,255,255,.2);}
+.coin-card.selected-btc{border-color:#f7931a;background:rgba(247,147,26,.1);}
+.coin-card.selected-eth{border-color:#627eea;background:rgba(98,126,234,.1);}
+.coin-card.selected-usdt{border-color:#26a17b;background:rgba(38,161,123,.1);}
+.coin-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;margin:0 auto .5rem;}
+.coin-icon.btc{background:rgba(247,147,26,.2);color:#f7931a;}
+.coin-icon.eth{background:rgba(98,126,234,.2);color:#627eea;}
+.coin-icon.usdt{background:rgba(38,161,123,.2);color:#26a17b;}
+.coin-name{font-size:.8rem;font-weight:600;color:var(--kx-text);}
+.coin-ticker{font-size:.7rem;color:var(--kx-muted);}
+
+/* Rate badge */
+.rate-badge{background:rgba(0,204,0,.1);border:1px solid rgba(0,204,0,.25);border-radius:8px;padding:.5rem 1rem;text-align:center;font-size:.85rem;color:var(--kx-green);margin-bottom:1rem;}
+
+/* Inputs */
+.kx-label{font-size:.8rem;font-weight:600;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;}
+.kx-input{background:var(--kx-card2)!important;border:1px solid var(--kx-border)!important;color:var(--kx-text)!important;border-radius:10px!important;padding:.75rem 1rem!important;font-size:.95rem!important;}
+.kx-input:focus{border-color:var(--kx-green)!important;box-shadow:0 0 0 3px rgba(0,204,0,.1)!important;outline:none!important;}
+.kx-input[readonly]{background:rgba(255,255,255,.03)!important;color:var(--kx-muted)!important;}
+.input-group .kx-input{border-radius:10px 0 0 10px!important;}
+
+/* Toggle btn */
+.btn-toggle{background:var(--kx-card2);border:1px solid var(--kx-border);color:var(--kx-green);border-radius:0 10px 10px 0!important;padding:.75rem 1rem;transition:background .2s;}
+.btn-toggle:hover{background:rgba(0,204,0,.1);color:var(--kx-green);}
+
+/* Conversion display */
+.conversion-box{background:rgba(0,204,0,.05);border:1px solid rgba(0,204,0,.15);border-radius:10px;padding:1rem;margin-bottom:1rem;display:none;}
+.conversion-box.visible{display:block;}
+.conversion-box .conv-label{font-size:.75rem;color:var(--kx-muted);margin-bottom:.25rem;}
+.conversion-box .conv-value{font-size:1.2rem;font-weight:700;color:var(--kx-green);}
+
+/* Guidelines */
+.kx-guide{background:rgba(0,204,0,.05);border:1px solid rgba(0,204,0,.12);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;}
+.kx-guide h6{color:var(--kx-green);font-size:.85rem;font-weight:700;margin-bottom:.6rem;}
+.kx-guide ul{list-style:none;padding:0;margin:0;}
+.kx-guide li{font-size:.8rem;color:var(--kx-muted);padding:.2rem 0;padding-left:1.1rem;position:relative;}
+.kx-guide li::before{content:'\2713';color:var(--kx-green);position:absolute;left:0;}
+
+/* Wallet info pill */
+.wallet-info-row{background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;}
+.wallet-info-row .wi-label{font-size:.75rem;color:var(--kx-muted);}
+.wallet-info-row .wi-value{font-size:.9rem;color:var(--kx-text);font-weight:600;}
+
+/* Buttons */
+.btn-kx-primary{background:var(--kx-green);border:none;color:#000;font-weight:700;border-radius:10px;padding:.85rem 1.5rem;font-size:.95rem;width:100%;transition:all .2s;}
+.btn-kx-primary:hover{background:#00e600;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,204,0,.3);}
+.btn-kx-primary:disabled{opacity:.5;transform:none;cursor:not-allowed;}
+.btn-kx-secondary{background:var(--kx-card2);border:1px solid var(--kx-border);color:var(--kx-text);font-weight:600;border-radius:10px;padding:.85rem 1.5rem;font-size:.95rem;width:100%;transition:background .2s;}
+.btn-kx-secondary:hover{background:rgba(255,255,255,.06);}
+
+/* Toast */
+.kx-toast{position:fixed;top:1rem;right:1rem;z-index:9999;min-width:220px;padding:.75rem 1rem;border-radius:10px;font-size:.875rem;font-weight:500;display:none;}
+.kx-toast.success{background:#0d2d0d;border:1px solid var(--kx-green);color:var(--kx-green);}
+.kx-toast.error{background:#2d0d0d;border:1px solid #ff4444;color:#ff4444;}
+
+/* Other sources section */
+.os-section{margin-top:1.5rem;}
+.os-header{display:flex;align-items:center;gap:.6rem;margin-bottom:.85rem;}
+.os-header-icon{width:32px;height:32px;border-radius:8px;background:rgba(99,160,255,.12);display:flex;align-items:center;justify-content:center;color:#63a0ff;font-size:1rem;flex-shrink:0;}
+.os-header h6{margin:0;font-size:.92rem;font-weight:700;color:var(--kx-text);}
+.os-header p{margin:0;font-size:.76rem;color:var(--kx-muted);}
+.os-disclaimer{background:rgba(255,183,77,.06);border:1px solid rgba(255,183,77,.2);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.8rem;color:#c8a256;line-height:1.55;}
+.os-disclaimer i{color:#ffb74d;}
+.os-grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;}
+.os-card{background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:12px;padding:.85rem .9rem;display:flex;align-items:flex-start;gap:.65rem;transition:border-color .2s;}
+.os-card:hover{border-color:rgba(255,255,255,.18);}
+.os-card-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;flex-shrink:0;}
+.os-card-body{min-width:0;}
+.os-card-name{font-size:.82rem;font-weight:700;color:var(--kx-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.os-card-desc{font-size:.72rem;color:var(--kx-muted);margin-top:.1rem;line-height:1.4;}
+.os-card-tag{display:inline-block;font-size:.65rem;padding:.1rem .45rem;border-radius:4px;margin-top:.3rem;font-weight:600;}
+.os-manual-note{background:rgba(0,204,0,.05);border:1px solid rgba(0,204,0,.15);border-radius:10px;padding:.8rem 1rem;margin-top:1rem;display:flex;gap:.6rem;align-items:flex-start;font-size:.8rem;color:var(--kx-muted);line-height:1.55;}
+.os-manual-note i{color:var(--kx-green);font-size:1rem;margin-top:.05rem;flex-shrink:0;}
+</style>
+@endpush
+
 @section('content')
-    @php
-        $balance = auth()->user()?->balance ?? 0;
-    @endphp
+    @php $balance = auth()->user()?->balance ?? 0; @endphp
 
-    <div class="min-vh-100 d-flex align-items-center justify-content-center p-3 p-md-4">
-        <div class="card bg-dark text-light shadow-lg border-0 w-100 animate-slide-up" style="max-width: 450px;">
-            <div class="card-body p-4 p-md-5">
-                <!-- Toast notification container -->
-                <div id="toast" class="toast"></div>
+<div class="kx-toast" id="kxToast"></div>
 
-                <!-- Guidelines section -->
-                <div class="guidelines animate-fade mb-4">
-                    <h4 class="fw-bold text-white text-center">How to Buy Crypto</h4>
-                    <ul>
-                        <li>Select the cryptocurrency (BTC, ETH, or USDT-TRC20).</li>
-                        <li>Enter the amount in USD or Naira (minimum $10 or ₦14,000).</li>
-                        <li>Review the exchange rate and converted amount.</li>
-                        <li>Enter your wallet address and confirm the network.</li>
-                        <li>Confirm the purchase after verifying all details.</li>
-                    </ul>
-                </div>
+<div class="kx-hero">
+    <h1><i class="bi bi-arrow-down-circle-fill me-2" style="color:var(--kx-green);"></i>Buy Crypto</h1>
+    <p>Purchase BTC, ETH or USDT instantly with Naira</p>
+</div>
 
-                <!-- Heading -->
-                <h3 class="h2 fw-bold text-center mb-3 text-success">Buy Crypto</h3>
-                <p class="text-center text-white mb-4">Complete the purchase in two simple steps.</p>
+<div class="container-fluid px-3 pb-4">
+<div class="row justify-content-center">
+<div class="col-xl-5 col-lg-6 col-md-8">
 
-                <form method="POST" action="{{ route('buy.submit') }}" id="buyForm">
-                    @csrf
-
-                    <input type="hidden" name="input_type" id="inputType" value="usd">
-                    <input type="hidden" name="selected_coin" id="selectedCoinInput" value="">
-
-                    <!-- Step 1: Coin and Amount -->
-                    <div id="step1" class="fade-in">
-                        <div class="mb-4">
-                            <label for="coin" class="form-label fw-semibold">
-                                Select Coin
-                                <span class="position-relative d-inline-block" data-bs-toggle="tooltip"
-                                    data-bs-title="Choose Bitcoin, Ethereum, or Tether (TRC20).">
-                                    <i class="bi bi-info-circle text-muted ms-1"></i>
-                                </span>
-                            </label>
-                            <select name="coin" id="coin" class="form-select bg-dark text-light border-secondary"
-                                required onchange="updateRate()">
-                                <option value="">Choose a coin</option>
-                                <option value="BTC">Bitcoin (BTC)</option>
-                                <option value="ETH">Ethereum (ETH)</option>
-                                <option value="USDT">Tether (USDT-TRC20)</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-4">
-                            <label id="inputLabel" for="amountInput" class="form-label fw-semibold">
-                                Amount (USD)
-                                <span class="position-relative d-inline-block" data-bs-toggle="tooltip"
-                                    data-bs-title="Enter amount in USD or Naira (minimum $10 or ₦14,000).">
-                                    <i class="bi bi-info-circle text-muted ms-1"></i>
-                                </span>
-                            </label>
-                            <div class="input-group">
-                                <input type="number" name="amount" id="amountInput" step="0.01" min="10"
-                                    class="form-control bg-dark text-light border-secondary" required
-                                    aria-describedby="amountHelp">
-                                <button type="button" id="toggleCurrency" class="btn btn-success animate-pulse"
-                                    aria-label="Toggle Currency">
-                                    <i class="bi bi-currency-exchange"></i>
-                                </button>
-                            </div>
-                            <small id="amountHelp" class="form-text text-white">Minimum amount is $10 USD or ₦14,000</small>
-                        </div>
-
-                        <div class="mb-4">
-                            <label id="convertedLabel" for="convertedAmount" class="form-label fw-semibold">
-                                You'll Pay (₦)
-                                <span class="position-relative d-inline-block" data-bs-toggle="tooltip"
-                                    data-bs-title="Equivalent amount based on current exchange rate.">
-                                    <i class="bi bi-info-circle text-muted ms-1"></i>
-                                </span>
-                            </label>
-                            <input type="text" id="convertedAmount"
-                                class="form-control bg-dark text-light border-secondary" readonly
-                                aria-describedby="convertedHelp">
-                            <small id="convertedHelp" class="form-text text-white">Converted amount based on the selected
-                                coin's rate.</small>
-                        </div>
-
-                        <div class="text-center mb-4">
-                            <button type="button" class="btn btn-success animate-pulse" disabled
-                                aria-label="Exchange Rate">
-                                Rate: <span id="rateValue">-</span>
-                            </button>
-                        </div>
-
-                        <button type="button" id="nextButton" class="btn btn-success w-100 animate-pulse"
-                            aria-label="Continue to Step 2">
-                            <span id="nextButtonText">Continue</span>
-                            <i id="nextSpinner" class="bi bi-arrow-repeat ms-2 d-none"></i>
-                        </button>
-                    </div>
-
-                    <!-- Step 2: Wallet and Network -->
-                    <div id="step2" class="d-none fade-in">
-                        <div class="mb-4">
-                            <p class="fw-semibold">
-                                Selected Coin: <span id="selectedCoinDisplay" class="fw-bold text-success"></span>
-                            </p>
-                        </div>
-                        <div class="mb-4">
-                            <label for="wallet_address" class="form-label fw-semibold">
-                                Your Wallet Address
-                                <span class="position-relative d-inline-block" data-bs-toggle="tooltip"
-                                    data-bs-title="Enter the wallet address for the selected coin and network.">
-                                    <i class="bi bi-info-circle text-white ms-1"></i>
-                                </span>
-                            </label>
-                            <input type="text" name="wallet_address" id="wallet_address"
-                                class="form-control bg-dark text-light border-secondary @error('wallet_address') border-danger @enderror"
-                                required aria-describedby="walletHelp">
-                            <small id="walletHelp" class="form-text text-white">Ensure this matches the selected coin and
-                                network.</small>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="network" class="form-label fw-semibold">
-                                Network
-                                <span class="position-relative d-inline-block" data-bs-toggle="tooltip"
-                                    data-bs-title="Select the blockchain network for the transaction.">
-                                    <i class="bi bi-info-circle text-muted ms-1"></i>
-                                </span>
-                            </label>
-                            <select name="network" id="network"
-                                class="form-select bg-dark text-light border-secondary @error('network') border-danger @enderror"
-                                required aria-describedby="networkHelp">
-                                <option value="">Select Network</option>
-                            </select>
-                            <small id="networkHelp" class="form-text text-white">Choose a network compatible with your
-                                wallet and coin.</small>
-                        </div>
-
-                        <div class="d-flex flex-column flex-md-row gap-3">
-                            <button type="button" class="btn btn-secondary flex-fill animate-pulse"
-                                onclick="goToStep1()" aria-label="Back to Step 1">
-                                Back
-                            </button>
-                            <button type="submit" id="submitButton" class="btn btn-success flex-fill animate-pulse"
-                                aria-label="Confirm Purchase">
-                                <span id="submitButtonText">Confirm Purchase</span>
-                                <i id="submitSpinner" class="bi bi-arrow-repeat ms-2 d-none"></i>
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
+    <!-- Progress steps -->
+    <div class="kx-steps">
+        <div class="kx-step active" id="progressStep1">
+            <div class="step-circle" id="circleStep1">1</div>
+            <div class="step-label">Coin &amp; Amount</div>
+        </div>
+        <div class="kx-step" id="progressStep2">
+            <div class="step-circle" id="circleStep2">2</div>
+            <div class="step-label">Wallet &amp; Network</div>
         </div>
     </div>
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    <form method="POST" action="{{ route('buy.submit') }}" id="buyForm">
+        @csrf
+        <input type="hidden" name="input_type" id="inputType" value="usd">
+        <input type="hidden" name="selected_coin" id="selectedCoinInput" value="">
 
-        :root {
-            --primary-green: #22c55e;
-            --dark-bg: #1a1a1a;
-            --card-bg: #2c2c2c;
-            --text-muted: #a0a0a0;
-            --glow-color: rgba(34, 197, 94, 0.5);
-        }
+        <!-- ===== STEP 1 ===== -->
+        <div id="step1">
+            <div class="kx-guide">
+                <h6><i class="bi bi-info-circle me-1"></i>How to Buy</h6>
+                <ul>
+                    <li>Select a cryptocurrency below</li>
+                    <li>Enter the amount in USD or Naira (min $10 / &#8358;14,000)</li>
+                    <li>Review the rate then continue to Step 2</li>
+                </ul>
+            </div>
 
-        .card {
-            background: linear-gradient(135deg, var(--dark-bg), #2a3a2a) !important;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border-radius: 16px !important;
-        }
+            <!-- Coin cards -->
+            <div class="kx-label mb-1">Select Cryptocurrency</div>
+            <div class="coin-cards">
+                <div class="coin-card" id="coinCardBTC" onclick="selectCoin('BTC')">
+                    <div class="coin-icon btc"><i class="bi bi-currency-bitcoin"></i></div>
+                    <div class="coin-name">Bitcoin</div>
+                    <div class="coin-ticker">BTC</div>
+                </div>
+                <div class="coin-card" id="coinCardETH" onclick="selectCoin('ETH')">
+                    <div class="coin-icon eth"><i class="bi bi-gem"></i></div>
+                    <div class="coin-name">Ethereum</div>
+                    <div class="coin-ticker">ETH</div>
+                </div>
+                <div class="coin-card" id="coinCardUSDT" onclick="selectCoin('USDT')">
+                    <div class="coin-icon usdt"><i class="bi bi-cashstack"></i></div>
+                    <div class="coin-name">Tether</div>
+                    <div class="coin-ticker">USDT-TRC20</div>
+                </div>
+            </div>
+            <select name="coin" id="coin" class="d-none" required>
+                <option value="">Choose</option>
+                <option value="BTC">BTC</option>
+                <option value="ETH">ETH</option>
+                <option value="USDT">USDT</option>
+            </select>
 
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px var(--glow-color) !important;
-        }
+            <!-- Rate badge -->
+            <div class="rate-badge d-none" id="rateBadge">
+                <i class="bi bi-graph-up me-1"></i>Current Rate: <strong id="rateValue">&#8212;</strong>
+            </div>
 
-        .form-control,
-        .form-select {
-            background-color: #2d2d2d !important;
-            border-color: #3a3a3a !important;
-            color: #ffffff !important;
-            border-radius: 8px;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
+            <!-- Amount input -->
+            <div class="mb-3">
+                <div class="kx-label" id="inputLabel">Amount in USD</div>
+                <div class="input-group">
+                    <input type="number" name="amount" id="amountInput" step="0.01" min="10"
+                        class="form-control kx-input" placeholder="Enter amount" required>
+                    <button type="button" id="toggleCurrency" class="btn btn-toggle" title="Toggle USD / NGN">
+                        <i class="bi bi-currency-exchange"></i>
+                    </button>
+                </div>
+                <div class="form-text" style="color:var(--kx-muted);font-size:.75rem;">Min: $10 USD or &#8358;14,000</div>
+            </div>
 
-        .form-control:focus,
-        .form-select:focus {
-            border-color: var(--primary-green) !important;
-            box-shadow: 0 0 8px var(--glow-color) !important;
-        }
+            <!-- Conversion display -->
+            <div class="conversion-box" id="conversionBox">
+                <div class="conv-label" id="convertedLabel">You&#8217;ll Pay (&#8358;)</div>
+                <div class="conv-value" id="convertedAmount">&#8212;</div>
+            </div>
 
-        .form-control[readonly] {
-            background-color: #3a3a3a !important;
-            opacity: 1;
-        }
+            <button type="button" id="nextButton" class="btn-kx-primary" disabled>
+                Continue <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+        </div><!-- /step1 -->
 
-        .btn-success {
-            background-color: var(--primary-green);
-            border-color: var(--primary-green);
-            border-radius: 8px;
-            transition: background 0.3s ease, transform 0.3s ease;
-        }
+        <!-- ===== STEP 2 ===== -->
+        <div id="step2" class="d-none">
+            <!-- Summary pill -->
+            <div class="wallet-info-row d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <div class="wi-label">You&#8217;re buying</div>
+                    <div class="wi-value" id="step2CoinDisplay">&#8212;</div>
+                </div>
+                <div class="text-end">
+                    <div class="wi-label">Amount</div>
+                    <div class="wi-value" id="step2AmountDisplay" style="color:var(--kx-green);">&#8212;</div>
+                </div>
+            </div>
 
-        .btn-success:hover {
-            background-color: #16a34a;
-            border-color: #16a34a;
-            transform: scale(1.05);
-        }
+            <!-- Wallet address -->
+            <div class="mb-3">
+                <div class="kx-label">Your Wallet Address</div>
+                <input type="text" name="wallet_address" id="wallet_address"
+                    class="form-control kx-input @error('wallet_address') border-danger @enderror"
+                    placeholder="Paste your wallet address here" required>
+                <div class="form-text" style="color:var(--kx-muted);font-size:.75rem;">Double-check before confirming</div>
+                @error('wallet_address')
+                    <div class="text-danger mt-1" style="font-size:.8rem;">
+                        <i class="bi bi-exclamation-circle me-1"></i>{{ $message }}
+                    </div>
+                @enderror
+            </div>
 
-        .btn-secondary {
-            background-color: #3a3a3a;
-            border-color: #3a3a3a;
-            border-radius: 8px;
-            transition: background 0.3s ease, transform 0.3s ease;
-        }
+            <!-- Network -->
+            <div class="mb-3">
+                <div class="kx-label">Network</div>
+                <select name="network" id="network"
+                    class="form-select kx-input @error('network') border-danger @enderror" required>
+                    <option value="">Select Network</option>
+                </select>
+                @error('network')
+                    <div class="text-danger mt-1" style="font-size:.8rem;">
+                        <i class="bi bi-exclamation-circle me-1"></i>{{ $message }}
+                    </div>
+                @enderror
+            </div>
 
-        .btn-secondary:hover {
-            background-color: #4a4a4a;
-            border-color: #4a4a4a;
-            transform: scale(1.05);
-        }
+            <div class="d-flex gap-2">
+                <button type="button" class="btn-kx-secondary" style="width:auto;min-width:90px;" onclick="goToStep1()">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+                <button type="submit" id="submitButton" class="btn-kx-primary" style="flex:1;">
+                    <span id="submitButtonText">Confirm Purchase</span>
+                    <i id="submitSpinner" class="bi bi-arrow-repeat ms-2 d-none"></i>
+                </button>
+            </div>
+        </div><!-- /step2 -->
+    </form>
 
-        .btn:disabled {
-            opacity: 0.65;
-        }
+    <!-- ===== OTHER SOURCES ===== -->
+    <div class="os-section">
+        <div class="kx-card">
+            <div class="os-header">
+                <div class="os-header-icon"><i class="bi bi-shop"></i></div>
+                <div>
+                    <h6>Other Places to Buy Crypto</h6>
+                    <p>External platforms you can use to source your crypto</p>
+                </div>
+            </div>
 
-        .guidelines {
-            background: #14532d;
-            padding: 1rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px var(--glow-color);
-        }
+            <div class="os-disclaimer">
+                <i class="bi bi-shield-exclamation me-1"></i>
+                <strong>Heads up:</strong> The platforms below are independent third-party services. We do <strong>not</strong> endorse or take responsibility for any transactions made on them. Use them at your own discretion and always verify you are on the correct website before transacting.
+            </div>
 
-        .guidelines h4 {
-            font-size: 1.25rem;
-            margin-bottom: 0.75rem;
-        }
+            <div class="os-grid">
+                <!-- Simplex -->
+                <div class="os-card">
+                    <div class="os-card-icon" style="background:rgba(0,192,143,.12);color:#00c08f;"><i class="bi bi-credit-card-fill"></i></div>
+                    <div class="os-card-body">
+                        <div class="os-card-name">Simplex</div>
+                        <div class="os-card-desc">Buy crypto with debit/credit card instantly. No ID required for small amounts.</div>
+                        <span class="os-card-tag" style="background:rgba(0,192,143,.12);color:#00c08f;">Card</span>
+                    </div>
+                </div>
+                <!-- MoonPay -->
+                <div class="os-card">
+                    <div class="os-card-icon" style="background:rgba(118,67,255,.12);color:#7643ff;"><i class="bi bi-moon-stars-fill"></i></div>
+                    <div class="os-card-body">
+                        <div class="os-card-name">MoonPay</div>
+                        <div class="os-card-desc">Fast fiat-to-crypto gateway. Supports card, bank &amp; Apple Pay.</div>
+                        <span class="os-card-tag" style="background:rgba(118,67,255,.12);color:#7643ff;">Fast</span>
+                    </div>
+                </div>
+                <!-- BitPay -->
+                <div class="os-card">
+                    <div class="os-card-icon" style="background:rgba(0,126,255,.12);color:#007eff;"><i class="bi bi-shield-check-fill"></i></div>
+                    <div class="os-card-body">
+                        <div class="os-card-name">BitPay</div>
+                        <div class="os-card-desc">Trusted crypto payment processor. Buy BTC, ETH &amp; more securely.</div>
+                        <span class="os-card-tag" style="background:rgba(0,126,255,.12);color:#007eff;">Trusted</span>
+                    </div>
+                </div>
+                <!-- Bybit -->
+                <div class="os-card">
+                    <div class="os-card-icon" style="background:rgba(255,99,72,.12);color:#ff6348;"><i class="bi bi-bar-chart-fill"></i></div>
+                    <div class="os-card-body">
+                        <div class="os-card-name">Bybit</div>
+                        <div class="os-card-desc">P2P buying with NGN support and competitive rates.</div>
+                        <span class="os-card-tag" style="background:rgba(255,99,72,.12);color:#ff6348;">P2P</span>
+                    </div>
+                </div>
+                <!-- Coinbase -->
+                <div class="os-card">
+                    <div class="os-card-icon" style="background:rgba(0,129,255,.12);color:#0081ff;"><i class="bi bi-hexagon-fill"></i></div>
+                    <div class="os-card-body">
+                        <div class="os-card-name">Coinbase</div>
+                        <div class="os-card-desc">Beginner-friendly exchange. Buy with card or bank transfer.</div>
+                        <span class="os-card-tag" style="background:rgba(0,129,255,.12);color:#0081ff;">Beginner</span>
+                    </div>
+                </div>
+                <!-- Noones -->
+                <div class="os-card">
+                    <div class="os-card-icon" style="background:rgba(255,140,0,.12);color:#ff8c00;"><i class="bi bi-people-fill"></i></div>
+                    <div class="os-card-body">
+                        <div class="os-card-name">Noones</div>
+                        <div class="os-card-desc">Nigeria-popular P2P platform. Buy direct from local traders.</div>
+                        <span class="os-card-tag" style="background:rgba(255,140,0,.12);color:#ff8c00;">Nigeria</span>
+                    </div>
+                </div>
+            </div>
 
-        .guidelines ul {
-            list-style: none;
-            padding: 0;
-            color: #d1d5db;
-            font-size: 0.9rem;
-        }
+            <div class="os-manual-note">
+                <i class="bi bi-clock-history"></i>
+                <div>
+                    <strong style="color:var(--kx-text);">Our process is 100% manual.</strong> Once you place an order here, our team processes it by hand &#8212; verifying your details, sourcing the crypto, and sending it to your provided wallet. This typically takes <strong style="color:var(--kx-green);">15 &#8211; 60 minutes</strong> depending on network conditions. You can use any external platform above to buy crypto independently, but if you choose to buy through us, rest assured we take our time to ensure every order is handled carefully and delivered safely.
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /other sources -->
 
-        .guidelines li {
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: flex-start;
-        }
+</div>
+</div>
+</div><!-- /container -->
+@endsection
 
-        .guidelines li::before {
-            content: '✔';
-            color: var(--primary-green);
-            margin-right: 0.5rem;
-        }
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/bitcoin-address-validation@2.2.3/dist/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.min.js"></script>
+<script>
+(function() {
+    // DOM refs
+    const amountInput      = document.getElementById('amountInput');
+    const inputLabelEl     = document.getElementById('inputLabel');
+    const coinSelect       = document.getElementById('coin');
+    const rateValue        = document.getElementById('rateValue');
+    const rateBadge        = document.getElementById('rateBadge');
+    const nextButton       = document.getElementById('nextButton');
+    const submitButton     = document.getElementById('submitButton');
+    const submitButtonText = document.getElementById('submitButtonText');
+    const submitSpinner    = document.getElementById('submitSpinner');
+    const form             = document.getElementById('buyForm');
+    const step1            = document.getElementById('step1');
+    const step2            = document.getElementById('step2');
+    const selectedCoinInput = document.getElementById('selectedCoinInput');
+    const networkSelect    = document.getElementById('network');
+    const inputType        = document.getElementById('inputType');
+    const walletInput      = document.getElementById('wallet_address');
+    const conversionBox    = document.getElementById('conversionBox');
+    const convertedLabel   = document.getElementById('convertedLabel');
+    const convertedAmountEl = document.getElementById('convertedAmount');
+    const step2CoinDisplay  = document.getElementById('step2CoinDisplay');
+    const step2AmountDisplay = document.getElementById('step2AmountDisplay');
+    const progressStep1    = document.getElementById('progressStep1');
+    const progressStep2    = document.getElementById('progressStep2');
+    const circleStep2      = document.getElementById('circleStep2');
 
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
+    let isUSD = true;
+    let selectedCoin = '';
 
-        .animate-slide-up {
-            animation: slideUp 0.8s ease-in-out;
-        }
+    const rates = {!! json_encode($rates ?? ['BTC' => 1600, 'ETH' => 1500, 'USDT' => 1400]) !!};
 
-        .animate-pulse {
-            animation: glowPulse 2s infinite;
-        }
+    const networks = {
+        BTC:  [{ value: 'Bitcoin',  text: 'Bitcoin Network'  }],
+        ETH:  [{ value: 'Ethereum', text: 'Ethereum Network' }],
+        USDT: [{ value: 'Tron',     text: 'Tron Network'     }]
+    };
 
-        .bi-arrow-repeat {
-            animation: spin 1s linear infinite;
-        }
+    const fallbackPatterns = {
+        BTC:  { Bitcoin:  /^(1|3|bc1)[A-Za-z0-9]{25,74}$/ },
+        ETH:  { Ethereum: /^0x[a-fA-F0-9]{40}$/ },
+        USDT: { Tron:     /^T[A-Za-z0-9]{33}$/ }
+    };
 
-        .toast {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 0.9rem;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
+    const coinColors = { BTC: '#f7931a', ETH: '#627eea', USDT: '#26a17b' };
+    const coinLabels = { BTC: 'Bitcoin (BTC)', ETH: 'Ethereum (ETH)', USDT: 'USDT-TRC20' };
 
-        .toast.error {
-            background: #ef4444;
-        }
+    // Toast
+    function showToast(msg, type) {
+        const t = document.getElementById('kxToast');
+        t.textContent = msg;
+        t.className = 'kx-toast ' + type;
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
 
-        .toast.success {
-            background: #22c55e;
-        }
+    // Log errors silently
+    async function logErr(msg, details) {
+        try {
+            await fetch('/log-error', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ message: msg, details: details })
+            });
+        } catch(e) {}
+    }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes slideUp {
-            from {
-                transform: translateY(20px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes glowPulse {
-            0% {
-                box-shadow: 0 0 5px var(--glow-color);
-            }
-
-            50% {
-                box-shadow: 0 0 20px var(--glow-color);
-            }
-
-            100% {
-                box-shadow: 0 0 5px var(--glow-color);
-            }
-        }
-
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        @media (max-width: 576px) {
-            .card-body {
-                padding: 1.5rem !important;
-            }
-
-            .h2 {
-                font-size: 1.75rem;
-            }
-
-            .form-label {
-                font-size: 0.9rem;
-            }
-        }
-    </style>
-
-    <script>
-        // DOM elements
-        const amountInput = document.getElementById('amountInput');
-        const convertedAmount = document.getElementById('convertedAmount');
-        const inputLabel = document.getElementById('inputLabel');
-        const convertedLabel = document.getElementById('convertedLabel');
-        const coinSelect = document.getElementById('coin');
-        const rateValue = document.getElementById('rateValue');
-        const nextButton = document.getElementById('nextButton');
-        const submitButton = document.getElementById('submitButton');
-        const nextButtonText = document.getElementById('nextButtonText');
-        const submitButtonText = document.getElementById('submitButtonText');
-        const nextSpinner = document.getElementById('nextSpinner');
-        const submitSpinner = document.getElementById('submitSpinner');
-        const form = document.getElementById('buyForm');
-        const step1 = document.getElementById('step1');
-        const step2 = document.getElementById('step2');
-        const selectedCoinDisplay = document.getElementById('selectedCoinDisplay');
-        const selectedCoinInput = document.getElementById('selectedCoinInput');
-        const networkSelect = document.getElementById('network');
-        const toggleCurrency = document.getElementById('toggleCurrency');
-        const inputType = document.getElementById('inputType');
-        const walletAddressInput = document.getElementById('wallet_address');
-
-        // Initialize state
-        let isUSD = true;
-        let selectedCoin = '';
-        const rates = {!! json_encode($rates ?? ['BTC' => 1600, 'ETH' => 1500, 'USDT' => 1400]) !!};
-
-        // Network configurations
-        const networks = {
-            BTC: [{ value: 'Bitcoin', text: 'Bitcoin Network' }],
-            ETH: [{ value: 'Ethereum', text: 'Ethereum Network' }],
-            USDT: [{ value: 'Tron', text: 'Tron Network' }]
+    // Wallet validation
+    async function validateWallet(address, coin, network) {
+        if (!address) return { valid: false };
+        address = address.trim();
+        const lib = {
+            bitcoin: typeof bitcoinAddressValidation !== 'undefined',
+            ethers:  typeof ethers !== 'undefined',
+            tronweb: typeof TronWeb !== 'undefined'
         };
-
-        // Fallback regex patterns (matching BuyCryptoRequest.php)
-        const fallbackPatterns = {
-            BTC: {
-                Bitcoin: /^(1|3|bc1)[A-Za-z0-9]{25,74}$/
-            },
-            ETH: {
-                Ethereum: /^0x[a-fA-F0-9]{40}$/
-            },
-            USDT: {
-                Tron: /^T[A-Za-z0-9]{33}$/
-            }
-        };
-
-        // Log rates for debugging
-        console.log('Rates:', rates);
-
-        // Show toast notification (user-facing errors only)
-        function showToast(message, type) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type} animate-fade`;
-            toast.style.display = 'block';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 3000);
-        }
-
-        // Log errors to Laravel
-        async function logError(message, details) {
-            try {
-                await fetch('/log-error', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({ message, details })
-                });
-                console.log('Error logged:', message, details);
-            } catch (e) {
-                console.error('Failed to log error:', e);
-            }
-        }
-
-        // Validate wallet address
-        async function validateWalletAddress(address, coin, network) {
-            if (!address) {
-                return { valid: false, message: 'Wallet address is required.' };
-            }
-
-            address = address.trim();
-            const librariesAvailable = {
-                bitcoin: typeof bitcoinAddressValidation !== 'undefined',
-                ethers: typeof ethers !== 'undefined',
-                tronweb: typeof TronWeb !== 'undefined'
-            };
-
-            try {
-                if (coin === 'BTC' && network === 'Bitcoin') {
-                    if (librariesAvailable.bitcoin) {
-                        const validation = bitcoinAddressValidation(address);
-                        if (!validation.valid) {
-                            throw new Error('Invalid Bitcoin wallet address.');
-                        }
-                        return { valid: true };
-                    }
-                    throw new Error('bitcoin-address-validation not loaded');
-                } else if (coin === 'ETH' && network === 'Ethereum') {
-                    if (librariesAvailable.ethers) {
-                        if (!ethers.utils.isAddress(address)) {
-                            throw new Error('Invalid Ethereum wallet address.');
-                        }
-                        return { valid: true };
-                    }
-                    throw new Error('ethers.js not loaded');
-                } else if (coin === 'USDT' && network === 'Tron') {
-                    if (librariesAvailable.tronweb) {
-                        const tronWeb = new TronWeb({ fullHost: 'https://api.trongrid.io' });
-                        const isValid = await tronWeb.isAddress(address);
-                        if (!isValid) {
-                            throw new Error('Invalid Tron (TRC20) wallet address.');
-                        }
-                        return { valid: true };
-                    }
-                    throw new Error('tronweb not loaded');
-                } else {
-                    throw new Error(`Unsupported coin or network: ${coin}/${network}.`);
-                }
-            } catch (error) {
-                // Log error silently
-                logError('Wallet validation error', {
-                    coin,
-                    network,
-                    address,
-                    error: error.message,
-                    stack: error.stack,
-                    libraries: librariesAvailable
-                });
-
-                // Fallback to regex
-                if (fallbackPatterns[coin]?.[network]?.test(address)) {
-                    logError('Using regex fallback for wallet validation', { coin, network, address });
+        try {
+            if (coin === 'BTC' && network === 'Bitcoin') {
+                if (lib.bitcoin) {
+                    const v = bitcoinAddressValidation(address);
+                    if (!v.valid) throw new Error('Invalid Bitcoin address');
                     return { valid: true };
                 }
-
-                return { valid: false, message: 'Invalid wallet address.' };
+                throw new Error('bitcoin-address-validation not loaded');
+            } else if (coin === 'ETH' && network === 'Ethereum') {
+                if (lib.ethers) {
+                    if (!ethers.utils.isAddress(address)) throw new Error('Invalid Ethereum address');
+                    return { valid: true };
+                }
+                throw new Error('ethers not loaded');
+            } else if (coin === 'USDT' && network === 'Tron') {
+                if (lib.tronweb) {
+                    const tw = new TronWeb({ fullHost: 'https://api.trongrid.io' });
+                    if (!await tw.isAddress(address)) throw new Error('Invalid Tron address');
+                    return { valid: true };
+                }
+                throw new Error('tronweb not loaded');
             }
+        } catch(err) {
+            logErr('Wallet validation error', { coin, network, address, error: err.message });
+            if (fallbackPatterns[coin]?.[network]?.test(address)) return { valid: true };
         }
+        return { valid: false };
+    }
 
-        // Check library loading
-        async function checkLibraries() {
-            const librariesAvailable = {
-                bitcoin: typeof bitcoinAddressValidation !== 'undefined',
-                ethers: typeof ethers !== 'undefined',
-                tronweb: typeof TronWeb !== 'undefined'
-            };
-            if (!librariesAvailable.bitcoin || !librariesAvailable.ethers || !librariesAvailable.tronweb) {
-                logError('Validation libraries failed to load', { libraries: librariesAvailable });
-            }
-        }
+    // Select coin
+    window.selectCoin = function(coin) {
+        ['BTC','ETH','USDT'].forEach(c => {
+            document.getElementById('coinCard' + c).classList.remove('selected-btc','selected-eth','selected-usdt');
+        });
+        const cls = { BTC: 'selected-btc', ETH: 'selected-eth', USDT: 'selected-usdt' };
+        document.getElementById('coinCard' + coin).classList.add(cls[coin]);
+        coinSelect.value = coin;
+        selectedCoin = coin;
+        updateRate();
+        // re-evaluate next button
+        const val = parseFloat(amountInput.value) || 0;
+        nextButton.disabled = !val || (isUSD ? val < 10 : val < 14000);
+    };
 
-        // Update rate display
-        function updateRate() {
-            const coin = coinSelect.value;
-            if (coin && rates[coin]) {
-                rateValue.textContent = '₦' + parseFloat(rates[coin]).toLocaleString('en-NG') + '/USD';
-                calculateConversion();
-            } else {
-                rateValue.textContent = '-';
-                convertedAmount.value = '';
-                if (coin) {
-                    showToast('Rate unavailable for ' + coin + '. Please try again later.', 'error');
-                }
-            }
-        }
-
-        // Calculate USD/NGN conversion
-        function calculateConversion() {
-            const amount = parseFloat(amountInput.value) || 0;
-            const coin = coinSelect.value;
-            if (!coin || !rates[coin]) {
-                convertedAmount.value = '';
-                return;
-            }
-
-            const rate = rates[coin];
-            if (isUSD) {
-                if (amount < 10) {
-                    convertedAmount.value = '';
-                    return;
-                }
-                const naira = (amount * rate).toFixed(2);
-                convertedAmount.value = '₦' + parseFloat(naira).toLocaleString('en-NG');
-            } else {
-                if (amount < 14000) {
-                    convertedAmount.value = '';
-                    return;
-                }
-                const usd = (amount / rate).toFixed(2);
-                convertedAmount.value = '$' + parseFloat(usd).toLocaleString('en-US');
-            }
-        }
-
-        // Toggle currency mode
-        function toggleCurrencyMode() {
-            const amount = parseFloat(amountInput.value) || 0;
-            const coin = coinSelect.value;
-            if (!coin) {
-                showToast('Please select a coin first!', 'error');
-                return;
-            }
-            if (!rates[coin]) {
-                showToast('Rate unavailable for ' + coin + '. Please try again later.', 'error');
-                return;
-            }
-
-            const rate = rates[coin];
-            isUSD = !isUSD;
-            inputType.value = isUSD ? 'usd' : 'naira';
-
-            if (isUSD) {
-                inputLabel.textContent = 'Amount (USD)';
-                convertedLabel.textContent = "You'll Pay (₦)";
-                amountInput.step = '0.01';
-                amountInput.min = '10';
-                amountInput.placeholder = 'Enter amount in USD';
-                if (amount >= 14000) {
-                    amountInput.value = (amount / rate).toFixed(2);
-                } else {
-                    amountInput.value = '';
-                }
-            } else {
-                inputLabel.textContent = 'Amount (₦)';
-                convertedLabel.textContent = "You'll Receive (USD)";
-                amountInput.step = '1';
-                amountInput.min = '14000';
-                amountInput.placeholder = 'Enter amount in Naira';
-                if (amount >= 10) {
-                    amountInput.value = (amount * rate).toFixed(2);
-                } else {
-                    amountInput.value = '';
-                }
-            }
-
+    function updateRate() {
+        const coin = coinSelect.value;
+        if (coin && rates[coin]) {
+            rateValue.textContent = '\u20A6' + parseFloat(rates[coin]).toLocaleString('en-NG') + '/USD';
+            rateBadge.classList.remove('d-none');
             calculateConversion();
+        } else {
+            rateBadge.classList.add('d-none');
+            conversionBox.classList.remove('visible');
+        }
+    }
+
+    function calculateConversion() {
+        const amount = parseFloat(amountInput.value) || 0;
+        const coin   = coinSelect.value;
+        if (!coin || !rates[coin] || !amount) {
+            conversionBox.classList.remove('visible');
+            return;
+        }
+        const rate = rates[coin];
+        if (isUSD) {
+            if (amount < 10) { conversionBox.classList.remove('visible'); return; }
+            convertedLabel.textContent = "You'll Pay (\u20A6)";
+            convertedAmountEl.textContent = '\u20A6' + (amount * rate).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } else {
+            if (amount < 14000) { conversionBox.classList.remove('visible'); return; }
+            convertedLabel.textContent = "You'll Receive (USD)";
+            convertedAmountEl.textContent = '$' + (amount / rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        conversionBox.classList.add('visible');
+        nextButton.disabled = false;
+    }
+
+    // Toggle USD/NGN
+    document.getElementById('toggleCurrency').addEventListener('click', function() {
+        if (!selectedCoin) { showToast('Please select a coin first!', 'error'); return; }
+        const amount = parseFloat(amountInput.value) || 0;
+        const rate   = rates[selectedCoin] || 1;
+        isUSD = !isUSD;
+        inputType.value = isUSD ? 'usd' : 'naira';
+        if (isUSD) {
+            inputLabelEl.textContent = 'Amount in USD';
+            amountInput.step = '0.01'; amountInput.min = '10';
+            amountInput.placeholder = 'Enter amount in USD';
+            amountInput.value = amount >= 14000 ? (amount / rate).toFixed(2) : '';
+        } else {
+            inputLabelEl.textContent = 'Amount in Naira (\u20A6)';
+            amountInput.step = '1'; amountInput.min = '14000';
+            amountInput.placeholder = 'Enter amount in Naira';
+            amountInput.value = amount >= 10 ? Math.round(amount * rate) : '';
+        }
+        calculateConversion();
+    });
+
+    function updateNetworkOptions() {
+        networkSelect.innerHTML = '<option value="">Select Network</option>';
+        if (networks[selectedCoin]) {
+            networks[selectedCoin].forEach(function(n) {
+                const opt = document.createElement('option');
+                opt.value = n.value;
+                opt.textContent = n.text;
+                networkSelect.appendChild(opt);
+            });
+            if (networks[selectedCoin].length === 1) {
+                networkSelect.selectedIndex = 1;
+            }
+        }
+    }
+
+    // Go to step 2
+    window.goToStep2 = function() {
+        const amount = parseFloat(amountInput.value) || 0;
+        if (!selectedCoin) { showToast('Please select a cryptocurrency!', 'error'); return; }
+        if (!amount || (isUSD && amount < 10) || (!isUSD && amount < 14000)) {
+            showToast('Please enter a valid amount (min $10 or \u20A614,000).', 'error');
+            amountInput.classList.add('border-danger');
+            return;
+        }
+        amountInput.classList.remove('border-danger');
+        selectedCoinInput.value = selectedCoin;
+
+        step2CoinDisplay.innerHTML = '<span style="color:' + coinColors[selectedCoin] + '">' + (coinLabels[selectedCoin] || selectedCoin) + '</span>';
+        if (isUSD) {
+            step2AmountDisplay.textContent = '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } else {
+            step2AmountDisplay.textContent = '\u20A6' + amount.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
         }
 
-        // Update network options
-        function updateNetworkOptions() {
-            networkSelect.innerHTML = '<option value="">Select Network</option>';
-            const coin = coinSelect.value;
-            if (networks[coin]) {
-                networks[coin].forEach(network => {
-                    const option = document.createElement('option');
-                    option.value = network.value;
-                    option.textContent = network.text;
-                    networkSelect.appendChild(option);
-                });
-            }
+        updateNetworkOptions();
+
+        progressStep1.classList.add('done');
+        progressStep1.classList.remove('active');
+        progressStep2.classList.add('active');
+
+        step1.classList.add('d-none');
+        step2.classList.remove('d-none');
+    };
+
+    // Go back to step 1
+    window.goToStep1 = function() {
+        step2.classList.add('d-none');
+        step1.classList.remove('d-none');
+        progressStep1.classList.remove('done');
+        progressStep1.classList.add('active');
+        progressStep2.classList.remove('active');
+        networkSelect.innerHTML = '<option value="">Select Network</option>';
+    };
+
+    // Next button
+    nextButton.addEventListener('click', goToStep2);
+
+    // Amount input
+    amountInput.addEventListener('input', function() {
+        if (this.value < 0) this.value = '';
+        const val = parseFloat(this.value) || 0;
+        nextButton.disabled = !val || !selectedCoin || (isUSD ? val < 10 : val < 14000);
+        calculateConversion();
+    });
+
+    // Wallet real-time validation
+    walletInput.addEventListener('input', async function() {
+        const addr = this.value.trim();
+        const net  = networkSelect.value;
+        if (addr && selectedCoin && net) {
+            const v = await validateWallet(addr, selectedCoin, net);
+            this.classList.toggle('border-danger', !v.valid);
+        } else {
+            this.classList.remove('border-danger');
+        }
+    });
+
+    // Form submit
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (submitButton.disabled) return;
+
+        const wallet  = walletInput.value.trim();
+        const network = networkSelect.value;
+
+        if (!network) {
+            showToast('Please select a network!', 'error');
+            networkSelect.classList.add('border-danger');
+            return;
+        }
+        if (!wallet) {
+            showToast('Please enter your wallet address!', 'error');
+            walletInput.classList.add('border-danger');
+            return;
         }
 
-        // Proceed to Step 2
-        function goToStep2() {
-            const amount = parseFloat(amountInput.value) || 0;
-            const coin = coinSelect.value;
-            if (!coin) {
-                showToast('Please select a coin!', 'error');
-                coinSelect.classList.add('border-danger');
-                return;
-            }
-            if (!rates[coin]) {
-                showToast('Rate unavailable for ' + coin + '. Please try again later.', 'error');
-                coinSelect.classList.add('border-danger');
-                return;
-            }
-            if (!amount || (isUSD && amount < 10) || (!isUSD && amount < 14000)) {
-                showToast('Please enter a valid amount (minimum $10 or ₦14,000).', 'error');
-                amountInput.classList.add('border-danger');
-                return;
-            }
+        walletInput.classList.remove('border-danger');
+        networkSelect.classList.remove('border-danger');
 
-            coinSelect.classList.remove('border-danger');
-            amountInput.classList.remove('border-danger');
-
-            selectedCoin = coin;
-            selectedCoinInput.value = selectedCoin;
-            const coinText = coinSelect.options[coinSelect.selectedIndex].text;
-            selectedCoinDisplay.textContent = coinText;
-
-            nextButton.disabled = true;
-            nextButtonText.textContent = 'Processing...';
-            nextSpinner.classList.remove('d-none');
-
-            updateNetworkOptions();
-
-            setTimeout(() => {
-                step1.classList.add('d-none');
-                step2.classList.remove('d-none');
-                nextButton.disabled = false;
-                nextButtonText.textContent = 'Continue';
-                nextSpinner.classList.add('d-none');
-            }, 500);
-        }
-
-        // Return to Step 1
-        function goToStep1() {
-            step2.classList.add('d-none');
-            step1.classList.remove('d-none');
-            selectedCoin = '';
-            selectedCoinInput.value = '';
-            selectedCoinDisplay.textContent = '';
-            networkSelect.innerHTML = '<option value="">Select Network</option>';
-        }
-
-        // Form submission
-        form.addEventListener('submit', async function(event) {
-            event.preventDefault();
-            if (submitButton.disabled) return;
-
-            const walletAddress = walletAddressInput.value.trim();
-            const network = networkSelect.value;
-            const validNetworks = networks[selectedCoin]?.map(n => n.value) || [];
-
-            // Validate inputs
-            if (!network) {
-                showToast('Please select a network!', 'error');
-                networkSelect.classList.add('border-danger');
-                return;
-            }
-            if (!validNetworks.includes(network)) {
-                showToast('Selected network is not compatible with the chosen coin.', 'error');
-                networkSelect.classList.add('border-danger');
-                return;
-            }
-            if (!walletAddress) {
-                showToast('Please enter a wallet address!', 'error');
-                walletAddressInput.classList.add('border-danger');
-                return;
-            }
-
-            // Client-side validation (logged, not shown)
-            const walletValidation = await validateWalletAddress(walletAddress, selectedCoin, network);
-            if (!walletValidation.valid) {
-                logError('Client-side wallet validation failed', {
-                    coin: selectedCoin,
-                    network,
-                    address: walletAddress,
-                    message: walletValidation.message
-                });
-                // Allow submission; server-side will handle
-            }
-
-            walletAddressInput.classList.remove('border-danger');
-            networkSelect.classList.remove('border-danger');
-
-            submitButton.disabled = true;
-            submitButtonText.textContent = 'Processing...';
-            submitSpinner.classList.remove('d-none');
-
-            try {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                form.submit();
-            } catch (error) {
-                logError('Form submission error', {
-                    error: error.message,
-                    stack: error.stack
-                });
-                showToast('An error occurred during submission. Please try again.', 'error');
-                submitButton.disabled = false;
-                submitButtonText.textContent = 'Confirm Purchase';
-                submitSpinner.classList.add('d-none');
-            }
+        // Async validate (silent — server will catch invalid)
+        validateWallet(wallet, selectedCoin, network).then(function(v) {
+            if (!v.valid) logErr('Client wallet validation failed', { coin: selectedCoin, network, address: wallet });
         });
 
-        // Real-time wallet validation (logged, not shown)
-        walletAddressInput.addEventListener('input', async function() {
-            const walletAddress = this.value.trim();
-            const network = networkSelect.value;
-            if (walletAddress && selectedCoin && network) {
-                const validation = await validateWalletAddress(walletAddress, selectedCoin, network);
-                if (!validation.valid) {
-                    logError('Real-time wallet validation failed', {
-                        coin: selectedCoin,
-                        network,
-                        address: walletAddress,
-                        message: validation.message
-                    });
-                    this.classList.add('border-danger');
-                } else {
-                    this.classList.remove('border-danger');
-                }
-            } else {
-                this.classList.remove('border-danger');
-            }
-        });
+        submitButton.disabled = true;
+        submitButtonText.textContent = 'Processing...';
+        submitSpinner.classList.remove('d-none');
+        setTimeout(function() { form.submit(); }, 500);
+    });
 
-        // Event listeners
-        nextButton.addEventListener('click', goToStep2);
-        toggleCurrency.addEventListener('click', toggleCurrencyMode);
-        amountInput.addEventListener('input', () => {
-            if (amountInput.value < 0) {
-                amountInput.value = '';
-                showToast('Amount must be positive!', 'error');
-            }
-            calculateConversion();
-        });
-        coinSelect.addEventListener('change', updateRate);
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            checkLibraries();
-
-            // Display session messages
-            @if (session('success'))
-                showToast('{!! e(session('success')) !!}', 'success');
-            @elseif (session('error'))
-                showToast('{!! e(session('error')) !!}', 'error');
-            @endif
-
-            // Display Laravel validation errors
-            const errors = @json($errors->all());
-            if (errors.length > 0) {
-                errors.forEach(error => showToast(error, 'error'));
-            }
-
-            // Initialize rates
-            if (!Object.keys(rates).length) {
-                showToast('No rates available. Please try again later.', 'error');
-            } else if (coinSelect.value) {
-                updateRate();
-            }
-
-            // Initialize Bootstrap tooltips
-            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-            tooltipTriggerList.forEach(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-        });
-    </script>
-@endsection
-
-@section('scripts')
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bitcoin-address-validation@2.2.3/dist/index.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.min.js"></script>
-@endsection
+    // Init
+    document.addEventListener('DOMContentLoaded', function() {
+        @if(session('success'))
+            showToast(@json(session('success')), 'success');
+        @elseif(session('error'))
+            showToast(@json(session('error')), 'error');
+        @endif
+        var errs = @json($errors->all());
+        if (errs.length) errs.forEach(function(e) { showToast(e, 'error'); });
+    });
+})();
+</script>
+@endpush

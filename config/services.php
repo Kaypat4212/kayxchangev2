@@ -32,12 +32,59 @@ return [
     ],
 
     'telegram' => [
-        'token' => env('TELEGRAM_TOKEN'),
-        'chat_id' => env('TELEGRAM_CHAT_ID'),
+        'token'        => env('TELEGRAM_TOKEN'),
+        'chat_id'      => env('TELEGRAM_CHAT_ID'),
+        'bot_username' => env('TELEGRAM_BOT_USERNAME', 'TradewithkayxchangeBOT'),
+    ],
+
+    'groq' => [
+        'api_key' => env('GROQ_API_KEY'),
+        'model'   => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+        'api_url' => env('GROQ_API_URL', 'https://api.groq.com/openai/v1/chat/completions'),
+    ],
+
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'model'   => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        'api_url' => env('OPENAI_API_URL', 'https://api.openai.com/v1/chat/completions'),
+    ],
+
+    'deepseek' => [
+        'api_key' => env('DEEPSEEK_API_KEY'),
+        'model'   => env('DEEPSEEK_MODEL', 'deepseek-chat'),
+        'api_url' => env('DEEPSEEK_API_URL', 'https://api.deepseek.com/chat/completions'),
     ],
     
     'paystack' => [
-    'secret' => env('PAYSTACK_SECRET_KEY'),
-],
+        'secret_key' => env('PAYSTACK_SECRET_KEY'),
+        'public_key' => env('PAYSTACK_PUBLIC_KEY'),
+    ],
+
+    'korapay' => [
+        'secret_key' => env('KORAPAY_SECRET_KEY'),
+        'public_key' => env('KORAPAY_PUBLIC_KEY'),
+    ],
+
+    'flutterwave' => [
+        'secret_key'   => env('FLUTTERWAVE_SECRET_KEY'),
+        'public_key'   => env('FLUTTERWAVE_PUBLIC_KEY'),
+        'webhook_hash' => env('FLUTTERWAVE_WEBHOOK_HASH'),
+    ],
+
+    'etherscan' => [
+        'key' => env('ETHERSCAN_API_KEY', ''),
+    ],
+
+    'bscscan' => [
+        'key' => env('BSCSCAN_API_KEY', ''),
+    ],
+
+    'trongrid' => [
+        'key' => env('TRONGRID_API_KEY', ''),
+    ],
+
+    'blockcypher' => [
+        'token' => env('BLOCKCYPHER_TOKEN', ''),
+    ],
 
 ];

@@ -1,10 +1,133 @@
 @extends('buylayout')
 
+@push('styles')
+<style>
+:root{
+    --kx-green:#00cc00;--kx-dark:#0d1117;--kx-card:#161b27;
+    --kx-card2:#1e2535;--kx-border:rgba(255,255,255,0.07);
+    --kx-text:#e4e8f0;--kx-muted:#7a8599;
+}
+body{background:var(--kx-dark);color:var(--kx-text);}
+.kx-hero{background:linear-gradient(135deg,#0a1628 0%,#0d1f1a 100%);border-bottom:1px solid var(--kx-border);padding:1.5rem 1rem 1rem;text-align:center;margin-bottom:1.5rem;}
+.kx-hero h1{font-size:1.5rem;font-weight:700;color:#fff;margin:0 0 .25rem;}
+.kx-hero p{color:var(--kx-muted);font-size:.875rem;margin:0;}
+.kx-card{background:var(--kx-card);border:1px solid var(--kx-border);border-radius:16px;padding:1.5rem;margin-bottom:1rem;}
+.coin-badge{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem .9rem;border-radius:20px;font-size:.85rem;font-weight:700;}
+.coin-badge.btc{background:rgba(247,147,26,.15);color:#f7931a;border:1px solid rgba(247,147,26,.3);}
+.coin-badge.eth{background:rgba(98,126,234,.15);color:#627eea;border:1px solid rgba(98,126,234,.3);}
+.coin-badge.usdt{background:rgba(38,161,123,.15);color:#26a17b;border:1px solid rgba(38,161,123,.3);}
+.detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:.75rem 0;border-bottom:1px solid var(--kx-border);}
+.detail-row:last-child{border-bottom:none;}
+.dr-label{font-size:.8rem;color:var(--kx-muted);}
+.dr-value{font-size:.9rem;color:var(--kx-text);font-weight:600;text-align:right;max-width:60%;word-break:break-all;}
+.dr-value.green{color:var(--kx-green);}
+.status-badge{display:inline-block;padding:.3rem .8rem;border-radius:20px;font-size:.75rem;font-weight:700;text-transform:capitalize;}
+.status-pending{background:rgba(234,179,8,.15);color:#f59e0b;border:1px solid rgba(234,179,8,.25);}
+.status-completed{background:rgba(0,204,0,.15);color:var(--kx-green);border:1px solid rgba(0,204,0,.25);}
+.status-failed{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25);}
+.amount-highlight{background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:12px;padding:1rem 1.25rem;margin:.75rem 0;}
+.amount-highlight .ah-label{font-size:.75rem;color:var(--kx-muted);margin-bottom:.2rem;}
+.amount-highlight .ah-value{font-size:1.4rem;font-weight:700;color:var(--kx-green);}
+.amount-highlight .ah-sub{font-size:.8rem;color:var(--kx-muted);}
+.btn-kx-primary{background:var(--kx-green);border:none;color:#000;font-weight:700;border-radius:10px;padding:.8rem 1.5rem;font-size:.95rem;width:100%;transition:all .2s;display:block;text-align:center;text-decoration:none;}
+.btn-kx-primary:hover{background:#00e600;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,204,0,.3);color:#000;}
+.btn-kx-secondary{background:var(--kx-card2);border:1px solid var(--kx-border);color:var(--kx-text);font-weight:600;border-radius:10px;padding:.8rem 1.5rem;font-size:.95rem;width:100%;display:block;text-align:center;text-decoration:none;transition:background .2s;}
+.btn-kx-secondary:hover{background:rgba(255,255,255,.06);color:var(--kx-text);}
+</style>
+@endpush
+
 @section('content')
-<div class="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-8 transform transition-all hover:shadow-blue-500/20 duration-300">
-        <h3 class="text-2xl font-bold text-center text-white mb-2">Trade Summary</h3>
-        <p class="text-center text-gray-400 mb-6">Review your purchase details below.</p>
+
+<div class="kx-hero">
+    <h1><i class="bi bi-file-text-fill me-2" style="color:var(--kx-green);"></i>Trade Summary</h1>
+    <p>Your purchase order details</p>
+</div>
+
+<div class="container-fluid px-3">
+<div class="row justify-content-center">
+<div class="col-xl-5 col-lg-6 col-md-8">
+
+    @php
+        $coinClass = strtolower($trade->coin);
+        $coinIcons = ['btc'=>'bi-currency-bitcoin','eth'=>'bi-gem','usdt'=>'bi-cashstack'];
+        $icon = $coinIcons[$coinClass] ?? 'bi-coin';
+    @endphp
+
+    <div class="kx-card text-center">
+        <div class="mb-2">
+            <span class="coin-badge {{ $coinClass }}">
+                <i class="bi {{ $icon }}"></i> {{ $trade->coin }}
+            </span>
+        </div>
+        <div class="amount-highlight">
+            <div class="ah-label">You're paying</div>
+            <div class="ah-value">₦{{ number_format($trade->naira_amount, 2) }}</div>
+            <div class="ah-sub">≈ ${{ number_format($trade->usd_amount, 2) }} USD</div>
+        </div>
+    </div>
+
+    <div class="kx-card">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-receipt" style="color:var(--kx-green);font-size:1.1rem;"></i>
+            <span style="font-weight:700;font-size:.95rem;">Order Details</span>
+        </div>
+        <div class="detail-row">
+            <span class="dr-label">Trade ID</span>
+            <span class="dr-value">#{{ $trade->id }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="dr-label">Cryptocurrency</span>
+            <span class="dr-value">{{ $trade->coin }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="dr-label">Amount (USD)</span>
+            <span class="dr-value green">${{ number_format($trade->usd_amount, 2) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="dr-label">Amount (NGN)</span>
+            <span class="dr-value">₦{{ number_format($trade->naira_amount, 2) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="dr-label">Wallet Address</span>
+            <span class="dr-value">{{ $trade->wallet_address }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="dr-label">Network</span>
+            <span class="dr-value">{{ $trade->network }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="dr-label">Status</span>
+            <span class="dr-value">
+                @php
+                    $statusClass = match(strtolower($trade->status)) {
+                        'completed','success' => 'status-completed',
+                        'failed','cancelled'  => 'status-failed',
+                        default               => 'status-pending',
+                    };
+                @endphp
+                <span class="status-badge {{ $statusClass }}">{{ $trade->status }}</span>
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="dr-label">Date</span>
+            <span class="dr-value">{{ $trade->created_at->format('d M Y, H:i') }}</span>
+        </div>
+    </div>
+
+    <a href="{{ route('buy.payment', ['id' => $trade->id]) }}" class="btn-kx-primary mb-3">
+        <i class="bi bi-credit-card me-2"></i>Proceed to Payment
+    </a>
+    <a href="{{ route('dashboard') }}" class="btn-kx-secondary">
+        <i class="bi bi-house me-2"></i>Back to Dashboard
+    </a>
+
+    <div style="height:2rem;"></div>
+</div>
+</div>
+</div>
+
+@endsection
+
 
         <div class="space-y-4">
             <div class="flex justify-between">

@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\SellTrade;
 use App\Models\User;
+use App\Services\AdminTradeAlertService;
+use App\Mail\TradeNotification;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
 class AdminTradeController extends Controller
@@ -25,6 +28,7 @@ class AdminTradeController extends Controller
         $trade = SellTrade::findOrFail($trade_id);
         $originalStatus = $trade->status;
         $trade->status = $request->status;
+        $tradeUser = User::find($trade->user_id);
 
         Log::info('Attempting to update trade status', [
             'trade_id' => $trade->id,
@@ -62,6 +66,49 @@ class AdminTradeController extends Controller
                         'trace' => $e->getTraceAsString(),
                     ]);
                     throw new \Exception('Failed to update user balance: ' . $e->getMessage());
+                }
+            }
+
+            // Send email notification to user
+            try {
+                if ($tradeUser && in_array($trade->status, ['completed', 'rejected'])) {
+                    $isCompleted = $trade->status === 'completed';
+                    $paymentMethod = $trade->payment_method === 'wallet_balance'
+                        ? 'Wallet Balance'
+                        : ($trade->bank_name ? $trade->bank_name . ' (' . $trade->account_number . ')' : 'Bank Transfer');
+                    Mail::to($tradeUser->email)->send(new TradeNotification(
+                        user: $tradeUser,
+                        templateKey: $isCompleted ? 'sell_trade_completed' : 'sell_trade_rejected',
+                        data: [
+                            'amount'         => number_format($trade->usd_amount ?? $trade->amount, 6),
+                            'currency'       => $trade->coin,
+                            'naira_amount'   => number_format($trade->naira_amount, 2),
+                            'reference'      => $trade->transaction_ref ?? ('SELL-' . $trade->id),
+                            'payment_method' => $paymentMethod,
+                            'reason'         => request('rejection_reason', 'Your trade did not meet our requirements.'),
+                        ],
+                        badge: [
+                            'text'  => $isCompleted ? 'Payment Sent' : 'Order Rejected',
+                            'color' => $isCompleted ? '#00cc00' : '#dc3545',
+                        ],
+                        ctaUrl: url('/dashboard'),
+                        ctaText: 'Go to Dashboard',
+                    ));
+                }
+            } catch (\Exception $mailEx) {
+                Log::warning('Sell trade status email failed: ' . $mailEx->getMessage());
+            }
+
+            if ($originalStatus !== $trade->status) {
+                try {
+                    app(AdminTradeAlertService::class)->sendStatusChangeAlert('sell', [
+                        'reference' => $trade->transaction_ref ?? ('SELL-' . $trade->id),
+                        'user_name' => $tradeUser->name ?? ($trade->name ?? 'N/A'),
+                        'old_status' => $originalStatus,
+                        'new_status' => $trade->status,
+                    ]);
+                } catch (\Throwable $alertEx) {
+                    Log::warning('AdminTradeController status alert failed: ' . $alertEx->getMessage());
                 }
             }
 

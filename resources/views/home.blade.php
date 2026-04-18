@@ -531,1270 +531,1356 @@
     </style>
 
 
-    <!-- ======= Bootstrap Header ======= -->
-    <nav class="navbar navbar-expand-lg bg-body-tertiary fixed-top">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <img width="40px" src="/Assests/favicon.png" alt="KayXchange" class="me-2">
-                KayXchange
+    <!-- ======= KayXchange Navbar ======= -->
+    <style>
+    .kx-hp-nav {
+        background: rgba(8, 14, 8, 0.97);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0, 204, 0, 0.12);
+        padding: 10px 0;
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 1040;
+        transition: all 0.3s ease;
+    }
+    .kx-hp-nav.kx-scrolled { padding: 6px 0; box-shadow: 0 4px 30px rgba(0,0,0,0.6); border-bottom-color: rgba(0,204,0,0.22); }
+    .kx-hp-nav .kx-brand {
+        display: flex; align-items: center; gap: 10px;
+        text-decoration: none !important;
+        color: #fff; font-size: 1.2rem; font-weight: 700;
+    }
+    .kx-hp-nav .kx-brand img { width: 36px; height: 36px; border-radius: 8px; box-shadow: 0 0 14px rgba(0,204,0,0.45); }
+    .kx-hp-nav .kx-brand-g { color: #00cc00; }
+    .kx-hp-link {
+        color: rgba(255,255,255,0.75) !important;
+        font-weight: 500; font-size: 0.875rem;
+        padding: 7px 12px !important; border-radius: 8px;
+        transition: all 0.22s ease;
+        text-decoration: none !important;
+        display: inline-flex; align-items: center; gap: 6px;
+        position: relative;
+    }
+    .kx-hp-link:hover { color: #00cc00 !important; background: rgba(0,204,0,0.08); }
+    .kx-hp-link.kx-act { color: #00cc00 !important; background: rgba(0,204,0,0.1); }
+    .kx-hp-nav .navbar-toggler { border: 1.5px solid rgba(0,204,0,0.45); border-radius: 8px; padding: 5px 10px; }
+    .kx-hp-nav .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(0,204,0,0.85)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+    .kx-hp-btn-in { color: #00cc00 !important; border: 1.5px solid rgba(0,204,0,0.5); border-radius: 25px; padding: 9px 22px; font-weight: 600; font-size: 0.875rem; text-decoration: none !important; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 7px; background: rgba(0,204,0,0.06); backdrop-filter: blur(8px); position: relative; overflow: hidden; }
+    .kx-hp-btn-in::before { content:''; position:absolute; inset:0; background: linear-gradient(135deg,rgba(0,204,0,0.12),transparent); opacity:0; transition:opacity 0.25s ease; border-radius:25px; pointer-events:none; }
+    .kx-hp-btn-in:hover { background: rgba(0,204,0,0.12); border-color: #00cc00; box-shadow: 0 0 20px rgba(0,204,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08); }
+    .kx-hp-btn-in:hover::before { opacity:1; }
+    .kx-hp-btn-reg { background: linear-gradient(135deg,#00cc00 0%,#009e0f 50%,#007a0c 100%); color: #fff !important; border: none; border-radius: 25px; padding: 10px 24px; font-weight: 700; font-size: 0.875rem; text-decoration: none !important; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 4px 20px rgba(0,204,0,0.38), inset 0 1px 0 rgba(255,255,255,0.2); position: relative; overflow: hidden; }
+    .kx-hp-btn-reg::after { content:''; position:absolute; inset:0; background: linear-gradient(135deg,rgba(255,255,255,0.18) 0%,transparent 55%); border-radius:25px; pointer-events:none; }
+    .kx-hp-btn-reg:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,204,0,0.52); color: #fff !important; }
+    .kx-hp-btn-reg:active { transform: translateY(0); box-shadow: 0 3px 12px rgba(0,204,0,0.35); }
+    .kx-hp-btn-out { color: rgba(255,110,110,0.9); border: 1.5px solid rgba(255,80,80,0.35); background: transparent; border-radius: 25px; padding: 7px 16px; font-weight: 500; font-size: 0.85rem; cursor: pointer; transition: all 0.22s ease; display: inline-flex; align-items: center; gap: 6px; }
+    .kx-hp-btn-out:hover { background: rgba(255,80,80,0.1); border-color: rgba(255,80,80,0.7); color: #ff5555; }
+    .kx-hp-theme { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.22s ease; }
+    .kx-hp-theme:hover { background: rgba(0,204,0,0.15); border-color: rgba(0,204,0,0.35); color: #00cc00; }
+    @media (max-width: 991.98px) {
+        .kx-hp-nav .navbar-collapse { background: rgba(8,14,8,0.98); border: 1px solid rgba(0,204,0,0.14); border-radius: 14px; margin-top: 10px; padding: 16px; }
+        .kx-hp-nav-actions { flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(0,204,0,0.13); }
+    }
+    [data-bs-theme="light"] .kx-hp-nav { background: rgba(255,255,255,0.97); border-bottom-color: rgba(0,153,0,0.15); }
+    [data-bs-theme="light"] .kx-hp-nav .kx-brand { color: #111; }
+    [data-bs-theme="light"] .kx-hp-link { color: rgba(20,20,20,0.75) !important; }
+    [data-bs-theme="light"] .kx-hp-link:hover,[data-bs-theme="light"] .kx-hp-link.kx-act { color: #007a0f !important; background: rgba(0,130,17,0.07); }
+    [data-bs-theme="light"] .kx-hp-theme { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #555; }
+    [data-bs-theme="light"] .kx-hp-nav .navbar-collapse { background: rgba(255,255,255,0.99); }
+    </style>
+
+    <nav class="kx-hp-nav navbar navbar-expand-lg" id="kxHomeNav">
+        <div class="container">
+            <a class="kx-brand" href="@auth {{ url('/dashboard') }} @else {{ url('/') }} @endauth">
+                <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+                <span>Kay<span class="kx-brand-g">Xchange</span></span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#homeNavbarNav" aria-controls="homeNavbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#kxHomeCollapse" aria-controls="kxHomeCollapse" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="homeNavbarNav">
-                <div class="navbar-nav me-auto">
+            <div class="collapse navbar-collapse" id="kxHomeCollapse">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1">
                     @auth
-                        <a class="nav-link @if(request()->is('dashboard')) active @endif" @if(request()->is('dashboard')) aria-current="page" @endif href="/dashboard">Dashboard</a>
-                        <a class="nav-link @if(request()->is('rate')) active @endif" @if(request()->is('rate')) aria-current="page" @endif href="/rate">Rates</a>
-                        <a class="nav-link @if(request()->is('buy*')) active @endif" @if(request()->is('buy*')) aria-current="page" @endif href="/buy">Buy Crypto</a>
-                        <a class="nav-link @if(request()->is('sell*')) active @endif" @if(request()->is('sell*')) aria-current="page" @endif href="/sell">Sell Crypto</a>
+                    <li class="nav-item"><a class="kx-hp-link @if(request()->is('dashboard')) kx-act @endif" href="{{ url('/dashboard') }}"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a></li>
+                    <li class="nav-item"><a class="kx-hp-link @if(request()->is('rate')) kx-act @endif" href="{{ url('/rate') }}"><i class="bi bi-graph-up-arrow"></i>Rates</a></li>
+                    <li class="nav-item"><a class="kx-hp-link @if(request()->is('buy*')) kx-act @endif" href="{{ url('/buy') }}"><i class="bi bi-arrow-down-circle-fill"></i>Buy</a></li>
+                    <li class="nav-item"><a class="kx-hp-link @if(request()->is('sell*')) kx-act @endif" href="{{ url('/sell') }}"><i class="bi bi-arrow-up-circle-fill"></i>Sell</a></li>
                     @else
-                        <a class="nav-link @if(request()->is('/')) active @endif" @if(request()->is('/')) aria-current="page" @endif href="/">Home</a>
-                        <a class="nav-link @if(request()->is('rate')) active @endif" @if(request()->is('rate')) aria-current="page" @endif href="/rate">Exchange Rates</a>
-                        <a class="nav-link @if(request()->is('blog*')) active @endif" @if(request()->is('blog*')) aria-current="page" @endif href="/blog">Blog</a>
-                        <a class="nav-link @if(request()->is('faqs*')) active @endif" @if(request()->is('faqs*')) aria-current="page" @endif href="/faqs">FAQs</a>
-                        <a class="nav-link @if(request()->is('about*')) active @endif" @if(request()->is('about*')) aria-current="page" @endif href="/about">About Us</a>
+                    <li class="nav-item"><a class="kx-hp-link kx-act" href="{{ url('/') }}"><i class="bi bi-house-fill"></i>Home</a></li>
+                    <li class="nav-item"><a class="kx-hp-link" href="{{ url('/rate') }}"><i class="bi bi-graph-up-arrow"></i>Rates</a></li>
+                    <li class="nav-item"><a class="kx-hp-link" href="{{ url('/blog') }}"><i class="bi bi-newspaper"></i>Blog</a></li>
+                    <li class="nav-item"><a class="kx-hp-link" href="{{ url('/faqs') }}"><i class="bi bi-question-circle-fill"></i>FAQs</a></li>
+                    <li class="nav-item"><a class="kx-hp-link" href="{{ url('/about') }}"><i class="bi bi-info-circle-fill"></i>About</a></li>
                     @endauth
-                </div>
-
-                <!-- Right side navigation -->
-                <div class="d-flex align-items-center">
+                </ul>
+                <div class="d-flex align-items-center kx-hp-nav-actions gap-2">
                     @auth
-                    <form method="POST" action="{{ route('logout') }}" class="d-inline me-3">
+                    <form method="POST" action="{{ route('logout') }}" class="d-inline m-0">
                         @csrf
-                        <button type="submit" class="btn btn-outline-danger" title="Logout">
-                          <i class="bi bi-box-arrow-right me-1"></i>Logout
-                        </button>
+                        <button type="submit" class="kx-hp-btn-out"><i class="bi bi-box-arrow-right"></i>Logout</button>
                     </form>
                     @else
-                    <a class="btn btn-outline-primary me-2" href="/login">
-                      <i class="bi bi-box-arrow-in-right me-1"></i>Login
-                    </a>
-                    <a class="btn btn-primary" href="/register">
-                      <i class="bi bi-person-plus me-1"></i>Register
-                    </a>
+                    <a class="kx-hp-btn-in" href="{{ route('login') }}"><i class="bi bi-box-arrow-in-right"></i>Login</a>
+                    <a class="kx-hp-btn-reg" href="{{ route('register') }}"><i class="bi bi-rocket-takeoff-fill"></i>Get Started</a>
                     @endauth
-
-                    <!-- Dark Mode Toggle Button -->
-                    <button id="toggle-mode" class="btn btn-outline-secondary ms-2" title="Toggle Dark Mode">
-                      <i class="bi bi-moon-stars-fill" id="mode-icon"></i>
+                    <button id="toggle-mode" class="kx-hp-theme" title="Toggle Dark Mode">
+                        <i class="bi bi-moon-stars-fill" id="mode-icon"></i>
                     </button>
                 </div>
             </div>
         </div>
-    </nav><!-- End Header -->
+    </nav>
+    <script>
+    (function(){
+        var n=document.getElementById('kxHomeNav');
+        if(!n)return;
+        window.addEventListener('scroll',function(){n.classList.toggle('kx-scrolled',window.scrollY>20);},{passive:true});
+    })();
+    </script>
 
     <!-- ======= Hero Section ======= -->
-    <section id="hero" class="hero d-flex align-items-center">
+    <style>
+    .kx-hero {
+        position: relative;
+        background: #070d07;
+        overflow: hidden;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        padding-top: 70px;
+    }
+    .kx-h-grid {
+        position: absolute; inset: 0; pointer-events: none;
+        background-image:
+            linear-gradient(rgba(0,204,0,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,204,0,0.04) 1px, transparent 1px);
+        background-size: 60px 60px;
+    }
+    .kx-h-orb1 {
+        position: absolute; border-radius: 50%; pointer-events: none;
+        width: 650px; height: 650px;
+        background: radial-gradient(circle, rgba(0,204,0,0.11) 0%, transparent 70%);
+        top: -200px; right: -100px; filter: blur(80px);
+    }
+    .kx-h-orb2 {
+        position: absolute; border-radius: 50%; pointer-events: none;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(0,100,0,0.14) 0%, transparent 70%);
+        bottom: -120px; left: -80px; filter: blur(80px);
+    }
+    .kx-h-content { position: relative; z-index: 2; padding: 80px 0 60px; }
+    .kx-h-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(0,204,0,0.1); border: 1px solid rgba(0,204,0,0.3);
+        color: #00cc00; font-size: 0.82rem; font-weight: 600;
+        padding: 6px 16px; border-radius: 25px; margin-bottom: 22px;
+    }
+    .kx-h-dot {
+        width: 8px; height: 8px; background: #00cc00; border-radius: 50%;
+        display: inline-block; animation: kx-pulse 2s ease-in-out infinite;
+    }
+    @keyframes kx-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+    .kx-h-title {
+        font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+        font-weight: 800; line-height: 1.12;
+        color: #ffffff; margin-bottom: 22px;
+        font-family: 'Poppins', sans-serif;
+    }
+    .kx-h-grad {
+        background: linear-gradient(135deg, #00ff66, #00cc00, #008f11);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .kx-h-sub {
+        font-size: 1.05rem; color: rgba(255,255,255,0.6);
+        line-height: 1.75; max-width: 480px; margin-bottom: 32px;
+    }
+    .kx-h-stats {
+        display: flex; align-items: center; gap: 22px;
+        margin-bottom: 36px; flex-wrap: wrap;
+    }
+    .kx-h-stat { display: flex; flex-direction: column; }
+    .kx-h-snum { font-size: 1.55rem; font-weight: 800; color: #00cc00; line-height: 1; }
+    .kx-h-slbl { font-size: 0.72rem; color: rgba(255,255,255,0.45); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kx-h-sdiv { width: 1px; height: 36px; background: rgba(255,255,255,0.13); }
+    .kx-h-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 30px; }
+    .kx-h-cta1 {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: linear-gradient(135deg,#00cc00,#008f11);
+        color: #fff !important; text-decoration: none !important;
+        padding: 14px 30px; border-radius: 50px;
+        font-weight: 700; font-size: 1rem;
+        box-shadow: 0 8px 30px rgba(0,204,0,0.38);
+        transition: all 0.28s ease;
+    }
+    .kx-h-cta1:hover { transform: translateY(-2px); box-shadow: 0 14px 42px rgba(0,204,0,0.48); }
+    .kx-h-cta2 {
+        display: inline-flex; align-items: center; gap: 8px;
+        border: 2px solid rgba(0,204,0,0.5); color: #00cc00 !important;
+        text-decoration: none !important; padding: 14px 28px;
+        border-radius: 50px; font-weight: 600; font-size: 1rem;
+        background: rgba(0,204,0,0.05); transition: all 0.28s ease;
+    }
+    .kx-h-cta2:hover { background: rgba(0,204,0,0.12); border-color: #00cc00; transform: translateY(-2px); }
+    .kx-h-trust { display: flex; flex-wrap: wrap; gap: 10px; }
+    .kx-h-tbadge {
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+        color: rgba(255,255,255,0.75); font-size: 0.8rem; font-weight: 500;
+        padding: 9px 18px; border-radius: 12px;
+        display: inline-flex; align-items: center; gap: 8px;
+        text-decoration: none; transition: all 0.25s ease;
+        backdrop-filter: blur(8px); position: relative; overflow: hidden;
+    }
+    .kx-h-tbadge::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.05),transparent); border-radius:12px; pointer-events:none; }
+    .kx-h-tbadge i { font-size: 0.9rem; }
+    .kx-h-tbadge:hover { background: rgba(0,204,0,0.1); border-color: rgba(0,204,0,0.38); color: #00cc00; text-decoration: none; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,204,0,0.18); }
+    .kx-h-twa { background: rgba(37,211,102,0.08); border-color: rgba(37,211,102,0.3); color: #25d366 !important; }
+    .kx-h-twa:hover { background: rgba(37,211,102,0.16) !important; border-color: rgba(37,211,102,0.55) !important; color: #25d366 !important; box-shadow: 0 8px 24px rgba(37,211,102,0.22) !important; }
+    /* Right visual */
+    .kx-h-visual { display: flex; justify-content: center; align-items: center; position: relative; padding: 30px 20px; }
+    .kx-h-card-wrap { position: relative; width: 100%; max-width: 430px; margin: 0 auto; }
+    .kx-h-mockup {
+        background: rgba(0,204,0,0.06); border: 1px solid rgba(0,204,0,0.18);
+        border-radius: 24px; padding: 28px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.45), 0 0 80px rgba(0,204,0,0.07);
+        animation: kx-float 4s ease-in-out infinite;
+    }
+    @keyframes kx-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+    .kx-h-mockup img { border-radius: 10px; width: 100%; }
+    .kx-h-coin {
+        position: absolute; background: rgba(8,16,8,0.95);
+        border: 1px solid rgba(0,204,0,0.22); border-radius: 14px;
+        padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+        backdrop-filter: blur(15px); box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+        white-space: nowrap; font-size: 0.78rem; color: rgba(255,255,255,0.82);
+    }
+    .kx-h-ci { font-size: 1.45rem; font-weight: 800; line-height: 1; }
+    .kx-h-ci-btc { color: #f7931a; }
+    .kx-h-ci-eth { color: #627eea; }
+    .kx-h-ci-usdt { color: #26a17b; }
+    .kx-h-ctag { font-size: 0.68rem; padding: 2px 8px; border-radius: 10px; margin-top: 3px; display: inline-flex; align-items: center; gap: 2px; }
+    .kx-h-cup { background: rgba(0,204,0,0.14); color: #00cc00; }
+    .kx-h-cst { background: rgba(38,161,123,0.14); color: #26a17b; }
+    .kx-h-c1 { top: -22px; right: -15px; animation: kx-fc 3s ease-in-out infinite; }
+    .kx-h-c2 { bottom: 10px; right: -20px; animation: kx-fc 3.6s ease-in-out infinite 0.5s; }
+    .kx-h-c3 { bottom: -18px; left: -15px; animation: kx-fc 4.2s ease-in-out infinite 1s; }
+    @keyframes kx-fc { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(-8px) rotate(2deg)} }
+    /* Scroll cue */
+    .kx-h-scroll { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 2; }
+    .kx-h-scroll-ring { width: 28px; height: 46px; border: 2px solid rgba(0,204,0,0.4); border-radius: 14px; position: relative; }
+    .kx-h-scroll-ring::after { content:''; position:absolute; top:6px; left:50%; transform:translateX(-50%); width:5px; height:8px; background:#00cc00; border-radius:3px; animation:kx-sd 2s ease-in-out infinite; }
+    @keyframes kx-sd { 0%{opacity:1;top:6px} 100%{opacity:0;top:24px} }
+    /* Light mode */
+    [data-bs-theme="light"] .kx-hero { background: #f4faf4; }
+    [data-bs-theme="light"] .kx-h-grid { background-image: linear-gradient(rgba(0,153,0,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,153,0,0.05) 1px,transparent 1px); background-size:60px 60px; }
+    [data-bs-theme="light"] .kx-h-title { color: #0a1a0a; }
+    [data-bs-theme="light"] .kx-h-sub { color: rgba(0,0,0,0.6); }
+    [data-bs-theme="light"] .kx-h-coin { background: rgba(255,255,255,0.97); }
+    [data-bs-theme="light"] .kx-h-tbadge { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); color: #444; }
+    /* Responsive */
+    @media (max-width: 991.98px) {
+        .kx-h-content { text-align: center; }
+        .kx-h-badge { margin-left: auto; margin-right: auto; }
+        .kx-h-sub { margin-left: auto; margin-right: auto; }
+        .kx-h-stats { justify-content: center; }
+        .kx-h-ctas { justify-content: center; }
+        .kx-h-trust { justify-content: center; }
+        .kx-h-visual { margin-top: 50px; }
+        .kx-h-scroll { display: none; }
+    }
+    @media (max-width: 575.98px) {
+        .kx-h-coin { display: none; }
+        .kx-h-title { font-size: 2rem; }
+        .kx-h-cta1, .kx-h-cta2 { padding: 12px 20px; font-size: 0.92rem; }
+        .kx-hero { padding-top: 60px; min-height: auto; }
+        .kx-h-content { padding: 50px 0 40px; }
+        .kx-h-visual { padding: 20px 10px; margin-top: 30px; }
+        .kx-h-mockup { padding: 18px; }
+        .kx-h-sub { font-size: 0.95rem; }
+        .kx-h-badge { font-size: 0.75rem; padding: 5px 13px; }
+    }
+    @media (max-width: 400px) {
+        .kx-h-title { font-size: 1.75rem; }
+        .kx-h-stats { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 8px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .kx-h-stats::-webkit-scrollbar { display: none; }
+        .kx-h-sdiv { flex-shrink: 0; }
+        .kx-h-stat { flex-shrink: 0; min-width: 65px; }
+        .kx-h-ctas { flex-direction: column; align-items: stretch; }
+        .kx-h-cta1, .kx-h-cta2 { justify-content: center; width: 100%; }
+        .kx-h-trust { gap: 7px; }
+        .kx-h-tbadge { padding: 6px 10px; font-size: 0.72rem; }
+    }
+    </style>
 
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-6 d-flex flex-column justify-content-center">
-                    <h1 data-aos="fade-up">Buy, Sell and Exchange your Crypto to NGN <br> On <h3>Kay xchange</h3>
+    <section id="hero" class="kx-hero">
+        <div class="kx-h-grid"></div>
+        <div class="kx-h-orb1"></div>
+        <div class="kx-h-orb2"></div>
+
+        <div class="container kx-h-content">
+            <div class="row align-items-center">
+                <!-- Left: Text -->
+                <div class="col-lg-6">
+                    <div class="kx-h-badge" data-aos="fade-up">
+                        <span class="kx-h-dot"></span>
+                        Nigeria's Premier Crypto Exchange
+                    </div>
+                    <h1 class="kx-h-title" data-aos="fade-up" data-aos-delay="80">
+                        Trade Crypto<br>
+                        <span class="kx-h-grad">Instantly</span> &amp; Securely
                     </h1>
-                    <!-- <small>No KYC Required</small> -->
-                    <h2 data-aos="fade-up" data-aos-delay="400">Easily Trade Cryptocurrencies like <br> BTC, USDT, ETH, LTC & XRP To NGN</h2>
-                    <div data-aos="fade-up" data-aos-delay="600">
-                        @auth
-                        <a href="/dashboard" class="btn-get-started scrollto m-3 d-inline-flex align-items-center justify-content-center align-self-center">
-                                <span>Dashboard</span>
-                                <i class="bi bi-arrow-right"></i>
-                        </a>
-
-                        @else
-                        <div class="text-center justify-content-lg-start justify-content-center d-flex text-lg-start">
-                            <a href="/register" class="btn-get-started scrollto m-3 d-inline-flex align-items-center justify-content-center align-self-center">
-                                <span>Register</span>
-                                <i class="bi bi-arrow-right"></i>
-                            </a>
-                            <a href="/login" class="btn-get-started m-3 scrollto d-inline-flex align-items-center justify-content-center align-self-center">
-                                <span>Login</span>
-                                <i class="bi bi-arrow-right"></i>
-                            </a>
+                    <p class="kx-h-sub" data-aos="fade-up" data-aos-delay="160">
+                        Buy, sell &amp; exchange BTC, USDT, ETH, LTC and XRP to NGN at the best rates. Fast settlements, zero hidden fees, 24/7 support.
+                    </p>
+                    <!-- Stats -->
+                    <div class="kx-h-stats" data-aos="fade-up" data-aos-delay="220">
+                        <div class="kx-h-stat">
+                            <span class="kx-h-snum">3K+</span>
+                            <span class="kx-h-slbl">Happy Traders</span>
                         </div>
+                        <div class="kx-h-sdiv"></div>
+                        <div class="kx-h-stat">
+                            <span class="kx-h-snum">90K+</span>
+                            <span class="kx-h-slbl">Trades Done</span>
+                        </div>
+                        <div class="kx-h-sdiv"></div>
+                        <div class="kx-h-stat">
+                            <span class="kx-h-snum">24/7</span>
+                            <span class="kx-h-slbl">Support</span>
+                        </div>
+                        <div class="kx-h-sdiv"></div>
+                        <div class="kx-h-stat">
+                            <span class="kx-h-snum">No KYC</span>
+                            <span class="kx-h-slbl">Required</span>
+                        </div>
+                    </div>
+                    <!-- CTAs -->
+                    <div class="kx-h-ctas" data-aos="fade-up" data-aos-delay="300">
+                        @auth
+                        <a href="{{ url('/dashboard') }}" class="kx-h-cta1">
+                            <i class="bi bi-grid-1x2-fill"></i>Go to Dashboard<i class="bi bi-arrow-right"></i>
+                        </a>
+                        @else
+                        <a href="{{ route('register') }}" class="kx-h-cta1">
+                            <i class="bi bi-rocket-takeoff-fill"></i>Start Trading Free<i class="bi bi-arrow-right"></i>
+                        </a>
+                        <a href="{{ route('login') }}" class="kx-h-cta2">
+                            <i class="bi bi-box-arrow-in-right"></i>Sign In
+                        </a>
                         @endauth
                     </div>
-                    <div data-aos="fade-up" data-aos-delay="600">
-                        <div class="text-center text-lg-start">
-                            <a href="https://wa.me/+2349016740523" class="btn-get-started scrollto d-inline-flex align-items-center justify-content-center align-self-center">
-                                <span>Quick Trade {Whatsapp}</span>
-                                <i class="bi bi-whatsapp"></i>
-                            </a>
-                        </div>
-                    </div>
-                    <div data-aos="fade-up" data-aos-delay="600">
-                        <div class="text-center text-lg-start">
-                            <a href="/rate" class="btn-get-started scrollto d-inline-flex align-items-center justify-content-center align-self-center">
-                                <span>Check Rates {Crypto}</span>
-                                <i class="bi bi-graph-up-arrow"></i>
-                            </a>
-                        </div>
+                    <!-- Trust badges -->
+                    <div class="kx-h-trust" data-aos="fade-up" data-aos-delay="380">
+                        <span class="kx-h-tbadge"><i class="bi bi-shield-check-fill" style="color:#00cc00"></i>Secure</span>
+                        <span class="kx-h-tbadge"><i class="bi bi-lightning-charge-fill" style="color:#fbbf24"></i>Instant</span>
+                        <span class="kx-h-tbadge"><i class="bi bi-star-fill" style="color:#f59e0b"></i>Best Rates</span>
+                        <a href="https://wa.me/+2349016740523" class="kx-h-tbadge kx-h-twa" target="_blank" rel="noopener">
+                            <i class="bi bi-whatsapp"></i>Quick Trade
+                        </a>
+                        <a href="{{ url('/rate') }}" class="kx-h-tbadge">
+                            <i class="bi bi-graph-up-arrow" style="color:#00cc00"></i>Check Rates
+                        </a>
                     </div>
                 </div>
-                <div class="col-lg-6 hero-img" data-aos="zoom-out" data-aos-delay="200">
-                    <img src="/Assests/images/kay-xchange-logo-mockup.png" class="img-fluid" alt="">
-                </div>
-                <div class="d-lg-none justify-content-center">
-                    <a href=""><img width="120px" src="/Assests/appstore.png" alt=""></a>
+
+                <!-- Right: Visual -->
+                <div class="col-lg-6 kx-h-visual" data-aos="zoom-in" data-aos-delay="200">
+                    <div class="kx-h-card-wrap">
+                        <div class="kx-h-mockup">
+                            <img src="{{ asset('Assests/images/kay-xchange-logo-mockup.png') }}" alt="KayXchange Platform">
+                        </div>
+                        <!-- Floating coin badges -->
+                        <div class="kx-h-coin kx-h-c1">
+                            <span class="kx-h-ci kx-h-ci-btc">₿</span>
+                            <div>
+                                <div style="font-size:0.8rem;font-weight:600;">Bitcoin</div>
+                                <div id="kx-btc-price" style="font-size:0.7rem;color:rgba(255,255,255,0.45);margin-bottom:2px;line-height:1.2">–</div>
+                                <div class="kx-h-ctag kx-h-cup"><i class="bi bi-arrow-up-right"></i>BTC</div>
+                            </div>
+                        </div>
+                        <div class="kx-h-coin kx-h-c2">
+                            <span class="kx-h-ci kx-h-ci-eth">Ξ</span>
+                            <div>
+                                <div style="font-size:0.8rem;font-weight:600;">Ethereum</div>
+                                <div id="kx-eth-price" style="font-size:0.7rem;color:rgba(255,255,255,0.45);margin-bottom:2px;line-height:1.2">–</div>
+                                <div class="kx-h-ctag kx-h-cup"><i class="bi bi-arrow-up-right"></i>ETH</div>
+                            </div>
+                        </div>
+                        <div class="kx-h-coin kx-h-c3">
+                            <span class="kx-h-ci kx-h-ci-usdt">₮</span>
+                            <div>
+                                <div style="font-size:0.8rem;font-weight:600;">Tether</div>
+                                <div style="font-size:0.7rem;color:rgba(255,255,255,0.45);margin-bottom:2px;line-height:1.2">$1.00</div>
+                                <div class="kx-h-ctag kx-h-cst"><i class="bi bi-dash"></i>USDT</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <h1 class="ml4">
-                <span class="letters letters-1">No</span>
-                <span class="letters letters-2">KYC</span>
-                <span class="letters letters-3">Required</span>
-            </h1>
         </div>
 
+        <div class="kx-h-scroll">
+            <div class="kx-h-scroll-ring"></div>
+        </div>
     </section><!-- End Hero -->
 
-    <div id="prices-container" class="container d-inline-flex"></div>
 
-    <!-- ======= Telegram Notification Banner ======= -->
-    <section class="telegram-banner py-4 m-5 rounded rounded-3 mb-4 mt-5" style="background: linear-gradient(135deg, #078b00 0%, #004b10 100%);">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-8">
-                    <div class="text-white">
-                        @auth
-                        <h5 class="mb-2 text-center">
-                            <i class="fab fa-telegram-plane me-2"></i>
-                            Get Instant Trade Notifications on Telegram!
-                        </h5>
-                        <p class="mb-0 opacity-90">
-                            Never miss a trade update! Connect with our Telegram bot for real-time notifications about your transactions, rate changes, and account activities.
-                        </p>
-                        @else
-                        <h5 class="mb-2 text-center">
-                            <i class="fab fa-telegram-plane me-2"></i>
-                            Trade Instantly with Us on Our Telegram Bot!
-                        </h5>
-                        <p class="mb-0 opacity-90">
-                            Start trading cryptocurrencies instantly through our Telegram bot and receive real-time notifications as a user. Quick, secure, and convenient!
-                        </p>
-                        @endauth
+    <!-- ======= Live Crypto Ticker Ribbon ======= -->
+    <style>
+    .kx-ribbon-wrap {
+        background: rgba(6,14,6,0.97);
+        border-top: 1px solid rgba(0,204,0,0.12);
+        border-bottom: 1px solid rgba(0,204,0,0.12);
+        overflow: hidden;
+        position: relative;
+        height: 56px;
+        display: flex;
+        align-items: center;
+    }
+    /* fade edges */
+    .kx-ribbon-wrap::before,
+    .kx-ribbon-wrap::after {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 60px;
+        z-index: 2;
+        pointer-events: none;
+    }
+    .kx-ribbon-wrap::before { left:0;  background: linear-gradient(to right, rgba(6,14,6,1), transparent); }
+    .kx-ribbon-wrap::after  { right:0; background: linear-gradient(to left,  rgba(6,14,6,1), transparent); }
+
+    .kx-ribbon-track {
+        display: flex;
+        align-items: center;
+        /* width set by JS after duplication */
+        animation: kxScroll 28s linear infinite;
+        will-change: transform;
+        gap: 0;
+    }
+    .kx-ribbon-wrap:hover .kx-ribbon-track { animation-play-state: paused; }
+
+    @keyframes kxScroll {
+        0%   { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+
+    .kx-rib-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 28px;
+        height: 56px;
+        border-right: 1px solid rgba(255,255,255,0.06);
+        flex-shrink: 0;
+        white-space: nowrap;
+        cursor: default;
+        transition: background 0.2s;
+    }
+    .kx-rib-item:hover { background: rgba(0,204,0,0.05); }
+
+    .kx-rib-img { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
+    .kx-rib-sym  { font-size: 0.82rem; font-weight: 700; color: #fff; line-height: 1.1; }
+    .kx-rib-name { font-size: 0.62rem; color: rgba(255,255,255,0.32); }
+    .kx-rib-price { font-size: 0.85rem; font-weight: 700; color: #fff; }
+    .kx-rib-chg  { font-size: 0.67rem; font-weight: 600; padding: 2px 6px; border-radius: 5px; }
+    .kx-tick-up  { color: #00cc00; background: rgba(0,204,0,0.12); }
+    .kx-tick-dn  { color: #ef4444; background: rgba(239,68,68,0.12); }
+
+    /* Skeleton */
+    .kx-rib-skel { display:inline-flex;align-items:center;gap:10px;padding:0 28px;height:56px;border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0; }
+    .kx-sk-circle { width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.07);animation:kxRSkel 1.4s ease-in-out infinite; }
+    .kx-sk-line   { border-radius:5px;background:rgba(255,255,255,0.07);animation:kxRSkel 1.4s ease-in-out infinite; }
+    @keyframes kxRSkel { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
+
+    /* Light mode */
+    [data-bs-theme="light"] .kx-ribbon-wrap {
+        background: #f7fdf7;
+        border-color: rgba(0,153,0,0.13);
+    }
+    [data-bs-theme="light"] .kx-ribbon-wrap::before { background: linear-gradient(to right, #f7fdf7, transparent); }
+    [data-bs-theme="light"] .kx-ribbon-wrap::after  { background: linear-gradient(to left,  #f7fdf7, transparent); }
+    [data-bs-theme="light"] .kx-rib-item { border-right-color: rgba(0,0,0,0.06); }
+    [data-bs-theme="light"] .kx-rib-sym,
+    [data-bs-theme="light"] .kx-rib-price { color: #0a1a0a; }
+    [data-bs-theme="light"] .kx-rib-name  { color: rgba(0,0,0,0.38); }
+    [data-bs-theme="light"] .kx-sk-circle,
+    [data-bs-theme="light"] .kx-sk-line   { background: rgba(0,0,0,0.07); }
+
+    /* Responsive — smaller padding on mobile */
+    @media (max-width: 575.98px) {
+        .kx-ribbon-wrap { height: 50px; }
+        .kx-rib-item    { padding: 0 18px; height: 50px; gap: 8px; }
+        .kx-rib-img     { width: 24px; height: 24px; }
+        .kx-rib-sym     { font-size: 0.78rem; }
+        .kx-rib-price   { font-size: 0.78rem; }
+        @keyframes kxScroll { 0%{transform:translateX(0);} 100%{transform:translateX(-50%);} }
+        /* slightly faster on mobile so it still feels alive */
+        .kx-ribbon-track { animation-duration: 20s; }
+    }
+    </style>
+
+    <div class="kx-ribbon-wrap" id="kx-ribbon-wrap">
+        <div class="kx-ribbon-track" id="kx-ribbon-track">
+            <!-- Skeleton placeholders shown while JS loads -->
+            @for($i = 0; $i < 5; $i++)
+            <div class="kx-rib-skel">
+                <div class="kx-sk-circle"></div>
+                <div>
+                    <div class="kx-sk-line" style="width:38px;height:11px;margin-bottom:5px"></div>
+                    <div class="kx-sk-line" style="width:55px;height:9px"></div>
+                </div>
+                <div>
+                    <div class="kx-sk-line" style="width:65px;height:11px;margin-bottom:5px"></div>
+                    <div class="kx-sk-line" style="width:40px;height:9px"></div>
+                </div>
+            </div>
+            @endfor
+        </div>
+    </div>
+
+    <script>
+    (function(){
+        var COINS = [
+            {id:'bitcoin',          sym:'BTC',  name:'Bitcoin',   img:'https://assets.coingecko.com/coins/images/1/thumb/bitcoin.png'},
+            {id:'ethereum',         sym:'ETH',  name:'Ethereum',  img:'https://assets.coingecko.com/coins/images/279/thumb/ethereum.png'},
+            {id:'tether',           sym:'USDT', name:'Tether',    img:'https://assets.coingecko.com/coins/images/325/thumb/Tether.png'},
+            {id:'binancecoin',      sym:'BNB',  name:'BNB',       img:'https://assets.coingecko.com/coins/images/825/thumb/bnb-icon2_2x.png'},
+            {id:'litecoin',         sym:'LTC',  name:'Litecoin',  img:'https://assets.coingecko.com/coins/images/2/thumb/litecoin.png'},
+            {id:'solana',           sym:'SOL',  name:'Solana',    img:'https://assets.coingecko.com/coins/images/4128/thumb/solana.png'},
+            {id:'ripple',           sym:'XRP',  name:'XRP',       img:'https://assets.coingecko.com/coins/images/44/thumb/xrp-symbol-white-128.png'},
+            {id:'dogecoin',         sym:'DOGE', name:'Dogecoin',  img:'https://assets.coingecko.com/coins/images/5/thumb/dogecoin.png'},
+            {id:'cardano',          sym:'ADA',  name:'Cardano',   img:'https://assets.coingecko.com/coins/images/975/thumb/cardano.png'},
+            {id:'matic-network',    sym:'POL',  name:'POL',       img:'https://assets.coingecko.com/coins/images/4713/thumb/polygon.png'}
+        ];
+
+        function fmtPrice(n){
+            if(n>=1000) return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+            if(n>=1)    return '$'+n.toFixed(2);
+            return '$'+n.toFixed(4);
+        }
+
+        function buildItems(data){
+            var map={};
+            data.forEach(function(c){ map[c.id]=c; });
+            return COINS.map(function(c){
+                var d=map[c.id]||{};
+                var price = d.current_price||0;
+                var chg   = d.price_change_percentage_24h||0;
+                var cls   = chg>=0 ? 'kx-tick-up' : 'kx-tick-dn';
+                var arrow = chg>=0 ? '▲' : '▼';
+                return '<div class="kx-rib-item">'
+                    +'<img class="kx-rib-img" src="'+c.img+'" alt="'+c.sym+'" loading="lazy">'
+                    +'<div><div class="kx-rib-sym">'+c.sym+'</div><div class="kx-rib-name">'+c.name+'</div></div>'
+                    +'<div style="text-align:right">'
+                    +  '<div class="kx-rib-price">'+fmtPrice(price)+'</div>'
+                    +  '<span class="kx-rib-chg '+cls+'">'+arrow+' '+Math.abs(chg).toFixed(2)+'%</span>'
+                    +'</div>'
+                    +'</div>';
+            }).join('');
+        }
+
+        function launchRibbon(html){
+            var track = document.getElementById('kx-ribbon-track');
+            if(!track) return;
+            // duplicate for seamless loop
+            track.innerHTML = html + html;
+            track.style.animation = 'none';
+            // force reflow
+            void track.offsetWidth;
+            track.style.animation = '';
+        }
+
+        function loadFallback(){
+            var fallback = [
+                {id:'bitcoin',       current_price:71524,  price_change_percentage_24h:-1.86},
+                {id:'ethereum',      current_price:2205.9, price_change_percentage_24h:-1.56},
+                {id:'tether',        current_price:1.00,   price_change_percentage_24h: 0.00},
+                {id:'binancecoin',   current_price:595.01, price_change_percentage_24h:-1.76},
+                {id:'litecoin',      current_price:53.80,  price_change_percentage_24h:-1.39},
+                {id:'solana',        current_price:148.20, price_change_percentage_24h: 2.14},
+                {id:'ripple',        current_price:0.52,   price_change_percentage_24h:-0.88},
+                {id:'dogecoin',      current_price:0.14,   price_change_percentage_24h: 1.22},
+                {id:'cardano',       current_price:0.46,   price_change_percentage_24h:-0.55},
+                {id:'matic-network', current_price:0.72,   price_change_percentage_24h: 0.63}
+            ];
+            launchRibbon(buildItems(fallback));
+        }
+
+        var ids = COINS.map(function(c){return c.id;}).join(',');
+        var url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+ids+'&order=market_cap_desc&per_page=20&page=1&sparkline=false&price_change_percentage=24h';
+
+        fetch(url)
+            .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+            .then(function(data){ launchRibbon(buildItems(data)); })
+            .catch(loadFallback);
+    })();
+    </script>
+
+    <!-- ======= Telegram Banner ======= -->
+    <style>
+    .kx-tg-banner {
+        background: linear-gradient(135deg, #0a1a0a 0%, #061006 100%);
+        border-top: 1px solid rgba(0,136,204,0.12);
+        border-bottom: 1px solid rgba(0,136,204,0.12);
+        padding: 40px 0;
+        position: relative;
+        overflow: hidden;
+    }
+    .kx-tg-banner::before {
+        content: '';
+        position: absolute;
+        top: -80px; right: -80px;
+        width: 320px; height: 320px;
+        background: radial-gradient(circle, rgba(0,136,204,0.09) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .kx-tg-banner::after {
+        content: '';
+        position: absolute;
+        bottom: -60px; left: -60px;
+        width: 240px; height: 240px;
+        background: radial-gradient(circle, rgba(0,204,0,0.06) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .kx-tg-icon-wrap {
+        width: 60px; height: 60px;
+        background: linear-gradient(135deg, #0088cc, #005fa3);
+        border-radius: 18px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.6rem; color: #fff;
+        box-shadow: 0 8px 24px rgba(0,136,204,0.35);
+        flex-shrink: 0;
+    }
+    .kx-tg-label { font-size: 0.68rem; font-weight: 600; color: #0e9cda; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; }
+    .kx-tg-title { font-size: clamp(1.1rem, 2.5vw, 1.55rem); font-weight: 800; color: #fff; margin-bottom: 10px; line-height: 1.25; }
+    .kx-tg-sub { font-size: 0.875rem; color: rgba(255,255,255,0.5); line-height: 1.65; max-width: 480px; }
+    .kx-tg-btn-start {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: linear-gradient(135deg, #0088cc, #005fa3);
+        color: #fff !important; text-decoration: none !important;
+        padding: 13px 28px; border-radius: 50px;
+        font-weight: 700; font-size: 0.9rem;
+        box-shadow: 0 6px 22px rgba(0,136,204,0.38);
+        transition: all 0.25s ease;
+        border: none; cursor: pointer;
+    }
+    .kx-tg-btn-start:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(0,136,204,0.52); color: #fff !important; }
+    .kx-tg-btn-wa {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(37,211,102,0.12);
+        border: 1.5px solid rgba(37,211,102,0.3);
+        color: #25d366 !important; text-decoration: none !important;
+        padding: 13px 24px; border-radius: 50px;
+        font-weight: 600; font-size: 0.9rem;
+        transition: all 0.25s ease;
+    }
+    .kx-tg-btn-wa:hover { background: rgba(37,211,102,0.22); border-color: #25d366; transform: translateY(-2px); }
+    .kx-tg-features { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+    .kx-tg-feat { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: rgba(255,255,255,0.5); }
+    .kx-tg-feat i { color: #00cc00; font-size: 0.8rem; }
+    [data-bs-theme="light"] .kx-tg-banner { background: linear-gradient(135deg,#f0f8ff 0%,#e8f5ff 100%); border-color: rgba(0,136,204,0.15); }
+    [data-bs-theme="light"] .kx-tg-title { color: #0a1a0a; }
+    [data-bs-theme="light"] .kx-tg-sub { color: rgba(0,0,0,0.52); }
+    [data-bs-theme="light"] .kx-tg-feat { color: rgba(0,0,0,0.45); }
+    @media (max-width: 767px) {
+        .kx-tg-banner { padding: 32px 0; }
+        .kx-tg-banner .d-flex.gap-3 { flex-direction: column; align-items: flex-start !important; }
+    }
+    </style>
+
+    <section class="kx-tg-banner">
+        <div class="container" style="position:relative;z-index:1">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="kx-tg-icon-wrap"><i class="bi bi-telegram"></i></div>
+                        <div>
+                            <div class="kx-tg-label">Telegram Bot</div>
+                            @auth
+                            <h2 class="kx-tg-title">Get Instant Trade Notifications</h2>
+                            <p class="kx-tg-sub">Never miss a trade update. Connect with our bot for real-time notifications on transactions, rate changes, and account activity.</p>
+                            @else
+                            <h2 class="kx-tg-title">Trade Instantly via Telegram</h2>
+                            <p class="kx-tg-sub">Start trading crypto directly through our Telegram bot. Quick, secure, and convenient — no app download needed.</p>
+                            @endauth
+                            <div class="kx-tg-features">
+                                <span class="kx-tg-feat"><i class="bi bi-check-circle-fill"></i>Real-time alerts</span>
+                                <span class="kx-tg-feat"><i class="bi bi-check-circle-fill"></i>Instant trade execution</span>
+                                <span class="kx-tg-feat"><i class="bi bi-check-circle-fill"></i>Rate notifications</span>
+                                <span class="kx-tg-feat"><i class="bi bi-check-circle-fill"></i>24/7 available</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-lg-4 text-center">
-                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center align-items-center">
-                        <a href="https://t.me/TradewithkayxchangeBOT" 
-                           target="_blank" 
-                           class="btn btn-telegram-cta btn-lg">
-                            <i class="fab fa-telegram-plane me-2"></i>
-                            Start Bot Now
+                <div class="col-lg-5">
+                    <div class="d-flex flex-column flex-sm-row gap-3 justify-content-lg-end align-items-sm-center">
+                        <a href="https://t.me/TradewithkayxchangeBOT" target="_blank" rel="noopener" class="kx-tg-btn-start">
+                            <i class="bi bi-telegram"></i>Start Bot Now
                         </a>
-                        <button type="button" 
-                                class="btn btn-outline-light btn-sm" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#homeTelegramModal">
-                            <i class="fas fa-qrcode me-2"></i>
-                            QR Code
-                        </button>
+                        <a href="https://wa.me/+2349016740523" target="_blank" rel="noopener" class="kx-tg-btn-wa">
+                            <i class="bi bi-whatsapp"></i>WhatsApp
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <style>
-        #prices-container {
-            display: flex;
-            justify-content: space-evenly;
-            height: 80px;
-            margin: auto;
-            padding: auto;
-            border-radius: 5px;
-
-        }
-        
-        .btn-telegram-cta {
-            background-color: white;
-            color: #0088cc;
-            border: none;
-            border-radius: 25px;
-            padding: 12px 30px;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .btn-telegram-cta:hover {
-            color: #005fa3;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-            text-decoration: none;
-        }
-        
-        @media (max-width: 768px) {
-            .telegram-banner .col-lg-4 {
-                margin-top: 20px;
-            }
-        }
-    </style>
 
     <main id="main">
-        <!-- ======= About Section ======= -->
-        <section id="about" class="about">
 
-            <div class="container" data-aos="fade-up">
-                <div class="row gx-0">
+    <!-- ======= Redesigned Sections CSS ======= -->
+    <style>
+    /* ── Shared ── */
+    .kx-sec { padding: 80px 0; position: relative; }
+    .kx-sec-dark { background: #070d07; }
+    .kx-sec-alt  { background: #060e06; }
+    .kx-sec-tag  { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #00cc00; display: inline-flex; align-items: center; gap: 7px; margin-bottom: 12px; }
+    .kx-sec-tag::before { content:''; width:18px; height:2px; background:#00cc00; border-radius:2px; }
+    .kx-sec-h { font-size: clamp(1.6rem,3.5vw,2.4rem); font-weight: 800; color: #fff; line-height: 1.2; margin-bottom: 14px; font-family:'Poppins',sans-serif; }
+    .kx-sec-sub { font-size: 0.95rem; color: rgba(255,255,255,0.48); line-height: 1.75; max-width: 560px; }
+    .kx-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; transition: border-color 0.25s, box-shadow 0.25s; }
+    .kx-card:hover { border-color: rgba(0,204,0,0.22); box-shadow: 0 8px 36px rgba(0,204,0,0.08); }
 
-                    <div class="col-lg-6 d-flex flex-column justify-content-center" data-aos="fade-up" data-aos-delay="200">
-                        <div class="">
-                            <h3>About Kay Xchange</h3>
-                            <h2>Kay Xchange is a financial services company that specializes in buying and selling digital assets</h2>
-                            <p>
-                                Our platform is designed to provide a seamless and secure experience for our clients who are looking to exchange these assets.
-                                We understand that the world of digital assets can be complex and confusing, which is why we strive to make the process as simple and straightforward as possible.
-                                Our team of experts is always available to provide guidance and support to our clients, ensuring that they are making informed decisions when buying or selling digital assets.
-                            </p>
-                            <div class="text-center text-lg-start">
-                                <a href="/About-us.html" class="btn-read-more d-inline-flex align-items-center justify-content-center align-self-center">
-                                    <span>Read More</span>
-                                    <i class="bi bi-arrow-right"></i>
-                                </a>
+    /* Light mode overrides */
+    [data-bs-theme="light"] .kx-sec-dark { background: #f4faf4; }
+    [data-bs-theme="light"] .kx-sec-alt  { background: #edf7ed; }
+    [data-bs-theme="light"] .kx-sec-h    { color: #0a1a0a; }
+    [data-bs-theme="light"] .kx-sec-sub  { color: rgba(0,0,0,0.52); }
+    [data-bs-theme="light"] .kx-card     { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.07); }
+
+    /* ── About ── */
+    .kx-about-img { border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .kx-about-img .carousel-item img { border-radius: 20px; height: 340px; object-fit: cover; }
+    .kx-about-label { background: rgba(0,204,0,0.1); border: 1px solid rgba(0,204,0,0.25); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 14px; }
+    .kx-about-label i { font-size: 1.4rem; color: #00cc00; flex-shrink:0; }
+    .kx-about-label-t { font-size: 0.8rem; color: rgba(255,255,255,0.45); }
+    .kx-about-label-v { font-size: 1.1rem; font-weight: 700; color: #00cc00; }
+    [data-bs-theme="light"] .kx-about-label-t { color: rgba(0,0,0,0.45); }
+    [data-bs-theme="light"] .kx-about-label-v { color: #007a0c; }
+    .kx-about-btn { display: inline-flex; align-items: center; gap: 8px; background: rgba(0,204,0,0.08); border: 1.5px solid rgba(0,204,0,0.35); color: #00cc00 !important; text-decoration: none !important; padding: 12px 26px; border-radius: 50px; font-weight: 600; font-size: 0.88rem; transition: all 0.25s; }
+    .kx-about-btn:hover { background: rgba(0,204,0,0.16); border-color: #00cc00; transform: translateY(-2px); color: #00cc00 !important; }
+
+    /* ── Why ── */
+    .kx-why-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 30px 28px; height: 100%; transition: all 0.25s; }
+    .kx-why-card:hover { border-color: rgba(0,204,0,0.28); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,204,0,0.1); }
+    .kx-why-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 18px; }
+    .kx-why-i1 { background: rgba(0,204,0,0.12); color: #00cc00; }
+    .kx-why-i2 { background: rgba(167,139,250,0.12); color: #a78bfa; }
+    .kx-why-i3 { background: rgba(251,191,36,0.12); color: #fbbf24; }
+    .kx-why-t { font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .kx-why-d { font-size: 0.85rem; color: rgba(255,255,255,0.45); line-height: 1.7; margin: 0; }
+    [data-bs-theme="light"] .kx-why-card { background: #fff; border-color: rgba(0,0,0,0.07); }
+    [data-bs-theme="light"] .kx-why-t { color: #0a1a0a; }
+    [data-bs-theme="light"] .kx-why-d { color: rgba(0,0,0,0.5); }
+
+    /* ── Stats ── */
+    .kx-stats-strip { background: linear-gradient(135deg,#00a010 0%,#006f0a 100%); padding: 44px 0; border-top: 1px solid rgba(0,204,0,0.2); border-bottom: 1px solid rgba(0,204,0,0.2); }
+    .kx-stat-item { text-align: center; padding: 0 20px; }
+    .kx-stat-num  { font-size: clamp(2rem,4vw,2.8rem); font-weight: 900; color: #fff; line-height: 1; }
+    .kx-stat-lbl  { font-size: 0.78rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 8px; }
+    .kx-stat-div  { width: 1px; background: rgba(255,255,255,0.2); align-self: stretch; }
+    @media(max-width:575.98px){ .kx-stat-div{display:none;} .kx-stat-item{padding:14px 0;} }
+
+    /* ── How It Works ── */
+    .kx-how-step { text-align: center; padding: 24px 20px; position: relative; }
+    .kx-how-num { width: 52px; height: 52px; border-radius: 50%; background: rgba(0,204,0,0.12); border: 2px solid rgba(0,204,0,0.3); color: #00cc00; font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+    .kx-how-arrow { position: absolute; top: 38px; right: -16px; color: rgba(0,204,0,0.3); font-size: 1.4rem; z-index: 1; }
+    .kx-how-t { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .kx-how-d { font-size: 0.82rem; color: rgba(255,255,255,0.42); line-height: 1.65; }
+    [data-bs-theme="light"] .kx-how-t { color: #0a1a0a; }
+    [data-bs-theme="light"] .kx-how-d { color: rgba(0,0,0,0.48); }
+
+    /* ── Trade (Services) ── */
+    .kx-trade-card { border-radius: 20px; padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; transition: all 0.25s; position: relative; overflow: hidden; }
+    .kx-trade-card::before { content:''; position:absolute; top:-40px; right:-40px; width:120px; height:120px; border-radius:50%; opacity:0.06; pointer-events:none; }
+    .kx-trade-btc { background: rgba(247,147,26,0.08); border: 1px solid rgba(247,147,26,0.2); }
+    .kx-trade-btc::before { background: #f7931a; }
+    .kx-trade-eth { background: rgba(98,126,234,0.08); border: 1px solid rgba(98,126,234,0.2); }
+    .kx-trade-eth::before { background: #627eea; }
+    .kx-trade-usdt { background: rgba(38,161,123,0.08); border: 1px solid rgba(38,161,123,0.2); }
+    .kx-trade-usdt::before { background: #26a17b; }
+    .kx-trade-card:hover { transform: translateY(-4px); box-shadow: 0 14px 44px rgba(0,0,0,0.28); }
+    .kx-trade-icon img { width: 42px; height: 42px; }
+    .kx-trade-name { font-size: 1.1rem; font-weight: 800; color: #fff; }
+    .kx-trade-desc { font-size: 0.82rem; color: rgba(255,255,255,0.42); line-height: 1.6; flex: 1; }
+    .kx-trade-btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 50px; font-weight: 700; font-size: 0.82rem; text-decoration: none !important; transition: all 0.22s; align-self: flex-start; }
+    .kx-trade-btn-btc  { background: rgba(247,147,26,0.15); color: #f7931a !important; border: 1.5px solid rgba(247,147,26,0.35); }
+    .kx-trade-btn-btc:hover  { background: rgba(247,147,26,0.28); }
+    .kx-trade-btn-eth  { background: rgba(98,126,234,0.15); color: #627eea !important; border: 1.5px solid rgba(98,126,234,0.35); }
+    .kx-trade-btn-eth:hover  { background: rgba(98,126,234,0.28); }
+    .kx-trade-btn-usdt { background: rgba(38,161,123,0.15); color: #26a17b !important; border: 1.5px solid rgba(38,161,123,0.35); }
+    .kx-trade-btn-usdt:hover { background: rgba(38,161,123,0.28); }
+
+    /* ── Reviews (Testimonials) ── */
+    .kx-review-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 28px 24px; height: 100%; display: flex; flex-direction: column; gap: 16px; transition: all 0.25s; }
+    .kx-review-card:hover { border-color: rgba(0,204,0,0.22); transform: translateY(-3px); }
+    .kx-review-stars { color: #fbbf24; font-size: 0.85rem; letter-spacing: 2px; }
+    .kx-review-text { font-size: 0.88rem; color: rgba(255,255,255,0.6); line-height: 1.75; flex: 1; font-style: italic; }
+    .kx-review-text::before { content: '"'; font-size: 2rem; color: rgba(0,204,0,0.25); line-height: 0.6; display: block; margin-bottom: 8px; }
+    .kx-review-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(0,204,0,0.25); }
+    .kx-review-name { font-size: 0.88rem; font-weight: 700; color: #fff; }
+    .kx-review-role { font-size: 0.72rem; color: rgba(255,255,255,0.35); }
+    [data-bs-theme="light"] .kx-review-card  { background:#fff; border-color:rgba(0,0,0,0.07); }
+    [data-bs-theme="light"] .kx-review-text  { color:rgba(0,0,0,0.55); }
+    [data-bs-theme="light"] .kx-review-name  { color:#0a1a0a; }
+    [data-bs-theme="light"] .kx-review-role  { color:rgba(0,0,0,0.38); }
+
+    /* ── Blog ── */
+    .kx-blog-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 24px; height: 100%; display: flex; flex-direction: column; gap: 12px; transition: all 0.25s; }
+    .kx-blog-card:hover { border-color: rgba(0,204,0,0.22); transform: translateY(-3px); }
+    .kx-blog-date { font-size: 0.68rem; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.6px; }
+    .kx-blog-title { font-size: 0.95rem; font-weight: 700; color: #fff; line-height: 1.45; flex: 1; }
+    .kx-blog-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: #00cc00 !important; text-decoration: none !important; transition: gap 0.2s; }
+    .kx-blog-link:hover { gap: 10px; }
+    [data-bs-theme="light"] .kx-blog-card  { background:#fff; border-color:rgba(0,0,0,0.07); }
+    [data-bs-theme="light"] .kx-blog-title { color:#0a1a0a; }
+    [data-bs-theme="light"] .kx-blog-date  { color:rgba(0,0,0,0.35); }
+
+    /* ── Newsletter ── */
+    .kx-nl { background: linear-gradient(135deg, #04120a 0%, #061006 100%); border-top: 1px solid rgba(0,204,0,0.1); border-bottom: 1px solid rgba(0,204,0,0.1); padding: 64px 0; position: relative; overflow: hidden; }
+    .kx-nl::before { content:''; position:absolute; top:-100px; left:-60px; width:360px; height:360px; background:radial-gradient(circle,rgba(0,204,0,0.07) 0%,transparent 70%); border-radius:50%; pointer-events:none; }
+    .kx-nl::after  { content:''; position:absolute; bottom:-80px; right:-40px; width:280px; height:280px; background:radial-gradient(circle,rgba(0,136,204,0.06) 0%,transparent 70%); border-radius:50%; pointer-events:none; }
+    .kx-nl-inner  { position:relative;z-index:1; }
+    .kx-nl h2 { font-size: clamp(1.5rem,3vw,2rem); font-weight: 800; color: #fff; margin-bottom: 10px; }
+    .kx-nl-sub { font-size: 0.9rem; color: rgba(255,255,255,0.45); margin-bottom: 28px; max-width: 460px; line-height: 1.7; }
+    .kx-nl-form { display: flex; gap: 10px; max-width: 520px; }
+    .kx-nl-input { flex: 1; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 50px; color: #fff; font-size: 0.88rem; padding: 13px 22px; outline: none; font-family:'Poppins',sans-serif; transition: border-color 0.22s, box-shadow 0.22s; }
+    .kx-nl-input::placeholder { color: rgba(255,255,255,0.3); }
+    .kx-nl-input:focus { border-color: rgba(0,204,0,0.48); box-shadow: 0 0 0 3px rgba(0,204,0,0.1); }
+    .kx-nl-btn { background: linear-gradient(135deg,#00cc00,#007a0c); color:#fff !important; border:none; border-radius:50px; padding:13px 28px; font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.25s; white-space:nowrap; box-shadow:0 4px 18px rgba(0,204,0,0.3); display:inline-flex;align-items:center;gap:7px; }
+    .kx-nl-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,204,0,0.42); }
+    .kx-nl-perks { display:flex;flex-wrap:wrap;gap:14px;margin-top:18px; }
+    .kx-nl-perk { font-size:0.75rem;color:rgba(255,255,255,0.38);display:flex;align-items:center;gap:5px; }
+    .kx-nl-perk i { color:#00cc00; }
+    @media(max-width:575.98px){
+        .kx-nl-form { flex-direction:column; }
+        .kx-nl-btn  { justify-content:center; }
+    }
+    [data-bs-theme="light"] .kx-nl { background:linear-gradient(135deg,#f0fdf4,#e8f5e9); border-color:rgba(0,153,0,0.12); }
+    [data-bs-theme="light"] .kx-nl h2 { color:#0a1a0a; }
+    [data-bs-theme="light"] .kx-nl-sub { color:rgba(0,0,0,0.5); }
+    [data-bs-theme="light"] .kx-nl-input { background:#fff; border-color:rgba(0,0,0,0.12); color:#0a1a0a; }
+    [data-bs-theme="light"] .kx-nl-input::placeholder { color:rgba(0,0,0,0.32); }
+    [data-bs-theme="light"] .kx-nl-perk { color:rgba(0,0,0,0.42); }
+
+    /* ── Footer ── */
+    .kx-footer { background: #030a03; padding: 64px 0 0; border-top: 1px solid rgba(0,204,0,0.1); position: relative; }
+    .kx-footer::before { content:''; position:absolute; top:0;left:0;right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(0,204,0,0.35),transparent); }
+    .kx-footer-logo { display:flex;align-items:center;gap:10px;text-decoration:none !important;margin-bottom:16px; }
+    .kx-footer-logo img { width:38px;height:38px;border-radius:10px;box-shadow:0 0 16px rgba(0,204,0,0.35); }
+    .kx-footer-logo span { font-size:1.25rem;font-weight:800;color:#fff; }
+    .kx-footer-logo span b { color:#00cc00; }
+    .kx-footer-desc { font-size:0.83rem;color:rgba(255,255,255,0.38);line-height:1.75;margin-bottom:22px;max-width:300px; }
+    .kx-footer-social { display:flex;gap:10px;flex-wrap:wrap; }
+    .kx-footer-soc { width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all 0.22s;text-decoration:none; }
+    .kx-footer-soc:hover { background:rgba(0,204,0,0.15);border-color:rgba(0,204,0,0.38);color:#00cc00;transform:translateY(-2px); }
+    .kx-footer-soc.tw:hover { background:rgba(29,161,242,0.15);border-color:rgba(29,161,242,0.38);color:#1da1f2; }
+    .kx-footer-soc.wa:hover { background:rgba(37,211,102,0.15);border-color:rgba(37,211,102,0.38);color:#25d366; }
+    .kx-footer-soc.ig:hover { background:rgba(225,48,108,0.15);border-color:rgba(225,48,108,0.38);color:#e1306c; }
+    .kx-footer-soc.tg:hover { background:rgba(0,136,204,0.15);border-color:rgba(0,136,204,0.38);color:#0088cc; }
+    .kx-footer-h { font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#00cc00;margin-bottom:18px;position:relative;padding-bottom:10px; }
+    .kx-footer-h::after { content:'';position:absolute;bottom:0;left:0;width:24px;height:2px;background:#00cc00;border-radius:2px; }
+    .kx-footer-links { list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px; }
+    .kx-footer-links a { font-size:0.83rem;color:rgba(255,255,255,0.42);text-decoration:none;transition:all 0.2s;display:flex;align-items:center;gap:6px; }
+    .kx-footer-links a i { font-size:0.65rem;color:rgba(0,204,0,0.5);transition:transform 0.2s; }
+    .kx-footer-links a:hover { color:#00cc00;padding-left:4px; }
+    .kx-footer-links a:hover i { transform:translateX(3px);color:#00cc00; }
+    .kx-footer-contact { display:flex;flex-direction:column;gap:14px; }
+    .kx-footer-ci { display:flex;align-items:flex-start;gap:12px; }
+    .kx-footer-ci-icon { width:34px;height:34px;border-radius:10px;background:rgba(0,204,0,0.1);border:1px solid rgba(0,204,0,0.2);color:#00cc00;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.9rem; }
+    .kx-footer-ci-t { font-size:0.68rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px; }
+    .kx-footer-ci-v { font-size:0.83rem;color:rgba(255,255,255,0.65); }
+    .kx-footer-ci-v a { color:rgba(255,255,255,0.65);text-decoration:none;transition:color 0.2s; }
+    .kx-footer-ci-v a:hover { color:#00cc00; }
+    .kx-footer-bottom { margin-top:44px;padding:20px 0;border-top:1px solid rgba(255,255,255,0.06); }
+    .kx-footer-copy { font-size:0.78rem;color:rgba(255,255,255,0.28); }
+    .kx-footer-copy a { color:rgba(0,204,0,0.6);text-decoration:none;transition:color 0.2s; }
+    .kx-footer-copy a:hover { color:#00cc00; }
+    .kx-footer-badges { display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end; }
+    .kx-footer-badge { font-size:0.68rem;font-weight:600;color:rgba(0,204,0,0.6);background:rgba(0,204,0,0.08);border:1px solid rgba(0,204,0,0.18);border-radius:20px;padding:4px 12px;display:inline-flex;align-items:center;gap:5px; }
+    /* Back to top */
+    .kx-btt { position:fixed;bottom:80px;right:20px;width:42px;height:42px;background:linear-gradient(135deg,#00cc00,#007a0c);color:#fff;border:none;border-radius:50%;box-shadow:0 4px 16px rgba(0,204,0,0.35);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:990;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;font-size:1rem;text-decoration:none; }
+    .kx-btt.kx-btt-show { opacity:1;transform:translateY(0);pointer-events:all; }
+    .kx-btt:hover { transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,204,0,0.48);color:#fff; }
+    @media(max-width:575.98px){
+        .kx-sec { padding:56px 0; }
+        .kx-footer-badges { justify-content:flex-start; }
+        .kx-footer-copy { text-align:center;margin-bottom:10px; }
+    }
+    [data-bs-theme="light"] .kx-footer { background:#111; }
+    [data-bs-theme="light"] .kx-footer-desc { color:rgba(255,255,255,0.45); }
+    [data-bs-theme="light"] .kx-footer-links a { color:rgba(255,255,255,0.5); }
+    [data-bs-theme="light"] .kx-footer-ci-v { color:rgba(255,255,255,0.7); }
+    [data-bs-theme="light"] .kx-footer-ci-v a { color:rgba(255,255,255,0.7); }
+    [data-bs-theme="light"] .kx-footer-copy { color:rgba(255,255,255,0.35); }
+    </style>
+
+    <!-- ======= About Section ======= -->
+    <section class="kx-sec kx-sec-dark" id="about">
+        <div class="container">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-6" data-aos="fade-right">
+                    <div class="kx-sec-tag"><i class="bi bi-info-circle-fill"></i>About Us</div>
+                    <h2 class="kx-sec-h">{{ $siteContent['about_heading'] ?? 'About KayXchange' }}</h2>
+                    <p class="kx-sec-sub mb-4">{{ $siteContent['about_subheading'] ?? 'Nigeria\'s most trusted platform.' }}</p>
+                    <p style="font-size:0.88rem;color:rgba(255,255,255,0.48);line-height:1.8;margin-bottom:28px">{{ $siteContent['about_description'] ?? 'Our platform provides a seamless, secure experience for clients exchanging digital assets.' }}</p>
+                    <div class="row g-3 mb-28">
+                        <div class="col-6">
+                            <div class="kx-about-label">
+                                <i class="bi bi-shield-fill-check"></i>
+                                <div><div class="kx-about-label-t">Platform Status</div><div class="kx-about-label-v">Verified & Secure</div></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="kx-about-label">
+                                <i class="bi bi-lightning-charge-fill"></i>
+                                <div><div class="kx-about-label-t">Settlement</div><div class="kx-about-label-v">Instant Payouts</div></div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="col-lg-6 d-flex mt-4 align-items-center" data-aos="zoom-out" data-aos-delay="200">
-                        <div id="carouselExampleControls" class="carousel slide" data-ride="carousel">
+                    <a href="{{ url('/about') }}" class="kx-about-btn mt-4 d-inline-flex">
+                        <i class="bi bi-arrow-right-circle-fill"></i>Learn More About Us
+                    </a>
+                </div>
+                <div class="col-lg-6" data-aos="zoom-in">
+                    <div class="kx-about-img">
+                        <div id="kxAboutCarousel" class="carousel slide" data-bs-ride="carousel">
                             <div class="carousel-inner">
                                 <div class="carousel-item active">
-                                    <img class="d-block w-100" src="Assests/images/carousel/ourratedeybuga.jpeg" alt="First slide">
+                                    <img class="d-block w-100" src="{{ asset('Assests/images/carousel/ourratedeybuga.jpeg') }}" alt="Our Rates">
                                 </div>
                                 <div class="carousel-item">
-                                    <img class="d-block w-100" src="Assests/images/carousel/Youdontneedtogofar.jpeg" alt="Second slide">
+                                    <img class="d-block w-100" src="{{ asset('Assests/images/carousel/Youdontneedtogofar.jpeg') }}" alt="Trade Easy">
                                 </div>
                                 <div class="carousel-item">
-                                    <img class="d-block w-100" src="Assests/images/carousel/neednairaforexchange.jpeg" alt="Third slide">
+                                    <img class="d-block w-100" src="{{ asset('Assests/images/carousel/neednairaforexchange.jpeg') }}" alt="Need Naira">
                                 </div>
                             </div>
-                            <a class="carousel-control-prev" href="#carouselExampleControls" role="button" data-slide="prev">
-                                <span class="sr-only fs-5 text-black">P</span>
-                                <span class="carousel-control-prev-icon text-black" aria-hidden="true"></span>
-                            </a>
-                            <a class="carousel-control-next" href="#carouselExampleControls" role="button" data-slide="next">
-                                <span class="carousel-control-next-icon text-black" aria-hidden="true"></span>
-                                <span class="sr-only fs-5 text-black">N</span>
-                            </a>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-        </section><!-- End About Section -->
-
-        <!-- ======= Values Section ======= -->
-        <section id="values" class="values">
-
-            <div class="container" data-aos="fade-up">
-
-                <header class="section-header">
-                    <h3>Why do people get involved with cryptocurrency?</h3>
-                </header>
-
-                <div class="row">
-
-                    <div class="col-lg-4" data-aos="fade-up" data-aos-delay="200">
-                        <div class="box">
-                            <img src="Assests/images/easy mode of payment.png" class="img-fluid" alt="">
-                            <h3>Easy Mode Of Payment</h3>
-                            <p>People can now easily send and receive money from anywhere in the world to purchase goods and pay for services</p>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4 mt-4 mt-lg-0" data-aos="fade-up" data-aos-delay="400">
-                        <div class="box">
-                            <img src="Assests/images/financial freedom.png" class="img-fluid" alt="">
-                            <h3>Financial freedom</h3>
-                            <p>Just like the internet no single entity controls the Crypto network which provides users transparency and privacy, which puts you in absolute control of your money</p>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4 mt-4 mt-lg-0" data-aos="fade-up" data-aos-delay="600">
-                        <div class="box">
-                            <img src="Assests/images/invest.png" class="img-fluid" alt="">
-                            <h3>Investment</h3>
-                            <p>The constant demand has made Cryptocurrecies a Digital Gold used for alternative store of wealth on long term investments. </p>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section><!-- End Values Section -->
-
-        <!-- ======= Counts Section ======= -->
-        <section id="counts" class="counts">
-            <div class="container" data-aos="fade-up">
-
-                <div class="row gy-4">
-
-                    <div class="col-lg-3 col-md-6">
-                        <div class="count-box">
-                            <i class="bi bi-emoji-smile"></i>
-                            <div>
-                                <span data-purecounter-start="0" data-purecounter-end="3000" data-purecounter-duration="1" class="purecounter"></span>
-                                <p>Happy Clients</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-3 col-md-6">
-                        <div class="count-box">
-                            <i class="bi bi-journal-richtext" style="color: #ee6c20;"></i>
-                            <div>
-                                <span data-purecounter-start="0" data-purecounter-end="90000" data-purecounter-duration="1" class="purecounter"></span>
-                                <p>Trades</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-3 col-md-6">
-                        <div class="count-box">
-                            <i class="bi bi-headset" style="color: #15be56;"></i>
-                            <div>
-                                <span data-purecounter-start="0" data-purecounter-end="24" data-purecounter-duration="1" class="purecounter"></span>
-                                <p>Hours Of Support</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-3 col-md-6">
-                        <div class="count-box">
-                            <i class="bi bi-people" style="color: #bb0852;"></i>
-                            <div>
-                                <span data-purecounter-start="0" data-purecounter-end="15" data-purecounter-duration="1" class="purecounter"></span>
-                                <p>Hard Workers</p>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-        </section><!-- End Counts Section -->
-
-        <!-- ======= Features Section ======= -->
-        <section id="features" class="features">
-
-            <div class="container" data-aos="fade-up">
-
-                <header class="section-header">
-                    <h2>What kay xchange has to offer</h2>
-                    <small>Hello chief, Below is a list of services we offer on this platform</small>
-                </header>
-
-                <div class="row">
-
-                    <div class="col-lg-6">
-                        <img src="Assests/favicon.png" class="img-fluid" alt="">
-                    </div>
-
-                    <div class="col-lg-6 mt-5 mt-lg-0 d-flex">
-                        <div class="row align-self-center gy-4">
-
-                            <div class="col-md-6" data-aos="zoom-out" data-aos-delay="200">
-                                <div class="feature-box d-flex align-items-center">
-                                    <i class="bi bi-check"></i>
-                                    <h3>Instant Conversion To NGN</h3>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6" data-aos="zoom-out" data-aos-delay="300">
-                                <div class="feature-box d-flex align-items-center">
-                                    <i class="bi bi-check"></i>
-                                    <h3>Competitive Exchange Rates</h3>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6" data-aos="zoom-out" data-aos-delay="400">
-                                <div class="feature-box d-flex align-items-center">
-                                    <i class="bi bi-check"></i>
-                                    <h3>Security & Reliablity</h3>
-                                </div>
-                            </div>
-
-
-                        </div>
-                    </div>
-
-                </div> <!-- / row -->
-
-                <!-- Feature Tabs -->
-                <div class="row feture-tabs" data-aos="fade-up">
-                    <div class="col-lg-6">
-                        <h3>Top 3 Cryptocurrencies and there uses</h3>
-
-                        <!-- Tabs -->
-                        <ul class="nav nav-pills mb-3">
-                            <li>
-                                <a class="nav-link active" data-bs-toggle="pill" href="#tab1">Bitcoin</a>
-                            </li>
-                            <li>
-                                <a class="nav-link" data-bs-toggle="pill" href="#tab2">Ethereum</a>
-                            </li>
-                            <li>
-                                <a class="nav-link" data-bs-toggle="pill" href="#tab3">Usdt</a>
-                            </li>
-                        </ul><!-- End Tabs -->
-
-                        <!-- Tab Content -->
-                        <div class="tab-content">
-
-                            <div class="tab-pane fade show active" id="tab1">
-                                <h4 class="mb-3 pt-3">The Pioneer of Cryptocurrencies:</h4>
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="bi bi-check2"></i>
-                                    <h4>Bitcoin (BTC)</h4>
-                                </div>
-                                <p>
-                                    Bitcoin, often referred to as the king of cryptocurrencies, revolutionized the digital currency landscape.</p>
-                                <div class="d-flex align-items-center mb-2">
-                                    <!-- <i class="bi bi-check2"></i> -->
-                                    <!-- <h4>Here is more</h4> -->
-                                </div>
-                                <p>As the first decentralized cryptocurrency, Bitcoin introduced a secure and transparent peer-to-peer payment system. Its primary use case lies in facilitating online transactions and acting as a store of value. <br> Bitcoin's decentralized nature and limited supply make it a popular choice for individuals seeking to hedge against traditional financial systems.</p>
-                            </div><!-- End Tab 1 Content -->
-
-                            <div class="tab-pane fade show" id="tab2">
-                                <h4 class="mb-3 pt-3">The Foundation for Smart Contracts:</h4>
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="bi bi-check2"></i>
-                                    <h4>Ethereum (ETH)</h4>
-                                </div>
-                                <p>Ethereum is not just a cryptocurrency but also a decentralized platform that enables developers to build and deploy smart contracts and decentralized applications (DApps).</p>
-                                <div class="d-flex align-items-center mb-2">
-                                    <!-- <i class="bi bi-check2"></i> -->
-                                    <!-- <h4>Incidunt non veritatis illum ea ut nisi</h4> -->
-                                </div>
-                                <p>While Ether (ETH) serves as the native cryptocurrency of the Ethereum network, its value extends beyond transactions. <br> ETH fuels the execution of smart contracts and serves as a gateway to access various decentralized services, including decentralized finance (DeFi), non-fungible tokens (NFTs), and decentralized exchanges (DEXs).</p>
-                            </div><!-- End Tab 2 Content -->
-
-                            <div class="tab-pane fade show" id="tab3">
-                                <h4>The Stablecoin for Digital Transactions:<h4>
-                                        <div class="d-flex align-items-center mb-2">
-                                            <!-- <i class="bi bi-check2"></i> -->
-                                        </div>
-                                        <div class="d-flex align-items-center mb-2">
-                                            <!-- <i class="bi bi-check2"></i>
-                  <h4>Incidunt non veritatis illum ea ut nisi</h4> -->
-                                        </div>
-                                        <p style="text-decoration: none; font-weight: 200;">Tether is a cryptocurrency that aims to bridge the gap between traditional fiat currencies and digital assets. Unlike most cryptocurrencies, Tether is a stablecoin designed to maintain a stable value by pegging it to a specific fiat currency, such as the US dollar.</p>
-                                        <p style="font-weight: 200;">This stability makes USDT a preferred choice for traders and investors seeking to mitigate the volatility often associated with other cryptocurrencies. <br> USDT provides a reliable means of transferring value across different cryptocurrency exchanges and platforms.</p>
-                            </div><!-- End Tab 3 Content -->
-
-                        </div>
-                        <!-- <div class="col-lg-6 m-auto">
-              <img src="/exchangeratesassetimages/usdt.svg" width="250px" class="img-fluid" alt="">
-            </div> -->
-                    </div>
-
-
-
-                </div><!-- End Feature Tabs -->
-
-                <!-- Feature Icons -->
-                <div class="row">
-
-                    <div class="col-xl-4 text-center" data-aos="fade-right" data-aos-delay="100">
-                        <img src="/Assests/images/Aboutusimages/ourvision.png" class="img-fluid p-4" alt="">
-                    </div>
-
-                    <div class="col-xl-8 d-flex content">
-                        <div class="row align-self-center gy-4">
-
-                            <div class="col-md-6 icon-box" data-aos="fade-up">
-                                <i class="text-success ri-line-chart-line"></i>
-                                <div>
-                                    <h4>No Limits on Financial Growth</h4>
-                                    <p>Experience the freedom to expand your financial opportunities with our cryptocurrency exchange app. Unlock the potential for unlimited growth and take control of your financial future.</p>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 icon-box" data-aos="fade-up" data-aos-delay="100">
-                                <i class="ri-wallet-2-line text-success"></i>
-                                <div>
-                                    <h4>Best Market Rates</h4>
-                                    <p>Enjoy the most competitive market rates for your cryptocurrency transactions. We strive to provide you with favorable exchange rates, ensuring that you get the best value for your digital assets.</p>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 icon-box" data-aos="fade-up" data-aos-delay="200">
-                                <i class="text-success ri-secure-payment-line"></i>
-                                <div>
-                                    <h4>Reliability at its Core</h4>
-                                    <p>Your trust is our priority. <br> Kay Xchange cryptocurrency trading app offers a reliable and secure platform for your financial transactions. <br> Rest assured knowing that your funds and personal information are protected at all times.</p>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 icon-box" data-aos="fade-up" data-aos-delay="300">
-                                <i class="ri-magic-line text-success"></i>
-                                <div>
-                                    <h4>Seamless User Experience</h4>
-                                    <p>Enjoy a seamless and user-friendly experience while navigating our cryptocurrency exchange app. We prioritize intuitive design and smooth functionality, making your transactions effortless and efficient.</p>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 icon-box" data-aos="fade-up" data-aos-delay="400">
-                                <i class="ri-command-line text-success"></i>
-                                <div>
-                                    <h4>Free and Limitless Transactions</h4>
-                                    <p>Get started with our app and enjoy free and limitless transactions without any KYC verification. Experience the freedom of transacting with ease and explore the world of cryptocurrencies without restrictions.</p>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 icon-box" data-aos="fade-up" data-aos-delay="500">
-                                <i class="ri-p2p-line text-success"></i>
-                                <div>
-                                    <h4>Secure and Transparent Transactions</h4>
-                                    <p>Rest easy knowing that your transactions are secure and transparent. Our cryptocurrency exchange app utilizes advanced security measures and ensures transparent processes, providing you with peace of mind.</p>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                </div>
-
-            </div><!--
-   End Feature Icons -->
-
-            </div>
-
-        </section><!-- End Features Section -->
-
-        <!-- ======= Services Section ======= -->
-        <section id="services" class="services">
-            <div class="container" data-aos="fade-up">
-                <header class="section-header">
-                    <h2>Start Trading Directly</h2>
-                </header>
-
-                <div class="row gy-4">
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                        <div class="service-box orange">
-                            <img src="/Assests//crypto-icons/btc.svg" alt="">
-                            <h3>Bitcoin</h3>
-                            <p>Trade Bitcoin to Naira and tap into the world of cryptocurrencies.</p>
-                            <a href="https://wa.me/+2349016740523?text=Hello%2C%20I%20would%20like%20to%20trade%20$__%20BTC%20to%20Naira" class="read-more"><span>Trade Now</span> <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
-                        <div class="service-box blue">
-                            <img src="/Assests/crypto-icons/eth.svg" alt="">
-                            <h3>Ethereum</h3>
-                            <p>Trade Ethereum to Naira and explore the potential of the second-largest cryptocurrency. </p>
-                            <a href="https://wa.me/+2349016740523?text=Hello%2C%20I%20would%20like%20to%20trade%20$__%20ETH%20to%20Naira" class="read-more"><span>Trade Now</span> <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
-                        <div class="service-box green">
-                            <img width="35px" src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/usdt.svg" alt="">
-                            <h3>Usdt Coin</h3>
-                            <p>Trade Usdt Coin to Naira and be part of the vibrant ecosystem.</p>
-                            <a href="https://wa.me/+2349016740523?text=Hello%2C%20I%20would%20like%20to%20trade%20$__%20USDT%20to%20Naira" class="read-more"><span>Trade Now</span> <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section><!-- End Services Section -->
-
-
-
-        <div class="container d-flex justify-content-center" data-aos="fade-up" data-aos-delay="500">
-            <div style="text-align: center;" class="service-box green">
-                <h3>Got other cryptocurrencies?</h3>
-                <img width="200px" src="/Assests/favicon.png" alt="">
-                <p>Kay xchange is here to Help you convert that to Naira</p>
-                <div class="container">
-                    <div>
-                        <img width="350px" src="/Assests/mocku_ image.png" alt="">
-                    </div>
-                </div>
-                <a href="https://User.kayxchange.net" class="read-more">
-                    <span>Trade Now</span>
-                    <i class="bi bi-arrow-right"></i></a>
-                <div>
-                    <div>
-                        <a href=""><img width="120px" src="/Assests/appstore.png" alt=""></a>
-                    </div>
-                    <!-- <div style="margin: auto;"><a href="/"><h4 class="text-start">Download now</h4></a></div> -->
-                </div>
-            </div>
-        </div>
-
-
-        <section id="testimonials" class="testimonials">
-
-            <div class="container" data-aos="fade-up">
-
-                <header class="section-header">
-                    <h2>What Our Users Say</h2>
-                    <p>Discover why our users love our cryptocurrency exchange app</p>
-                </header>
-
-                <div class="testimonials-slider swiper" data-aos="fade-up" data-aos-delay="200">
-                    <div class="swiper-wrapper">
-
-                        <div class="swiper-slide">
-                            <div class="testimonial-item">
-                                <div class="stars">
-                                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                                </div>
-                                <p>
-                                    I am amazed by the seamless experience and reliability of Kay xchange. It has made trading effortless and convenient for me. Highly recommended!
-                                </p>
-                                <div class="profile mt-auto">
-                                    <img width="300px" src="/Assests/images/image1.png" class="testimonial-img" alt="">
-                                    <h3>Amarachi</h3>
-                                    <h4>Cryptocurrency Enthusiast</h4>
-                                </div>
-                            </div>
-                        </div><!-- End testimonial item -->
-
-                        <div class="swiper-slide">
-                            <div class="testimonial-item">
-                                <div class="stars">
-                                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                                </div>
-                                <p>
-                                    This app is a game-changer. <br> It offers the best market rates and ensures secure transactions. <br> I have complete trust in this platform.
-                                </p>
-                                <div class="profile mt-auto">
-                                    <img src="/Assests/images/image2.png" class="testimonial-img" alt="">
-                                    <h3>Ade simi</h3>
-                                    <h4>Crypto Investor</h4>
-                                </div>
-                            </div>
-                        </div><!-- End testimonial item -->
-
-                        <div class="swiper-slide">
-                            <div class="testimonial-item">
-                                <div class="stars">
-                                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                                </div>
-                                <p>
-                                    I have been using this cryptocurrency exchange app for a while now, and I must say it's the most reliable platform I have come across. It offers fast and efficient transactions with no limits.
-                                </p>
-                                <div class="profile mt-auto">
-                                    <img src="/Assests/images/image3.png" class="testimonial-img" alt="">
-                                    <h3>Oliseh</h3>
-                                    <h4>Cryptocurrency Trader</h4>
-                                </div>
-                            </div>
-                        </div><!-- End testimonial item -->
-
-       
-
-                    </div>
-                    <div class="swiper-pagination"></div>
-                </div>
-
-            </div>
-
-        </section><!-- End Testimonials Section -->
-
-
-
-
-        <!-- ======= Recent Blog Posts Section ======= -->
-        <section id="recent-blog-posts" class="recent-blog-posts">
-
-            <div class="container" data-aos="fade-up">
-
-                <header class="section-header">
-                    <p>Learn more about cryptocurrency</p>
-                    <small>Below is a well curated list of topics, to get you started with cryptocurrecy</small>
-                </header>
-
-                <div class="row">
-
-                    <div class="col-lg-4">
-                        <div class="post-box">
-                            <!-- <div class="post-img"><img src="assets/img/blog/blog-1.jpg" class="img-fluid" alt=""></div> -->
-                            <span class="post-date">Tue, September 15</span>
-                            <h3 class="post-title">Introduction to Blockchain Technology</h3>
-                            <a href="/Blogpost/introductiontoblockchain.html" class="readmore stretched-link mt-auto"><span>Read More</span><i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4">
-                        <div class="post-box">
-                            <!-- <div class="post-img"><img src="assets/img/blog/blog-2.jpg" class="img-fluid" alt=""></div> -->
-                            <span class="post-date">Fri, August 28</span>
-                            <h3 class="post-title">Understanding Cryptocurrency Wallets</h3>
-                            <a href="/Blogpost/Understandingcryptocurrencywallets.html" class="readmore stretched-link mt-auto"><span>Read More</span><i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4">
-                        <div class="post-box">
-                            <!-- <div class="post-img"><img src="assets/img/blog/blog-3.jpg" class="img-fluid" alt=""></div> -->
-                            <span class="post-date">Mon, July 11</span>
-                            <h3 class="post-title">The Basics of Cryptocurrency</h3>
-                            <a href="/Blogpost/Thebasicsofcryptocurrency.html" class="readmore stretched-link mt-auto"><span>Read More</span><i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4">
-                        <div class="post-box">
-                            <!-- <div class="post-img"><img src="assets/img/blog/blog-3.jpg" class="img-fluid" alt=""></div> -->
-                            <span class="post-date">Mon, July 11</span>
-                            <h3 class="post-title">Types of Cryptocurrencies</h3>
-                            <a href="/Blogpost/Typesofcryptocurrency.html" class="readmore stretched-link mt-auto"><span>Read More</span><i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section><!-- End Recent Blog Posts Section -->
-
-
-
-    </main><!-- End #main -->
-
-    <!-- ======= Footer ======= -->
-    <footer id="footer" class="footer">
-        <div class="footer-newsletter">
-            <div class="container">
-                <div class="row justify-content-center">
-                    <div class="col-lg-12 text-center">
-                        <h4 class="text-white">Stay Updated with Crypto Trends</h4>
-                        <p class="text-white-50">Subscribe to our newsletter for the latest market insights, trading tips, and exclusive offers</p>
-                    </div>
-                    <div class="col-lg-6">
-                        <form method="post" action="./subscribe.php" class="newsletter-form">
-                            <div class="input-group">
-                                <input type="text" placeholder="Your name" name="name" class="form-control" required>
-                                <input type="email" placeholder="Email address" name="email" class="form-control" required>
-                                <button type="submit" class="btn btn-success">
-                                    <i class="bi bi-envelope-check me-2"></i>Subscribe
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="footer-top">
-            <div class="container">
-                <div class="row gy-4">
-                    <div class="col-lg-5 col-md-12 footer-info">
-                        <a href="/" class="logo d-flex align-items-center mb-3">
-                            <img src="Assests/favicon.png" alt="KayXchange" class="me-3" width="50">
-                            <span class="h4 text-success fw-bold mb-0">KayXchange</span>
-                        </a>
-                        <p class="mb-4">Your trusted platform for seamless cryptocurrency trading. Experience secure, fast, and reliable crypto-to-NGN conversions with competitive rates.</p>
-                        <div class="social-links mt-4">
-                            <a href="https://www.twitter.com/kay__xchange" class="twitter" data-bs-toggle="tooltip" title="Follow us on Twitter">
-                                <i class="bi bi-twitter"></i>
-                            </a>
-                            <a href="https://api.whatsapp.com/send?phone=+2349016740523&text=Hello%2C%20I%20would%20like%20to%20start%20a%20trade" class="whatsapp" data-bs-toggle="tooltip" title="Chat on WhatsApp">
-                                <i class="bi bi-whatsapp"></i>
-                            </a>
-                            <a href="https://www.instagram.com/kay__xchange" class="instagram" data-bs-toggle="tooltip" title="Follow us on Instagram">
-                                <i class="bi bi-instagram"></i>
-                            </a>
-                            <a href="https://t.snapchat.com/nIuJb4u1" class="snapchat" data-bs-toggle="tooltip" title="Add us on Snapchat">
-                                <i class="bi bi-snapchat"></i>
-                            </a>
-                            <a href="https://t.me/TradewithkayxchangeBOT" class="telegram" data-bs-toggle="tooltip" title="Join our Telegram Bot">
-                                <i class="bi bi-telegram"></i>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-2 col-6 footer-links">
-                        <h4 class="text-success fw-bold">Quick Links</h4>
-                        <ul class="list-unstyled">
-                            <li><a href="{{ route('dashboard') }}" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>Dashboard</a></li>
-                            <li><a href="{{ route('buy') }}" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>Buy Crypto</a></li>
-                            <li><a href="{{ route('sell.form') }}" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>Sell Crypto</a></li>
-                            <li><a href="{{ route('transactions.history') }}" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>Transactions</a></li>
-                            <li><a href="{{ route('feature.request.form') }}" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>Feature Request</a></li>
-                        </ul>
-                    </div>
-
-                    <div class="col-lg-2 col-6 footer-links">
-                        <h4 class="text-success fw-bold">Services</h4>
-                        <ul class="list-unstyled">
-                            <li><a href="/rate" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>Exchange Rates</a></li>
-                            <li><a href="/about" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>About Us</a></li>
-                            <li><a href="/faqs" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>FAQs</a></li>
-                            <li><a href="/blog" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>Blog</a></li>
-                            <li><a href="/kyc" class="text-decoration-none"><i class="bi bi-chevron-right me-2"></i>KYC</a></li>
-                        </ul>
-                    </div>
-
-                    <div class="col-lg-3 col-md-12 footer-contact">
-                        <h4 class="text-success fw-bold">Contact Info</h4>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-envelope-fill text-success me-3 fs-5"></i>
-                            <div>
-                                <strong>Email</strong><br>
-                                <a href="mailto:support@kayxchange.net" class="text-decoration-none">support@kayxchange.net</a>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-telephone-fill text-success me-3 fs-5"></i>
-                            <div>
-                                <strong>Phone</strong><br>
-                                <a href="tel:+2349016740523" class="text-decoration-none">+234 901 674 0523</a>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-geo-alt-fill text-success me-3 fs-5"></i>
-                            <div>
-                                <strong>Location</strong><br>
-                                <span>Nigeria</span>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <h6 class="text-success fw-bold mb-2">Available 24/7</h6>
-                            <small class="text-muted">Round-the-clock support for all your trading needs</small>
+                            <button class="carousel-control-prev" type="button" data-bs-target="#kxAboutCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon"></span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#kxAboutCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon"></span>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </section>
 
+    <!-- ======= Stats Strip ======= -->
+    <div class="kx-stats-strip">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <div class="copyright text-center text-md-start">
-                        &copy; <span id="currentYear"></span> <strong><span class="text-success">KayXchange</span></strong>.
-                        All Rights Reserved | <a href="/privacy" class="text-decoration-none">Privacy Policy</a> | <a href="/terms" class="text-decoration-none">Terms of Service</a>
-                    </div>
+            <div class="d-flex justify-content-center align-items-stretch gap-0 flex-wrap">
+                <div class="kx-stat-item">
+                    <div class="kx-stat-num" data-purecounter-start="0" data-purecounter-end="{{ $siteContent['stat_clients'] ?? 3000 }}" data-purecounter-duration="1" class="purecounter kx-stat-num">{{ $siteContent['stat_clients'] ?? '3000' }}</div>
+                    <div class="kx-stat-lbl">Happy Traders</div>
                 </div>
-                <div class="col-md-6">
-                    <div class="text-center text-md-end">
-                        <div class="d-flex justify-content-center justify-content-md-end gap-3">
-                            <span class="badge bg-success-subtle text-success px-3 py-2">
-                                <i class="bi bi-shield-check me-1"></i>Secure Trading
-                            </span>
-                            <span class="badge bg-success-subtle text-success px-3 py-2">
-                                <i class="bi bi-lightning me-1"></i>Instant Transfers
-                            </span>
-                            <span class="badge bg-success-subtle text-success px-3 py-2">
-                                <i class="bi bi-star me-1"></i>Best Rates
-                            </span>
-                        </div>
-                    </div>
+                <div class="kx-stat-div d-none d-sm-block"></div>
+                <div class="kx-stat-item">
+                    <div class="kx-stat-num" data-purecounter-start="0" data-purecounter-end="{{ $siteContent['stat_trades'] ?? 90000 }}" data-purecounter-duration="1" class="purecounter kx-stat-num">{{ $siteContent['stat_trades'] ?? '90,000' }}</div>
+                    <div class="kx-stat-lbl">Total Trades</div>
                 </div>
-            </div>
-        </div>
-    </footer><!-- End Footer -->
-
-    <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
-
-    <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
-
-    <script>
-        var ml4 = {};
-        ml4.opacityIn = [0, 1];
-        ml4.scaleIn = [0.2, 1];
-        ml4.scaleOut = 3;
-        ml4.durationIn = 800;
-        ml4.durationOut = 600;
-        ml4.delay = 500;
-
-        anime.timeline({
-                loop: true
-            })
-            .add({
-                targets: '.ml4 .letters-1',
-                opacity: ml4.opacityIn,
-                scale: ml4.scaleIn,
-                duration: ml4.durationIn
-            }).add({
-                targets: '.ml4 .letters-1',
-                opacity: 0,
-                scale: ml4.scaleOut,
-                duration: ml4.durationOut,
-                easing: "easeInExpo",
-                delay: ml4.delay
-            }).add({
-                targets: '.ml4 .letters-2',
-                opacity: ml4.opacityIn,
-                scale: ml4.scaleIn,
-                duration: ml4.durationIn
-            }).add({
-                targets: '.ml4 .letters-2',
-                opacity: 0,
-                scale: ml4.scaleOut,
-                duration: ml4.durationOut,
-                easing: "easeInExpo",
-                delay: ml4.delay
-            }).add({
-                targets: '.ml4 .letters-3',
-                opacity: ml4.opacityIn,
-                scale: ml4.scaleIn,
-                duration: ml4.durationIn
-            }).add({
-                targets: '.ml4 .letters-3',
-                opacity: 0,
-                scale: ml4.scaleOut,
-                duration: ml4.durationOut,
-                easing: "easeInExpo",
-                delay: ml4.delay
-            }).add({
-                targets: '.ml4',
-                opacity: 0,
-                duration: 500,
-                delay: 500
-            });
-    </script>
-
-    <!-- Template Main JS File -->
-    <script>
-        const toggleModeButton = document.getElementById('toggle-mode');
-        const contentElement = document.getElementById('content');
-
-        toggleModeButton.addEventListener('click', () => {
-            if (contentElement.classList.contains('dark-mode')) {
-                contentElement.classList.remove('dark-mode');
-            } else {
-                contentElement.classList.add('dark-mode');
-            }
-        });
-    </script>
-
-    <!-- Home Telegram QR Code Modal -->
-    <div class="modal fade" id="homeTelegramModal" tabindex="-1" aria-labelledby="homeTelegramModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #0088cc 0%, #005fa3 100%); color: white;">
-                    <h5 class="modal-title" id="homeTelegramModalLabel">
-                        <i class="fab fa-telegram-plane me-2"></i>
-                        Connect with KayXchange Bot
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="kx-stat-div d-none d-sm-block"></div>
+                <div class="kx-stat-item">
+                    <div class="kx-stat-num">24/7</div>
+                    <div class="kx-stat-lbl">Support Available</div>
                 </div>
-                <div class="modal-body text-center">
-                    <p class="mb-3">Get instant notifications for all your trades!</p>
-                    <div id="homeQrcode" class="d-flex justify-content-center mb-3"></div>
-                    <div class="alert" style="background-color: #e3f2fd; border-color: #0088cc; color: #1565c0;">
-                        <i class="fas fa-bell me-2"></i>
-                        <strong>Get notified about:</strong>
-                        <ul class="mb-0 mt-2 text-start">
-                            <li>Trade confirmations</li>
-                            <li>Rate updates</li>
-                            <li>Security alerts</li>
-                            <li>Withdrawal status</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <a href="https://t.me/TradewithkayxchangeBOT" target="_blank" class="btn btn-telegram-cta">
-                        <i class="fab fa-telegram-plane me-2"></i>
-                        Open Bot
-                    </a>
+                <div class="kx-stat-div d-none d-sm-block"></div>
+                <div class="kx-stat-item">
+                    <div class="kx-stat-num">0</div>
+                    <div class="kx-stat-lbl">Hidden Fees</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Multiple QR Code library sources for better reliability -->
-    <script>
-        // QR Code generation with multiple fallback sources
-        let qrCodeLibraryLoaded = false;
-        
-        function loadQRCodeLibrary() {
-            return new Promise((resolve, reject) => {
-                // Try primary CDN first
-                const script1 = document.createElement('script');
-                script1.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
-                script1.onload = () => {
-                    qrCodeLibraryLoaded = true;
-                    resolve();
-                };
-                script1.onerror = () => {
-                    // Try alternative CDN
-                    const script2 = document.createElement('script');
-                    script2.src = 'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js';
-                    script2.onload = () => {
-                        qrCodeLibraryLoaded = true;
-                        resolve();
-                    };
-                    script2.onerror = () => {
-                        // Try another alternative
-                        const script3 = document.createElement('script');
-                        script3.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
-                        script3.onload = () => {
-                            qrCodeLibraryLoaded = true;
-                            resolve();
-                        };
-                        script3.onerror = () => {
-                            reject(new Error('All QR Code libraries failed to load'));
-                        };
-                        document.head.appendChild(script3);
-                    };
-                    document.head.appendChild(script2);
-                };
-                document.head.appendChild(script1);
-            });
-        }
-
-        // Generate QR code with fallback to text link
-        function generateQRCode() {
-            const qrCodeDiv = document.getElementById('homeQrcode');
-            const botUrl = 'https://t.me/TradewithkayxchangeBOT';
-            
-            qrCodeDiv.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
-            
-            if (!qrCodeLibraryLoaded) {
-                loadQRCodeLibrary().then(() => {
-                    createQRCode(qrCodeDiv, botUrl);
-                }).catch((error) => {
-                    console.error('QR Code library loading failed:', error);
-                    showFallbackLink(qrCodeDiv, botUrl);
-                });
-            } else {
-                createQRCode(qrCodeDiv, botUrl);
-            }
-        }
-
-        function createQRCode(container, url) {
-            try {
-                if (typeof QRCode !== 'undefined') {
-                    QRCode.toCanvas(url, {
-                        width: 200,
-                        height: 200,
-                        colorDark: '#0088cc',
-                        colorLight: '#ffffff',
-                        margin: 2,
-                        errorCorrectionLevel: 'M'
-                    }, function (error, canvas) {
-                        if (error) {
-                            console.error('QR Code generation error:', error);
-                            showFallbackLink(container, url);
-                        } else {
-                            container.innerHTML = '';
-                            canvas.style.borderRadius = '8px';
-                            canvas.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-                            container.appendChild(canvas);
-                        }
-                    });
-                } else {
-                    showFallbackLink(container, url);
-                }
-            } catch (e) {
-                console.error('QR Code generation exception:', e);
-                showFallbackLink(container, url);
-            }
-        }
-
-        function showFallbackLink(container, url) {
-            container.innerHTML = `
-                <div class="text-center">
-                    <div class="alert alert-info mb-3">
-                        <i class="fas fa-info-circle me-2"></i>
-                        QR Code unavailable, but you can still access the bot directly!
-                    </div>
-                    <a href="${url}" target="_blank" class="btn btn-primary btn-lg">
-                        <i class="fab fa-telegram-plane me-2"></i>
-                        Open Telegram Bot
-                    </a>
-                    <div class="mt-3">
-                        <small class="text-muted">Or search for <strong>@TradewithkayxchangeBOT</strong> in Telegram</small>
+    <!-- ======= Why Crypto Section ======= -->
+    <section class="kx-sec kx-sec-alt" id="why">
+        <div class="container">
+            <div class="text-center mb-5" data-aos="fade-up">
+                <div class="kx-sec-tag mx-auto"><i class="bi bi-stars"></i>Why Choose Crypto</div>
+                <h2 class="kx-sec-h">{{ $siteContent['why_heading'] ?? 'Why People Choose Crypto' }}</h2>
+                <p class="kx-sec-sub mx-auto">Understanding the driving forces behind the crypto revolution.</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+                    <div class="kx-why-card">
+                        <div class="kx-why-icon kx-why-i1"><i class="bi bi-send-fill"></i></div>
+                        <h3 class="kx-why-t">{{ $siteContent['why_card1_title'] ?? 'Easy Mode of Payment' }}</h3>
+                        <p class="kx-why-d">{{ $siteContent['why_card1_desc'] ?? 'Send and receive money globally with ease.' }}</p>
                     </div>
                 </div>
-            `;
-        }
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+                    <div class="kx-why-card">
+                        <div class="kx-why-icon kx-why-i2"><i class="bi bi-bank2"></i></div>
+                        <h3 class="kx-why-t">{{ $siteContent['why_card2_title'] ?? 'Financial Freedom' }}</h3>
+                        <p class="kx-why-d">{{ $siteContent['why_card2_desc'] ?? 'Full transparency and privacy over your money.' }}</p>
+                    </div>
+                </div>
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+                    <div class="kx-why-card">
+                        <div class="kx-why-icon kx-why-i3"><i class="bi bi-graph-up-arrow"></i></div>
+                        <h3 class="kx-why-t">{{ $siteContent['why_card3_title'] ?? 'Investment' }}</h3>
+                        <p class="kx-why-d">{{ $siteContent['why_card3_desc'] ?? 'Digital Gold — a popular store of wealth for investors.' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-        // Generate QR code when modal is shown
-        document.getElementById('homeTelegramModal').addEventListener('shown.bs.modal', generateQRCode);
-    </script>
+    <!-- ======= How It Works Section ======= -->
+    <section class="kx-sec kx-sec-dark" id="how">
+        <div class="container">
+            <div class="text-center mb-5" data-aos="fade-up">
+                <div class="kx-sec-tag mx-auto"><i class="bi bi-list-ol"></i>How It Works</div>
+                <h2 class="kx-sec-h">Start Trading in 3 Simple Steps</h2>
+                <p class="kx-sec-sub mx-auto">Get from zero to your first trade in under 5 minutes.</p>
+            </div>
+            <div class="row g-4 justify-content-center" data-aos="fade-up" data-aos-delay="100">
+                <div class="col-md-4 col-sm-12">
+                    <div class="kx-card kx-how-step">
+                        <div class="kx-how-num">1</div>
+                        <h4 class="kx-how-t">Create Your Account</h4>
+                        <p class="kx-how-d">Sign up in minutes — no KYC required. Just your email and a secure password.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-12">
+                    <div class="kx-card kx-how-step">
+                        <div class="kx-how-num">2</div>
+                        <h4 class="kx-how-t">Choose Your Crypto</h4>
+                        <p class="kx-how-d">Select from BTC, ETH, USDT, LTC, BNB and more. Get real-time NGN rates instantly.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-12">
+                    <div class="kx-card kx-how-step">
+                        <div class="kx-how-num">3</div>
+                        <h4 class="kx-how-t">Receive Your Naira</h4>
+                        <p class="kx-how-d">Submit your trade and receive your NGN directly to your bank account. Fast & secure.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-5" data-aos="fade-up" data-aos-delay="200">
+                @auth
+                <a href="{{ url('/sell') }}" class="kx-h-cta1" style="display:inline-flex"><i class="bi bi-arrow-up-circle-fill"></i>Sell Crypto Now</a>
+                @else
+                <a href="{{ route('register') }}" class="kx-h-cta1" style="display:inline-flex"><i class="bi bi-rocket-takeoff-fill"></i>Get Started Free</a>
+                @endauth
+            </div>
+        </div>
+    </section>
 
-    <!-- Custom page-specific scripts -->
-    <script src="./assets/js/prices.js"></script>
+    <!-- ======= Trade Section ======= -->
+    <section class="kx-sec kx-sec-alt" id="trade">
+        <div class="container">
+            <div class="text-center mb-5" data-aos="fade-up">
+                <div class="kx-sec-tag mx-auto"><i class="bi bi-currency-bitcoin"></i>Trade Now</div>
+                <h2 class="kx-sec-h">Start Trading Directly</h2>
+                <p class="kx-sec-sub mx-auto">Click Trade Now to send a WhatsApp message and we'll process your trade within minutes.</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
+                    <div class="kx-trade-card kx-trade-btc">
+                        <div class="kx-trade-icon"><img src="{{ asset('Assests/crypto-icons/btc.svg') }}" alt="Bitcoin"></div>
+                        <div class="kx-trade-name">Bitcoin (BTC)</div>
+                        <p class="kx-trade-desc">Trade Bitcoin to Naira at the best market rates, settled directly to your bank account.</p>
+                        <a href="https://wa.me/+2349016740523?text=Hello%2C%20I%20would%20like%20to%20trade%20BTC%20to%20Naira" class="kx-trade-btn kx-trade-btn-btc" target="_blank" rel="noopener">
+                            <i class="bi bi-whatsapp"></i>Trade Now
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
+                    <div class="kx-trade-card kx-trade-eth">
+                        <div class="kx-trade-icon"><img src="{{ asset('Assests/crypto-icons/eth.svg') }}" alt="Ethereum"></div>
+                        <div class="kx-trade-name">Ethereum (ETH)</div>
+                        <p class="kx-trade-desc">Sell Ethereum for NGN with competitive rates and fast bank settlement.</p>
+                        <a href="https://wa.me/+2349016740523?text=Hello%2C%20I%20would%20like%20to%20trade%20ETH%20to%20Naira" class="kx-trade-btn kx-trade-btn-eth" target="_blank" rel="noopener">
+                            <i class="bi bi-whatsapp"></i>Trade Now
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
+                    <div class="kx-trade-card kx-trade-usdt">
+                        <div class="kx-trade-icon"><img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/usdt.svg" alt="USDT" width="42" height="42"></div>
+                        <div class="kx-trade-name">Tether (USDT)</div>
+                        <p class="kx-trade-desc">Trade USDT TRC20/ERC20 to Naira stably and instantly with zero surprises.</p>
+                        <a href="https://wa.me/+2349016740523?text=Hello%2C%20I%20would%20like%20to%20trade%20USDT%20to%20Naira" class="kx-trade-btn kx-trade-btn-usdt" target="_blank" rel="noopener">
+                            <i class="bi bi-whatsapp"></i>Trade Now
+                        </a>
+                    </div>
+                </div>
+                <div class="col-12 text-center" data-aos="fade-up" data-aos-delay="350">
+                    <p style="font-size:0.83rem;color:rgba(255,255,255,0.35);margin-top:8px">Also accept: LTC, BNB, XRP, DOGE &amp; more — just ask via WhatsApp.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <!-- Footer JavaScript -->
+    <!-- ======= Reviews Section ======= -->
+    <section class="kx-sec kx-sec-dark" id="reviews">
+        <div class="container">
+            <div class="text-center mb-5" data-aos="fade-up">
+                <div class="kx-sec-tag mx-auto"><i class="bi bi-star-fill"></i>Testimonials</div>
+                <h2 class="kx-sec-h">What Our Traders Say</h2>
+                <p class="kx-sec-sub mx-auto">Thousands of happy traders trust KayXchange every day.</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+                    <div class="kx-review-card">
+                        <div class="kx-review-stars">★★★★★</div>
+                        <p class="kx-review-text">I am amazed by the seamless experience and reliability. Trading has become effortless and convenient. Highly recommended!</p>
+                        <div class="d-flex align-items-center gap-12" style="gap:12px">
+                            <img src="{{ asset('Assests/images/image1.png') }}" class="kx-review-avatar" alt="Amarachi">
+                            <div><div class="kx-review-name">Amarachi</div><div class="kx-review-role">Cryptocurrency Enthusiast</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+                    <div class="kx-review-card">
+                        <div class="kx-review-stars">★★★★★</div>
+                        <p class="kx-review-text">A total game-changer. Best market rates and fully secure transactions. I have complete trust in this platform.</p>
+                        <div class="d-flex align-items-center" style="gap:12px">
+                            <img src="{{ asset('Assests/images/image2.png') }}" class="kx-review-avatar" alt="Ade Simi">
+                            <div><div class="kx-review-name">Ade Simi</div><div class="kx-review-role">Crypto Investor</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+                    <div class="kx-review-card">
+                        <div class="kx-review-stars">★★★★★</div>
+                        <p class="kx-review-text">The most reliable platform I've used. Fast and efficient transactions, no limits. My go-to for crypto trades in Nigeria.</p>
+                        <div class="d-flex align-items-center" style="gap:12px">
+                            <img src="{{ asset('Assests/images/image3.png') }}" class="kx-review-avatar" alt="Oliseh">
+                            <div><div class="kx-review-name">Oliseh</div><div class="kx-review-role">Cryptocurrency Trader</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======= Blog Section ======= -->
+    <section class="kx-sec kx-sec-alt" id="blog">
+        <div class="container">
+            <div class="text-center mb-5" data-aos="fade-up">
+                <div class="kx-sec-tag mx-auto"><i class="bi bi-newspaper"></i>Learn</div>
+                <h2 class="kx-sec-h">Crypto Knowledge Hub</h2>
+                <p class="kx-sec-sub mx-auto">Well-curated guides to get you started with cryptocurrency.</p>
+            </div>
+            <div class="row g-4">
+                @php
+                $posts = [
+                    ['date' => 'Sep 15', 'title' => 'Introduction to Blockchain Technology', 'url' => url('/Blogpost/introductiontoblockchain.html')],
+                    ['date' => 'Aug 28', 'title' => 'Understanding Cryptocurrency Wallets',   'url' => url('/Blogpost/Understandingcryptocurrencywallets.html')],
+                    ['date' => 'Jul 11', 'title' => 'The Basics of Cryptocurrency',           'url' => url('/Blogpost/Thebasicsofcryptocurrency.html')],
+                    ['date' => 'Jul 11', 'title' => 'Types of Cryptocurrencies',              'url' => url('/Blogpost/Typesofcryptocurrency.html')],
+                ];
+                @endphp
+                @foreach($posts as $i => $post)
+                <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="{{ ($i+1)*80 }}">
+                    <div class="kx-blog-card">
+                        <span class="kx-blog-date"><i class="bi bi-calendar3 me-1"></i>{{ $post['date'] }}</span>
+                        <h3 class="kx-blog-title">{{ $post['title'] }}</h3>
+                        <a href="{{ $post['url'] }}" class="kx-blog-link">Read More <i class="bi bi-arrow-right"></i></a>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    </main>
+
+    <!-- ======= Newsletter Section ======= -->
+    <section class="kx-nl" id="newsletter">
+        <div class="container kx-nl-inner">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7" data-aos="fade-right">
+                    <div class="kx-sec-tag"><i class="bi bi-envelope-heart-fill"></i>Newsletter</div>
+                    <h2>{{ $siteContent['newsletter_title'] ?? 'Stay Ahead of the Market' }}</h2>
+                    <p class="kx-nl-sub">{{ $siteContent['newsletter_subtitle'] ?? 'Get weekly market insights, trading tips, and exclusive rate notifications.' }}</p>
+                    <form class="kx-nl-form" id="kxNlForm" novalidate>
+                        @csrf
+                        <input type="email" class="kx-nl-input" placeholder="Enter your email address" required id="kxNlEmail">
+                        <button type="submit" class="kx-nl-btn" id="kxNlBtn">
+                            <i class="bi bi-envelope-check-fill"></i>Subscribe
+                        </button>
+                    </form>
+                    <div class="kx-nl-perks">
+                        <span class="kx-nl-perk"><i class="bi bi-check-circle-fill"></i>No spam, ever</span>
+                        <span class="kx-nl-perk"><i class="bi bi-check-circle-fill"></i>Unsubscribe anytime</span>
+                        <span class="kx-nl-perk"><i class="bi bi-check-circle-fill"></i>Weekly insights</span>
+                    </div>
+                </div>
+                <div class="col-lg-5 text-lg-end" data-aos="fade-left">
+                    <div style="display:inline-flex;flex-direction:column;align-items:center;gap:14px;background:rgba(0,204,0,0.06);border:1px solid rgba(0,204,0,0.15);border-radius:20px;padding:28px 32px;text-align:center;">
+                        <div style="font-size:2.4rem;">📈</div>
+                        <div style="font-size:1rem;font-weight:700;color:#fff">3,000+ subscribers</div>
+                        <div style="font-size:0.78rem;color:rgba(255,255,255,0.38)">already getting crypto insights</div>
+                        <div class="kx-nl-perks" style="justify-content:center">
+                            <span class="kx-nl-perk"><i class="bi bi-star-fill" style="color:#fbbf24"></i>Rate Alerts</span>
+                            <span class="kx-nl-perk"><i class="bi bi-star-fill" style="color:#fbbf24"></i>Market News</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======= Footer ======= -->
+    <footer class="kx-footer" id="footer">
+        <div class="container">
+            <div class="row g-5">
+                <!-- Brand -->
+                <div class="col-lg-4 col-md-12">
+                    <a href="{{ url('/') }}" class="kx-footer-logo">
+                        <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+                        <span>Kay<b>Xchange</b></span>
+                    </a>
+                    <p class="kx-footer-desc">{{ $siteContent['footer_tagline'] ?? 'Your trusted platform for seamless cryptocurrency trading. Fast, secure, and competitive NGN rates.' }}</p>
+                    <div class="kx-footer-social">
+                        <a href="https://www.twitter.com/kay__xchange" class="kx-footer-soc tw" title="Twitter"><i class="bi bi-twitter-x"></i></a>
+                        <a href="https://api.whatsapp.com/send?phone=+2349016740523&text=Hello" class="kx-footer-soc wa" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
+                        <a href="https://www.instagram.com/kay__xchange" class="kx-footer-soc ig" title="Instagram"><i class="bi bi-instagram"></i></a>
+                        <a href="https://t.me/TradewithkayxchangeBOT" class="kx-footer-soc tg" title="Telegram"><i class="bi bi-telegram"></i></a>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="col-lg-2 col-6">
+                    <h5 class="kx-footer-h">Quick Links</h5>
+                    <ul class="kx-footer-links">
+                        <li><a href="{{ url('/dashboard') }}"><i class="bi bi-chevron-right"></i>Dashboard</a></li>
+                        <li><a href="{{ url('/buy') }}"><i class="bi bi-chevron-right"></i>Buy Crypto</a></li>
+                        <li><a href="{{ url('/sell') }}"><i class="bi bi-chevron-right"></i>Sell Crypto</a></li>
+                        <li><a href="{{ url('/rate') }}"><i class="bi bi-chevron-right"></i>Live Rates</a></li>
+                        <li><a href="{{ url('/referrals') }}"><i class="bi bi-chevron-right"></i>Referrals</a></li>
+                    </ul>
+                </div>
+
+                <!-- Company -->
+                <div class="col-lg-2 col-6">
+                    <h5 class="kx-footer-h">Company</h5>
+                    <ul class="kx-footer-links">
+                        <li><a href="{{ url('/about') }}"><i class="bi bi-chevron-right"></i>About Us</a></li>
+                        <li><a href="{{ url('/faqs') }}"><i class="bi bi-chevron-right"></i>FAQs</a></li>
+                        <li><a href="{{ url('/blog') }}"><i class="bi bi-chevron-right"></i>Blog</a></li>
+                        <li><a href="{{ url('/privacy') }}"><i class="bi bi-chevron-right"></i>Privacy Policy</a></li>
+                        <li><a href="{{ url('/terms') }}"><i class="bi bi-chevron-right"></i>Terms of Service</a></li>
+                    </ul>
+                </div>
+
+                <!-- Contact -->
+                <div class="col-lg-4 col-md-12">
+                    <h5 class="kx-footer-h">Contact Us</h5>
+                    <div class="kx-footer-contact">
+                        <div class="kx-footer-ci">
+                            <div class="kx-footer-ci-icon"><i class="bi bi-envelope-fill"></i></div>
+                            <div>
+                                <div class="kx-footer-ci-t">Email</div>
+                                <div class="kx-footer-ci-v"><a href="mailto:{{ $siteContent['contact_email'] ?? 'support@kayxchange.net' }}">{{ $siteContent['contact_email'] ?? 'support@kayxchange.net' }}</a></div>
+                            </div>
+                        </div>
+                        <div class="kx-footer-ci">
+                            <div class="kx-footer-ci-icon"><i class="bi bi-telephone-fill"></i></div>
+                            <div>
+                                <div class="kx-footer-ci-t">Phone / WhatsApp</div>
+                                <div class="kx-footer-ci-v"><a href="tel:+2349016740523">{{ $siteContent['contact_phone'] ?? '+234 901 674 0523' }}</a></div>
+                            </div>
+                        </div>
+                        <div class="kx-footer-ci">
+                            <div class="kx-footer-ci-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                            <div>
+                                <div class="kx-footer-ci-t">Location</div>
+                                <div class="kx-footer-ci-v">{{ $siteContent['contact_location'] ?? 'Nigeria' }} &bull; <span style="color:#00cc00;">Available 24/7</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom bar -->
+            <div class="kx-footer-bottom">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="kx-footer-copy">
+                            &copy; <span id="kxYear"></span> <strong>KayXchange</strong>. All rights reserved. &nbsp;|&nbsp;
+                            <a href="{{ url('/privacy') }}">Privacy</a> &nbsp;|&nbsp;
+                            <a href="{{ url('/terms') }}">Terms</a>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mt-2 mt-md-0">
+                        <div class="kx-footer-badges">
+                            <span class="kx-footer-badge"><i class="bi bi-shield-fill-check"></i>Secure Trading</span>
+                            <span class="kx-footer-badge"><i class="bi bi-lightning-fill"></i>Instant Payouts</span>
+                            <span class="kx-footer-badge"><i class="bi bi-star-fill"></i>Best Rates</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back to Top -->
+    <a href="#" class="kx-btt" id="kxBtt" aria-label="Back to top"><i class="bi bi-arrow-up-short"></i></a>
+
     <script>
-        // Set current year in footer
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    // Year
+    document.getElementById('kxYear').textContent = new Date().getFullYear();
 
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
+    // Back to top
+    (function(){
+        var btn = document.getElementById('kxBtt');
+        window.addEventListener('scroll', function(){ btn.classList.toggle('kx-btt-show', window.scrollY > 320); }, {passive:true});
+        btn.addEventListener('click', function(e){ e.preventDefault(); window.scrollTo({top:0,behavior:'smooth'}); });
+    })();
 
-        // Newsletter form handling
-        document.addEventListener('DOMContentLoaded', function() {
-            const newsletterForm = document.querySelector('.newsletter-form');
-
-            if (newsletterForm) {
-                newsletterForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-
-                    const form = this;
-                    const formData = new FormData(form);
-                    const submitBtn = form.querySelector('.btn');
-
-                    // Add loading state
-                    form.classList.add('submitting');
-                    const originalText = submitBtn.innerHTML;
-                    submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Subscribing...';
-
-                    // Simulate form submission (replace with actual AJAX call)
-                    setTimeout(() => {
-                        // Remove loading state
-                        form.classList.remove('submitting');
-                        submitBtn.innerHTML = originalText;
-
-                        // Show success message
-                        showSuccessMessage('Thank you for subscribing! Check your email for confirmation.');
-
-                        // Reset form
-                        form.reset();
-                    }, 2000);
-                });
+    // Newsletter form
+    (function(){
+        var form = document.getElementById('kxNlForm');
+        if(!form) return;
+        form.addEventListener('submit', function(e){
+            e.preventDefault();
+            var email = document.getElementById('kxNlEmail').value.trim();
+            var btn   = document.getElementById('kxNlBtn');
+            if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+                document.getElementById('kxNlEmail').style.borderColor='rgba(239,68,68,0.6)';
+                return;
             }
+            document.getElementById('kxNlEmail').style.borderColor='';
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Subscribing...';
+            btn.disabled = true;
+            // Replace with real AJAX to your subscribe endpoint
+            setTimeout(function(){
+                btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Subscribed!';
+                btn.style.background = '#00a010';
+                setTimeout(function(){
+                    btn.innerHTML = orig;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                    form.reset();
+                }, 3000);
+            }, 1200);
         });
-
-        // Success message function
-        function showSuccessMessage(message) {
-            // Remove existing success message if any
-            const existingMessage = document.querySelector('.newsletter-success');
-            if (existingMessage) {
-                existingMessage.remove();
-            }
-
-            // Create new success message
-            const successDiv = document.createElement('div');
-            successDiv.className = 'newsletter-success';
-            successDiv.innerHTML = `
-                <i class="bi bi-check-circle-fill me-2"></i>
-                ${message}
-                <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.remove()"></button>
-            `;
-
-            document.body.appendChild(successDiv);
-
-            // Show message
-            setTimeout(() => successDiv.classList.add('show'), 100);
-
-            // Auto hide after 5 seconds
-            setTimeout(() => {
-                successDiv.classList.remove('show');
-                setTimeout(() => successDiv.remove(), 300);
-            }, 5000);
-        }
-
-        // Back to top button functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const backToTopBtn = document.querySelector('.back-to-top');
-
-            if (backToTopBtn) {
-                // Show/hide button based on scroll position
-                window.addEventListener('scroll', function() {
-                    if (window.pageYOffset > 300) {
-                        backToTopBtn.classList.add('show');
-                    } else {
-                        backToTopBtn.classList.remove('show');
-                    }
-                });
-
-                // Smooth scroll to top
-                backToTopBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    window.scrollTo({
-                        top: 0,
-                        behavior: 'smooth'
-                    });
-                });
-            }
-        });
-
-        // Enhanced footer animations
-        document.addEventListener('DOMContentLoaded', function() {
-            const footer = document.querySelector('.footer');
-            const observerOptions = {
-                threshold: 0.1,
-                rootMargin: '0px 0px -50px 0px'
-            };
-
-            const observer = new IntersectionObserver(function(entries) {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.style.opacity = '1';
-                        entry.target.style.transform = 'translateY(0)';
-                    }
-                });
-            }, observerOptions);
-
-            if (footer) {
-                observer.observe(footer);
-            }
-        });
-
-        // Social media link tracking (optional analytics)
-        document.addEventListener('DOMContentLoaded', function() {
-            const socialLinks = document.querySelectorAll('.social-links a');
-
-            socialLinks.forEach(link => {
-                link.addEventListener('click', function(e) {
-                    const platform = this.className.split(' ')[0];
-                    // You can add analytics tracking here
-                    console.log(`Social media click: ${platform}`);
-                });
-            });
-        });
-
-        // Newsletter form validation enhancement
-        document.addEventListener('DOMContentLoaded', function() {
-            const emailInput = document.querySelector('input[name="email"]');
-            const nameInput = document.querySelector('input[name="name"]');
-
-            if (emailInput) {
-                emailInput.addEventListener('blur', function() {
-                    const email = this.value;
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-                    if (email && !emailRegex.test(email)) {
-                        this.style.borderColor = '#dc3545';
-                        this.style.boxShadow = '0 0 0 0.2rem rgba(220, 53, 69, 0.25)';
-                    } else {
-                        this.style.borderColor = '';
-                        this.style.boxShadow = '';
-                    }
-                });
-            }
-
-            if (nameInput) {
-                nameInput.addEventListener('blur', function() {
-                    if (this.value.length < 2) {
-                        this.style.borderColor = '#dc3545';
-                        this.style.boxShadow = '0 0 0 0.2rem rgba(220, 53, 69, 0.25)';
-                    } else {
-                        this.style.borderColor = '';
-                        this.style.boxShadow = '';
-                    }
-                });
-            }
-        });
-
-        // Add loading animation to footer on page load
-        window.addEventListener('load', function() {
-            const footer = document.querySelector('.footer');
-            if (footer) {
-                footer.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
-            }
-        });
+    })();
     </script>
+
+    <script>
+    // Ensure AOS animates in correctly after all assets load
+    window.addEventListener('load', function(){
+        if(window.AOS) {
+            AOS.init({ duration: 600, once: true, offset: 60 });
+        }
+    });
+    </script>
+
 @endsection

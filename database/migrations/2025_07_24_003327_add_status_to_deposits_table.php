@@ -7,6 +7,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('deposits', 'status')) {
+            return;
+        }
         Schema::table('deposits', function (Blueprint $table) {
             $table->string('status')->default('pending')->after('amount');
         });

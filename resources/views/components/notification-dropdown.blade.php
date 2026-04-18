@@ -13,7 +13,7 @@
                 <button class="btn btn-sm btn-outline-primary" id="markAllReadBtn">
                     <i class="bi bi-check-all"></i>
                 </button>
-                <a href="/notifications" class="btn btn-sm btn-outline-secondary">
+                <a href="{{ url('/notifications') }}" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-arrow-right"></i>
                 </a>
             </div>
@@ -29,7 +29,7 @@
         </div>
         <li><hr class="dropdown-divider"></li>
         <li class="dropdown-item text-center">
-            <a href="/notifications" class="text-decoration-none">View All Notifications</a>
+            <a href="{{ url('/notifications') }}" class="text-decoration-none">View All Notifications</a>
         </li>
     </ul>
 </div>
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.notification-item').forEach(item => {
             item.addEventListener('click', function() {
                 if (!this.querySelector('.mark-read')) {
-                    window.location.href = '/notifications';
+                    window.location.href = '{{ url("/notifications") }}';
                 }
             });
         });

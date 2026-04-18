@@ -224,8 +224,8 @@
     <div class="container">
       <div class="row gy-4">
         <div class="col-lg-5 col-md-12 footer-info">
-          <a href="/" class="logo d-flex align-items-center">
-            <img src="Assests/favicon.png" alt="">
+          <a href="{{ url('/') }}" class="logo d-flex align-items-center">
+            <img src="{{ asset('Assests/favicon.png') }}" alt="">
           </a>
           <h3 style="color: green;">Socials</h3>
           <div class="social-links mt-3">

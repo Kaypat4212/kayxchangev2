@@ -7,10 +7,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use App\Mail\TradeNotification;
 use App\Models\User;
 use App\Models\Withdrawal;
+use App\Services\AdminTradeAlertService;
 use Illuminate\Support\Str;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -59,6 +62,7 @@ class WithdrawalController extends Controller
             'payment_method' => 'required|in:bank',
             'bank_option' => 'required_if:payment_method,bank|in:default,external',
             'external_bank_name' => 'required_if:bank_option,external|string|max:100|nullable',
+            'external_bank_code' => 'required_if:bank_option,external|string|max:20|nullable',
             'external_account_number' => 'required_if:bank_option,external|string|max:50|nullable',
             'external_account_name' => 'required_if:bank_option,external|string|max:100|nullable',
         ], [
@@ -68,7 +72,8 @@ class WithdrawalController extends Controller
             'password.required' => 'Please enter your password.',
             'payment_method.required' => 'Please select a payment method.',
             'bank_option.required_if' => 'Please select a bank option.',
-            'external_bank_name.required_if' => 'Please enter the bank name.',
+            'external_bank_name.required_if' => 'Please select a bank.',
+            'external_bank_code.required_if' => 'Please select a bank.',
             'external_account_number.required_if' => 'Please enter the account number.',
             'external_account_name.required_if' => 'Please enter the account name.',
         ]);
@@ -91,6 +96,7 @@ class WithdrawalController extends Controller
             'account_name' => $user->account_name ?? 'N/A',
         ] : [
             'bank_name' => $request->external_bank_name ?? 'N/A',
+            'bank_code' => $request->external_bank_code ?? '',
             'account_number' => $request->external_account_number ?? 'N/A',
             'account_name' => $request->external_account_name ?? 'N/A',
         ];
@@ -111,8 +117,46 @@ class WithdrawalController extends Controller
             // Send Telegram notification
             $this->sendTelegramNotification($user, $withdrawal, $bankDetails);
 
+            // Standardized admin alert + in-app badge notification
+            try {
+                app(AdminTradeAlertService::class)->sendTriggeredAlert('withdrawal', [
+                    'user_id' => $user->id,
+                    'reference' => $withdrawal->reference,
+                    'user_name' => $user->name,
+                    'user_email' => $user->email,
+                    'coin' => 'NGN',
+                    'usd_amount' => 'N/A',
+                    'naira_amount' => number_format((float) $withdrawal->amount, 2),
+                    'wallet_address' => 'N/A',
+                    'network' => 'Bank Transfer',
+                    'status' => $withdrawal->status,
+                ]);
+            } catch (\Throwable $alertEx) {
+                Log::warning('Withdrawal admin alert failed: ' . $alertEx->getMessage());
+            }
+
             DB::commit();
             Log::info('Withdrawal created: ', $withdrawal->toArray());
+
+            // Send withdrawal submitted email
+            try {
+                $accountDetails = ($bankDetails['account_name'] ?? 'N/A') . ' — '
+                    . ($bankDetails['account_number'] ?? 'N/A') . ' (' . ($bankDetails['bank_name'] ?? 'N/A') . ')';
+                Mail::to($user->email)->send(new TradeNotification(
+                    user: $user,
+                    templateKey: 'withdrawal_submitted',
+                    data: [
+                        'amount'          => number_format((float)$request->amount, 2),
+                        'payment_method'  => 'Bank Transfer',
+                        'account_details' => $accountDetails,
+                    ],
+                    badge: ['text' => 'Withdrawal Received', 'color' => '#f0a500'],
+                    ctaUrl: url('/dashboard'),
+                    ctaText: 'Go to Dashboard',
+                ));
+            } catch (\Exception $mailEx) {
+                Log::warning('Withdrawal submitted email failed: ' . $mailEx->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
@@ -161,47 +205,24 @@ class WithdrawalController extends Controller
             $bankDetails = $withdrawal->bank_account;
             $this->sendTelegramNotification($user, $withdrawal, $bankDetails, true);
 
-            // Attempt to send email notification using PHPMailer with .env settings
+            // Send withdrawal approved email
             try {
-                $mail = new PHPMailer(true);
-                $mail->isSMTP();
-                $mail->Host = config('mail.host', 'smtp.gmail.com');
-                $mail->SMTPAuth = true;
-                $mail->Username = config('mail.username', 'admin@kayxchange.net');
-                $mail->Password = config('mail.password', 'gqzvjmmdqgkeelwk');
-                $mail->SMTPSecure = config('mail.encryption', 'tls');
-                $mail->Port = config('mail.port', 587);
-
-                $mail->setFrom(config('mail.from.address', 'admin@kayxchange.net'), config('mail.from.name', 'Kayxchange'));
-                $mail->addAddress($user->email);
-                $mail->addReplyTo(config('mail.from.address', 'admin@kayxchange.net'), config('mail.from.name', 'Kayxchange'));
-
-                $mail->isHTML(false);
-                $mail->Subject = 'Your Withdrawal Request Has Been Approved';
-                $mail->Body = "Dear {$user->name},\n\n" .
-                              "We have approved your withdrawal request with the following details:\n\n" .
-                              "- Amount: ₦" . number_format((float)($withdrawal->amount ?? 0), 2) . "\n" .
-                              "- Bank: {$bankDetails['bank_name']}\n" .
-                              "- Account Number: {$bankDetails['account_number']}\n" .
-                              "- Account Name: {$bankDetails['account_name']}\n" .
-                              "- Reference: {$withdrawal->reference}\n" .
-                              "- Status: " . ucfirst($withdrawal->status) . "\n" .
-                              "- Date: {$withdrawal->created_at->format('Y-m-d H:i:s')}\n\n" .
-                              "Your funds will be processed to your account shortly.\n\n" .
-                              "Thank you,\nKayxchange Team";
-
-                $mail->send();
-                Log::info('Email notification sent for withdrawal approval', [
-                    'user_id' => $user->id,
-                    'withdrawal_id' => $id,
-                    'email' => $user->email,
-                ]);
-            } catch (Exception $e) {
-                Log::warning('Failed to send email notification for withdrawal approval: ' . $e->getMessage(), [
-                    'user_id' => $user->id,
-                    'withdrawal_id' => $id,
-                    'email' => $user->email,
-                ]);
+                $bd = is_array($bankDetails) ? $bankDetails : (json_decode($bankDetails, true) ?? []);
+                $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — ' . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
+                Mail::to($user->email)->send(new TradeNotification(
+                    user: $user,
+                    templateKey: 'withdrawal_approved',
+                    data: [
+                        'amount'          => number_format((float)($withdrawal->amount ?? 0), 2),
+                        'payment_method'  => 'Bank Transfer',
+                        'account_details' => $accountDetails,
+                    ],
+                    badge: ['text' => 'Payment Sent', 'color' => '#00cc00'],
+                    ctaUrl: url('/dashboard'),
+                    ctaText: 'Go to Dashboard',
+                ));
+            } catch (\Exception $mailEx) {
+                Log::warning('Withdrawal approved email failed: ' . $mailEx->getMessage());
             }
 
             DB::commit();
@@ -214,7 +235,7 @@ class WithdrawalController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'withdrawal_id' => $id,
             ]);
-            return response()->jsoqn(['error' => 'Approval failed: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Approval failed: ' . $e->getMessage()], 500);
         }
     }
 
@@ -239,47 +260,25 @@ class WithdrawalController extends Controller
             $bankDetails = $withdrawal->bank_account;
             $this->sendTelegramNotification($user, $withdrawal, $bankDetails, false);
 
-            // Attempt to send email notification using PHPMailer with .env settings
+            // Send withdrawal cancelled email
             try {
-                $mail = new PHPMailer(true);
-                $mail->isSMTP();
-                $mail->Host = config('mail.host', 'smtp.gmail.com');
-                $mail->SMTPAuth = true;
-                $mail->Username = config('mail.username', 'admin@kayxchange.net');
-                $mail->Password = config('mail.password', 'gqzvjmmdqgkeelwk');
-                $mail->SMTPSecure = config('mail.encryption', 'tls');
-                $mail->Port = config('mail.port', 587);
-
-                $mail->setFrom(config('mail.from.address', 'admin@kayxchange.net'), config('mail.from.name', 'Kayxchange'));
-                $mail->addAddress($user->email);
-                $mail->addReplyTo(config('mail.from.address', 'admin@kayxchange.net'), config('mail.from.name', 'Kayxchange'));
-
-                $mail->isHTML(false);
-                $mail->Subject = 'Your Withdrawal Request Has Been Cancelled';
-                $mail->Body = "Dear {$user->name},\n\n" .
-                              "We have cancelled your withdrawal request with the following details:\n\n" .
-                              "- Amount: ₦" . number_format((float)($withdrawal->amount ?? 0), 2) . "\n" .
-                              "- Bank: {$bankDetails['bank_name']}\n" .
-                              "- Account Number: {$bankDetails['account_number']}\n" .
-                              "- Account Name: {$bankDetails['account_name']}\n" .
-                              "- Reference: {$withdrawal->reference}\n" .
-                              "- Status: " . ucfirst($withdrawal->status) . "\n" .
-                              "- Date: {$withdrawal->created_at->format('Y-m-d H:i:s')}\n\n" .
-                              "Please contact support if you have any questions or wish to submit a new withdrawal request.\n\n" .
-                              "Thank you,\nKayxchange Team";
-
-                $mail->send();
-                Log::info('Email notification sent for withdrawal cancellation', [
-                    'user_id' => $user->id,
-                    'withdrawal_id' => $id,
-                    'email' => $user->email,
-                ]);
-            } catch (Exception $e) {
-                Log::warning('Failed to send email notification for withdrawal cancellation: ' . $e->getMessage(), [
-                    'user_id' => $user->id,
-                    'withdrawal_id' => $id,
-                    'email' => $user->email,
-                ]);
+                $bd = is_array($bankDetails) ? $bankDetails : (json_decode($bankDetails, true) ?? []);
+                $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — ' . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
+                Mail::to($user->email)->send(new TradeNotification(
+                    user: $user,
+                    templateKey: 'withdrawal_cancelled',
+                    data: [
+                        'amount'          => number_format((float)($withdrawal->amount ?? 0), 2),
+                        'payment_method'  => 'Bank Transfer',
+                        'account_details' => $accountDetails,
+                        'reason'          => 'Please contact support for more details.',
+                    ],
+                    badge: ['text' => 'Withdrawal Cancelled', 'color' => '#dc3545'],
+                    ctaUrl: url('/dashboard'),
+                    ctaText: 'Go to Dashboard',
+                ));
+            } catch (\Exception $mailEx) {
+                Log::warning('Withdrawal cancelled email failed: ' . $mailEx->getMessage());
             }
 
             DB::commit();
@@ -429,20 +428,49 @@ class WithdrawalController extends Controller
             ]);
 
             // Send notification to user if needed
-            if ($request->status === 'successful' && $withdrawal->user && $withdrawal->user->telegram_chat_id) {
-                $bankDetails = [
-                    'bank_name' => $withdrawal->bank_name,
-                    'account_number' => $withdrawal->account_number,
-                    'account_name' => $withdrawal->account_name
-                ];
-                $this->sendTelegramNotification($withdrawal->user, $withdrawal, $bankDetails, true);
-            } elseif ($request->status === 'canceled' && $withdrawal->user && $withdrawal->user->telegram_chat_id) {
-                $bankDetails = [
-                    'bank_name' => $withdrawal->bank_name,
-                    'account_number' => $withdrawal->account_number,
-                    'account_name' => $withdrawal->account_name
-                ];
-                $this->sendTelegramNotification($withdrawal->user, $withdrawal, $bankDetails, false);
+            if ($withdrawal->user && in_array($request->status, ['successful', 'canceled']) && $oldStatus !== $request->status) {
+                $wUser = $withdrawal->user;
+                $bd = is_array($withdrawal->bank_account)
+                    ? $withdrawal->bank_account
+                    : (json_decode($withdrawal->bank_account, true) ?? []);
+                $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — '
+                    . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
+                try {
+                    Mail::to($wUser->email)->send(new TradeNotification(
+                        user: $wUser,
+                        templateKey: $request->status === 'successful' ? 'withdrawal_approved' : 'withdrawal_cancelled',
+                        data: [
+                            'amount'          => number_format((float)$withdrawal->amount, 2),
+                            'payment_method'  => 'Bank Transfer',
+                            'account_details' => $accountDetails,
+                            'reason'          => 'Please contact support for more details.',
+                        ],
+                        badge: [
+                            'text'  => $request->status === 'successful' ? 'Payment Sent' : 'Withdrawal Cancelled',
+                            'color' => $request->status === 'successful' ? '#00cc00' : '#dc3545',
+                        ],
+                        ctaUrl: url('/dashboard'),
+                        ctaText: 'Go to Dashboard',
+                    ));
+                } catch (\Exception $mailEx) {
+                    Log::warning('Withdrawal updateStatus email failed: ' . $mailEx->getMessage());
+                }
+                // Also send Telegram if chat ID set
+                if ($wUser->telegram_chat_id) {
+                    $this->sendTelegramNotification($wUser, $withdrawal, $bd, $request->status === 'successful');
+                }
+
+                // Standardized admin status-change alert
+                try {
+                    app(AdminTradeAlertService::class)->sendStatusChangeAlert('withdrawal', [
+                        'reference' => $withdrawal->reference,
+                        'user_name' => $wUser->name ?? 'N/A',
+                        'old_status' => $oldStatus,
+                        'new_status' => $request->status,
+                    ]);
+                } catch (\Throwable $alertEx) {
+                    Log::warning('Withdrawal status admin alert failed: ' . $alertEx->getMessage());
+                }
             }
 
             return back()->with('success', 'Withdrawal status updated successfully.');

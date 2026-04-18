@@ -16,6 +16,7 @@ class BuyTrade extends Model
         'usd_amount',
         'naira_amount',
         'network',
+        'payment_method',
         'wallet_address',
         'payment_proof',
         'status',
@@ -23,4 +24,9 @@ class BuyTrade extends Model
         'transaction_ref',
         'transaction_type',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

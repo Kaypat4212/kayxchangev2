@@ -1,168 +1,165 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Withdrawals</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-</head>
-<body class="bg-gray-100 font-sans">
-    <div class="container mx-auto p-6">
-        <h1 class="text-2xl font-bold mb-6">Withdrawal Requests</h1>
-        
-        <!-- Toast Notification Container -->
-        <div id="toastContainer" class="fixed top-4 right-4 z-50">
-            <!-- Toast messages will be appended here -->
+@extends('adminnavlayout')
+@section('content')
+<style>
+:root{--kx-green:#00cc00;--kx-gdim:rgba(0,204,0,.12);--kx-glow:rgba(0,204,0,.22);
+--kx-dark:#0d1117;--kx-card:#161b27;--kx-card2:#1e2535;--kx-border:rgba(255,255,255,.07);
+--kx-text:#e4e8f0;--kx-muted:#7a8599;--kx-red:#ef4444;--kx-yellow:#f59e0b;
+--kx-blue:#38bdf8;--kx-purple:#a855f7;}
+body{background:var(--kx-dark)!important;color:var(--kx-text)!important;font-family:'Poppins',sans-serif;}
+.kx-page-header{background:var(--kx-card);border:1px solid var(--kx-border);border-radius:12px;
+padding:1rem 1.4rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;}
+.kx-page-header h4{margin:0;font-size:1rem;font-weight:700;color:#fff;}
+.kx-page-header small{font-size:.75rem;color:var(--kx-muted);}
+.kx-panel{background:var(--kx-card);border:1px solid var(--kx-border);border-radius:12px;margin-bottom:1.25rem;overflow:hidden;}
+.kx-panel-header{padding:.875rem 1.25rem;border-bottom:1px solid var(--kx-border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;background:var(--kx-card2);}
+.kx-panel-title{font-size:.9rem;font-weight:600;color:#fff;margin:0;}
+.kx-table{width:100%;border-collapse:collapse;}
+.kx-table thead th{background:var(--kx-card2);color:var(--kx-muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;
+padding:.7rem 1rem;border-bottom:1px solid var(--kx-border);white-space:nowrap;font-weight:600;}
+.kx-table tbody tr{border-bottom:1px solid var(--kx-border);transition:background .15s;}
+.kx-table tbody tr:hover{background:rgba(255,255,255,.02);}
+.kx-table tbody tr:last-child{border-bottom:none;}
+.kx-table td{padding:.75rem 1rem;font-size:.83rem;color:var(--kx-text);vertical-align:middle;}
+.kx-table-wrap{overflow-x:auto;}
+.kx-badge{display:inline-flex;align-items:center;padding:.2rem .6rem;border-radius:20px;font-size:.7rem;font-weight:600;}
+.kx-badge-green{background:rgba(0,204,0,.12);color:var(--kx-green);}
+.kx-badge-red{background:rgba(239,68,68,.12);color:var(--kx-red);}
+.kx-badge-yellow{background:rgba(245,158,11,.12);color:var(--kx-yellow);}
+.kx-badge-blue{background:rgba(56,189,248,.12);color:var(--kx-blue);}
+.kx-badge-purple{background:rgba(168,85,247,.12);color:var(--kx-purple);}
+.kx-badge-gray{background:rgba(255,255,255,.06);color:var(--kx-muted);}
+.btn-kx-green{background:var(--kx-green);color:#000;border:none;border-radius:8px;font-weight:600;font-size:.8rem;padding:.45rem 1rem;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;}
+.btn-kx-green:hover{background:#00e600;color:#000;}
+.btn-kx-outline{background:transparent;color:var(--kx-text);border:1px solid var(--kx-border);font-size:.8rem;padding:.45rem 1rem;border-radius:8px;display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;cursor:pointer;}
+.btn-kx-outline:hover{background:var(--kx-card2);color:#fff;border-color:rgba(255,255,255,.2);}
+.btn-kx-danger{background:transparent;color:var(--kx-red);border:1px solid rgba(239,68,68,.3);font-size:.75rem;padding:.3rem .7rem;border-radius:7px;display:inline-flex;align-items:center;gap:.3rem;cursor:pointer;text-decoration:none;}
+.btn-kx-danger:hover{background:rgba(239,68,68,.1);color:var(--kx-red);}
+.btn-kx-edit{background:transparent;color:var(--kx-blue);border:1px solid rgba(56,189,248,.3);font-size:.75rem;padding:.3rem .7rem;border-radius:7px;display:inline-flex;align-items:center;gap:.3rem;cursor:pointer;text-decoration:none;}
+.btn-kx-edit:hover{background:rgba(56,189,248,.1);color:var(--kx-blue);}
+.btn-kx-approve{background:transparent;color:var(--kx-green);border:1px solid rgba(0,204,0,.3);font-size:.75rem;padding:.3rem .7rem;border-radius:7px;display:inline-flex;align-items:center;gap:.3rem;cursor:pointer;}
+.btn-kx-approve:hover{background:var(--kx-gdim);color:var(--kx-green);}
+.kx-input{background:var(--kx-card2)!important;border:1px solid var(--kx-border)!important;color:var(--kx-text)!important;border-radius:8px!important;padding:.5rem .85rem!important;font-size:.83rem!important;}
+.kx-input:focus{border-color:rgba(0,204,0,.4)!important;box-shadow:0 0 0 2px rgba(0,204,0,.1)!important;color:#fff!important;outline:none!important;}
+.kx-input::placeholder{color:var(--kx-muted)!important;}
+select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
+.kx-label{font-size:.75rem;color:var(--kx-muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.04em;}
+.kx-alert-success{background:rgba(0,204,0,.1);border:1px solid rgba(0,204,0,.25);color:var(--kx-green);border-radius:8px;padding:.75rem 1rem;font-size:.84rem;display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;}
+.kx-alert-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--kx-red);border-radius:8px;padding:.75rem 1rem;font-size:.84rem;display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;}
+.modal-content{background:var(--kx-card);border:1px solid var(--kx-border);border-radius:14px;color:var(--kx-text);}
+.modal-header{border-bottom:1px solid var(--kx-border);}
+.modal-footer{border-top:1px solid var(--kx-border);}
+.kx-stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.875rem;margin-bottom:1.25rem;}
+.kx-stat{background:var(--kx-card);border:1px solid var(--kx-border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;}
+.kx-stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.icon-green{background:var(--kx-gdim);color:var(--kx-green);}
+.icon-yellow{background:rgba(245,158,11,.15);color:var(--kx-yellow);}
+.icon-blue{background:rgba(56,189,248,.12);color:var(--kx-blue);}
+.icon-red{background:rgba(239,68,68,.12);color:var(--kx-red);}
+.icon-purple{background:rgba(168,85,247,.12);color:var(--kx-purple);}
+.kx-stat-label{font-size:.7rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;}
+.kx-stat-value{font-size:1.4rem;font-weight:700;color:#fff;line-height:1.1;}
+.kx-search{background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:8px;display:flex;align-items:center;padding:.45rem .75rem;gap:.5rem;}
+.kx-search-input{background:transparent;border:none;outline:none;color:var(--kx-text);font-size:.83rem;flex:1;}
+.kx-search-input::placeholder{color:var(--kx-muted);}
+</style>
+<div class="container-fluid py-3 px-3 px-md-4">
+    <div class="kx-page-header">
+        <div>
+            <h4><i class="bi bi-arrow-up-circle-fill me-2" style="color:var(--kx-yellow)"></i>Withdrawal Requests</h4>
+            <small>Review and process pending withdrawal requests</small>
         </div>
-
-        <div class="bg-white shadow-md rounded-lg overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bank Details</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach ($withdrawals as $withdrawal)
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">{{ $withdrawal->user->name }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">₦{{ number_format($withdrawal->amount, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    @php $bank = json_decode($withdrawal->bank_account, true); @endphp
-                                    {{ $bank['bank_name'] }} / {{ $bank['account_number'] }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                        @if($withdrawal->status === 'pending') bg-yellow-100 text-yellow-800
-                                        @elseif($withdrawal->status === 'approved') bg-green-100 text-green-800
-                                        @elseif($withdrawal->status === 'cancelled') bg-red-100 text-red-800
-                                        @endif">
-                                        {{ ucfirst($withdrawal->status) }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    @if ($withdrawal->status === 'pending')
-                                        <button onclick="showConfirmModal('approve', {{ $withdrawal->id }})" 
-                                                class="text-green-600 hover:text-green-900 mr-4">Approve</button>
-                                        <button onclick="showConfirmModal('cancel', {{ $withdrawal->id }})" 
-                                                class="text-red-600 hover:text-red-900">Cancel</button>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Confirmation Modal -->
-        <div id="confirmModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                <div class="mt-3 text-center">
-                    <h3 id="modalTitle" class="text-lg leading-6 font-medium text-gray-900"></h3>
-                    <div class="mt-2 px-7 py-3">
-                        <p id="modalMessage" class="text-sm text-gray-500"></p>
-                    </div>
-                    <div class="items-center px-4 py-3">
-                        <form id="actionForm" method="POST">
-                            @csrf
-                            <button type="submit" 
-                                    class="w-24 mr-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                                Confirm
-                            </button>
-                            <button type="button" onclick="closeModal()" 
-                                    class="w-24 inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                                Cancel
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
+        <div class="kx-search"><i class="bi bi-search" style="color:var(--kx-muted)"></i>
+            <input class="kx-search-input" id="wSearch" placeholder="Search…">
         </div>
     </div>
 
-    <script>
-        function showConfirmModal(action, withdrawalId) {
-            const modal = $('#confirmModal');
-            const form = $('#actionForm');
-            const title = $('#modalTitle');
-            const message = $('#modalMessage');
+    @if(session('success'))<div class="kx-alert-success"><i class="bi bi-check-circle-fill"></i>{{ session('success') }}</div>@endif
+    @if(session('error'))<div class="kx-alert-error"><i class="bi bi-exclamation-circle-fill"></i>{{ session('error') }}</div>@endif
 
-            if (action === 'approve') {
-                title.text('Approve Withdrawal');
-                message.text('Are you sure you want to approve this withdrawal?');
-                form.attr('action', '{{ route("withdraw.approve", ":id") }}'.replace(':id', withdrawalId));
-            } else {
-                title.text('Cancel Withdrawal');
-                message.text('Are you sure you want to cancel this withdrawal?');
-                form.attr('action', '{{ route("withdraw.cancel", ":id") }}'.replace(':id', withdrawalId));
-            }
+    @php
+        $pending   = collect($withdrawals)->where('status','pending')->count();
+        $approved  = collect($withdrawals)->where('status','approved')->count();
+        $cancelled = collect($withdrawals)->where('status','cancelled')->count();
+        $total     = collect($withdrawals)->sum('amount');
+    @endphp
+    <div class="kx-stat-row">
+        <div class="kx-stat"><div class="kx-stat-icon icon-yellow"><i class="bi bi-hourglass-split"></i></div>
+            <div><div class="kx-stat-label">Pending</div><div class="kx-stat-value">{{ $pending }}</div></div></div>
+        <div class="kx-stat"><div class="kx-stat-icon icon-green"><i class="bi bi-check-circle-fill"></i></div>
+            <div><div class="kx-stat-label">Approved</div><div class="kx-stat-value">{{ $approved }}</div></div></div>
+        <div class="kx-stat"><div class="kx-stat-icon icon-red"><i class="bi bi-x-circle-fill"></i></div>
+            <div><div class="kx-stat-label">Cancelled</div><div class="kx-stat-value">{{ $cancelled }}</div></div></div>
+        <div class="kx-stat"><div class="kx-stat-icon icon-blue"><i class="bi bi-cash-stack"></i></div>
+            <div><div class="kx-stat-label">Total Volume</div><div class="kx-stat-value" style="font-size:1rem">₦{{ number_format($total,0) }}</div></div></div>
+    </div>
 
-            modal.removeClass('hidden');
-        }
-
-        function closeModal() {
-            $('#confirmModal').addClass('hidden');
-        }
-
-        function showToast(message, type) {
-            const toast = $('<div>', {
-                class: `p-4 mb-4 rounded-lg shadow-lg text-white ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`,
-                text: message
-            }).appendTo('#toastContainer');
-
-            setTimeout(() => {
-                toast.fadeOut(300, () => toast.remove());
-            }, 3000);
-        }
-
-        // Handle form submission with AJAX
-        $('#actionForm').on('submit', function(e) {
-            e.preventDefault();
-            const form = $(this);
-            const actionUrl = form.attr('action');
-
-            $.ajax({
-                url: actionUrl,
-                type: 'POST',
-                data: form.serialize(),
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    closeModal();
-                    showToast(response.message || 'Action completed successfully!', 'success');
-                    // Reload the page to refresh the withdrawal list
-                    setTimeout(() => location.reload(), 1000);
-                },
-                error: function(xhr) {
-                    closeModal();
-                    const errorMessage = xhr.responseJSON?.error || 'An error occurred. Please try again.';
-                    showToast(errorMessage, 'error');
-                }
-            });
-        });
-
-        // Close modal when clicking outside
-        $('#confirmModal').click(function(e) {
-            if (e.target.id === 'confirmModal') {
-                closeModal();
-            }
-        });
-
-        // Display flash messages from Laravel (if redirected)
-        @if (session('success'))
-            showToast('{{ session('success') }}', 'success');
-        @endif
-        @if (session('error'))
-            showToast('{{ session('error') }}', 'error');
-        @endif
-    </script>
-</body>
-</html>
+    <div class="kx-panel">
+        <div class="kx-panel-header">
+            <span class="kx-panel-title"><i class="bi bi-list-ul me-2"></i>All Withdrawals</span>
+        </div>
+        <div class="kx-table-wrap">
+            <table class="kx-table" id="wTable">
+                <thead><tr>
+                    <th>#ID</th><th>User</th><th>Amount</th><th>Bank</th><th>Account</th><th>Status</th><th>Date</th><th>Actions</th>
+                </tr></thead>
+                <tbody>
+                @forelse($withdrawals as $w)
+                @php $bank = is_string($w->bank_account) ? json_decode($w->bank_account, true) : (array)$w->bank_account; @endphp
+                <tr>
+                    <td><span style="color:var(--kx-muted)">#{{ $w->id }}</span></td>
+                    <td><span style="font-weight:600">{{ $w->user->name ?? 'N/A' }}</span><br>
+                        <span style="font-size:.72rem;color:var(--kx-muted)">{{ $w->user->email ?? '' }}</span></td>
+                    <td><span style="font-weight:700;color:var(--kx-yellow)">₦{{ number_format($w->amount, 2) }}</span></td>
+                    <td style="font-size:.78rem">{{ $bank['bank_name'] ?? '—' }}</td>
+                    <td style="font-size:.78rem;font-family:monospace">{{ $bank['account_number'] ?? '—' }}<br>
+                        <span style="color:var(--kx-muted)">{{ $bank['account_name'] ?? '' }}</span></td>
+                    <td>
+                        @if($w->status === 'pending')
+                            <span class="kx-badge kx-badge-yellow"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                        @elseif($w->status === 'approved')
+                            <span class="kx-badge kx-badge-green"><i class="bi bi-check me-1"></i>Approved</span>
+                        @elseif($w->status === 'cancelled')
+                            <span class="kx-badge kx-badge-red"><i class="bi bi-x me-1"></i>Cancelled</span>
+                        @else
+                            <span class="kx-badge kx-badge-gray">{{ $w->status }}</span>
+                        @endif
+                    </td>
+                    <td style="font-size:.75rem;color:var(--kx-muted)">{{ $w->created_at ? $w->created_at->format('d M Y') : '—' }}</td>
+                    <td>
+                        @if($w->status === 'pending')
+                        <div class="d-flex gap-1">
+                            <form action="{{ route('withdrawals.updateStatus', $w->id) }}" method="POST" style="display:inline">
+                                @csrf @method('PATCH')
+                                <input type="hidden" name="status" value="approved">
+                                <button type="submit" class="btn-kx-approve" onclick="return confirm('Approve this withdrawal?')">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                            <form action="{{ route('withdrawals.updateStatus', $w->id) }}" method="POST" style="display:inline">
+                                @csrf @method('PATCH')
+                                <input type="hidden" name="status" value="cancelled">
+                                <button type="submit" class="btn-kx-danger" onclick="return confirm('Cancel this withdrawal?')">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </form>
+                        </div>
+                        @else
+                        <span style="font-size:.72rem;color:var(--kx-muted)">Processed</span>
+                        @endif
+                    </td>
+                </tr>
+                @empty
+                <tr><td colspan="8" style="text-align:center;color:var(--kx-muted);padding:2.5rem">No withdrawals found.</td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('wSearch').addEventListener('input', function(){
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#wTable tbody tr').forEach(r => { r.style.display = r.textContent.toLowerCase().includes(q)?'':'none'; });
+});
+</script>
+@endsection

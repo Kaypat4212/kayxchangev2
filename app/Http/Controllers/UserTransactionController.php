@@ -6,6 +6,7 @@ use App\Models\BuyTrade;
 use App\Models\SellTrade;
 use App\Models\Withdrawal;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -32,7 +33,8 @@ class UserTransactionController extends Controller
                 'naira_amount',
                 DB::raw('usd_amount as usd_amount'),
                 'status',
-                'network as payment_method',
+                DB::raw('COALESCE(payment_method, network) as payment_method'),
+                'wallet_address',
                 'created_at',
                 DB::raw('"buy" as type'),
                 'transaction_ref as reference',
@@ -47,6 +49,7 @@ class UserTransactionController extends Controller
                 'usd_amount',
                 'status',
                 'payment_method',
+                'wallet_address',
                 'created_at',
                 DB::raw('"sell" as type'),
                 'transaction_ref as reference',
@@ -61,6 +64,7 @@ class UserTransactionController extends Controller
                 DB::raw('NULL as usd_amount'),
                 'status',
                 'bank_account as payment_method',
+                DB::raw('NULL as wallet_address'),
                 'created_at',
                 DB::raw('"withdrawal" as type'),
                 'reference',
@@ -130,7 +134,7 @@ class UserTransactionController extends Controller
                 ->sortByDesc('created_at');
 
             $csvData = [];
-            $csvData[] = ['Type', 'Coin', 'Amount (NGN)', 'Amount (USD)', 'Status', 'Method', 'Reference', 'Date'];
+            $csvData[] = ['Type', 'Coin', 'Amount (NGN)', 'Amount (USD)', 'Status', 'Method', 'Wallet', 'Reference', 'Date'];
 
             foreach ($allTrades as $trade) {
                 $method = $trade->type === 'withdrawal' && $trade->payment_method
@@ -144,6 +148,7 @@ class UserTransactionController extends Controller
                     $trade->usd_amount ? '$' . number_format($trade->usd_amount, 2) : 'N/A',
                     ucfirst($trade->status),
                     $method,
+                    $trade->wallet_address ?? 'N/A',
                     $trade->reference ?? 'N/A',
                     $trade->created_at->format('Y-m-d H:i:s'),
                 ];
@@ -182,6 +187,7 @@ class UserTransactionController extends Controller
                 'usd_amount',
                 'status',
                 'payment_method',
+                'wallet_address',
                 DB::raw('CAST(created_at AS DATETIME) as created_at'),
                 'type',
                 'reference',
@@ -196,5 +202,80 @@ class UserTransactionController extends Controller
         });
 
         return view('transactions.history', compact('allTrades'));
+    }
+
+    public function show(Request $request, string $type, int $id): JsonResponse
+    {
+        $user = Auth::user();
+
+        switch ($type) {
+            case 'buy':
+                $record = BuyTrade::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+                $data = [
+                    'type'          => 'buy',
+                    'id'            => $record->id,
+                    'coin'          => $record->coin,
+                    'network'       => $record->network,
+                    'usd_amount'    => $record->usd_amount,
+                    'naira_amount'  => $record->naira_amount,
+                    'wallet_address'=> $record->wallet_address,
+                    'payment_method'=> $record->payment_method,
+                    'payment_proof' => $record->payment_proof ? asset('storage/' . $record->payment_proof) : null,
+                    'status'        => $record->status,
+                    'reference'     => $record->transaction_ref,
+                    'created_at'    => $record->created_at->format('d M Y, H:i'),
+                    'updated_at'    => $record->updated_at->format('d M Y, H:i'),
+                ];
+                break;
+
+            case 'sell':
+                $record = SellTrade::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+                $data = [
+                    'type'          => 'sell',
+                    'id'            => $record->id,
+                    'coin'          => $record->coin,
+                    'network'       => $record->network,
+                    'usd_amount'    => $record->usd_amount,
+                    'naira_amount'  => $record->naira_amount,
+                    'wallet_address'=> $record->wallet_address,
+                    'bank_name'     => $record->bank_name,
+                    'account_name'  => $record->account_name,
+                    'account_number'=> $record->account_number,
+                    'payment_method'=> $record->payment_method,
+                    'payment_proof' => $record->payment_proof ? asset('storage/' . $record->payment_proof) : null,
+                    'status'        => $record->status,
+                    'reference'     => $record->transaction_ref,
+                    'created_at'    => $record->created_at->format('d M Y, H:i'),
+                    'updated_at'    => $record->updated_at->format('d M Y, H:i'),
+                ];
+                break;
+
+            case 'withdrawal':
+                $record = Withdrawal::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+                $bankAccount = is_array($record->bank_account)
+                    ? $record->bank_account
+                    : (json_decode($record->bank_account, true) ?? []);
+                $data = [
+                    'type'          => 'withdrawal',
+                    'id'            => $record->id,
+                    'coin'          => $record->currency,
+                    'amount'        => $record->amount,
+                    'naira_amount'  => $record->amount,
+                    'bank_name'     => $bankAccount['bank_name']    ?? ($record->payment_method ?? null),
+                    'account_name'  => $bankAccount['account_name'] ?? null,
+                    'account_number'=> $bankAccount['account_number'] ?? null,
+                    'status'        => $record->status,
+                    'reference'     => $record->reference,
+                    'processed_at'  => $record->processed_at ? $record->processed_at->format('d M Y, H:i') : null,
+                    'created_at'    => $record->created_at->format('d M Y, H:i'),
+                    'updated_at'    => $record->updated_at->format('d M Y, H:i'),
+                ];
+                break;
+
+            default:
+                return response()->json(['error' => 'Invalid transaction type'], 400);
+        }
+
+        return response()->json($data);
     }
 }

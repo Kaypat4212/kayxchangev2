@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Deposit;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Schema;
 
 class AdminDepositController extends Controller
 {
@@ -20,10 +21,15 @@ class AdminDepositController extends Controller
             'admin_note' => 'nullable|string|max:255',
         ]);
 
-        $deposit->update([
+        $updateData = [
             'status' => $request->status,
-            'admin_note' => $request->admin_note,
-        ]);
+        ];
+
+        if (Schema::hasColumn('deposits', 'admin_note')) {
+            $updateData['admin_note'] = $request->admin_note;
+        }
+
+        $deposit->update($updateData);
 
         if ($request->status === 'approved') {
             // Optionally update user's wallet balance

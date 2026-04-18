@@ -3,8 +3,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Mail\TradeNotification;
 use App\Models\Kyc;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +14,9 @@ class KycController extends Controller
 {
     public function showForm()
     {
-        return view('kyc.form');
+        $user = auth()->user();
+        $existingKyc = $user ? Kyc::where('user_id', $user->id)->latest()->first() : null;
+        return view('kyc.form', compact('existingKyc'));
     }
 
     public function submit(Request $request)
@@ -43,6 +47,20 @@ class KycController extends Controller
             // Send Telegram notification
             $this->sendTelegramNotification($user, $kyc);
 
+            // Send KYC received email
+            try {
+                Mail::to($user->email)->send(new TradeNotification(
+                    user: $user,
+                    templateKey: 'kyc_submitted',
+                    data: [],
+                    badge: ['text' => 'Under Review', 'color' => '#f0a500'],
+                    ctaUrl: url('/dashboard'),
+                    ctaText: 'Go to Dashboard',
+                ));
+            } catch (\Exception $mailEx) {
+                Log::warning('KYC submitted email failed: ' . $mailEx->getMessage());
+            }
+
             return redirect()->route('kyc.form')->with('success', 'KYC submitted successfully! Awaiting admin verification.');
 
         } catch (\Exception $e) {
@@ -70,6 +88,29 @@ class KycController extends Controller
                 $kyc->user->update(['kyc_verified' => 1]);
             } else {
                 $kyc->user->update(['kyc_verified' => 0]);
+            }
+
+            // Send KYC outcome email
+            try {
+                $kycUser = $kyc->user;
+                if ($kycUser) {
+                    $isApproved = $status === 'approved';
+                    Mail::to($kycUser->email)->send(new TradeNotification(
+                        user: $kycUser,
+                        templateKey: $isApproved ? 'kyc_approved' : 'kyc_rejected',
+                        data: [
+                            'reason' => request('rejection_reason', 'Documents did not meet our verification requirements.'),
+                        ],
+                        badge: [
+                            'text'  => $isApproved ? 'KYC Approved' : 'KYC Rejected',
+                            'color' => $isApproved ? '#00cc00' : '#dc3545',
+                        ],
+                        ctaUrl: url('/dashboard'),
+                        ctaText: 'Go to Dashboard',
+                    ));
+                }
+            } catch (\Exception $mailEx) {
+                Log::warning('KYC verify email failed: ' . $mailEx->getMessage());
             }
 
             return redirect()->route('admin.kyc')->with('success', 'KYC ' . $status . ' successfully');

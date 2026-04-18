@@ -1,0 +1,66 @@
+<?php
+
+namespace App\Listeners;
+
+use App\Mail\LoginNotificationMail;
+use App\Models\EmailSetting;
+use App\Models\LoginLog;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+
+class HandleFailedLogin
+{
+    protected Request $request;
+
+    public function __construct(Request $request)
+    {
+        $this->request = $request;
+    }
+
+    public function handle(Failed $event): void
+    {
+        try {
+            $email = $event->credentials['email'] ?? '';
+
+            // Record in login_logs
+            $logEntry = LoginLog::create([
+                'user_id'    => $event->user?->id,
+                'email'      => $email,
+                'ip_address' => $this->request->ip(),
+                'user_agent' => $this->request->userAgent(),
+                'status'     => 'failed',
+            ]);
+
+            // Only notify if an actual user account exists for that email
+            if (! $event->user) {
+                return;
+            }
+
+            $settings = EmailSetting::current();
+            if (! $settings->login_failed_email_enabled) {
+                return;
+            }
+            $this->applyMailConfig($settings);
+            Mail::to($event->user->email)->send(new LoginNotificationMail($logEntry));
+        } catch (\Throwable $e) {
+            Log::error('HandleFailedLogin failed: ' . $e->getMessage());
+        }
+    }
+
+    private function applyMailConfig(EmailSetting $s): void
+    {
+        if (! $s->mail_host) return;
+        config([
+            'mail.default'                 => $s->mail_mailer,
+            'mail.mailers.smtp.host'       => $s->mail_host,
+            'mail.mailers.smtp.port'       => $s->mail_port,
+            'mail.mailers.smtp.username'   => $s->mail_username,
+            'mail.mailers.smtp.password'   => $s->mail_password ? decrypt($s->mail_password) : null,
+            'mail.mailers.smtp.encryption' => $s->mail_encryption ?: null,
+            'mail.from.address'            => $s->mail_from_address,
+            'mail.from.name'               => $s->mail_from_name,
+        ]);
+    }
+}

@@ -5,6 +5,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'KayXchange') }}</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('Assests/favicon.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('Assests/favicon.png') }}">
+    <link rel="shortcut icon" href="{{ asset('Assests/favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('Assests/favicon.png') }}">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     <!-- Bootstrap CSS (consistent version) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -61,8 +66,8 @@
             }
         });
     </script>
+    <style>html,body{overflow-x:clip;max-width:100%;position:relative;}</style>
 </head>
-
 <body>
     @yield('content')
 

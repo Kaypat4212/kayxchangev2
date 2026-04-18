@@ -1,331 +1,270 @@
 @extends('buylayout')
 
+@push('styles')
 <style>
-    
-    :root {
-        --primary: #11B981;
-        --secondary: #1E293B;
-        --accent: #3B82F6;
-        --text: #F8FAFC;
-        --background: #0F172A;
-        --card: #1E293B;
-        --error: #EF4444;
-        --success: #10B981;
-        --border-radius: 12px;
-    }
+:root{
+    --kx-green:#00cc00;--kx-dark:#0d1117;--kx-card:#161b27;
+    --kx-card2:#1e2535;--kx-border:rgba(255,255,255,0.07);
+    --kx-text:#e4e8f0;--kx-muted:#7a8599;
+}
+body{background:var(--kx-dark);color:var(--kx-text);}
 
-    body {
-        background-color: var(--background);
-        font-family: 'Inter', sans-serif;
-    }
+.kx-hero{background:linear-gradient(135deg,#0a1628 0%,#0d1f1a 100%);border-bottom:1px solid var(--kx-border);padding:1.5rem 1rem 1rem;text-align:center;margin-bottom:1.5rem;}
+.kx-hero h1{font-size:1.5rem;font-weight:700;color:#fff;margin:0 0 .25rem;}
+.kx-hero p{color:var(--kx-muted);font-size:.875rem;margin:0;}
 
-    .trade-container {
-        max-width: 800px;
-        margin: 40px auto;
-        padding: 20px;
-    }
+.kx-card{background:var(--kx-card);border:1px solid var(--kx-border);border-radius:16px;padding:1.5rem;margin-bottom:1rem;}
 
-    .page-title {
-        font-size: 28px;
-        font-weight: 600;
-        color: black;
-        text-align: center;
-        margin-bottom: 30px;
-        position: relative;
-    }
+/* Steps */
+.kx-steps{display:flex;gap:0;margin-bottom:1.5rem;}
+.kx-step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;}
+.kx-step:not(:last-child)::after{content:'';position:absolute;top:14px;left:50%;width:100%;height:2px;background:var(--kx-green);z-index:0;}
+.step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;border:2px solid var(--kx-green);background:var(--kx-green);color:#000;position:relative;z-index:1;}
+.kx-step.active .step-circle{background:rgba(0,204,0,.15);color:var(--kx-green);}
+.step-label{font-size:.72rem;color:var(--kx-green);margin-top:.3rem;text-align:center;}
 
-    .page-title:after {
-        content: '';
-        position: absolute;
-        width: 80px;
-        height: 4px;
-        background: var(--primary);
-        bottom: -10px;
-        left: 50%;
-        transform: translateX(-50%);
-        border-radius: 2px;
-    }
+/* Countdown */
+.countdown-band{background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.2);border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.countdown-text{font-size:.8rem;color:#f59e0b;}
+.countdown-time{font-size:1.1rem;font-weight:700;color:#f59e0b;font-variant-numeric:tabular-nums;}
 
-    .summary-card {
-        background-color: var(--card);
-        border-radius: var(--border-radius);
-        padding: 24px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
+/* Trade recap */
+.recap-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
+.recap-item{background:rgba(255,255,255,.03);border:1px solid var(--kx-border);border-radius:8px;padding:.6rem .8rem;}
+.recap-item .ri-label{font-size:.7rem;color:var(--kx-muted);margin-bottom:.2rem;}
+.recap-item .ri-value{font-size:.85rem;color:var(--kx-text);font-weight:600;word-break:break-all;}
+.recap-item.full{grid-column:1/-1;}
+.amount-green{color:var(--kx-green)!important;}
 
-    .summary-info {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-    }
+/* Bank account card */
+.bank-card{background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+.bank-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--kx-border);}
+.bank-row:last-child{border-bottom:none;}
+.bank-label{font-size:.78rem;color:var(--kx-muted);}
+.bank-value{font-size:.9rem;color:var(--kx-text);font-weight:700;}
+.copy-btn{background:rgba(0,204,0,.1);border:1px solid rgba(0,204,0,.25);color:var(--kx-green);border-radius:6px;padding:.2rem .5rem;font-size:.75rem;cursor:pointer;transition:all .2s;}
+.copy-btn:hover{background:rgba(0,204,0,.2);}
 
-    .info-item {
-        margin-bottom: 16px;
-    }
+/* Upload */
+.upload-zone{background:var(--kx-card2);border:2px dashed var(--kx-border);border-radius:12px;padding:2rem 1rem;text-align:center;cursor:pointer;transition:all .25s;margin-bottom:1rem;}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--kx-green);background:rgba(0,204,0,.05);}
+.upload-zone .uz-icon{font-size:2.5rem;color:var(--kx-muted);margin-bottom:.5rem;}
+.upload-zone .uz-title{font-size:.9rem;font-weight:600;color:var(--kx-text);margin-bottom:.25rem;}
+.upload-zone .uz-hint{font-size:.75rem;color:var(--kx-muted);}
+.upload-zone.has-file{border-color:var(--kx-green);background:rgba(0,204,0,.05);}
+.upload-zone.has-file .uz-icon{color:var(--kx-green);}
+.preview-img{width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-top:1rem;display:none;}
 
-    .info-label {
-        color: rgb(0, 235, 4);
-        font-size: 14px;
-        margin-bottom: 4px;
-    }
+/* Buttons */
+.btn-kx-primary{background:var(--kx-green);border:none;color:#000;font-weight:700;border-radius:10px;padding:.85rem 1.5rem;font-size:.95rem;width:100%;transition:all .2s;}
+.btn-kx-primary:hover{background:#00e600;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,204,0,.3);}
+.btn-kx-primary:disabled{opacity:.5;transform:none;cursor:not-allowed;}
 
-    .info-value {
-        font-size: 16px;
-        color: white;
-        font-weight: 500;
-    }
-
-    .payment-card {
-        background: linear-gradient(145deg, #1E293B, #0F172A);
-        border: 1px solid #334155;
-        border-radius: var(--border-radius);
-        padding: 24px;
-        margin-bottom: 30px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .payment-card:before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, var(--primary), var(--accent));
-    }
-
-    .payment-title {
-        color: white;
-        font-size: 20px;
-        font-weight: 600;
-        margin-bottom: 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .payment-title svg {
-        width: 24px;
-        height: 24px;
-    }
-
-    .account-details {
-        background-color: rgba(15, 23, 42, 0.6);
-        border-radius: 8px;
-        padding: 16px;
-        margin-top: 16px;
-        color: white;
-    }
-
-    .account-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 12px 0;
-        border-bottom: 1px solid #334155;
-    }
-
-    .account-item:last-child {
-        border-bottom: none;
-    }
-
-    .account-label {
-        color: rgb(0, 195, 49);
-    }
-
-    .account-value {
-        font-weight: 500;
-        color: white;
-    }
-
-    .upload-section {
-        background-color: grey;
-        border-radius: var(--border-radius);
-        padding: 24px;
-        margin-bottom: 30px;
-    }
-
-    .file-input-container {
-        border: 2px dashed #334155;
-        border-radius: 8px;
-        padding: 24px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        margin-bottom: 20px;
-    }
-
-    .file-input-container:hover {
-        border-color: var(--primary);
-        background-color: rgba(17, 185, 129, 0.05);
-    }
-
-    .file-input-container svg {
-        width: 48px;
-        height: 48px;
-        color: var(--primary);
-        margin-bottom: 16px;
-    }
-
-    .file-input {
-        display: none;
-    }
-
-    .upload-hint {
-        font-size: 14px;
-        color: #94A3B8;
-        margin-top: 8px;
-    }
-
-    .submit-button {
-        background-color: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 12px 24px;
-        font-weight: 600;
-        cursor: pointer;
-        width: 100%;
-        transition: all 0.2s ease;
-    }
-
-    .submit-button:hover {
-        background-color: #0EA572;
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(17, 185, 129, 0.2);
-    }
-
-    .submit-button:active {
-        transform: translateY(0);
-    }
-
-    .error-message {
-        color: var(--error);
-        font-size: 14px;
-        margin-top: 4px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .footer {
-        text-align: center;
-        padding: 20px;
-        color: #64748B;
-        font-size: 14px;
-        margin-top: 60px;
-    }
-
-    @media (max-width: 768px) {
-        .summary-info {
-            grid-template-columns: 1fr;
-        }
-    }
+.important-note{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:.85rem 1rem;font-size:.8rem;color:#fca5a5;margin-bottom:1rem;}
 </style>
+@endpush
 
 @section('content')
-<div class="trade-container">
-    <h1 class="page-title">Payment Page</h1>
 
-    <!-- Transaction Summary Card -->
-    <div class="summary-card">
-        <div class="summary-info">
-            <div class="info-item">
-                <div class="info-label">Cryptocurrency</div>
-                <div class="info-value">{{ $trade->coin }}</div>
+<div class="kx-hero">
+    <h1><i class="bi bi-bank me-2" style="color:var(--kx-green);"></i>Make Payment</h1>
+    <p>Transfer to the account below and upload your proof</p>
+</div>
+
+<div class="container-fluid px-3">
+<div class="row justify-content-center">
+<div class="col-xl-5 col-lg-6 col-md-8">
+
+    <!-- Progress steps -->
+    <div class="kx-steps">
+        <div class="kx-step">
+            <div class="step-circle"><i class="bi bi-check-lg" style="font-size:.7rem;"></i></div>
+            <div class="step-label">Coin & Amount</div>
+        </div>
+        <div class="kx-step">
+            <div class="step-circle"><i class="bi bi-check-lg" style="font-size:.7rem;"></i></div>
+            <div class="step-label">Summary</div>
+        </div>
+        <div class="kx-step active">
+            <div class="step-circle">3</div>
+            <div class="step-label">Payment</div>
+        </div>
+    </div>
+
+    <!-- Countdown -->
+    <div class="countdown-band">
+        <div class="countdown-text"><i class="bi bi-clock me-1"></i>Complete payment within</div>
+        <div class="countdown-time" id="countdown">50:00</div>
+    </div>
+
+    <!-- Trade recap -->
+    <div class="kx-card">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-receipt" style="color:var(--kx-green);font-size:1.1rem;"></i>
+            <span style="font-weight:700;">Your Order</span>
+        </div>
+        <div class="recap-grid">
+            <div class="recap-item">
+                <div class="ri-label">Coin</div>
+                <div class="ri-value">{{ $trade->coin }}</div>
             </div>
-            
-            <div class="info-item">
-                <div class="info-label">Amount (USD)</div>
-                <div class="info-value">${{ number_format($trade->usd_amount, 2) }}</div>
+            <div class="recap-item">
+                <div class="ri-label">Amount (USD)</div>
+                <div class="ri-value amount-green">${{ number_format($trade->usd_amount, 2) }}</div>
             </div>
-            
-            <div class="info-item">
-                <div class="info-label">Amount (Naira)</div>
-                <div class="info-value">₦{{ number_format($trade->naira_amount, 2) }}</div>
+            <div class="recap-item">
+                <div class="ri-label">Amount (NGN)</div>
+                <div class="ri-value">₦{{ number_format($trade->naira_amount, 2) }}</div>
             </div>
-            
-            <div class="info-item">
-                <div class="info-label">Wallet Address</div>
-                <div class="info-value" style="word-break: break-all;">{{ $trade->wallet_address }}</div>
+            <div class="recap-item">
+                <div class="ri-label">Network</div>
+                <div class="ri-value">{{ $trade->network }}</div>
+            </div>
+            <div class="recap-item full">
+                <div class="ri-label">Wallet Address</div>
+                <div class="ri-value">{{ $trade->wallet_address }}</div>
             </div>
         </div>
     </div>
 
-    <!-- Payment Instructions Card -->
-    <div class="payment-card">
-        <h4 class="payment-title">
-            Payment Instructions
-        </h4>
-        
-        <p class="text-white">Please transfer the exact amount to the company account below:</p>
-        
-        @if ($accountDetails)
-            <div class="account-details">
-                <div class="account-item">
-                    <span class="account-label">Account Name</span>
-                    <span class="account-value">{{ $accountDetails->account_name }}</span>
-                </div>
-                <div class="account-item">
-                    <span class="account-label">Account Number</span>
-                    <span class="account-value">{{ $accountDetails->account_number }}</span>
-                </div>
-                <div class="account-item">
-                    <span class="account-label">Bank Name</span>
-                    <span class="account-value">{{ $accountDetails->bank_name ?? 'Not available' }}</span>
+    <!-- Bank account details -->
+    <div class="kx-card">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-building me-1" style="color:var(--kx-green);font-size:1.1rem;"></i>
+            <span style="font-weight:700;">Payment Instructions</span>
+        </div>
+        <p style="font-size:.85rem;color:var(--kx-muted);margin-bottom:1rem;">
+            Transfer <strong style="color:var(--kx-green);">₦{{ number_format($trade->naira_amount, 2) }}</strong> to the account below:
+        </p>
+
+        @if($accountDetails)
+        <div class="bank-card">
+            <div class="bank-row">
+                <span class="bank-label">Bank Name</span>
+                <span class="bank-value">{{ $accountDetails->bank_name ?? 'N/A' }}</span>
+            </div>
+            <div class="bank-row">
+                <span class="bank-label">Account Name</span>
+                <span class="bank-value">{{ $accountDetails->account_name }}</span>
+            </div>
+            <div class="bank-row">
+                <span class="bank-label">Account Number</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="bank-value" id="acctNumber">{{ $accountDetails->account_number }}</span>
+                    <button class="copy-btn" onclick="copyAcct()" title="Copy" type="button">
+                        <i class="bi bi-copy"></i>
+                    </button>
                 </div>
             </div>
+        </div>
         @else
-            <div class="account-details">
-                <p class="text-white">Payment account details are currently unavailable. Please contact support.</p>
-            </div>
+        <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:.85rem 1rem;font-size:.85rem;color:#fca5a5;">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Payment account details unavailable. Please contact support.
+        </div>
         @endif
     </div>
 
-    <!-- Payment Proof Upload Form -->
-    <div class="upload-section text-center">
-        <form method="POST" action="{{ route('buy.uploadPayment', ['id' => $trade->id]) }}" enctype="multipart/form-data">
+    <!-- Important note -->
+    <div class="important-note">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <strong>Important:</strong> Transfer the <strong>exact amount</strong> shown. Use your Trade ID as narration. After paying, upload your receipt below.
+    </div>
+
+    <!-- Upload form -->
+    <div class="kx-card">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-upload" style="color:var(--kx-green);font-size:1.1rem;"></i>
+            <span style="font-weight:700;">Upload Payment Proof</span>
+        </div>
+
+        <form method="POST" action="{{ route('buy.uploadPayment', ['id' => $trade->id]) }}" enctype="multipart/form-data" id="uploadForm">
             @csrf
-            <label for="payment_proof_input" class="file-input-container" id="upload-container">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <div id="file-name">Upload Payment Proof</div>
-                <p class="upload-hint">Click to select or drag and drop your proof of payment</p>
-                <input type="file" name="payment_proof" id="payment_proof_input" class="file-input" accept="image/*" required>
+
+            <label for="payment_proof_input" class="upload-zone d-block" id="uploadZone">
+                <div class="uz-icon"><i class="bi bi-image" id="uploadIcon"></i></div>
+                <div class="uz-title" id="uploadTitle">Click or drag & drop your screenshot</div>
+                <div class="uz-hint">JPG, PNG or JPEG — max 5MB</div>
+                <input type="file" name="payment_proof" id="payment_proof_input" accept="image/*" required class="d-none">
             </label>
-            
+            <img id="previewImg" class="preview-img" alt="Preview">
+
             @error('payment_proof')
-                <div class="error-message">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    {{ $message }}
-                </div>
+                <div class="text-danger mb-2" style="font-size:.8rem;"><i class="bi bi-exclamation-circle me-1"></i>{{ $message }}</div>
             @enderror
 
-            <button type="submit" class="submit-button">Submit Payment Proof</button>
+            <button type="submit" class="btn-kx-primary mt-2" id="submitBtn">
+                <i class="bi bi-send-check me-2"></i>Submit Payment Proof
+            </button>
         </form>
     </div>
+
+    <div style="height:2rem;"></div>
+</div>
+</div>
 </div>
 
-<footer class="footer">
-    © Kay Xchange {{ date('Y') }} | All Rights Reserved
-</footer>
-
-<script>
-    // Add client-side functionality
-    document.getElementById('payment_proof_input').addEventListener('change', function(e) {
-        const fileName = e.target.files[0] ? e.target.files[0].name : 'Upload Payment Proof';
-        document.getElementById('file-name').textContent = fileName;
-        
-        if (e.target.files[0]) {
-            document.getElementById('upload-container').style.borderColor = '#11B981';
-            document.getElementById('upload-container').style.backgroundColor = 'rgba(17, 185, 129, 0.05)';
-        }
-    });
-</script>
 @endsection
+
+@push('scripts')
+<script>
+// Countdown timer — 50 minutes
+(function() {
+    let total = 50 * 60;
+    const el = document.getElementById('countdown');
+    const interval = setInterval(() => {
+        total--;
+        if (total <= 0) { clearInterval(interval); el.textContent = '00:00'; return; }
+        const m = String(Math.floor(total / 60)).padStart(2,'0');
+        const s = String(total % 60).padStart(2,'0');
+        el.textContent = m+':'+s;
+        if (total < 300) el.style.color = '#f87171';
+    }, 1000);
+})();
+
+// File upload handling
+const input   = document.getElementById('payment_proof_input');
+const zone    = document.getElementById('uploadZone');
+const title   = document.getElementById('uploadTitle');
+const icon    = document.getElementById('uploadIcon');
+const preview = document.getElementById('previewImg');
+
+function handleFile(file) {
+    if (!file) return;
+    title.textContent = file.name;
+    icon.className = 'bi bi-check-circle-fill';
+    zone.classList.add('has-file');
+    const reader = new FileReader();
+    reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+    reader.readAsDataURL(file);
+}
+
+input.addEventListener('change', () => handleFile(input.files[0]));
+
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) { const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files; handleFile(file); }
+});
+
+// Copy account number
+function copyAcct() {
+    const num = document.getElementById('acctNumber').textContent.trim();
+    navigator.clipboard.writeText(num).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        setTimeout(() => { btn.innerHTML = '<i class="bi bi-copy"></i>'; }, 2000);
+    });
+}
+
+// Submit feedback
+document.getElementById('uploadForm').addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+});
+</script>
+@endpush
+

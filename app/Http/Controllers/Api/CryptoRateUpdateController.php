@@ -10,10 +10,7 @@ use Illuminate\Support\Facades\Validator;
 
 class CryptoRateUpdateController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware(['auth:sanctum', 'admin'])->only('update');
-    }
+    // No sanctum middleware — admin uses web session (cookie-based auth)
 
     /**
      * Fetch all crypto rates.
@@ -46,9 +43,9 @@ class CryptoRateUpdateController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'rates' => 'required|array|min:1',
-                'rates.*.coin' => 'required|in:BTC,ETH,USDT',
-                'rates.*.buy_rate' => 'required|numeric|min:0.01',
-                'rates.*.sell_rate' => 'required|numeric|min:0.01',
+                'rates.*.coin' => 'required|string|max:10',
+                'rates.*.buy_rate' => 'required|numeric|min:0',
+                'rates.*.sell_rate' => 'required|numeric|min:0',
             ]);
 
             if ($validator->fails()) {
@@ -59,19 +56,17 @@ class CryptoRateUpdateController extends Controller
             $rates = $request->input('rates');
 
             foreach ($rates as $rateData) {
-                $rate = CryptoRate::where('coin', $rateData['coin'])->first();
-                if ($rate) {
-                    $rate->buy_rate = $rateData['buy_rate'];
-                    $rate->sell_rate = $rateData['sell_rate'];
-                    $rate->save();
-                    Log::info('Updated rate for coin: ' . $rateData['coin'], [
-                        'buy_rate' => $rateData['buy_rate'],
+                CryptoRate::updateOrCreate(
+                    ['coin' => strtoupper($rateData['coin'])],
+                    [
+                        'buy_rate'  => $rateData['buy_rate'],
                         'sell_rate' => $rateData['sell_rate'],
-                    ]);
-                } else {
-                    Log::warning('Coin not found for update: ' . $rateData['coin']);
-                    return response()->json(['error' => 'Coin not found: ' . $rateData['coin']], 404);
-                }
+                    ]
+                );
+                Log::info('Updated rate for coin: ' . $rateData['coin'], [
+                    'buy_rate'  => $rateData['buy_rate'],
+                    'sell_rate' => $rateData['sell_rate'],
+                ]);
             }
 
             return response()->json(['message' => 'Rates updated successfully']);

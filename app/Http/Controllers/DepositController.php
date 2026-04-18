@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Deposit;
 use App\Models\CompanyAccount;
+use App\Services\PaymentGatewayService;
+use App\Mail\DepositApproved;
+use App\Mail\TradeNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Mail\DepositApproved;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -39,27 +41,298 @@ class DepositController extends Controller
     public function create()
     {
         $companyAccounts = CompanyAccount::all();
+        $cryptoWallets = $this->getConfiguredCryptoWallets();
         Log::info('Company Accounts Loaded', ['count' => $companyAccounts->count()]);
-        return view('deposits.create', compact('companyAccounts'));
+
+        // A method is available only when BOTH the admin toggle is on AND API keys are present
+        $sc = \App\Models\SiteContent::allKeyed();
+        $enabledMethods = [
+            // Bank Transfer never needs API keys
+            'bank_transfer' => (bool) ($sc['pm_enabled_bank_transfer'] ?? true) && $companyAccounts->isNotEmpty(),
+            // Manual crypto transfer (wallet addresses come from .env)
+            'crypto_transfer' => (bool) ($sc['pm_enabled_crypto_transfer'] ?? true) && !empty($cryptoWallets),
+            // Gateways: toggle must be on AND secret key must be non-empty
+            'paystack'    => !empty(config('services.paystack.secret_key'))
+                              && (bool) ($sc['pm_enabled_paystack'] ?? true),
+            'korapay'     => !empty(config('services.korapay.secret_key'))
+                              && (bool) ($sc['pm_enabled_korapay'] ?? true),
+            'flutterwave' => !empty(config('services.flutterwave.secret_key'))
+                              && (bool) ($sc['pm_enabled_flutterwave'] ?? true),
+        ];
+
+        return view('deposits.create', compact('companyAccounts', 'enabledMethods', 'cryptoWallets'));
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // AUTOMATIC PAYMENT GATEWAYS: initiate → redirect → callback → verify
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function initiate(Request $request)
+    {
+        // Only allow gateways that are both toggled on AND have API keys configured
+        $sc = \App\Models\SiteContent::allKeyed();
+        $allowedGateways = array_values(array_filter(
+            ['paystack', 'korapay', 'flutterwave'],
+            fn($g) => !empty($sc['pm_enabled_' . $g]) && !empty(config('services.' . $g . '.secret_key'))
+        ));
+
+        $request->validate([
+            'amount'         => 'required|numeric|min:1000',
+            'payment_method' => ['required', \Illuminate\Validation\Rule::in($allowedGateways)],
+        ]);
+
+        $user = auth()->user();
+        $ref  = 'DEP-' . Str::upper(Str::random(12));
+
+        $deposit = Deposit::create([
+            'user_id'           => $user->id,
+            'amount'            => $request->amount,
+            'currency'          => 'NGN',
+            'payment_method'    => $request->payment_method,
+            'transaction_ref'   => $ref,
+            'gateway'           => $request->payment_method,
+            'gateway_reference' => $ref,
+            'status'            => 'pending',
+        ]);
+
+        $gateway     = new PaymentGatewayService();
+        $callbackUrl = route('deposits.callback', ['gateway' => $request->payment_method]);
+
+        $data = [
+            'email'        => $user->email,
+            'name'         => $user->name,
+            'amount'       => $request->amount,
+            'reference'    => $ref,
+            'callback_url' => $callbackUrl,
+            'deposit_id'   => $deposit->id,
+        ];
+
+        $result = match ($request->payment_method) {
+            'paystack'    => $gateway->initializePaystack($data),
+            'korapay'     => $gateway->initializeKorapay($data),
+            'flutterwave' => $gateway->initializeFlutterwave($data),
+        };
+
+        if (! $result['success']) {
+            $deposit->update(['status' => 'rejected']);
+            Log::error('Gateway init failed', ['method' => $request->payment_method, 'result' => $result]);
+            return redirect()->back()
+                ->withErrors(['error' => $result['message'] ?? 'Payment initialization failed. Please try again.'])
+                ->withInput();
+        }
+
+        Log::info('Gateway payment initiated', [
+            'deposit_id' => $deposit->id,
+            'gateway'    => $request->payment_method,
+            'reference'  => $ref,
+        ]);
+
+        // Send deposit initiated email
+        try {
+            Mail::to($user->email)->send(new TradeNotification(
+                user: $user,
+                templateKey: 'deposit_initiated',
+                data: [
+                    'amount'         => number_format((float)$request->amount, 2),
+                    'payment_method' => ucfirst($request->payment_method),
+                    'reference'      => $ref,
+                ],
+                badge: ['text' => 'Deposit Initiated', 'color' => '#0d6efd'],
+                ctaUrl: url('/dashboard'),
+                ctaText: 'Go to Dashboard',
+            ));
+        } catch (\Exception $mailEx) {
+            Log::warning('Deposit initiated email failed: ' . $mailEx->getMessage());
+        }
+
+        return redirect()->away($result['checkout_url']);
+    }
+
+    public function callback(Request $request)
+    {
+        $gateway   = $request->query('gateway');
+        $reference = $request->query('reference')
+            ?? $request->query('trxref')
+            ?? $request->query('tx_ref')
+            ?? $request->query('transaction_id');
+
+        if (! $gateway || ! $reference) {
+            return redirect()->route('deposits.index')
+                ->withErrors(['error' => 'Invalid payment callback. Please contact support.']);
+        }
+
+        $deposit = Deposit::where('gateway_reference', $reference)
+            ->orWhere('transaction_ref', $reference)
+            ->first();
+
+        if (! $deposit) {
+            Log::error('Callback: deposit not found', ['gateway' => $gateway, 'reference' => $reference]);
+            return redirect()->route('deposits.index')
+                ->withErrors(['error' => 'Deposit record not found. Please contact support.']);
+        }
+
+        if ($deposit->status === 'approved') {
+            return redirect()->route('deposits.index')
+                ->with('success', 'Your deposit has already been credited!');
+        }
+
+        $gatewayService = new PaymentGatewayService();
+
+        $verification = match ($gateway) {
+            'paystack'    => $gatewayService->verifyPaystack($reference),
+            'korapay'     => $gatewayService->verifyKorapay($reference),
+            'flutterwave' => $gatewayService->verifyFlutterwave($reference),
+            default       => ['success' => false, 'data' => []],
+        };
+
+        if ($verification['success']) {
+            $deposit->update([
+                'status'           => 'approved',
+                'gateway_response' => json_encode($verification['data'] ?? []),
+            ]);
+
+            $deposit->user->wallet()->increment('balance', $deposit->amount);
+
+            Log::info('Gateway deposit approved', [
+                'deposit_id' => $deposit->id,
+                'gateway'    => $gateway,
+                'amount'     => $deposit->amount,
+                'user_id'    => $deposit->user_id,
+            ]);
+
+            $this->sendTelegramAlert($deposit, false);
+
+            return redirect()->route('deposits.index')
+                ->with('success', 'Payment successful! ₦' . number_format($deposit->amount, 2) . ' has been credited to your wallet.');
+        }
+
+        $deposit->update([
+            'status'           => 'rejected',
+            'gateway_response' => json_encode($verification['data'] ?? []),
+        ]);
+
+        Log::warning('Gateway payment verification failed', [
+            'deposit_id' => $deposit->id,
+            'gateway'    => $gateway,
+            'reference'  => $reference,
+        ]);
+
+        return redirect()->route('deposits.index')
+            ->withErrors(['error' => 'Payment could not be verified. If you were charged, please contact support with reference: ' . $reference]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // WEBHOOKS — server-to-server notifications (no CSRF / no auth)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function webhook(Request $request, string $gateway)
+    {
+        match ($gateway) {
+            'paystack'    => $this->handlePaystackWebhook($request),
+            'korapay'     => $this->handleKorapayWebhook($request),
+            'flutterwave' => $this->handleFlutterwaveWebhook($request),
+            default       => null,
+        };
+
+        return response('OK', 200);
+    }
+
+    private function handlePaystackWebhook(Request $request): void
+    {
+        $hash = hash_hmac('sha512', $request->getContent(), config('services.paystack.secret_key'));
+        if ($hash !== $request->header('x-paystack-signature')) {
+            Log::warning('Paystack webhook: invalid signature');
+            return;
+        }
+        if ($request->json('event') !== 'charge.success') return;
+        $this->approveDepositByRef($request->json('data.reference'), $request->getContent());
+    }
+
+    private function handleKorapayWebhook(Request $request): void
+    {
+        $hash = hash_hmac('sha256', $request->getContent(), config('services.korapay.secret_key'));
+        if ($hash !== $request->header('x-korapay-signature')) {
+            Log::warning('Korapay webhook: invalid signature');
+            return;
+        }
+        if ($request->json('event') !== 'charge.success') return;
+        $this->approveDepositByRef($request->json('data.reference'), $request->getContent());
+    }
+
+    private function handleFlutterwaveWebhook(Request $request): void
+    {
+        $secretHash = config('services.flutterwave.webhook_hash');
+        if ($secretHash && $request->header('verif-hash') !== $secretHash) {
+            Log::warning('Flutterwave webhook: invalid hash');
+            return;
+        }
+        if ($request->json('event') !== 'charge.completed') return;
+        if ($request->json('data.status') !== 'successful') return;
+        $this->approveDepositByRef($request->json('data.tx_ref'), $request->getContent());
+    }
+
+    private function approveDepositByRef(string $reference, string $rawPayload): void
+    {
+        $deposit = Deposit::where('gateway_reference', $reference)
+            ->orWhere('transaction_ref', $reference)
+            ->first();
+
+        if (! $deposit || $deposit->status === 'approved') return;
+
+        $deposit->update([
+            'status'           => 'approved',
+            'gateway_response' => $rawPayload,
+        ]);
+
+        $deposit->user->wallet()->increment('balance', $deposit->amount);
+
+        Log::info('Deposit approved via webhook', [
+            'deposit_id' => $deposit->id,
+            'reference'  => $reference,
+            'amount'     => $deposit->amount,
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // BANK TRANSFER (manual flow — user uploads proof for admin approval)
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function store(Request $request)
     {
+        $walletLookup = collect($this->getConfiguredCryptoWallets())->keyBy('key');
+
         $request->validate([
-            'amount' => 'required|numeric|min:1000',
-            'payment_method' => 'required|in:bank_transfer',
-            'company_account_id' => 'required_if:payment_method,bank_transfer|exists:company_accounts,id',
-            'proof_of_payment' => 'required|image|mimes:jpeg,png,jpg,webp|max:10240', // Increased to 10MB
+            'amount'             => 'required|numeric|min:1000',
+            'payment_method'     => 'required|in:bank_transfer,crypto_transfer',
+            'company_account_id' => 'required_if:payment_method,bank_transfer|nullable|exists:company_accounts,id',
+            'crypto_wallet_key'  => 'required_if:payment_method,crypto_transfer|nullable|string',
+            'proof_of_payment'   => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
         ]);
+
+        if ($request->payment_method === 'crypto_transfer' && !$walletLookup->has($request->crypto_wallet_key)) {
+            return redirect()->back()
+                ->withErrors(['crypto_wallet_key' => 'Selected wallet is invalid. Please refresh and try again.'])
+                ->withInput();
+        }
 
         try {
             $deposit = new Deposit();
             $deposit->amount = $request->amount;
             $deposit->status = 'pending';
             $deposit->transaction_ref = 'DEP-' . Str::upper(Str::random(10));
-            $deposit->company_account_id = $request->company_account_id;
+            $deposit->company_account_id = $request->payment_method === 'bank_transfer' ? $request->company_account_id : null;
             $deposit->user_id = auth()->id();
             $deposit->payment_method = $request->payment_method;
+
+            if ($request->payment_method === 'crypto_transfer') {
+                $wallet = $walletLookup->get($request->crypto_wallet_key);
+                $deposit->gateway_response = json_encode([
+                    'crypto_wallet_key' => $wallet['key'],
+                    'crypto_wallet_name' => $wallet['name'],
+                    'crypto_wallet_network' => $wallet['network'],
+                    'crypto_wallet_address' => $wallet['address'],
+                ]);
+            }
 
             // Store proof of payment
             if ($request->hasFile('proof_of_payment') && $request->file('proof_of_payment')->isValid()) {
@@ -82,6 +355,38 @@ class DepositController extends Controller
             ]);
             return redirect()->back()->withErrors(['error' => 'Failed to submit deposit. Please try again.']);
         }
+    }
+
+    private function getConfiguredCryptoWallets(): array
+    {
+        $walletMap = config('wallets', []);
+
+        $labelMap = [
+            'BTC' => ['name' => 'Bitcoin', 'network' => 'BTC'],
+            'ETH' => ['name' => 'Ethereum', 'network' => 'ERC20'],
+            'SOL' => ['name' => 'Solana', 'network' => 'SOL'],
+            'USDT' => ['name' => 'USDT', 'network' => 'TRC20'],
+            'USDT_ERC20' => ['name' => 'USDT (ERC20)', 'network' => 'ERC20'],
+            'USDT_TRC20' => ['name' => 'USDT (TRC20)', 'network' => 'TRC20'],
+            'USDT_BEP20' => ['name' => 'USDT (BEP20)', 'network' => 'BEP20'],
+        ];
+
+        $wallets = [];
+        foreach ($labelMap as $key => $meta) {
+            $address = trim((string) ($walletMap[$key] ?? ''));
+            if ($address === '') {
+                continue;
+            }
+
+            $wallets[] = [
+                'key' => $key,
+                'name' => $meta['name'],
+                'network' => $meta['network'],
+                'address' => $address,
+            ];
+        }
+
+        return $wallets;
     }
 
     public function updateStatus(Request $request, Deposit $deposit)

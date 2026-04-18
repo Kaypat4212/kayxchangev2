@@ -7,6 +7,9 @@ use App\Http\Requests\BuyCryptoRequest;
 use App\Models\BuyTrade;
 use App\Models\CryptoRate;
 use App\Models\CompanyAccount;
+use App\Services\AdminTradeAlertService;
+use App\Mail\TradeNotification;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
@@ -82,6 +85,7 @@ class BuyController extends Controller
                 'naira_amount' => $naira_amount,
                 'wallet_address' => $validated['wallet_address'],
                 'network' => $validated['network'],
+                'payment_method' => 'Bank Transfer',
                 'status' => 'pending',
                 'ip_address' => $request->ip(),
                 'transaction_ref' => $transaction_ref,
@@ -95,6 +99,44 @@ class BuyController extends Controller
                 'name' => auth()->user()->name,
                 'transaction_ref' => $transaction_ref
             ]);
+
+            // Send confirmation email
+            try {
+                Mail::to(auth()->user()->email)->send(new TradeNotification(
+                    user: auth()->user(),
+                    templateKey: 'buy_trade_submitted',
+                    data: [
+                        'amount'         => number_format($usd_amount, 6),
+                        'currency'       => $validated['coin'],
+                        'naira_amount'   => number_format($naira_amount, 2),
+                        'wallet_address' => $validated['wallet_address'],
+                        'reference'      => $transaction_ref,
+                    ],
+                    badge: ['text' => 'Order Received', 'color' => '#f0a500'],
+                    ctaUrl: route('buy.summary', ['id' => $buyTrade->id]),
+                    ctaText: 'View Order Summary',
+                ));
+            } catch (\Exception $mailEx) {
+                Log::warning('Buy trade submitted email failed: ' . $mailEx->getMessage());
+            }
+
+            // Admin alert: Telegram + in-app broadcast notification
+            try {
+                app(AdminTradeAlertService::class)->sendTriggeredAlert('buy', [
+                    'user_id' => auth()->id(),
+                    'reference' => $transaction_ref,
+                    'user_name' => auth()->user()->name,
+                    'user_email' => auth()->user()->email,
+                    'coin' => $validated['coin'],
+                    'usd_amount' => number_format((float) $usd_amount, 6),
+                    'naira_amount' => number_format((float) $naira_amount, 2),
+                    'wallet_address' => $validated['wallet_address'] ?? 'N/A',
+                    'network' => $validated['network'] ?? 'N/A',
+                    'status' => 'pending',
+                ]);
+            } catch (\Throwable $alertEx) {
+                Log::warning('Buy trade admin alert failed: ' . $alertEx->getMessage());
+            }
 
             // Redirect to trade summary
             return redirect()->route('buy.summary', ['id' => $buyTrade->id])
@@ -314,6 +356,26 @@ class BuyController extends Controller
 
                 // Send Telegram notification with proof
                 $this->sendTelegramAlert($trade, true);
+
+                // Notify user that proof was received
+                try {
+                    $user = auth()->user();
+                    Mail::to($user->email)->send(new TradeNotification(
+                        user: $user,
+                        templateKey: 'buy_trade_payment_uploaded',
+                        data: [
+                            'amount'    => number_format($trade->usd_amount, 6),
+                            'currency'  => $trade->coin,
+                            'reference' => $trade->transaction_ref,
+                        ],
+                        badge: ['text' => 'Payment Proof Received', 'color' => '#0d6efd'],
+                        ctaUrl: route('buy.success', ['id' => $trade->id]),
+                        ctaText: 'View Order',
+                    ));
+                } catch (\Exception $mailEx) {
+                    Log::warning('Buy proof uploaded email failed: ' . $mailEx->getMessage());
+                }
+
                 return redirect()->route('buy.success', ['id' => $trade->id])
                     ->with('success', 'Payment proof uploaded successfully!');
             }

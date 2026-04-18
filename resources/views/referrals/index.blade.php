@@ -1,264 +1,307 @@
 @extends('layout')
 
-@section('content')
+@push('styles')
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+:root{
+    --kx-green:#00cc00;
+    --kx-dark:#0d1117;
+    --kx-card:#161b27;
+    --kx-card2:#1e2535;
+    --kx-border:rgba(255,255,255,0.07);
+    --kx-text:#e4e8f0;
+    --kx-muted:#7a8599;
+}
+body{background:var(--kx-dark);color:var(--kx-text);}
 
-    :root {
-        --dark-bg: #1a1a1a;
-        --dark-card-bg: #2c2c2c;
-        --dark-text: #00871b;
-        --dark-text-muted: #b0b0b0;
-        --dark-gradient-bg: linear-gradient(135deg, #2c2c2c, #3a3a3a);
-        --dark-border: #4a4a4a;
-        --dark-table-hover: #3a3a3a;
-        --light-bg: #f5f5f5;
-        --light-card-bg: #ffffff;
-        --light-text: #1a1a1a;
-        --light-text-muted: #6c757d;
-        --light-gradient-bg: linear-gradient(135deg, #ffffff, #e9ecef);
-        --light-border: #dee2e6;
-        --light-table-hover: #e9ecef;
-        --primary-green: #28a745;
-        --primary-red: #dc3545;
-        --glow-color: rgba(40, 167, 69, 0.5);
-        --glow-color-red: rgba(220, 53, 69, 0.5);
-        --transition: all 0.3s ease;
-    }
+/* Hero */
+.kx-hero{
+    background:linear-gradient(135deg,#0a1628 0%,#0d1f1a 100%);
+    border-bottom:1px solid var(--kx-border);
+    padding:2rem 1rem 1.5rem;
+    text-align:center;
+    margin-bottom:2rem;
+}
+.kx-hero h1{font-size:1.6rem;font-weight:700;color:#fff;margin:0 0 .3rem;}
+.kx-hero p{color:var(--kx-muted);font-size:.9rem;margin:0;}
+.kx-hero-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(0,204,0,.1);border:1px solid rgba(0,204,0,.25);border-radius:20px;padding:.3rem .9rem;font-size:.8rem;color:var(--kx-green);margin-bottom:.75rem;}
 
-    body {
-        background: var(--dark-bg);
-        color: var(--dark-text);
-        font-family: 'Poppins', sans-serif;
-        transition: var(--transition);
-    }
+/* Cards */
+.kx-card{background:var(--kx-card);border:1px solid var(--kx-border);border-radius:16px;padding:1.5rem;margin-bottom:1.25rem;}
+.kx-card-title{font-size:.95rem;font-weight:700;color:var(--kx-text);margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem;}
+.kx-card-title i{color:var(--kx-green);}
 
-    body.light-mode {
-        background: var(--light-bg);
-        color: var(--light-text);
-    }
+/* Stat tiles */
+.kx-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.5rem;}
+@media(max-width:576px){.kx-stats{grid-template-columns:1fr 1fr;}}
+.kx-stat{background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:12px;padding:1rem;text-align:center;}
+.kx-stat .s-val{font-size:1.4rem;font-weight:700;color:var(--kx-green);}
+.kx-stat .s-lbl{font-size:.72rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.2rem;}
 
-    .container {
-        padding: 3rem 1rem;
-        min-height: calc(100vh - 200px);
-    }
+/* Copy input */
+.kx-copy-group{display:flex;gap:0;margin-bottom:1rem;}
+.kx-copy-input{background:var(--kx-card2)!important;border:1px solid var(--kx-border)!important;color:var(--kx-text)!important;border-radius:10px 0 0 10px!important;padding:.75rem 1rem!important;font-size:.82rem!important;flex:1;outline:none;}
+.kx-copy-btn{background:var(--kx-green);border:none;color:#000;font-weight:700;padding:.75rem 1.1rem;border-radius:0 10px 10px 0;font-size:.82rem;white-space:nowrap;cursor:pointer;transition:background .15s;}
+.kx-copy-btn:hover{background:#00e600;}
+.kx-copy-btn.copied{background:#0099ff;color:#fff;}
+.kx-label{font-size:.75rem;font-weight:600;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;}
 
-    .card {
-        background-color: var(--dark-card-bg) !important;
-        color: var(--dark-text);
-        border: none !important;
-        border-radius: 1rem;
-        box-shadow: 0 4px 15px var(--glow-color);
-        transition: var(--transition);
-    }
+/* Share buttons */
+.share-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem;}
+.share-btn{display:inline-flex;align-items:center;gap:.4rem;border-radius:8px;padding:.45rem .9rem;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid var(--kx-border);color:var(--kx-text);background:var(--kx-card2);transition:all .15s;}
+.share-btn:hover{border-color:var(--kx-green);color:var(--kx-green);}
+.share-btn.wa{border-color:rgba(37,211,102,.3);color:#25d366;}
+.share-btn.wa:hover{background:rgba(37,211,102,.1);}
+.share-btn.tg{border-color:rgba(0,136,204,.3);color:#0088cc;}
+.share-btn.tg:hover{background:rgba(0,136,204,.1);}
+.share-btn.tw{border-color:rgba(29,161,242,.3);color:#1da1f2;}
+.share-btn.tw:hover{background:rgba(29,161,242,.1);}
 
-    .light-mode .card {
-        background-color: var(--light-card-bg) !important;
-        color: var(--light-text);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
+/* How it works */
+.kx-steps-how{display:flex;gap:1rem;margin-top:.5rem;}
+@media(max-width:576px){.kx-steps-how{flex-direction:column;}}
+.kx-step-how{flex:1;background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:12px;padding:1rem;text-align:center;}
+.kx-step-how .how-num{width:32px;height:32px;border-radius:50%;background:rgba(0,204,0,.15);border:1px solid rgba(0,204,0,.3);color:var(--kx-green);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center;margin:0 auto .6rem;}
+.kx-step-how .how-title{font-size:.82rem;font-weight:600;color:var(--kx-text);margin-bottom:.25rem;}
+.kx-step-how .how-desc{font-size:.75rem;color:var(--kx-muted);}
 
-    .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px var(--glow-color);
-    }
+/* Table */
+.kx-table{width:100%;border-collapse:collapse;}
+.kx-table th{font-size:.72rem;font-weight:600;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;padding:.6rem .75rem;border-bottom:1px solid var(--kx-border);}
+.kx-table td{padding:.85rem .75rem;border-bottom:1px solid var(--kx-border);font-size:.875rem;vertical-align:middle;}
+.kx-table tr:last-child td{border-bottom:none;}
+.kx-table tbody tr:hover td{background:rgba(255,255,255,.025);}
+.avatar-pill{width:32px;height:32px;border-radius:50%;background:rgba(0,204,0,.15);border:1px solid rgba(0,204,0,.2);color:var(--kx-green);display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;}
+.status-pill{display:inline-flex;align-items:center;gap:.3rem;border-radius:20px;padding:.2rem .65rem;font-size:.72rem;font-weight:600;}
+.status-pill.completed{background:rgba(0,204,0,.12);color:var(--kx-green);border:1px solid rgba(0,204,0,.2);}
+.status-pill.pending{background:rgba(255,193,7,.1);color:#ffc107;border:1px solid rgba(255,193,7,.2);}
+.status-pill.cancelled{background:rgba(255,68,68,.1);color:#ff4444;border:1px solid rgba(255,68,68,.2);}
 
-    .light-mode .card:hover {
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
+/* Empty state */
+.kx-empty{text-align:center;padding:2.5rem 1rem;}
+.kx-empty-icon{width:64px;height:64px;border-radius:50%;background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.15);color:var(--kx-green);font-size:1.6rem;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;}
+.kx-empty h5{color:var(--kx-text);font-size:.95rem;margin-bottom:.4rem;}
+.kx-empty p{color:var(--kx-muted);font-size:.82rem;margin:0;}
 
-    .text-green-dark {
-        color: var(--primary-green) !important;
-    }
+/* Pagination override */
+.pagination .page-link{background:var(--kx-card2);border-color:var(--kx-border);color:var(--kx-text);}
+.pagination .page-link:hover,.pagination .active .page-link{background:var(--kx-green);border-color:var(--kx-green);color:#000;}
 
-    .text-muted {
-        color: var(--dark-text-muted) !important;
-    }
-
-    .light-mode .text-muted {
-        color: var(--light-text-muted) !important;
-    }
-
-    .form-control {
-        background-color: var(--dark-table-hover);
-        color: var(--dark-text);
-        border-color: var(--dark-border);
-        border-radius: 0.5rem;
-        transition: var(--transition);
-    }
-
-    .light-mode .form-control {
-        background-color: #ffffff;
-        color: var(--light-text);
-        border-color: var(--light-border);
-    }
-
-    .form-control:focus {
-        border-color: var(--primary-green);
-        box-shadow: 0 0 8px var(--glow-color);
-    }
-
-    .btn-green {
-        background-color: var(--primary-green);
-        color: #ffffff;
-        border: none;
-        border-radius: 0.5rem;
-        padding: 0.75rem 2rem;
-        transition: var(--transition);
-        box-shadow: 0 2px 10px var(--glow-color);
-    }
-
-    .btn-green:hover {
-        background-color: #2ecc71;
-        transform: scale(1.05);
-        box-shadow: 0 4px 15px var(--glow-color);
-    }
-
-    .table {
-        color: var(--dark-text);
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-
-    .light-mode .table {
-        color: var(--light-text);
-    }
-
-    .table th, .table td {
-        border: none;
-        padding: 1rem;
-        border-bottom: 1px solid var(--dark-border);
-    }
-
-    .light-mode .table th, .light-mode .table td {
-        border-bottom: 1px solid var(--light-border);
-    }
-
-    .table-hover tbody tr:hover {
-        background-color: var(--dark-table-hover);
-        box-shadow: 0 2px 10px var(--glow-color);
-    }
-
-    .light-mode .table-hover tbody tr:hover {
-        background-color: var(--light-table-hover);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .fade-in {
-        animation: fadeIn 0.8s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    .pagination .page-link {
-        background-color: var(--dark-card-bg);
-        color: var(--dark-text);
-        border-color: var(--dark-border);
-        transition: var(--transition);
-    }
-
-    .light-mode .pagination .page-link {
-        background-color: var(--light-card-bg);
-        color: var(--light-text);
-        border-color: var(--light-border);
-    }
-
-    .pagination .page-link:hover {
-        background-color: var(--primary-green);
-        color: #ffffff;
-        border-color: var(--primary-green);
-    }
-
-    .pagination .active .page-link {
-        background-color: var(--primary-green);
-        border-color: var(--primary-green);
-        color: #ffffff;
-    }
+/* Toast */
+.kx-toast{position:fixed;top:1rem;right:1rem;z-index:9999;min-width:200px;padding:.7rem 1rem;border-radius:10px;font-size:.85rem;font-weight:500;display:none;}
+.kx-toast.success{background:#0d2d0d;border:1px solid var(--kx-green);color:var(--kx-green);}
+.kx-toast.error{background:#2d0d0d;border:1px solid #ff4444;color:#ff4444;}
 </style>
+@endpush
 
-<div class="container py-5">
-    <h1 class="text-3xl font-bold text-green-dark mb-6 fade-in text-center">Referral Program</h1>
+@section('content')
 
-    <!-- Referral Details Section -->
-    <div class="card mb-5 p-4">
-        <h3 class="text-xl font-semibold text-green-dark mb-4">Your Referral Details</h3>
-        <div class="mb-4">
-            <label class="block text-sm text-muted mb-2">Referral Code</label>
-            <div class="input-group">
-                <input type="text" id="referralCode" readonly value="{{ $user->code ?? $user->referral_code }}"
-                       class="form-control rounded-start" />
-                <button type="button" onclick="copyToClipboard('referralCode')"
-                        class="btn btn-green rounded-end">Copy</button>
-            </div>
+<div class="kx-toast" id="kxToast"></div>
+
+{{-- Hero --}}
+<div class="kx-hero">
+    <div class="kx-hero-badge"><i class="bi bi-gift-fill"></i>Referral Program</div>
+    <h1>Invite Friends &amp; Earn</h1>
+    <p>Get <strong style="color:var(--kx-green);">&#8358;500</strong> for every friend who signs up and completes their first trade</p>
+</div>
+
+<div class="container-fluid px-3 pb-5">
+<div class="row justify-content-center">
+<div class="col-xl-7 col-lg-8 col-md-10">
+
+    {{-- Stats --}}
+    <div class="kx-stats">
+        <div class="kx-stat">
+            <div class="s-val">{{ $referrals->total() }}</div>
+            <div class="s-lbl">Total Referred</div>
         </div>
-        <div class="mb-4">
-            <label class="block text-sm text-muted mb-2">Referral Link</label>
-            <div class="input-group">
-                <input type="text" id="referralLink" readonly value="{{ $referral_link ?? $referralLink }}"
-                       class="form-control rounded-start" />
-                <button type="button" onclick="copyToClipboard('referralLink')"
-                        class="btn btn-green rounded-end">Copy</button>
-            </div>
+        <div class="kx-stat">
+            <div class="s-val">{{ $referrals->where('status','completed')->count() }}</div>
+            <div class="s-lbl">Completed</div>
         </div>
-        <p class="text-muted mt-2">Share your referral code or link to earn 500 NGN per new user!</p>
+        <div class="kx-stat">
+            <div class="s-val">&#8358;{{ number_format($totalRewards, 0) }}</div>
+            <div class="s-lbl">Total Earned</div>
+        </div>
     </div>
 
-    <!-- Referral Stats Section -->
-    <div class="card p-4">
-        <h3 class="text-xl font-semibold text-green-dark mb-4">Referral Stats</h3>
-        <p class="mb-2">Total Rewards Earned: ₦{{ number_format($total_rewards ?? $totalRewards, 2) }}</p>
-        <p class="mb-4">Referred Users: {{ $referrals->total() }}</p>
+    {{-- Your referral details --}}
+    <div class="kx-card">
+        <div class="kx-card-title"><i class="bi bi-link-45deg"></i>Your Referral Details</div>
+
+        <div class="mb-3">
+            <div class="kx-label">Referral Code</div>
+            <div class="kx-copy-group">
+                <input type="text" id="codeInput" class="kx-copy-input" readonly
+                    value="{{ $user->code ?? $user->referral_code }}">
+                <button class="kx-copy-btn" onclick="copyField('codeInput', this)">
+                    <i class="bi bi-copy me-1"></i>Copy
+                </button>
+            </div>
+        </div>
+
+        <div class="mb-2">
+            <div class="kx-label">Referral Link</div>
+            <div class="kx-copy-group">
+                <input type="text" id="linkInput" class="kx-copy-input" readonly
+                    value="{{ $referral_link ?? $referralLink }}">
+                <button class="kx-copy-btn" onclick="copyField('linkInput', this)">
+                    <i class="bi bi-copy me-1"></i>Copy
+                </button>
+            </div>
+        </div>
+
+        {{-- Share buttons --}}
+        <div class="share-row">
+            <a class="share-btn wa" id="shareWa" href="#" target="_blank" rel="noopener">
+                <i class="bi bi-whatsapp"></i>WhatsApp
+            </a>
+            <a class="share-btn tg" id="shareTg" href="#" target="_blank" rel="noopener">
+                <i class="bi bi-telegram"></i>Telegram
+            </a>
+            <a class="share-btn tw" id="shareTw" href="#" target="_blank" rel="noopener">
+                <i class="bi bi-twitter-x"></i>X / Twitter
+            </a>
+        </div>
+    </div>
+
+    {{-- How it works --}}
+    <div class="kx-card">
+        <div class="kx-card-title"><i class="bi bi-info-circle-fill"></i>How It Works</div>
+        <div class="kx-steps-how">
+            <div class="kx-step-how">
+                <div class="how-num">1</div>
+                <div class="how-title">Share Your Link</div>
+                <div class="how-desc">Send your unique referral link or code to a friend</div>
+            </div>
+            <div class="kx-step-how">
+                <div class="how-num">2</div>
+                <div class="how-title">Friend Signs Up</div>
+                <div class="how-desc">They register on KayXchange using your link</div>
+            </div>
+            <div class="kx-step-how">
+                <div class="how-num">3</div>
+                <div class="how-title">Earn &#8358;500</div>
+                <div class="how-desc">Reward is credited after their first completed trade</div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Referral list --}}
+    <div class="kx-card">
+        <div class="kx-card-title"><i class="bi bi-people-fill"></i>Your Referrals
+            <span style="margin-left:auto;font-size:.72rem;font-weight:400;color:var(--kx-muted);">
+                {{ $referrals->total() }} total
+            </span>
+        </div>
 
         @if($referrals->isNotEmpty())
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th class="py-3 text-muted">Referred User</th>
-                            <th class="py-3 text-muted text-center">Reward Amount</th>
-                            <th class="py-3 text-muted text-center">Status</th>
-                            <th class="py-3 text-muted text-right">Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($referrals as $referral)
-                            <tr>
-                                <td class="py-3">{{ $referral->nickname ?? ($referral->referred ? $referral->referred->email : 'Unknown-') }}</td>
-                                <td class="py-3 text-center">₦{{ number_format($referral->reward_amount ?? 0, 2) }}</td>
-                                <td class="py-3 text-center">{{ ucfirst($referral->status) }}</td>
-                                <td class="py-3 text-right">{{ $referral->created_at->format('Y-m-d') }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-4">
-                {{ $referrals->links() }}
-            </div>
+        <div class="table-responsive">
+            <table class="kx-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th class="text-center">Reward</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($referrals as $referral)
+                    @php
+                        $email = $referral->referred?->email ?? 'Unknown';
+                        $initials = strtoupper(substr($email, 0, 2));
+                        $status = strtolower($referral->status ?? 'pending');
+                    @endphp
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="avatar-pill">{{ $initials }}</div>
+                                <div>
+                                    <div style="font-size:.82rem;font-weight:600;color:var(--kx-text);">
+                                        {{ $referral->nickname ?? $email }}
+                                    </div>
+                                    @if($referral->nickname)
+                                    <div style="font-size:.7rem;color:var(--kx-muted);">{{ $email }}</div>
+                                    @endif
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center" style="color:var(--kx-green);font-weight:600;">
+                            &#8358;{{ number_format($referral->reward_amount ?? 0, 0) }}
+                        </td>
+                        <td class="text-center">
+                            <span class="status-pill {{ $status }}">
+                                @if($status === 'completed')
+                                    <i class="bi bi-check-circle-fill"></i>
+                                @elseif($status === 'pending')
+                                    <i class="bi bi-clock-fill"></i>
+                                @else
+                                    <i class="bi bi-x-circle-fill"></i>
+                                @endif
+                                {{ ucfirst($status) }}
+                            </span>
+                        </td>
+                        <td class="text-end" style="color:var(--kx-muted);font-size:.8rem;white-space:nowrap;">
+                            {{ $referral->created_at->format('d M Y') }}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @if($referrals->hasPages())
+        <div class="d-flex justify-content-center mt-3">
+            {{ $referrals->links() }}
+        </div>
+        @endif
         @else
-            <p class="text-center text-muted mt-4">No referrals yet. Start sharing your referral code or link!</p>
+        <div class="kx-empty">
+            <div class="kx-empty-icon"><i class="bi bi-people"></i></div>
+            <h5>No referrals yet</h5>
+            <p>Share your referral link above and start earning &#8358;500 per sign-up!</p>
+        </div>
         @endif
     </div>
+
+</div>
+</div>
 </div>
 
 <script>
-    function copyToClipboard(elementId) {
-        const element = document.getElementById(elementId);
-        const text = element.value;
-
-        navigator.clipboard.writeText(text)
-            .then(() => {
-                alert('Copied to clipboard!');
-            })
-            .catch(() => {
-                alert('Error: Failed to copy. Please copy manually.');
-            });
+(function(){
+    function showToast(msg, type) {
+        var t = document.getElementById('kxToast');
+        t.textContent = msg; t.className = 'kx-toast ' + type;
+        t.style.display = 'block';
+        setTimeout(function(){ t.style.display = 'none'; }, 2800);
     }
-</script>
 
-@include('footer')
+    window.copyField = function(id, btn) {
+        var val = document.getElementById(id).value;
+        navigator.clipboard.writeText(val).then(function(){
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check2 me-1"></i>Copied!';
+            btn.classList.add('copied');
+            showToast('Copied to clipboard!', 'success');
+            setTimeout(function(){ btn.innerHTML = orig; btn.classList.remove('copied'); }, 2000);
+        }).catch(function(){
+            showToast('Copy failed — please copy manually.', 'error');
+        });
+    };
+
+    // Build share URLs
+    var link = document.getElementById('linkInput').value;
+    var msg  = encodeURIComponent('Join KayXchange \u2014 the best crypto exchange platform! Sign up with my link: ' + link);
+    document.getElementById('shareWa').href = 'https://wa.me/?text=' + msg;
+    document.getElementById('shareTg').href = 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Join KayXchange using my referral link!');
+    document.getElementById('shareTw').href = 'https://twitter.com/intent/tweet?text=' + msg;
+
+    @if(session('success'))
+        showToast(@json(session('success')), 'success');
+    @elseif(session('error'))
+        showToast(@json(session('error')), 'error');
+    @endif
+})();
+</script>
 
 @endsection

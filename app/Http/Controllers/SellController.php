@@ -6,7 +6,10 @@ use Illuminate\Http\Request;
 use App\Models\SellTrade;
 use App\Models\CryptoRate;
 use App\Models\User;
+use App\Services\AdminTradeAlertService;
+use App\Mail\TradeNotification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -125,21 +128,35 @@ class SellController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
+    /**
+     * AJAX: return the Paystack bank list (lazy-loaded by the External Bank UI).
+     */
+    public function fetchBanks()
+    {
+        $key = env('PAYSTACK_SECRET_KEY');
+        if (!$key) {
+            return response()->json(['banks' => []]);
+        }
+        try {
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $key])
+                ->timeout(8)
+                ->get('https://api.paystack.co/bank');
+            $banks = $response->successful() ? $response->json('data', []) : [];
+        } catch (\Exception $e) {
+            Log::error('fetchBanks failed', ['error' => $e->getMessage()]);
+            $banks = [];
+        }
+        return response()->json(['banks' => $banks]);
+    }
+
     public function validateBank(Request $request)
     {
         $request->validate([
-            'bank_name' => 'required|string|max:255',
+            'bank_name' => 'required|string|max:255',   // bank CODE sent from JS
             'account_number' => 'required|string|regex:/^\d{10}$/',
-            'password' => 'required|string|min:6',
         ]);
 
-        $user = Auth::user();
-        if (!Hash::check($request->password, $user->password)) {
-            Log::warning('Password validation failed', ['user_id' => $user->id]);
-            return response()->json(['error' => 'Incorrect password.'], 400);
-        }
-
-        $bankCode = $this->getBankCode($request->bank_name);
+        $bankCode = $request->bank_name; // JS sends the code directly
         if (!$bankCode) {
             return response()->json(['error' => 'Invalid bank name.'], 400);
         }
@@ -153,7 +170,7 @@ class SellController extends Controller
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $paystackSecretKey,
-            ])->timeout(10)->get('https://api.paystack.co/bank/resolve', [
+            ])->timeout(8)->get('https://api.paystack.co/bank/resolve', [
                 'account_number' => $request->account_number,
                 'bank_code' => $bankCode,
             ]);
@@ -201,7 +218,8 @@ class SellController extends Controller
     public function step1()
     {
         Log::info('Accessing sell.step1');
-        $rates = CryptoRate::pluck('sell_rate', 'coin')->toArray();
+        $rates = CryptoRate::whereIn('coin', ['BTC', 'ETH', 'USDT', 'SOL'])
+            ->pluck('sell_rate', 'coin')->toArray();
         if (empty($rates)) {
             Log::warning('No rates found in crypto_rates table');
             return view('sell.step1', ['rates' => [], 'error' => 'No crypto rates available.']);
@@ -220,11 +238,12 @@ class SellController extends Controller
         Log::info('postStep1 request data', $request->all());
 
         $request->validate([
-            'coin' => 'required|in:BTC,ETH,USDT',
+            'coin' => 'required|in:BTC,ETH,USDT,SOL',
             'amount' => 'required|numeric|min:0.01',
             'input_type' => 'required|in:usd,naira',
             'usd_amount' => 'required|numeric|min:0.01',
             'naira_amount' => 'required|numeric|min:0.01',
+            'network' => 'nullable|in:ERC20,TRC20,BEP20,SOL,BTC',
         ]);
 
         $coin = $request->coin;
@@ -257,12 +276,25 @@ class SellController extends Controller
             return back()->withErrors(['amount' => 'Submitted amounts do not match expected conversion.']);
         }
 
+        // Resolve network
+        $network = $request->network;
+        if (empty($network)) {
+            $network = match($coin) {
+                'BTC'  => 'BTC',
+                'ETH'  => 'ERC20',
+                'USDT' => 'TRC20',
+                'SOL'  => 'SOL',
+                default => null,
+            };
+        }
+
         Session::put('sell', [
             'coin' => $coin,
+            'network' => $network,
             'usd_amount' => $usdAmount,
             'naira_amount' => $nairaAmount,
             'input_type' => $inputType,
-            'rate' => $rate, // Store the rate used for the trade
+            'rate' => $rate,
         ]);
         Log::info('postStep1 session data set', Session::get('sell'));
 
@@ -284,15 +316,13 @@ class SellController extends Controller
         }
 
         $coin = Session::get('sell.coin');
+        $network = Session::get('sell.network');
         $amountInUsd = Session::get('sell.usd_amount');
         $nairaAmount = Session::get('sell.naira_amount');
 
-        $walletMap = config('wallets') ?? [
-            'BTC' => '1K3uPpiJRi4UkTYBEniPMejxsCMxbygqyN',
-            'ETH' => '0x42c9accd6679f54e8ddbc9383ca80d7319820b67',
-            'USDT' => 'TQhLfKnkQRcn5k6xye6sU1LV6rFmb1nBPQ',
-        ];
-        $walletAddress = $walletMap[$coin] ?? 'N/A';
+        $walletMap = config('wallets', []);
+        $walletKey = ($coin === 'USDT' && $network) ? "USDT_{$network}" : $coin;
+        $walletAddress = $walletMap[$walletKey] ?? $walletMap[$coin] ?? 'N/A';
 
         $proofPath = Session::get('sell.proof');
         $proofUrl = $proofPath ? asset('storage/' . $proofPath) : null;
@@ -355,20 +385,9 @@ class SellController extends Controller
             'balance' => $balance,
         ];
 
-        $paystackSecretKey = env('PAYSTACK_SECRET_KEY');
+        // Banks are loaded lazily via AJAX when the user selects "External Bank".
+        // Loading them here would block the page for 10-14 seconds if Paystack is slow.
         $banks = [];
-        if ($paystackSecretKey) {
-            try {
-                $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . $paystackSecretKey,
-                ])->timeout(10)->get('https://api.paystack.co/bank');
-                if ($response->successful()) {
-                    $banks = $response->json('data', []);
-                }
-            } catch (\Exception $e) {
-                Log::error('Failed to fetch Paystack banks', ['error' => $e->getMessage()]);
-            }
-        }
 
         return view('sell.step3', compact('userData', 'balance', 'nairaAmount', 'banks'));
     }
@@ -434,12 +453,18 @@ class SellController extends Controller
             $sellTrade->name = $user->name ?? $user->email ?? 'Unknown';
             $sellTrade->transaction_ref = 'SELL-' . Str::upper(Str::random(10));
 
-            $walletMap = config('wallets') ?? [
-                'BTC' => '1K3uPpiJRi4UkTYBEniPMejxsCMxbygqyN',
-                'ETH' => '0x42c9accd6679f54e8ddbc9383ca80d7319820b67',
-                'USDT' => 'TQhLfKnkQRcn5k6xye6sU1LV6rFmb1nBPQ',
-            ];
-            $sellTrade->wallet_address = $walletMap[Session::get('sell.coin')] ?? 'N/A';
+            $walletMap = config('wallets', []);
+
+            $coin    = Session::get('sell.coin');
+            $network = Session::get('sell.network');
+
+            // Pick the most specific wallet key
+            $walletKey = ($coin === 'USDT' && $network)
+                ? "USDT_{$network}"
+                : $coin;
+
+            $sellTrade->network       = $network;
+            $sellTrade->wallet_address = $walletMap[$walletKey] ?? $walletMap[$coin] ?? 'N/A';
 
             if ($request->payout_method === 'default_bank') {
                 if (empty($user->bank_name) || empty($user->account_number) || empty($user->account_name) || $user->bank_name === 'N/A' || $user->account_number === 'N/A' || $user->account_name === 'N/A') {
@@ -502,12 +527,51 @@ class SellController extends Controller
             $message .= "Status: {$sellTrade->status}\n";
             $message .= "Timestamp: {$tradeTimestamp}\n";
 
-            if (!$this->sendTelegramNotification($message)) {
-                Log::warning('Telegram notification failed', ['trade_id' => $sellTrade->id]);
+            // Admin alert: Telegram + in-app broadcast notification badge
+            try {
+                app(AdminTradeAlertService::class)->sendTriggeredAlert('sell', [
+                    'user_id' => $user->id,
+                    'reference' => $sellTrade->transaction_ref,
+                    'user_name' => $sellTrade->name,
+                    'user_email' => $user->email,
+                    'coin' => $sellTrade->coin,
+                    'usd_amount' => number_format((float) $sellTrade->usd_amount, 6),
+                    'naira_amount' => number_format((float) $sellTrade->naira_amount, 2),
+                    'wallet_address' => $sellTrade->wallet_address ?? 'N/A',
+                    'network' => $sellTrade->network ?? 'N/A',
+                    'status' => $sellTrade->status,
+                ]);
+            } catch (\Throwable $alertEx) {
+                Log::warning('Sell trade admin alert failed: ' . $alertEx->getMessage());
             }
 
             Session::forget('sell');
             Log::info('Session cleared');
+
+            // Send sell trade submitted email
+            try {
+                $payoutMethodLabel = match ($sellTrade->payment_method) {
+                    'default_bank', 'external_bank' => ($sellTrade->bank_name . ' — ' . $sellTrade->account_number),
+                    'wallet_balance'                 => 'Wallet Balance',
+                    default                          => $sellTrade->payment_method,
+                };
+                Mail::to($user->email)->send(new TradeNotification(
+                    user: $user,
+                    templateKey: 'sell_trade_submitted',
+                    data: [
+                        'amount'         => number_format((float)$sellTrade->usd_amount, 6),
+                        'currency'       => $sellTrade->coin,
+                        'naira_amount'   => number_format((float)$sellTrade->naira_amount, 2),
+                        'reference'      => $sellTrade->transaction_ref,
+                        'payment_method' => $payoutMethodLabel,
+                    ],
+                    badge: ['text' => 'Sell Order Received', 'color' => '#f0a500'],
+                    ctaUrl: route('trade.summary', ['trade_id' => $sellTrade->id]),
+                    ctaText: 'View Order Summary',
+                ));
+            } catch (\Exception $mailEx) {
+                Log::warning('Sell trade submitted email failed: ' . $mailEx->getMessage());
+            }
 
             return redirect()->route('trade.summary', ['trade_id' => $sellTrade->id])
                 ->with('success', 'Trade submitted successfully.');

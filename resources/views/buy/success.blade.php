@@ -1,231 +1,133 @@
 @extends('buylayout')
 
-@section('content')
-<div class="min-h-screen bg-gray-900 flex items-center justify-center p-4 sm:p-6">
-    
-    <div class="w-full max-w-s bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 transform transition-all hover:shadow-blue-500/20 duration-300 text-center">
-                <h2 class="text-xl sm:text-2xl font-bold text-white mb-3">Your Buy Trade Was Successfully Submitted!</h2>
-                 <p class="text-sm sm:text-base text-gray-300 mb-3">You have successfully bought ${{ number_format($trade->usd_amount, 2) }} of {{ $trade->coin }}. <br> 
-                            <p class="text-xs sm:text-sm text-gray-400 mb-4">Equivalent to ₦{{ number_format($trade->naira_amount, 2) }}.</p>
-        <!-- Success SVG -->
-        <div class="mb-4 sm:mb-6">
-            <svg class="w-20 h-20 sm:w-24 sm:h-24 mx-auto" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="40" stroke="#14b8a6" stroke-width="4" fill="none">
-                    <animate attributeName="r" from="30" to="40" dur="1s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" from="0.5" to="1" dur="1s" repeatCount="indefinite" />
-                </circle>
-                <path d="M30 50 L45 65 L70 35" stroke="#2563eb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-                    <animate attributeName="stroke-dasharray" from="0 100" to="100 0" dur="0.8s" fill="freeze" />
-                </path>
-                <circle cx="30" cy="30" r="5" fill="#14b8a6">
-                    <animateTransform attributeName="transform" type="rotate" from="0 50 50" to="360 50 50" dur="2s" repeatCount="indefinite" />
-                </circle>
-                <circle cx="70" cy="30" r="5" fill="#2563eb">
-                    <animateTransform attributeName="transform" type="rotate" from="360 50 50" to="0 50 50" dur="2s" repeatCount="indefinite" />
-                </circle>
-            </svg>
-        </div>
-
-        <!-- Success Message -->
-
-        <h5 class="text-xl sm:text-2xl font-bold text-white mb-3">Your trade is currently under review. </h5>
-       
-
-<p class="text-xs sm:text-sm text-gray-400 mb-4">It will be marked as successful once our admin team verifies and approves the payment proof. You’ll be notified upon approval.</p>
-        <p class="text-xs sm:text-sm text-gray-400 mb-6">Please check your <a href="{{ route('transactions.history') }}" class="text-blue-400 text-decoration-none hover:underline">transaction history</a> to monitor the status of your trade.</p>
-
-        <!-- Support Information -->
-        <div class="mb-4 sm:mb-6">
-            <p class="text-xs sm:text-sm text-gray-400">Need assistance? Contact our support team:</p>
-            <a href="mailto:support@kayxchange.com" class="text-blue-400 text-decoration-none hover:underline font-semibold text-xs sm:text-sm">support@kayxchange.com</a>
-        </div>
-
-      
-
-        <!-- Live Chat Prompt
-        <p class="text-xs mt-4 mb-5 sm:text-sm text-gray-400">For immediate help, use our live chat below.</p> -->
-    </div>
-</div>
-
-<div class="container text-center">
-      <!-- Dashboard Button -->
-      <a href="{{ route('dashboard') }}" class="w-full bg-gradient-to-r text-decoration-none from-blue-600 to-teal-500 p-3 rounded-lg font-semibold text-white shadow-md hover:from-blue-700 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 inline-block mb-4 text-sm sm:text-base">
-            Go to Dashboard
-        </a>
-</div>
+@push('styles')
 <style>
-    /* Consistent and responsive styling */
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #111827;
-    margin: 0;
-    padding: 0;
+:root{
+    --kx-green:#00cc00;--kx-dark:#0d1117;--kx-card:#161b27;
+    --kx-card2:#1e2535;--kx-border:rgba(255,255,255,0.07);
+    --kx-text:#e4e8f0;--kx-muted:#7a8599;
 }
+body{background:var(--kx-dark);color:var(--kx-text);}
 
-.min-h-screen {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-}
+.kx-card{background:var(--kx-card);border:1px solid var(--kx-border);border-radius:16px;padding:1.5rem;margin-bottom:1rem;}
 
-.max-w-s {
-    background-color: #1f2937;
-    border-radius: 1rem;
-    padding: 1.5rem;
-    margin: auto;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
+/* Success ring */
+.success-ring{width:100px;height:100px;border-radius:50%;margin:0 auto 1.25rem;position:relative;display:flex;align-items:center;justify-content:center;}
+.success-ring::before{content:'';position:absolute;inset:0;border-radius:50%;border:3px solid var(--kx-green);animation:ringPulse 2s ease-out infinite;}
+.success-ring::after{content:'';position:absolute;inset:6px;border-radius:50%;background:rgba(0,204,0,.1);}
+.success-icon{font-size:2.8rem;color:var(--kx-green);position:relative;z-index:1;animation:iconPop .5s cubic-bezier(.175,.885,.32,1.275) .2s both;}
 
-.max-w-s:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.3);
-}
+/* Confetti particles */
+.confetti-container{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden;}
+.confetti{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall linear forwards;}
+@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+@keyframes ringPulse{0%{transform:scale(1);opacity:1;}100%{transform:scale(1.5);opacity:0;}}
+@keyframes iconPop{0%{transform:scale(0);}100%{transform:scale(1);}}
 
-.text-xl {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #ffffff;
-    margin-bottom: 0.75rem;
-}
+/* Recap */
+.recap-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--kx-border);}
+.recap-row:last-child{border-bottom:none;}
+.rr-label{font-size:.8rem;color:var(--kx-muted);}
+.rr-value{font-size:.9rem;color:var(--kx-text);font-weight:600;}
+.rr-value.green{color:var(--kx-green);}
 
-.text-2xl {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #ffffff;
-    margin-bottom: 0.75rem;
-}
+/* Status */
+.status-badge{display:inline-block;padding:.3rem .8rem;border-radius:20px;font-size:.75rem;font-weight:700;background:rgba(234,179,8,.15);color:#f59e0b;border:1px solid rgba(234,179,8,.25);}
 
-.text-sm {
-    font-size: 0.875rem;
-    color: #d1d5db;
-    margin-bottom: 0.75rem;
-}
+/* Buttons */
+.btn-kx-primary{background:var(--kx-green);border:none;color:#000;font-weight:700;border-radius:10px;padding:.8rem 1.5rem;font-size:.95rem;width:100%;transition:all .2s;display:block;text-align:center;text-decoration:none;}
+.btn-kx-primary:hover{background:#00e600;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,204,0,.3);color:#000;}
+.btn-kx-secondary{background:var(--kx-card2);border:1px solid var(--kx-border);color:var(--kx-text);font-weight:600;border-radius:10px;padding:.8rem 1.5rem;font-size:.95rem;width:100%;display:block;text-align:center;text-decoration:none;transition:background .2s;}
+.btn-kx-secondary:hover{background:rgba(255,255,255,.06);color:var(--kx-text);}
 
-.text-base {
-    font-size: 1rem;
-    color: #d1d5db;
-    margin-bottom: 1rem;
-}
-
-.text-xs {
-    font-size: 0.75rem;
-    color: #9ca3af;
-    margin-bottom: 1rem;
-}
-
-.text-blue-400 {
-    color: #60a5fa;
-    transition: color 0.2s ease;
-}
-
-.text-blue-400:hover {
-    color: #3b82f6;
-}
-
-.w-full.bg-gradient-to-r.from-blue-600.to-teal-500 {
-    width: 100%;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    background-image: linear-gradient(to right, #2563eb, #14b8a6);
-    color: #ffffff;
-    font-weight: 600;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: background-image 0.2s ease, transform 0.2s ease;
-}
-
-.w-full.bg-gradient-to-r.from-blue-600.to-teal-500:hover {
-    background-image: linear-gradient(to right, #1d4ed8, #0d9488);
-    transform: translateY(-2px);
-}
-
-.w-full.bg-gradient-to-r.from-blue-600.to-teal-500:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-}
-
-/* Responsive adjustments */
-@media (min-width: 640px) {
-    .max-w-md {
-        padding: 2rem;
-    }
-
-    .text-xl {
-        font-size: 1.5rem;
-    }
-
-    .text-2xl {
-        font-size: 1.75rem;
-    }
-
-    .text-sm {
-        font-size: 0.875rem;
-    }
-
-    .text-base {
-        font-size: 1rem;
-    }
-
-    .text-xs {
-        font-size: 0.875rem;
-    }
-}
-
-@media (max-width: 639px) {
-    .w-20 {
-        width: 4rem;
-        height: 4rem;
-    }
-
-    .text-xl {
-        font-size: 1.125rem;
-    }
-
-    .text-2xl {
-        font-size: 1.25rem;
-    }
-
-    .text-sm {
-        font-size: 0.75rem;
-    }
-
-    .text-base {
-        font-size: 0.875rem;
-    }
-
-    .text-xs {
-        font-size: 0.7rem;
-    }
-}
+.kx-notice{background:rgba(0,204,0,.05);border:1px solid rgba(0,204,0,.15);border-radius:10px;padding:.85rem 1rem;font-size:.82rem;color:var(--kx-muted);text-align:center;}
 </style>
+@endpush
 
-<!-- Tawk.to Chat Widget -->
-<script type="text/javascript">
-    var Tawk_API = Tawk_API || {}, Tawk_LoadStart = new Date();
-    (function(){
-        var s1 = document.createElement("script"), s0 = document.getElementsByTagName("script")[0];
-        s1.async = true;
-        s1.src = 'https://embed.tawk.to/YOUR_PROPERTY_ID/YOUR_WIDGET_ID';
-        s1.charset = 'UTF-8';
-        s1.setAttribute('crossorigin', '*');
-        s0.parentNode.insertBefore(s1, s0);
-    })();
+@section('content')
+
+<div class="confetti-container" id="confetti"></div>
+
+<div class="container-fluid px-3 py-4" style="position:relative;z-index:1;">
+<div class="row justify-content-center">
+<div class="col-xl-5 col-lg-6 col-md-8">
+
+    <!-- Success card -->
+    <div class="kx-card text-center">
+        <div class="success-ring">
+            <span class="success-icon"><i class="bi bi-check-lg"></i></span>
+        </div>
+        <h2 style="font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.4rem;">Trade Submitted!</h2>
+        <p style="font-size:.875rem;color:var(--kx-muted);margin-bottom:1rem;">
+            You've successfully submitted your buy order for
+            <strong style="color:var(--kx-green);">${{ number_format($trade->usd_amount, 2) }} of {{ $trade->coin }}</strong>
+        </p>
+
+        @php
+            $coinClass = strtolower($trade->coin);
+            $coinIcons = ['btc'=>'bi-currency-bitcoin','eth'=>'bi-gem','usdt'=>'bi-cashstack'];
+            $icon = $coinIcons[$coinClass] ?? 'bi-coin';
+        @endphp
+
+        <!-- Trade recap -->
+        <div class="text-start mt-3">
+            <div class="recap-row">
+                <span class="rr-label">Cryptocurrency</span>
+                <span class="rr-value"><i class="bi {{ $icon }} me-1"></i>{{ $trade->coin }}</span>
+            </div>
+            <div class="recap-row">
+                <span class="rr-label">Amount (USD)</span>
+                <span class="rr-value green">${{ number_format($trade->usd_amount, 2) }}</span>
+            </div>
+            <div class="recap-row">
+                <span class="rr-label">Amount (NGN)</span>
+                <span class="rr-value">₦{{ number_format($trade->naira_amount, 2) }}</span>
+            </div>
+            <div class="recap-row">
+                <span class="rr-label">Status</span>
+                <span class="rr-value"><span class="status-badge">Under Review</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- What happens next -->
+    <div class="kx-notice mb-3">
+        <i class="bi bi-info-circle me-1" style="color:var(--kx-green);"></i>
+        Your trade is under review. Our team will verify your payment proof and approve it shortly. You'll receive a notification once approved.
+    </div>
+
+    <!-- Actions -->
+    <a href="{{ route('transactions.history') }}" class="btn-kx-primary mb-3">
+        <i class="bi bi-clock-history me-2"></i>View Transaction History
+    </a>
+    <a href="{{ route('dashboard') }}" class="btn-kx-secondary">
+        <i class="bi bi-house me-2"></i>Back to Dashboard
+    </a>
+
+    <div style="height:2rem;"></div>
+</div>
+</div>
+</div>
+
+@endsection
+
+@push('scripts')
+<script>
+// Confetti burst
+(function() {
+    const container = document.getElementById('confetti');
+    const colors = ['#00cc00','#00e600','#f7931a','#627eea','#26a17b','#ffffff'];
+    for (let i = 0; i < 60; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.background = colors[Math.floor(Math.random() * colors.length)];
+        el.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
+        el.style.animationDelay = (Math.random() * 1.5) + 's';
+        el.style.width = el.style.height = (Math.random() * 8 + 5) + 'px';
+        container.appendChild(el);
+    }
+    setTimeout(() => container.remove(), 5000);
+})();
 </script>
- @include('footer')
-@endsection
-
-@section('scripts')
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    @if(session('success'))
-        <script>
-            toastr.success('{!! e(session('success')) !!}');
-        </script>
-    @elseif(session('error'))
-        <script>
-            toastr.error('{!! e(session('error')) !!}');
-        </script>
-    @endif
-
-   
-@endsection
+@endpush

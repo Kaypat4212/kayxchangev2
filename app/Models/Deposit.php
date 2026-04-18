@@ -8,7 +8,8 @@ class Deposit extends Model
 {
     protected $fillable = [
         'user_id', 'amount', 'currency', 'status', 'company_account_id',
-        'transaction_ref', 'proof_of_payment', 'admin_note', 'payment_method', 'proof'
+        'transaction_ref', 'proof_of_payment', 'admin_note', 'payment_method', 'proof',
+        'gateway', 'gateway_reference', 'gateway_response',
     ];
 
     protected $casts = [

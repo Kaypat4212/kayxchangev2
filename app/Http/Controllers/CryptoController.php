@@ -91,7 +91,10 @@ class CryptoController extends Controller
 
         Log::info('Combined Transactions for Dashboard: ', ['count' => $transactions->count(), 'transactions' => $transactions->toArray()]);
 
-        return view('dashboard', compact('transactions', 'rates'));
+        // USDT sell rate for NGN→USD balance conversion
+        $usdtRate = CryptoRate::where('coin', 'USDT')->value('sell_rate') ?? 1;
+
+        return view('dashboard', compact('transactions', 'rates', 'usdtRate'));
     }
 
     public function buy()

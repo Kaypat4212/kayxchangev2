@@ -19,6 +19,18 @@ class Kernel extends ConsoleKernel
                 ->withoutOverlapping()
                 ->runInBackground();
         }
+
+        // Auto-detect confirmed crypto payments for pending sell trades
+        $schedule->command('monitor:sell-trades')
+            ->everyTwoMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Auto-escalate pending trades that exceed SLA threshold
+        $schedule->command('trades:escalate-pending')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

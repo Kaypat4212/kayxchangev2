@@ -13,6 +13,7 @@ class SellTrade extends Model
         'user_id',
         'name',
         'coin',
+        'network',
         'amount',
         'proof',
         'status',

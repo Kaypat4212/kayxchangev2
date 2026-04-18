@@ -7,9 +7,13 @@ class AddPaymentMethodToDepositsTable extends Migration
 {
     public function up()
     {
+        if (!Schema::hasTable('deposits')) {
+            return;
+        }
         Schema::table('deposits', function (Blueprint $table) {
-            $table->string('payment_method')->nullable()->after('currency');
-            $table->string('status')->default('pending')->change(); // Change enum to string
+            if (!Schema::hasColumn('deposits', 'payment_method')) {
+                $table->string('payment_method')->nullable()->after('currency');
+            }
         });
     }
 
