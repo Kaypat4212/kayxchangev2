@@ -4,8 +4,8 @@
 <style>
     .adm-sup          { padding:24px 0 60px; }
     .adm-card         { background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:18px; }
-    .adm-page-title   { font-size:1.25rem;font-weight:700;color:#e8f5e8;margin-bottom:2px; }
-    .adm-page-sub     { font-size:0.78rem;color:rgba(255,255,255,0.38); }
+    .adm-page-title   { font-size:1.25rem;font-weight:700;color:#000;margin-bottom:2px; }
+    .adm-page-sub     { font-size:0.78rem;color:#333; }
     .adm-sup-layout   { display:flex;height:calc(100vh - 200px);min-height:500px;max-height:780px;gap:0; }
     .adm-user-list    { width:260px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;padding:.5rem 0; }
     .adm-chat-panel   { flex:1;display:flex;flex-direction:column;min-width:0; }
@@ -13,33 +13,33 @@
     .adm-user-item:hover { background:rgba(255,255,255,0.04); }
     .adm-user-item.active { background:rgba(0,204,0,0.07);border-left-color:#00cc00; }
     .adm-user-avatar  { width:36px;height:36px;border-radius:50%;background:rgba(0,204,0,0.15);border:1.5px solid rgba(0,204,0,0.25);display:flex;align-items:center;justify-content:center;color:#00cc00;font-size:.9rem;flex-shrink:0;font-weight:700; }
-    .adm-user-name    { font-size:.82rem;font-weight:600;color:#e8f5e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-    .adm-user-last    { font-size:.71rem;color:rgba(255,255,255,0.33);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .adm-user-name    { font-size:.82rem;font-weight:600;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .adm-user-last    { font-size:.71rem;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
     .adm-unread-badge { background:#00cc00;color:#000;font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:10px;flex-shrink:0; }
-    .adm-user-list-header { font-size:.72rem;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:.06em;padding:.5rem 1rem .35rem; }
+    .adm-user-list-header { font-size:.72rem;font-weight:600;color:#555;letter-spacing:.06em;padding:.5rem 1rem .35rem; }
     .adm-chat-header  { padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:.75rem; }
-    .adm-chat-name    { font-size:.88rem;font-weight:600;color:#e8f5e8; }
-    .adm-chat-email   { font-size:.71rem;color:rgba(255,255,255,0.35); }
+    .adm-chat-name    { font-size:.88rem;font-weight:600;color:#000; }
+    .adm-chat-email   { font-size:.71rem;color:#444; }
     .adm-chat-body    { flex:1;overflow-y:auto;padding:.9rem 1.1rem;display:flex;flex-direction:column;gap:.55rem; }
     .adm-chat-body::-webkit-scrollbar { width:3px; }
     .adm-chat-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12);border-radius:2px; }
-    .adm-empty        { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);gap:.6rem; }
+    .adm-empty        { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;gap:.6rem; }
     .adm-empty i      { font-size:2.2rem;color:rgba(0,204,0,0.25); }
     .adm-msg          { max-width:72%;display:flex;flex-direction:column;gap:2px; }
     .adm-msg-user     { align-self:flex-start;align-items:flex-start; }
     .adm-msg-admin    { align-self:flex-end;align-items:flex-end; }
     .adm-msg-bubble   { padding:.5rem .85rem;border-radius:14px;font-size:.81rem;line-height:1.5;word-wrap:break-word;white-space:pre-wrap; }
-    .adm-msg-user .adm-msg-bubble  { background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e8f5e8;border-bottom-left-radius:4px; }
-    .adm-msg-admin .adm-msg-bubble { background:rgba(0,204,0,0.16);border:1px solid rgba(0,204,0,0.25);color:#d4f5d4;border-bottom-right-radius:4px; }
-    .adm-msg-time     { font-size:.65rem;color:rgba(255,255,255,0.22); }
+    .adm-msg-user .adm-msg-bubble  { background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#000;border-bottom-left-radius:4px; }
+    .adm-msg-admin .adm-msg-bubble { background:rgba(0,204,0,0.16);border:1px solid rgba(0,204,0,0.25);color:#000;border-bottom-right-radius:4px; }
+    .adm-msg-time     { font-size:.65rem;color:#666; }
     .adm-chat-footer  { padding:.7rem 1rem;border-top:1px solid rgba(255,255,255,0.07);display:flex;gap:.55rem;align-items:flex-end; }
-    .adm-chat-input   { flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:11px;color:#e8f5e8;padding:.55rem .85rem;font-size:.82rem;resize:none;font-family:inherit;min-height:40px;max-height:110px;outline:none;transition:border-color .2s; }
+    .adm-chat-input   { flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:11px;color:#000;padding:.55rem .85rem;font-size:.82rem;resize:none;font-family:inherit;min-height:40px;max-height:110px;outline:none;transition:border-color .2s; }
     .adm-chat-input:focus { border-color:rgba(0,204,0,0.4); }
-    .adm-chat-input::placeholder { color:rgba(255,255,255,0.2); }
+    .adm-chat-input::placeholder { color:#888; }
     .adm-send-btn     { width:40px;height:40px;border-radius:11px;background:rgba(0,204,0,0.18);border:1px solid rgba(0,204,0,0.3);color:#00cc00;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0; }
     .adm-send-btn:hover:not(:disabled) { background:rgba(0,204,0,0.3); }
     .adm-send-btn:disabled { opacity:.35;cursor:not-allowed; }
-    .adm-no-user      { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);gap:.75rem; }
+    .adm-no-user      { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;gap:.75rem; }
     .adm-no-user i    { font-size:3rem;color:rgba(0,204,0,0.2); }
     @media(max-width:768px){
         .adm-user-list { width:100%;height:200px;border-right:none;border-bottom:1px solid rgba(255,255,255,0.07); }
@@ -77,7 +77,7 @@
                 @endif
             </div>
             @empty
-            <div style="padding:1.5rem 1rem;font-size:.78rem;color:rgba(255,255,255,0.25);text-align:center">
+            <div style="padding:1.5rem 1rem;font-size:.78rem;color:#555;text-align:center">
                 <i class="bi bi-inbox" style="font-size:1.5rem;display:block;margin-bottom:.5rem"></i>
                 No conversations yet
             </div>
