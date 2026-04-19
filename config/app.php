@@ -59,6 +59,10 @@ return [
 
     'asset_url' => env('ASSET_URL'),
 
+    'support_email' => env('SUPPORT_EMAIL', env('MAIL_FROM_ADDRESS', 'support@kayxchange.net')),
+
+    'security_email' => env('SECURITY_EMAIL', env('SUPPORT_EMAIL', env('MAIL_FROM_ADDRESS', 'support@kayxchange.net'))),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

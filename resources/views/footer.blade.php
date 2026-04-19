@@ -1,4 +1,5 @@
 <!-- Footer Section -->
+@php($supportEmail = config('app.support_email'))
 <footer class="bg-dark text-white py-4 mt-5">
     <div class="container">
         <div class="row justify-content-between align-items-center">
@@ -14,7 +15,7 @@
             </div>
             <div class="col-12 col-md-4 text-center mb-3 mb-md-0">
                 <h5 class="fw-bold text-green mb-3">Contact Us</h5>
-                <p class="mb-1"><i class="bi bi-envelope-fill me-2"></i>support@kayxchange.net</p>
+                <p class="mb-1"><i class="bi bi-envelope-fill me-2"></i>{{ $supportEmail }}</p>
                 <p class="mb-0"><i class="bi bi-telephone-fill me-2"></i>+2349016740523</p>
             </div>
             <div class="col-12 col-md-4 text-center text-md-end">

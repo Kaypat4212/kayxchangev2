@@ -1,4 +1,7 @@
 <footer class="kx-footer">
+@php
+    $supportEmail = config('app.support_email');
+@endphp
 <div class="kx-footer-inner container-xl">
     <div class="kx-footer-grid">
 
@@ -12,7 +15,7 @@
             <div class="kx-footer-socials">
                 <a href="https://t.me/TradewithkayxchangeBOT" target="_blank" title="Telegram"><i class="bi bi-telegram"></i></a>
                 <a href="https://wa.me/2349016740523" target="_blank" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
-                <a href="mailto:support@kayxchange.net" title="Email"><i class="bi bi-envelope-fill"></i></a>
+                <a href="mailto:{{ $supportEmail }}" title="Email"><i class="bi bi-envelope-fill"></i></a>
             </div>
         </div>
 
@@ -55,8 +58,8 @@
             <h6 class="kx-footer-heading">Contact Us</h6>
             <ul class="kx-footer-links">
                 <li>
-                    <a href="mailto:support@kayxchange.net">
-                        <i class="bi bi-envelope-fill me-2"></i>support@kayxchange.net
+                    <a href="mailto:{{ $supportEmail }}">
+                        <i class="bi bi-envelope-fill me-2"></i>{{ $supportEmail }}
                     </a>
                 </li>
                 <li>

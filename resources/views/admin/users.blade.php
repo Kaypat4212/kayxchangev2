@@ -113,8 +113,17 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         @endif
                     </td>
                     <td>
-                        @if($user->is_admin)
+                        @php($effectiveRole = $user->role ?: ($user->is_admin ? 'admin' : 'user'))
+                        @if($effectiveRole === 'admin')
                             <span class="kx-badge kx-badge-purple"><i class="bi bi-shield-fill me-1"></i>Admin</span>
+                        @elseif($effectiveRole === 'support')
+                            <span class="kx-badge kx-badge-blue"><i class="bi bi-headset me-1"></i>Support</span>
+                        @elseif($effectiveRole === 'manager')
+                            <span class="kx-badge kx-badge-yellow"><i class="bi bi-briefcase-fill me-1"></i>Manager</span>
+                        @elseif($effectiveRole === 'finance')
+                            <span class="kx-badge kx-badge-green"><i class="bi bi-cash-stack me-1"></i>Finance</span>
+                        @elseif($effectiveRole === 'compliance')
+                            <span class="kx-badge kx-badge-red"><i class="bi bi-shield-check me-1"></i>Compliance</span>
                         @else
                             <span class="kx-badge kx-badge-gray">User</span>
                         @endif

@@ -18,6 +18,7 @@ use App\Models\Withdrawal;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -40,6 +41,42 @@ class AdminController extends Controller
     public function showLoginForm()
     {
         return view('admin.login');
+    }
+
+    public function showForgotPasswordForm()
+    {
+        return view('admin.forgot-password');
+    }
+
+    public function resetPasswordWithSecret(Request $request)
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+            'secret_key' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $expectedSecret = (string) env('ADMIN_PASSWORD_RESET_SECRET', env('ADMIN_TERMINAL_PIN', ''));
+        if ($expectedSecret === '') {
+            return back()->withInput($request->except(['secret_key', 'password', 'password_confirmation']))
+                ->withErrors(['secret_key' => 'Admin reset secret is not configured.']);
+        }
+
+        if (!hash_equals($expectedSecret, (string) $request->secret_key)) {
+            return back()->withInput($request->except(['secret_key', 'password', 'password_confirmation']))
+                ->withErrors(['secret_key' => 'Invalid secret key.']);
+        }
+
+        $admin = User::where('email', $request->email)->first();
+        if (!$admin || !$admin->is_admin) {
+            return back()->withInput($request->except(['secret_key', 'password', 'password_confirmation']))
+                ->withErrors(['email' => 'No admin account was found for this email.']);
+        }
+
+        $admin->password = Hash::make($request->password);
+        $admin->save();
+
+        return redirect()->route('admin.login')->with('success', 'Admin password reset successful. You can now log in.');
     }
 
     public function login(Request $request)
@@ -379,13 +416,30 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'balance' => 'required|numeric|min:0',
+            'role' => 'nullable|string|in:user,support,manager,finance,compliance,admin',
+            'is_admin' => 'nullable|boolean',
         ]);
+
+        $isAdmin = $request->boolean('is_admin');
+        $role = $request->input('role', 'user');
+        if ($role === 'admin') {
+            $isAdmin = true;
+        }
+        if ($isAdmin && $role !== 'admin') {
+            $role = 'admin';
+        }
+
+        if (Auth::id() === $user->id && !$isAdmin) {
+            return back()->withErrors(['is_admin' => 'You cannot remove your own admin access.'])->withInput();
+        }
 
          try {
             $user->update([
                 'name' => $request->name,
                 'email' => $request->email,
                 'balance' => $request->balance,
+                'role' => $role,
+                'is_admin' => $isAdmin,
             ]);
             return redirect()->route('admin.users.index')->with('success', 'User updated successfully');
         } catch (\Exception $e) {

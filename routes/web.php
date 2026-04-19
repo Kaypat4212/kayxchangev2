@@ -364,6 +364,8 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
 // Admin Login Routes (Outside middleware)
 Route::get('/admin', [AdminController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/admin', [AdminController::class, 'login']);
+Route::get('/admin/forgot-password', [AdminController::class, 'showForgotPasswordForm'])->name('admin.password.request');
+Route::post('/admin/forgot-password', [AdminController::class, 'resetPasswordWithSecret'])->name('admin.password.reset.secret');
 
 // Authenticated and Verified Routes
 // User AI Route

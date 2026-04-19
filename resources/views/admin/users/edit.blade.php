@@ -100,6 +100,30 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                             <input type="number" name="balance" class="form-control kx-input" step="0.01" min="0" value="{{ old('balance', $user->balance ?? 0) }}" required>
                             @error('balance')<div style="color:var(--kx-red);font-size:.75rem;margin-top:.3rem">{{ $message }}</div>@enderror
                         </div>
+                        <div class="col-md-6">
+                            <label class="kx-label">Role</label>
+                            @php($activeRole = old('role', $user->role ?: ($user->is_admin ? 'admin' : 'user')))
+                            <select name="role" class="form-control kx-input" required>
+                                <option value="user" {{ $activeRole === 'user' ? 'selected' : '' }}>User</option>
+                                <option value="support" {{ $activeRole === 'support' ? 'selected' : '' }}>Support</option>
+                                <option value="manager" {{ $activeRole === 'manager' ? 'selected' : '' }}>Manager</option>
+                                <option value="finance" {{ $activeRole === 'finance' ? 'selected' : '' }}>Finance</option>
+                                <option value="compliance" {{ $activeRole === 'compliance' ? 'selected' : '' }}>Compliance</option>
+                                <option value="admin" {{ $activeRole === 'admin' ? 'selected' : '' }}>Admin</option>
+                            </select>
+                            @error('role')<div style="color:var(--kx-red);font-size:.75rem;margin-top:.3rem">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12">
+                            <div style="padding:.75rem .85rem;border:1px solid var(--kx-border);border-radius:8px;background:var(--kx-card2);">
+                                <div class="form-check m-0">
+                                    <input class="form-check-input" type="checkbox" value="1" id="is_admin" name="is_admin" {{ old('is_admin', $user->is_admin) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="is_admin" style="color:var(--kx-text);font-size:.85rem;">
+                                        Grant admin access for this user
+                                    </label>
+                                </div>
+                            </div>
+                            @error('is_admin')<div style="color:var(--kx-red);font-size:.75rem;margin-top:.3rem">{{ $message }}</div>@enderror
+                        </div>
                     </div>
                     <div class="mt-3 d-flex gap-2">
                         <button type="submit" class="btn-kx-green"><i class="bi bi-save me-1"></i>Update User</button>
