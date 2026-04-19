@@ -180,6 +180,10 @@
             @error('name')
               <div class="lx-error"><i class="bi bi-exclamation-circle"></i>{{ $message }}</div>
             @enderror
+            <div style="margin-top:.45rem;padding:.55rem .75rem;border-radius:7px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.22);display:flex;align-items:flex-start;gap:.5rem;font-size:.75rem;color:#f59e0b;line-height:1.45">
+              <i class="bi bi-exclamation-triangle-fill" style="margin-top:.1rem;flex-shrink:0"></i>
+              <span><strong>Use your real legal name.</strong> Your bank account must match the name you register with. Fake names will be rejected when adding a bank account.</span>
+            </div>
           </div>
 
           <div class="mb-3">

@@ -185,6 +185,61 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     </div>
                 </div>
             </div>
+
+            {{-- Bank Details --}}
+            <div class="kx-panel">
+                <div class="kx-panel-header">
+                    <span class="kx-panel-title"><i class="bi bi-bank me-2" style="color:var(--kx-yellow)"></i>Bank Details</span>
+                    @if($user->account_number)
+                        <span class="kx-badge kx-badge-green"><i class="bi bi-shield-lock-fill me-1"></i>Locked by user</span>
+                    @else
+                        <span class="kx-badge kx-badge-gray">Not set</span>
+                    @endif
+                </div>
+                <form action="{{ route('admin.users.bank.update', $user->id) }}" method="POST" style="padding:1.25rem">
+                    @csrf @method('PATCH')
+                    <div class="d-flex flex-column gap-3">
+                        <div>
+                            <label class="kx-label">Bank Name</label>
+                            <input type="text" name="bank_name" class="form-control kx-input"
+                                   placeholder="e.g. Zenith Bank"
+                                   value="{{ old('bank_name', $user->bank_name) }}">
+                            @error('bank_name')<div style="color:var(--kx-red);font-size:.75rem;margin-top:.3rem">{{ $message }}</div>@enderror
+                        </div>
+                        <div>
+                            <label class="kx-label">Bank Code</label>
+                            <input type="text" name="bank_code" class="form-control kx-input"
+                                   placeholder="e.g. 057"
+                                   value="{{ old('bank_code', $user->bank_code) }}">
+                            @error('bank_code')<div style="color:var(--kx-red);font-size:.75rem;margin-top:.3rem">{{ $message }}</div>@enderror
+                        </div>
+                        <div>
+                            <label class="kx-label">Account Number</label>
+                            <input type="text" name="account_number" class="form-control kx-input"
+                                   maxlength="10" placeholder="10-digit NUBAN"
+                                   value="{{ old('account_number', $user->account_number) }}">
+                            @error('account_number')<div style="color:var(--kx-red);font-size:.75rem;margin-top:.3rem">{{ $message }}</div>@enderror
+                        </div>
+                        <div>
+                            <label class="kx-label">Account Name</label>
+                            <input type="text" name="account_name" class="form-control kx-input"
+                                   placeholder="Registered account name"
+                                   value="{{ old('account_name', $user->account_name) }}">
+                            @error('account_name')<div style="color:var(--kx-red);font-size:.75rem;margin-top:.3rem">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div style="margin-top:.75rem;padding:.65rem .85rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;font-size:.75rem;color:var(--kx-yellow)">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        Admin override — bypasses the one-time lock. Use only after identity verification.
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn-kx-green" style="width:100%;justify-content:center"
+                                onclick="return confirm('Update bank details for {{ addslashes($user->name) }}?')">
+                            <i class="bi bi-bank me-1"></i>Update Bank Details
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>

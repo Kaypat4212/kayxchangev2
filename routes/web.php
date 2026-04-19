@@ -265,6 +265,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::delete('/users/{user}', [AdminController::class, 'usersDestroy'])->name('admin.users.destroy');
     Route::patch('/users/{user}/balance', [AdminController::class, 'updateBalance'])->name('admin.users.balance.update');
     Route::patch('/users/{user}/balance/adjust', [AdminController::class, 'adjustBalance'])->name('admin.users.balance.adjust');
+    Route::patch('/users/{user}/bank', [AdminController::class, 'updateUserBankDetails'])->name('admin.users.bank.update');
     Route::get('/users/{user}/backdoor', [AdminController::class, 'backdoor'])->name('admin.users.backdoor');
     Route::get('/revert', [AdminController::class, 'revertBackdoor'])->name('admin.revert');
     

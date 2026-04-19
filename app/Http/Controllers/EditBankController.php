@@ -56,6 +56,16 @@ class EditBankController extends Controller
                 ->withInput();
         }
 
+        // Ensure no other user already owns this account number
+        $duplicate = User::where('account_number', $request->account_number)
+            ->where('id', '!=', $user->id)
+            ->exists();
+        if ($duplicate) {
+            return redirect()->back()
+                ->withErrors(['account_number' => 'This account number is already linked to another user. Each bank account can only be registered once.'])
+                ->withInput();
+        }
+
         // Verify account details with Paystack
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . config('services.paystack.secret_key'),
@@ -68,6 +78,15 @@ class EditBankController extends Controller
         if (!$response->successful() || !$response->json('status')) {
             return redirect()->back()
                 ->withErrors(['account_number' => 'Invalid account number or bank: ' . ($response->json('message') ?? 'Unknown error')])
+                ->withInput();
+        }
+
+        // Strictly enforce that the Paystack-verified account name matches the submitted name
+        $verifiedName = strtolower(trim($response->json('data.account_name') ?? ''));
+        $submittedName = strtolower(trim($request->account_name));
+        if (empty($verifiedName) || $verifiedName !== $submittedName) {
+            return redirect()->back()
+                ->withErrors(['account_name' => 'The account name does not match bank records. This account must belong to you — use your real name at registration.'])
                 ->withInput();
         }
 
@@ -84,7 +103,7 @@ class EditBankController extends Controller
             $user->update([
                 'bank_name' => $bankName,
                 'bank_code' => $request->bank_code,
-                'account_name' => $request->account_name,
+                'account_name' => $response->json('data.account_name'), // always store Paystack-verified name
                 'account_number' => $request->account_number,
             ]);
         } catch (\Exception $e) {

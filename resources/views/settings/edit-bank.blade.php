@@ -305,7 +305,7 @@ body { background: var(--kx-dark); color: var(--kx-text); }
                 For your security, bank details cannot be changed once set. To update them, please contact support via
                 <a href="#" id="open-chat" class="eb-locked-link">live chat</a>
                 or email
-                <a href="mailto:info@kayxchange.net" class="eb-locked-link">info@kayxchange.net</a>.
+                <a href="mailto:Payroll@tradewithkay.com" class="eb-locked-link">Payroll@tradewithkay.com</a>.
             </div>
         </div>
     </div>

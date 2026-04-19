@@ -512,6 +512,30 @@ class AdminController extends Controller
         }
     }
 
+    public function updateUserBankDetails(Request $request, User $user)
+    {
+        $request->validate([
+            'bank_name'      => 'required|string|max:255',
+            'bank_code'      => 'required|string|max:50',
+            'account_number' => 'required|string|size:10',
+            'account_name'   => 'required|string|max:255',
+        ]);
+
+        try {
+            $user->update([
+                'bank_name'      => $request->bank_name,
+                'bank_code'      => $request->bank_code,
+                'account_number' => $request->account_number,
+                'account_name'   => $request->account_name,
+            ]);
+            Log::info('Admin #' . Auth::id() . ' updated bank details for user #' . $user->id);
+            return redirect()->route('admin.users.edit', $user->id)->with('success', 'Bank details updated successfully.');
+        } catch (\Exception $e) {
+            Log::error('Admin bank update failed for user #' . $user->id . ': ' . $e->getMessage());
+            return redirect()->route('admin.users.edit', $user->id)->with('error', 'Failed to update bank details.');
+        }
+    }
+
 
      public function revertBackdoor(Request $request)
     {
