@@ -245,7 +245,6 @@
 
       <div class="d-flex align-items-center kx-nav-actions gap-2">
         @auth
-        @include('components.notification-dropdown')
         <form method="POST" action="{{ route('logout') }}" class="d-inline m-0">
           @csrf
           <button type="submit" class="kx-btn-logout">
