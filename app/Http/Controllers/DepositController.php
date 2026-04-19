@@ -96,7 +96,11 @@ class DepositController extends Controller
         ]);
 
         $gateway     = new PaymentGatewayService();
-        $callbackUrl = route('deposits.callback', ['gateway' => $request->payment_method]);
+        // Use PAYSTACK_CALLBACK_URL override when APP_URL is localhost (local dev with live Paystack)
+        $baseCallback = env('PAYSTACK_CALLBACK_URL');
+        $callbackUrl  = $baseCallback
+            ? rtrim($baseCallback, '/') . '?gateway=' . $request->payment_method
+            : route('deposits.callback', ['gateway' => $request->payment_method]);
 
         $data = [
             'email'        => $user->email,
