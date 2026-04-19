@@ -251,7 +251,7 @@ body { background: var(--kx-dark); color: var(--kx-text); }
 <div class="eb-wrap">
 
     {{-- Back link --}}
-    <a href="{{ route('settings') }}" class="eb-back">
+    <a href="{{ route('settings.index') }}" class="eb-back">
         <i class="bi bi-arrow-left"></i> Back to Settings
     </a>
 
