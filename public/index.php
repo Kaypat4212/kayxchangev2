@@ -31,13 +31,75 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 |
 */
 
-$basePathCandidates = [
-    realpath(__DIR__.'/..'),
-    realpath(__DIR__.'/../kayxchangev2'),
-    realpath(__DIR__.'/../../kayxchangev2'),
-    realpath(__DIR__.'/../laravel'),
-    realpath(__DIR__.'/../../laravel'),
-];
+$basePathCandidates = [];
+$knownPaths = [];
+
+$addBasePathCandidate = static function ($path) use (&$basePathCandidates, &$knownPaths): void {
+    if (!$path) {
+        return;
+    }
+
+    $realPath = realpath($path);
+    if (!$realPath || isset($knownPaths[$realPath])) {
+        return;
+    }
+
+    $knownPaths[$realPath] = true;
+    $basePathCandidates[] = $realPath;
+};
+
+$addBasePathCandidate(__DIR__.'/..');
+$addBasePathCandidate(__DIR__.'/../kayxchangev2');
+$addBasePathCandidate(__DIR__.'/../../kayxchangev2');
+$addBasePathCandidate(__DIR__.'/../laravel');
+$addBasePathCandidate(__DIR__.'/../../laravel');
+
+$envBasePath = getenv('LARAVEL_BASE_PATH');
+if (is_string($envBasePath) && $envBasePath !== '') {
+    $addBasePathCandidate($envBasePath);
+}
+
+$scanRoots = [];
+$current = __DIR__;
+for ($i = 0; $i < 5; $i++) {
+    $root = realpath($current);
+    if (!$root) {
+        break;
+    }
+
+    $scanRoots[] = $root;
+    $parent = dirname($current);
+    if ($parent === $current) {
+        break;
+    }
+
+    $current = $parent;
+}
+
+$commonFolders = ['app', 'laravel', 'kayxchange', 'kayxchangev2', 'project'];
+foreach ($scanRoots as $root) {
+    $addBasePathCandidate($root);
+
+    foreach ($commonFolders as $folder) {
+        $addBasePathCandidate($root.'/'.$folder);
+    }
+
+    $entries = @scandir($root);
+    if (!is_array($entries)) {
+        continue;
+    }
+
+    foreach ($entries as $entry) {
+        if ($entry === '.' || $entry === '..') {
+            continue;
+        }
+
+        $fullPath = $root.'/'.$entry;
+        if (is_dir($fullPath)) {
+            $addBasePathCandidate($fullPath);
+        }
+    }
+}
 
 $resolvedBasePath = null;
 foreach ($basePathCandidates as $candidate) {
@@ -53,7 +115,7 @@ foreach ($basePathCandidates as $candidate) {
 
 if ($resolvedBasePath === null) {
     http_response_code(500);
-    exit('Laravel bootstrap files were not found.');
+    exit('Laravel bootstrap files were not found. Ensure vendor and bootstrap exist, or set LARAVEL_BASE_PATH.');
 }
 
 /*
