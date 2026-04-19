@@ -232,17 +232,37 @@
 
         {{-- ===== KYC Verification Banner ===== --}}
         @if(!Auth::user()->kyc_verified)
-        <div class="kx-kyc-banner mb-4" id="kx-kyc-banner">
+        @php
+            $dashKyc = \App\Models\Kyc::where('user_id', Auth::id())->latest()->first();
+        @endphp
+        <div class="kx-kyc-banner mb-4" id="kx-kyc-banner"
+            @if($dashKyc && $dashKyc->status === 'rejected') style="border-color:rgba(220,53,69,0.35);background:rgba(220,53,69,0.06);" @endif>
             <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div class="kx-kyc-icon">
-                    <i class="bi bi-shield-exclamation"></i>
+                <div class="kx-kyc-icon" @if($dashKyc && $dashKyc->status === 'rejected') style="background:rgba(220,53,69,0.15);color:#dc3545;" @endif>
+                    <i class="bi bi-{{ ($dashKyc && $dashKyc->status === 'rejected') ? 'x-circle-fill' : 'shield-exclamation' }}"></i>
                 </div>
                 <div class="kx-kyc-content">
-                    <div class="kx-kyc-title">Complete KYC Verification</div>
-                    <div class="kx-kyc-sub">Verify your identity to unlock full trading features — buy crypto, higher limits &amp; faster processing.</div>
+                    @if($dashKyc && $dashKyc->status === 'rejected')
+                        <div class="kx-kyc-title" style="color:#ff6b6b;">KYC Verification Rejected</div>
+                        @if($dashKyc->rejection_reason)
+                        <div class="kx-kyc-sub" style="color:rgba(255,180,180,0.8);">
+                            <strong>Reason:</strong> {{ $dashKyc->rejection_reason }}
+                        </div>
+                        @else
+                        <div class="kx-kyc-sub">Your documents were rejected. Please re-submit with valid, clear documents.</div>
+                        @endif
+                    @elseif($dashKyc && $dashKyc->status === 'pending')
+                        <div class="kx-kyc-title">KYC Documents Under Review</div>
+                        <div class="kx-kyc-sub">Your documents have been submitted. We'll notify you once verification is complete — usually 1–24 hours.</div>
+                    @else
+                        <div class="kx-kyc-title">Complete KYC Verification</div>
+                        <div class="kx-kyc-sub">Verify your identity to unlock full trading features — buy crypto, higher limits &amp; faster processing.</div>
+                    @endif
                 </div>
-                <a href="{{ route('kyc.form') }}" class="kx-kyc-btn ms-auto">
-                    <i class="bi bi-arrow-right-circle-fill me-1"></i>Verify Now
+                <a href="{{ route('kyc.form') }}" class="kx-kyc-btn ms-auto"
+                    @if($dashKyc && $dashKyc->status === 'rejected') style="background:#dc3545;" @endif>
+                    <i class="bi bi-arrow-right-circle-fill me-1"></i>
+                    {{ ($dashKyc && $dashKyc->status === 'rejected') ? 'Re-submit Documents' : (($dashKyc && $dashKyc->status === 'pending') ? 'View Status' : 'Verify Now') }}
                 </a>
             </div>
         </div>

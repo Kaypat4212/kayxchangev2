@@ -82,8 +82,20 @@ class KycController extends Controller
                 return redirect()->back()->with('error', 'Invalid status');
             }
 
-            $kyc->update(['status' => $status]);
-            
+            $rejectionReason = null;
+            if ($status === 'rejected') {
+                $request->validate([
+                    'rejection_reason' => 'required|string|max:1000',
+                ]);
+                $rejectionReason = trim($request->input('rejection_reason'));
+            }
+
+            $kyc->update([
+                'status'           => $status,
+                'rejection_reason' => $rejectionReason,
+                'reviewed_at'      => now(),
+            ]);
+
             if ($status === 'approved') {
                 $kyc->user->update(['kyc_verified' => 1]);
             } else {
@@ -99,14 +111,14 @@ class KycController extends Controller
                         user: $kycUser,
                         templateKey: $isApproved ? 'kyc_approved' : 'kyc_rejected',
                         data: [
-                            'reason' => request('rejection_reason', 'Documents did not meet our verification requirements.'),
+                            'reason' => $rejectionReason ?? '',
                         ],
                         badge: [
                             'text'  => $isApproved ? 'KYC Approved' : 'KYC Rejected',
                             'color' => $isApproved ? '#00cc00' : '#dc3545',
                         ],
-                        ctaUrl: url('/dashboard'),
-                        ctaText: 'Go to Dashboard',
+                        ctaUrl: url('/kyc'),
+                        ctaText: $isApproved ? 'Go to Dashboard' : 'Re-submit Documents',
                     ));
                 }
             } catch (\Exception $mailEx) {
@@ -117,6 +129,51 @@ class KycController extends Controller
 
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Verification failed: ' . $e->getMessage());
+        }
+    }
+
+    public function revoke(Request $request, Kyc $kyc)
+    {
+        try {
+            if ($kyc->status !== 'approved') {
+                return redirect()->back()->with('error', 'Only approved KYC records can be revoked.');
+            }
+
+            $request->validate([
+                'rejection_reason' => 'required|string|max:1000',
+            ]);
+
+            $rejectionReason = trim($request->input('rejection_reason'));
+
+            $kyc->update([
+                'status'           => 'rejected',
+                'rejection_reason' => $rejectionReason,
+                'reviewed_at'      => now(),
+            ]);
+
+            $kyc->user->update(['kyc_verified' => 0]);
+
+            // Notify user via email
+            try {
+                $kycUser = $kyc->user;
+                if ($kycUser) {
+                    Mail::to($kycUser->email)->send(new TradeNotification(
+                        user: $kycUser,
+                        templateKey: 'kyc_rejected',
+                        data: ['reason' => $rejectionReason],
+                        badge: ['text' => 'KYC Revoked', 'color' => '#dc3545'],
+                        ctaUrl: url('/kyc'),
+                        ctaText: 'Re-submit Documents',
+                    ));
+                }
+            } catch (\Exception $mailEx) {
+                Log::warning('KYC revoke email failed: ' . $mailEx->getMessage());
+            }
+
+            return redirect()->route('admin.kyc')->with('success', 'KYC approval revoked for ' . ($kyc->user->name ?? 'user') . '.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Revoke failed: ' . $e->getMessage());
         }
     }
 

@@ -406,6 +406,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/admin/kyc', [KycController::class, 'adminIndex'])->name('admin.kyc');
         Route::post('/admin/kyc/{kyc}/verify', [KycController::class, 'verify'])->name('kyc.verify');
+        Route::post('/admin/kyc/{kyc}/revoke', [KycController::class, 'revoke'])->name('kyc.revoke');
     });
 
     Route::middleware(['auth', 'admin'])->group(function () {

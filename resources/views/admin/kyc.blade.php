@@ -149,13 +149,25 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                             <form action="{{ route('kyc.verify', $kyc->id) }}" method="POST" style="display:inline">
                                 @csrf
                                 <input type="hidden" name="status" value="approved">
-                                <button type="submit" class="btn-kx-approve" onclick="return confirm('Approve KYC?')"><i class="bi bi-check-lg me-1"></i>Approve</button>
+                                <button type="submit" class="btn-kx-approve" onclick="return confirm('Approve KYC for {{ addslashes($kyc->user->name ?? 'this user') }}?')"><i class="bi bi-check-lg me-1"></i>Approve</button>
                             </form>
-                            <form action="{{ route('kyc.verify', $kyc->id) }}" method="POST" style="display:inline">
-                                @csrf
-                                <input type="hidden" name="status" value="rejected">
-                                <button type="submit" class="btn-kx-danger" onclick="return confirm('Reject KYC?')"><i class="bi bi-x-lg me-1"></i>Reject</button>
-                            </form>
+                            <button type="button" class="btn-kx-danger"
+                                onclick="openRejectModal({{ $kyc->id }}, '{{ addslashes($kyc->user->name ?? 'User') }}', 'reject')">
+                                <i class="bi bi-x-lg me-1"></i>Reject
+                            </button>
+                            <button type="button" class="btn-kx-icon" title="AI Compliance Check"
+                                onclick="aiKycAnalyze({{ $kyc->id }}, '{{ addslashes($kyc->user->name ?? 'User') }}')"
+                                style="color:#a855f7;border-color:rgba(168,85,247,.35);">
+                                <i class="bi bi-robot"></i>
+                            </button>
+                        </div>
+                        @elseif($kyc->status === 'approved')
+                        <div class="d-flex gap-1 flex-wrap align-items-center">
+                            <button type="button"
+                                onclick="openRejectModal({{ $kyc->id }}, '{{ addslashes($kyc->user->name ?? 'User') }}', 'revoke')"
+                                style="background:transparent;color:#f59e0b;border:1px solid rgba(245,158,11,.3);font-size:.75rem;padding:.3rem .7rem;border-radius:7px;display:inline-flex;align-items:center;gap:.3rem;cursor:pointer;">
+                                <i class="bi bi-shield-x me-1"></i>Revoke
+                            </button>
                             <button type="button" class="btn-kx-icon" title="AI Compliance Check"
                                 onclick="aiKycAnalyze({{ $kyc->id }}, '{{ addslashes($kyc->user->name ?? 'User') }}')"
                                 style="color:#a855f7;border-color:rgba(168,85,247,.35);">
@@ -163,8 +175,14 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                             </button>
                         </div>
                         @else
-                        <div class="d-flex gap-1">
-                            <span style="font-size:.72rem;color:var(--kx-muted)">Reviewed</span>
+                        <div class="d-flex gap-1 align-items-center flex-wrap">
+                            @if($kyc->rejection_reason)
+                            <button type="button" class="btn-kx-icon" title="View Rejection Reason"
+                                onclick="viewReason('{{ addslashes($kyc->rejection_reason) }}')"
+                                style="color:#ef4444;border-color:rgba(239,68,68,.3);font-size:.72rem;padding:.25rem .55rem;">
+                                <i class="bi bi-chat-text me-1"></i>Reason
+                            </button>
+                            @endif
                             <button type="button" class="btn-kx-icon" title="AI Compliance Check"
                                 onclick="aiKycAnalyze({{ $kyc->id }}, '{{ addslashes($kyc->user->name ?? 'User') }}')"
                                 style="color:#a855f7;border-color:rgba(168,85,247,.35);">
@@ -185,6 +203,72 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             {{ $kycRecords->links() }}
         </div>
         @endif
+    </div>
+</div>
+
+{{-- Reject / Revoke Modal --}}
+<div class="modal fade" id="kycRejectModal" tabindex="-1" aria-labelledby="kycRejectModalLabel" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="kycRejectModalLabel">
+                    <i class="bi bi-x-octagon-fill me-2" style="color:var(--kx-red)"></i>
+                    <span id="rejectModalTitle">Reject KYC</span> — <span id="rejectModalUser"></span>
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectForm" method="POST">
+                @csrf
+                <div class="modal-body" style="padding:1.5rem;">
+                    <p id="rejectModalDesc" style="font-size:.85rem;color:var(--kx-muted);margin-bottom:1rem;"></p>
+                    <label class="kx-label">Reason <span style="color:var(--kx-red)">*</span></label>
+                    <textarea name="rejection_reason" id="rejectReason" class="kx-input w-100" rows="4"
+                        placeholder="e.g. Document was blurry, ID appears expired, selfie does not match ID photo..."
+                        style="resize:vertical;border-radius:8px;"
+                        required maxlength="1000"></textarea>
+                    <div id="rejectReasonHint" style="font-size:.72rem;color:var(--kx-muted);margin-top:.4rem;">This reason will be emailed to the user and shown on their KYC page.</div>
+                    <div style="margin-top:.75rem;">
+                        <label style="font-size:.75rem;color:var(--kx-muted);">Quick reasons:</label>
+                        <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.35rem;">
+                            @foreach([
+                                'Image is blurry or unreadable',
+                                'ID document has expired',
+                                'Selfie does not match ID photo',
+                                'Wrong document type submitted',
+                                'Document partially cut off',
+                                'Suspicious or altered document',
+                            ] as $preset)
+                            <button type="button" onclick="document.getElementById('rejectReason').value='{{ $preset }}';"
+                                style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:6px;color:var(--kx-text);font-size:.72rem;padding:.25rem .6rem;cursor:pointer;">
+                                {{ $preset }}
+                            </button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="gap:.5rem;">
+                    <button type="button" class="btn-kx-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="rejectSubmitBtn" class="btn-kx-danger" style="padding:.5rem 1.25rem;font-size:.875rem;">
+                        <i class="bi bi-x-octagon me-1"></i><span id="rejectBtnLabel">Reject KYC</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- View Reason Modal --}}
+<div class="modal fade" id="kycReasonModal" tabindex="-1" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-chat-text-fill me-2" style="color:var(--kx-red)"></i>Rejection Reason</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="reasonText" style="font-size:.875rem;color:var(--kx-text);margin:0;line-height:1.6;"></p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -211,6 +295,48 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 </div>
 
 <script>
+// ── Reject / Revoke modal ──────────────────────────────────────────
+const rejectRoutes = {
+    reject: id => `/admin/kyc/${id}/verify`,
+    revoke: id => `/admin/kyc/${id}/revoke`,
+};
+
+function openRejectModal(kycId, userName, mode) {
+    const isRevoke = mode === 'revoke';
+    document.getElementById('rejectModalTitle').textContent = isRevoke ? 'Revoke KYC Approval' : 'Reject KYC';
+    document.getElementById('rejectModalUser').textContent  = userName;
+    document.getElementById('rejectBtnLabel').textContent   = isRevoke ? 'Revoke Approval' : 'Reject KYC';
+    document.getElementById('rejectModalDesc').textContent  = isRevoke
+        ? 'Revoking will remove this user\'s verified status and notify them by email. Provide a clear reason.'
+        : 'The user will be notified by email with your reason and can re-submit documents.';
+
+    const form = document.getElementById('rejectForm');
+    form.action = rejectRoutes[mode](kycId);
+
+    // For reject we need the hidden status input
+    let statusInput = form.querySelector('input[name="status"]');
+    if (mode === 'reject') {
+        if (!statusInput) {
+            statusInput = document.createElement('input');
+            statusInput.type  = 'hidden';
+            statusInput.name  = 'status';
+            form.appendChild(statusInput);
+        }
+        statusInput.value = 'rejected';
+    } else if (statusInput) {
+        statusInput.remove();
+    }
+
+    document.getElementById('rejectReason').value = '';
+    new bootstrap.Modal(document.getElementById('kycRejectModal')).show();
+}
+
+function viewReason(reason) {
+    document.getElementById('reasonText').textContent = reason;
+    new bootstrap.Modal(document.getElementById('kycReasonModal')).show();
+}
+
+// ── AI Analysis ───────────────────────────────────────────────────
 async function aiKycAnalyze(kycId, userName){
     document.getElementById('ai-kyc-name').textContent = userName;
     document.getElementById('ai-kyc-content').innerHTML = '';

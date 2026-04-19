@@ -14,6 +14,12 @@ class Kyc extends Model
         'id_document_path',
         'selfie_path',
         'status',
+        'rejection_reason',
+        'reviewed_at',
+    ];
+
+    protected $casts = [
+        'reviewed_at' => 'datetime',
     ];
 
     public function user()

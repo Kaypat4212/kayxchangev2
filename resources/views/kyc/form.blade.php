@@ -296,7 +296,15 @@
                 <div class="kx-status-icon"><i class="bi bi-x-circle-fill"></i></div>
                 <div class="kx-status-body">
                     <h5>Verification Rejected</h5>
+                    @if($existingKyc->rejection_reason)
+                    <p style="margin-bottom:.6rem;">Your submission was rejected for the following reason:</p>
+                    <div style="background:rgba(220,53,69,0.08);border:1px solid rgba(220,53,69,0.2);border-radius:8px;padding:.75rem 1rem;font-size:.85rem;color:#ffb3b3;line-height:1.6;">
+                        {{ $existingKyc->rejection_reason }}
+                    </div>
+                    <p style="margin-top:.65rem;margin-bottom:0;font-size:.8rem;">Please correct the issue and re-upload your documents below.</p>
+                    @else
                     <p>Your submission was rejected. Please re-upload clear, valid documents and resubmit below.</p>
+                    @endif
                 </div>
             </div>
             @endif
