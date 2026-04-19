@@ -544,6 +544,23 @@ document.getElementById('sellForm').addEventListener('submit', function(e) {
 
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
+    // ── Pre-fill from calculator query params ──
+    const urlParams = new URLSearchParams(window.location.search);
+    const qCoin      = (urlParams.get('coin') || '').toUpperCase();
+    const qAmount    = parseFloat(urlParams.get('amount')) || 0;
+    const qInputType = urlParams.get('input_type') || 'usd';
+
+    if (qCoin && ['BTC','ETH','USDT','SOL'].includes(qCoin)) {
+        selectCoin(qCoin);
+    }
+    if (qInputType === 'naira') {
+        setMode('naira');
+    }
+    if (qAmount > 0) {
+        document.getElementById('amountInput').value = qAmount;
+        calculateConversion();
+    }
+
     if (activeCoin) updateRatePill();
     calculateConversion();
     const errs = @json($errors->all());

@@ -709,6 +709,24 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
     // Init
     document.addEventListener('DOMContentLoaded', function() {
+        // ── Pre-fill from calculator query params ──
+        var urlParams   = new URLSearchParams(window.location.search);
+        var qCoin       = (urlParams.get('coin') || '').toUpperCase();
+        var qAmount     = parseFloat(urlParams.get('amount')) || 0;
+        var qInputType  = urlParams.get('input_type') || 'usd';
+
+        if (qCoin && ['BTC','ETH','USDT'].includes(qCoin)) {
+            selectCoin(qCoin);
+        }
+        // Switch to NGN mode if calculator was in NGN
+        if (qInputType === 'ngn' || qInputType === 'naira') {
+            if (isUSD) document.getElementById('toggleCurrency').click();
+        }
+        if (qAmount > 0) {
+            document.getElementById('amountInput').value = qAmount;
+            document.getElementById('amountInput').dispatchEvent(new Event('input'));
+        }
+
         @if(session('success'))
             showToast(@json(session('success')), 'success');
         @elseif(session('error'))

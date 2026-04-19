@@ -275,6 +275,10 @@ body { background: var(--kx-dark); color: var(--kx-text); }
                 <i class="bi bi-arrow-up-circle-fill"></i>Start Selling
             </a>
         </div>
+        <p style="font-size:.72rem;color:var(--kx-muted);text-align:center;margin-top:.65rem;" id="calcCarryHint" style="display:none">
+            <i class="bi bi-lightning-charge-fill" style="color:var(--kx-green)"></i>
+            Your figures will be pre-filled on the trade form
+        </p>
 
     </div>
 
@@ -346,26 +350,51 @@ body { background: var(--kx-dark); color: var(--kx-text); }
         document.querySelectorAll('.calc-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
 
         // Update CTA
-        const cta = document.getElementById('ctaBtn');
-        if (mode === 'sell') {
-            cta.href   = '{{ url("/sell") }}';
-            cta.innerHTML = '<i class="bi bi-arrow-up-circle-fill"></i>Start Selling';
-            cta.className = 'calc-cta sell-cta';
-        } else {
-            cta.href   = '{{ url("/buy") }}';
-            cta.innerHTML = '<i class="bi bi-arrow-down-circle-fill"></i>Start Buying';
-            cta.className = 'calc-cta buy-cta';
-        }
-
+        updateCta();
         updateCoinRateLabels();
         calculate();
     };
+
+    // ── Build CTA URL with calculator values ──
+    function updateCta() {
+        const cta = document.getElementById('ctaBtn');
+        const hint = document.getElementById('calcCarryHint');
+        const amt = parseFloat(document.getElementById('calcAmt').value) || 0;
+
+        let baseUrl, icon, label, cls;
+        if (currentMode === 'sell') {
+            baseUrl = '{{ url("/sell") }}';
+            icon  = '<i class="bi bi-arrow-up-circle-fill"></i>';
+            label = 'Start Selling';
+            cls   = 'calc-cta sell-cta';
+        } else {
+            baseUrl = '{{ url("/buy") }}';
+            icon  = '<i class="bi bi-arrow-down-circle-fill"></i>';
+            label = 'Start Buying';
+            cls   = 'calc-cta buy-cta';
+        }
+
+        let url = baseUrl;
+        if (amt > 0) {
+            url += '?coin=' + encodeURIComponent(currentCoin)
+                +  '&amount=' + encodeURIComponent(amt)
+                +  '&input_type=' + encodeURIComponent(amtType);
+            hint.style.display = 'block';
+        } else {
+            hint.style.display = 'none';
+        }
+
+        cta.href      = url;
+        cta.innerHTML = icon + ' ' + label;
+        cta.className = cls;
+    }
 
     // ── Select coin ──
     window.selectCoin = function(coin) {
         currentCoin = coin;
         document.querySelectorAll('.kx-coin-btn').forEach(b => b.classList.toggle('active', b.dataset.coin === coin));
         calculate();
+        updateCta();
     };
 
     // ── Amount type ──
@@ -376,6 +405,7 @@ body { background: var(--kx-dark); color: var(--kx-text); }
         document.getElementById('calcPrefix').textContent = type === 'usd' ? '$' : '₦';
         document.getElementById('calcHint').textContent   = type === 'usd' ? 'Enter amount in USD' : 'Enter amount in Naira (₦)';
         calculate();
+        updateCta();
     };
 
     // ── Core calculation ──
@@ -407,6 +437,7 @@ body { background: var(--kx-dark); color: var(--kx-text); }
         document.getElementById('resReceive').className   = 'calc-res-val ' + colorCls;
         document.getElementById('resRecLabel').textContent = amtType === 'usd' ? 'You Receive (₦)' : 'Equivalent (USD)';
         document.getElementById('ratePillVal').textContent = '₦' + fmt(rate, 0) + ' / USD  ·  ' + currentCoin;
+        updateCta();
     };
 
     function clear() {
@@ -445,8 +476,12 @@ body { background: var(--kx-dark); color: var(--kx-text); }
     setInterval(refreshRates, 60000);
     document.getElementById('lastRefreshed').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
+    // ── Also update CTA on direct amount typing ──
+    document.getElementById('calcAmt').addEventListener('input', updateCta);
+
     // Init
     calculate();
+    updateCta();
 })();
 </script>
 @endpush
