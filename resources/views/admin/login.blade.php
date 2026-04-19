@@ -140,7 +140,15 @@
             </div>
             <div class="mb-2">
                 <label for="password" class="form-label">Password</label>
-                <input type="password" name="password" id="password" class="form-control" required>
+                <div style="position:relative;">
+                    <input type="password" name="password" id="password" class="form-control" style="padding-right:2.8rem;" required>
+                    <button type="button" id="toggle-pw"
+                        onclick="var i=document.getElementById('password');var ic=this.querySelector('i');if(i.type==='password'){i.type='text';ic.className='bi bi-eye-slash';}else{i.type='password';ic.className='bi bi-eye';}"
+                        style="position:absolute;top:50%;right:.75rem;transform:translateY(-50%);background:none;border:none;color:var(--kx-muted);cursor:pointer;padding:0;line-height:1;"
+                        tabindex="-1" aria-label="Toggle password visibility">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="btn btn-login w-100 mt-2">Login</button>
         </form>
