@@ -111,11 +111,11 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     {{-- Stats --}}
     <div class="kx-stats">
         <div class="kx-stat">
-            <div class="s-val">{{ $referrals->total() }}</div>
+            <div class="s-val">{{ $totalCount }}</div>
             <div class="s-lbl">Total Referred</div>
         </div>
         <div class="kx-stat">
-            <div class="s-val">{{ $referrals->where('status','completed')->count() }}</div>
+            <div class="s-val">{{ $completedCount }}</div>
             <div class="s-lbl">Completed</div>
         </div>
         <div class="kx-stat">
@@ -190,7 +190,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     <div class="kx-card">
         <div class="kx-card-title"><i class="bi bi-people-fill"></i>Your Referrals
             <span style="margin-left:auto;font-size:.72rem;font-weight:400;color:var(--kx-muted);">
-                {{ $referrals->total() }} total
+                {{ $totalCount }} total &bull; {{ $pendingCount }} pending
             </span>
         </div>
 

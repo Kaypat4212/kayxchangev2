@@ -94,7 +94,10 @@ class CryptoController extends Controller
         // USDT sell rate for NGN→USD balance conversion
         $usdtRate = CryptoRate::where('coin', 'USDT')->value('sell_rate') ?? 1;
 
-        return view('dashboard', compact('transactions', 'rates', 'usdtRate'));
+        // Referral count for dashboard stat tile
+        $referralCount = Auth::user()->referralsMade()->count();
+
+        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount'));
     }
 
     public function buy()

@@ -16,10 +16,20 @@ class ReferralController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $referrals = $user->referralsMade()->with('referred')->paginate(10);
-        $totalRewards = $user->referralsMade()->where('status', 'completed')->sum('reward_amount');
+
+        // Paginated referrals for the table
+        $referrals = $user->referralsMade()->with('referred')->latest()->paginate(10);
+
+        // Accurate counts — queried directly, not from the paginator
+        $totalCount     = $user->referralsMade()->count();
+        $completedCount = $user->referralsMade()->where('status', 'completed')->count();
+        $pendingCount   = $user->referralsMade()->where('status', 'pending')->count();
+        $totalRewards   = $user->referralsMade()->where('status', 'completed')->sum('reward_amount');
+
         $referralLink = url('/register?ref=' . $user->referral_code);
 
-        return view('referrals.index', compact('user', 'referrals', 'totalRewards', 'referralLink'));
+        return view('referrals.index', compact(
+            'user', 'referrals', 'totalCount', 'completedCount', 'pendingCount', 'totalRewards', 'referralLink'
+        ));
     }
 }
