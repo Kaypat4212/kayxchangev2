@@ -3,13 +3,19 @@ DirectoryIndex public/index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Always route the domain root to Laravel public/
+    # Send the domain root into Laravel's public folder.
     RewriteRule ^$ public/ [L]
 
-    # Do not rewrite if request is already targeting /public
-    RewriteCond %{REQUEST_URI} !^/public/
+    # Avoid rewrite loops for requests already under /public.
+    RewriteCond %{REQUEST_URI} !^/public/ [NC]
+    RewriteRule ^(assets|Assests|css|js|images|barcodes|storage)/(.*)$ public/$1/$2 [L,NC,QSA]
 
-    # Route everything else into Laravel's public directory
+    # Route common top-level static files through /public.
+    RewriteCond %{REQUEST_URI} !^/public/ [NC]
+    RewriteRule ^(manifest\.json|robots\.txt|favicon\.ico|favicon\.png|service-worker\.js|serviceworker\.js|sw\.js)$ public/$1 [L,NC,QSA]
+
+    # Catch-all route into /public for Laravel front controller handling.
+    RewriteCond %{REQUEST_URI} !^/public/ [NC]
     RewriteRule ^(.*)$ public/$1 [L,QSA]
 </IfModule>
 
