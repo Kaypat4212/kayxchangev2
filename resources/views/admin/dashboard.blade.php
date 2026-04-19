@@ -757,11 +757,17 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchCounts(); setInterval(fetchCounts, 30000);
 
     // Load crypto rates
-    fetch('{{ route("admin.rates") }}', { headers: { 'Accept':'application/json', 'X-CSRF-TOKEN': csrf() } })
-    .then(r => r.ok ? r.json() : Promise.reject())
+    fetch('{{ route("admin.rates") }}', { credentials: 'same-origin', headers: { 'Accept':'application/json', 'X-CSRF-TOKEN': csrf() } })
+    .then(r => {
+        if (!r.ok) return Promise.reject(r.status);
+        return r.json();
+    })
     .then(data => {
         const container = document.getElementById('rates-container');
-        if (!data || !data.length) { container.innerHTML = '<p style="color:var(--kx-muted)">No rates available.</p>'; return; }
+        if (!data || !data.length) {
+            container.innerHTML = '<p style="color:var(--kx-muted);margin:0">No rates configured yet. <a href="{{ url("/admin/crypto-rates") }}" style="color:var(--kx-green)">Add rates →</a></p>';
+            return;
+        }
         container.innerHTML = data.map(rate => `
             <div class="rate-row">
                 <div>
@@ -781,7 +787,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>`).join('');
     })
-    .catch(() => { document.getElementById('rates-container').innerHTML = '<p style="color:var(--kx-danger)">Failed to load rates.</p>'; });
+    .catch(status => {
+        const msg = status === 401 || status === 403
+            ? 'Session expired — please <a href="{{ url("/admin/login") }}" style="color:var(--kx-green)">log in again</a>.'
+            : 'Could not load rates. Run <code style="color:var(--kx-green)">php artisan migrate</code> on the server, then <a href="" onclick="location.reload();return false;" style="color:var(--kx-green)">reload</a>.';
+        document.getElementById('rates-container').innerHTML = `<p style="color:var(--kx-danger);margin:0">${msg}</p>`;
+    });
 
     // Save rates
     document.getElementById('rates-form').addEventListener('submit', e => {

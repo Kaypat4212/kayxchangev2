@@ -18,6 +18,12 @@ class CryptoRateUpdateController extends Controller
     public function index()
     {
         try {
+            // Guard: if table doesn't exist yet, return empty list gracefully
+            if (!\Illuminate\Support\Facades\Schema::hasTable('crypto_rates')) {
+                Log::warning('crypto_rates table does not exist — run php artisan migrate');
+                return response()->json([]);
+            }
+
             $rates = CryptoRate::all()->map(function ($rate) {
                 return [
                     'coin' => $rate->coin,
@@ -31,7 +37,7 @@ class CryptoRateUpdateController extends Controller
             return response()->json($rates);
         } catch (\Exception $e) {
             Log::error('Error fetching crypto rates: ' . $e->getMessage());
-            return response()->json(['error' => 'Unable to fetch rates'], 500);
+            return response()->json([]);
         }
     }
 
