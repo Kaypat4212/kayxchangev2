@@ -18,6 +18,11 @@ class Withdrawal extends Model
         'currency',
         'reference',
         'processed_at',
+        'payout_gateway',
+        'payout_reference',
+        'payout_status',
+        'payout_recipient_code',
+        'payout_response',
     ];
 
     protected $casts = [

@@ -60,6 +60,13 @@ return [
         'public_key' => env('PAYSTACK_PUBLIC_KEY'),
     ],
 
+    'opay' => [
+        'public_key'  => env('OPAY_PUBLIC_KEY'),
+        'private_key' => env('OPAY_PRIVATE_KEY'),
+        'merchant_id' => env('OPAY_MERCHANT_ID'),
+        'base_url'    => env('OPAY_BASE_URL', 'https://api.opayweb.com'),
+    ],
+
     'korapay' => [
         'secret_key' => env('KORAPAY_SECRET_KEY'),
         'public_key' => env('KORAPAY_PUBLIC_KEY'),

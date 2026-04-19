@@ -61,6 +61,13 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 .kx-search{background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:8px;display:flex;align-items:center;padding:.45rem .75rem;gap:.5rem;}
 .kx-search-input{background:transparent;border:none;outline:none;color:var(--kx-text);font-size:.83rem;flex:1;}
 .kx-search-input::placeholder{color:var(--kx-muted);}
+/* Toggle switch */
+.ap-toggle{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;cursor:pointer;}
+.ap-toggle input{opacity:0;width:0;height:0;}
+.ap-slider{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.12);border-radius:26px;transition:.25s;}
+.ap-slider:before{content:'';position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s;}
+.ap-toggle input:checked + .ap-slider{background:var(--kx-green);}
+.ap-toggle input:checked + .ap-slider:before{transform:translateX(20px);}
 </style>
 <div class="container-fluid py-3 px-3 px-md-4">
     <div class="kx-page-header">
@@ -75,6 +82,91 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 
     @if(session('success'))<div class="kx-alert-success"><i class="bi bi-check-circle-fill"></i>{{ session('success') }}</div>@endif
     @if(session('error'))<div class="kx-alert-error"><i class="bi bi-exclamation-circle-fill"></i>{{ session('error') }}</div>@endif
+
+    {{-- ── Auto-Payout Control Panel ──────────────────────────────── --}}
+    <div class="kx-panel" style="margin-bottom:1.25rem">
+        <div class="kx-panel-header">
+            <span class="kx-panel-title"><i class="bi bi-lightning-charge-fill me-2" style="color:var(--kx-yellow)"></i>Auto-Payout Settings</span>
+            <span style="font-size:.72rem;color:var(--kx-muted)">Automatically transfer funds to users' bank accounts on approval</span>
+        </div>
+        <div style="padding:1.1rem 1.25rem">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+
+                {{-- Master Switch --}}
+                <div style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:10px;padding:1rem 1.1rem">
+                    <div style="font-size:.7rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Master Switch</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between">
+                        <div>
+                            <div style="font-weight:600;font-size:.88rem;color:#fff">Auto-Payout</div>
+                            <div style="font-size:.72rem;color:var(--kx-muted);margin-top:.15rem">Auto-send funds on approval</div>
+                        </div>
+                        <label class="ap-toggle" title="Toggle Auto-Payout">
+                            <input type="checkbox" id="ap_enabled"
+                                {{ ($autoPayoutSettings['auto_payout_enabled'] ?? '0') === '1' ? 'checked' : '' }}
+                                onchange="apToggle('auto_payout_enabled', this.checked ? '1' : '0')">
+                            <span class="ap-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                {{-- Active Gateway --}}
+                <div style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:10px;padding:1rem 1.1rem">
+                    <div style="font-size:.7rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Active Gateway</div>
+                    <select id="ap_gateway" class="kx-input" style="width:100%;font-size:.84rem"
+                        onchange="apToggle('auto_payout_gateway', this.value)">
+                        <option value="paystack" {{ ($autoPayoutSettings['auto_payout_gateway'] ?? 'paystack') === 'paystack' ? 'selected' : '' }}>Paystack Transfer</option>
+                        <option value="opay"     {{ ($autoPayoutSettings['auto_payout_gateway'] ?? 'paystack') === 'opay'     ? 'selected' : '' }}>OPay Disbursement</option>
+                    </select>
+                    <div style="font-size:.7rem;color:var(--kx-muted);margin-top:.4rem">Gateway used when auto-payout fires</div>
+                </div>
+
+                {{-- Paystack Toggle --}}
+                <div style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:10px;padding:1rem 1.1rem">
+                    <div style="font-size:.7rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Paystack</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between">
+                        <div>
+                            <div style="font-weight:600;font-size:.88rem;color:#fff">Paystack Transfers</div>
+                            <div style="font-size:.72rem;color:var(--kx-muted);margin-top:.15rem">Enable Paystack auto-payout</div>
+                        </div>
+                        <label class="ap-toggle">
+                            <input type="checkbox" id="ap_paystack"
+                                {{ ($autoPayoutSettings['auto_payout_paystack_enabled'] ?? '0') === '1' ? 'checked' : '' }}
+                                onchange="apToggle('auto_payout_paystack_enabled', this.checked ? '1' : '0')">
+                            <span class="ap-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                {{-- OPay Toggle --}}
+                <div style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:10px;padding:1rem 1.1rem">
+                    <div style="font-size:.7rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">OPay</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between">
+                        <div>
+                            <div style="font-weight:600;font-size:.88rem;color:#fff">OPay Disbursement</div>
+                            <div style="font-size:.72rem;color:var(--kx-muted);margin-top:.15rem">Enable OPay auto-payout</div>
+                        </div>
+                        <label class="ap-toggle">
+                            <input type="checkbox" id="ap_opay"
+                                {{ ($autoPayoutSettings['auto_payout_opay_enabled'] ?? '0') === '1' ? 'checked' : '' }}
+                                onchange="apToggle('auto_payout_opay_enabled', this.checked ? '1' : '0')">
+                            <span class="ap-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+            <div id="ap-save-notice" style="display:none;margin-top:.75rem;font-size:.78rem;padding:.5rem .875rem;border-radius:7px;background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.2);color:var(--kx-green)">
+                <i class="bi bi-check-circle me-1"></i> Setting saved.
+            </div>
+            <div style="margin-top:.85rem;padding:.65rem .9rem;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;font-size:.75rem;color:var(--kx-yellow)">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <strong>Webhook URLs to register:</strong>
+                Paystack: <code style="background:rgba(0,0,0,.3);padding:.1rem .4rem;border-radius:4px;font-size:.7rem">{{ url('withdrawals/webhook/paystack') }}</code>
+                &nbsp;&nbsp;|&nbsp;&nbsp;
+                OPay: <code style="background:rgba(0,0,0,.3);padding:.1rem .4rem;border-radius:4px;font-size:.7rem">{{ url('withdrawals/webhook/opay') }}</code>
+            </div>
+        </div>
+    </div>
 
     @php
         $pending   = collect($withdrawals)->where('status','pending')->count();
@@ -100,7 +192,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
         <div class="kx-table-wrap">
             <table class="kx-table" id="wTable">
                 <thead><tr>
-                    <th>#ID</th><th>User</th><th>Amount</th><th>Bank</th><th>Account</th><th>Status</th><th>Date</th><th>Actions</th>
+                    <th>#ID</th><th>User</th><th>Amount</th><th>Bank</th><th>Account</th><th>Status</th><th>Payout</th><th>Date</th><th>Actions</th>
                 </tr></thead>
                 <tbody>
                 @forelse($withdrawals as $w)
@@ -122,6 +214,20 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                             <span class="kx-badge kx-badge-red"><i class="bi bi-x me-1"></i>Cancelled</span>
                         @else
                             <span class="kx-badge kx-badge-gray">{{ $w->status }}</span>
+                        @endif
+                    </td>
+                    <td style="font-size:.75rem;color:var(--kx-muted)">{{ $w->created_at ? $w->created_at->format('d M Y') : '—' }}</td>
+                    <td>
+                        @if($w->payout_status === 'success')
+                            <span class="kx-badge kx-badge-green"><i class="bi bi-send-check me-1"></i>Sent</span>
+                        @elseif($w->payout_status === 'failed' || $w->payout_status === 'reversed')
+                            <span class="kx-badge kx-badge-red"><i class="bi bi-send-x me-1"></i>{{ ucfirst($w->payout_status) }}</span>
+                        @elseif($w->payout_status === 'pending')
+                            <span class="kx-badge kx-badge-yellow"><i class="bi bi-send me-1"></i>Processing</span>
+                        @elseif($w->payout_gateway)
+                            <span class="kx-badge kx-badge-gray">{{ $w->payout_gateway }}</span>
+                        @else
+                            <span style="font-size:.7rem;color:var(--kx-muted)">Manual</span>
                         @endif
                     </td>
                     <td style="font-size:.75rem;color:var(--kx-muted)">{{ $w->created_at ? $w->created_at->format('d M Y') : '—' }}</td>
@@ -149,6 +255,12 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         </div>
                         @else
                         <span style="font-size:.72rem;color:var(--kx-muted)">Processed</span>
+                        @if($w->status === 'approved' && in_array($w->payout_status, [null, 'failed', 'reversed']))
+                        <br><button type="button" class="btn-kx-edit mt-1"
+                            onclick="retryPayout({{ $w->id }})" title="Retry auto-payout">
+                            <i class="bi bi-arrow-clockwise"></i> Retry Payout
+                        </button>
+                        @endif
                         @endif
                     </td>
                 </tr>
@@ -239,5 +351,44 @@ document.getElementById('wSearch').addEventListener('input', function(){
     const q = this.value.toLowerCase();
     document.querySelectorAll('#wTable tbody tr').forEach(r => { r.style.display = r.textContent.toLowerCase().includes(q)?'':'none'; });
 });
+
+// ── Auto-Payout Toggle ────────────────────────────────────────────
+function apToggle(key, value) {
+    fetch('{{ route('admin.withdrawals.auto-payout.toggle') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ key, value })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const n = document.getElementById('ap-save-notice');
+            n.style.display = 'block';
+            setTimeout(() => n.style.display = 'none', 2500);
+        }
+    })
+    .catch(e => console.error('AutoPayout toggle error', e));
+}
+
+// ── Retry Payout ──────────────────────────────────────────────────
+function retryPayout(id) {
+    if (!confirm('Retry auto-payout for withdrawal #' + id + '?')) return;
+    fetch('/admin/withdrawals/' + id + '/retry-payout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message + (data.payout_status ? ' (' + data.payout_status + ')' : ''));
+        location.reload();
+    })
+    .catch(e => { alert('Retry failed. Check logs.'); console.error(e); });
+}
 </script>
 @endsection

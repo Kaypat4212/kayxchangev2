@@ -56,6 +56,10 @@ class User extends Authenticatable
         'pin_locked_until',
         'referral_code',
         'referred_by',
+        'paystack_auth_code',
+        'paystack_auth_email',
+        'paystack_auth_card_last4',
+        'paystack_auth_card_type',
     ];
 
     /**

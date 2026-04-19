@@ -113,12 +113,18 @@ Route::middleware('auth')->group(function () {
     Route::get('deposits/create', [DepositController::class, 'create'])->name('deposits.create');
     Route::post('deposits', [DepositController::class, 'store'])->name('deposits.store');
     Route::post('deposits/initiate', [DepositController::class, 'initiate'])->name('deposits.initiate');
+    Route::post('deposits/charge-authorization', [DepositController::class, 'chargeAuthorization'])->name('deposits.charge-authorization');
     Route::get('deposits/callback', [DepositController::class, 'callback'])->name('deposits.callback');
 });
 
 // Payment gateway webhooks — no auth or CSRF required
 Route::post('deposits/webhook/{gateway}', [DepositController::class, 'webhook'])
     ->name('deposits.webhook')
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
+// Payout/Transfer webhooks — no auth or CSRF required
+Route::post('withdrawals/webhook/{gateway}', [WithdrawalController::class, 'payoutWebhook'])
+    ->name('withdrawals.payout.webhook')
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 use App\Http\Controllers\Admin\SiteContentController;
@@ -175,6 +181,12 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     // API Diagnostics
     Route::get('diagnostics', [EnvEditorController::class, 'diagnostics'])->name('admin.diagnostics');
     Route::post('diagnostics/run', [EnvEditorController::class, 'runDiagnostics'])->name('admin.diagnostics.run');
+
+    // Auto-payout settings toggle
+    Route::post('withdrawals/auto-payout/toggle', [WithdrawalController::class, 'toggleAutoPayout'])
+        ->name('admin.withdrawals.auto-payout.toggle');
+    Route::post('withdrawals/{id}/retry-payout', [WithdrawalController::class, 'retryPayout'])
+        ->name('admin.withdrawals.retry-payout');
 });
 // Bank Verification AJAX Routes
 Route::middleware(['auth'])->prefix('ajax')->name('ajax.')->group(function () {

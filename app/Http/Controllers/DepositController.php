@@ -72,8 +72,8 @@ class DepositController extends Controller
         // Only allow gateways that are both toggled on AND have API keys configured
         $sc = \App\Models\SiteContent::allKeyed();
         $allowedGateways = array_values(array_filter(
-            ['paystack', 'korapay', 'flutterwave'],
-            fn($g) => !empty($sc['pm_enabled_' . $g]) && !empty(config('services.' . $g . '.secret_key'))
+            ['paystack', 'korapay', 'flutterwave', 'opay'],
+            fn($g) => !empty($sc['pm_enabled_' . $g]) && !empty(config('services.' . $g . '.secret_key') ?? config('services.' . $g . '.private_key'))
         ));
 
         $request->validate([
@@ -101,9 +101,11 @@ class DepositController extends Controller
         $data = [
             'email'        => $user->email,
             'name'         => $user->name,
+            'phone'        => $user->phone ?? '',
             'amount'       => $request->amount,
             'reference'    => $ref,
             'callback_url' => $callbackUrl,
+            'webhook_url'  => route('deposits.webhook', ['gateway' => 'opay']),
             'deposit_id'   => $deposit->id,
         ];
 
@@ -111,6 +113,7 @@ class DepositController extends Controller
             'paystack'    => $gateway->initializePaystack($data),
             'korapay'     => $gateway->initializeKorapay($data),
             'flutterwave' => $gateway->initializeFlutterwave($data),
+            'opay'        => $gateway->initializeOpay($data),
         };
 
         if (! $result['success']) {
@@ -178,10 +181,12 @@ class DepositController extends Controller
 
         $gatewayService = new PaymentGatewayService();
 
+        // If Paystack, also verify with API and credit
         $verification = match ($gateway) {
             'paystack'    => $gatewayService->verifyPaystack($reference),
             'korapay'     => $gatewayService->verifyKorapay($reference),
             'flutterwave' => $gatewayService->verifyFlutterwave($reference),
+            'opay'        => $gatewayService->verifyOpay($reference),
             default       => ['success' => false, 'data' => []],
         };
 
@@ -231,6 +236,7 @@ class DepositController extends Controller
             'paystack'    => $this->handlePaystackWebhook($request),
             'korapay'     => $this->handleKorapayWebhook($request),
             'flutterwave' => $this->handleFlutterwaveWebhook($request),
+            'opay'        => $this->handleOpayWebhook($request),
             default       => null,
         };
 
@@ -245,7 +251,27 @@ class DepositController extends Controller
             return;
         }
         if ($request->json('event') !== 'charge.success') return;
-        $this->approveDepositByRef($request->json('data.reference'), $request->getContent());
+
+        $reference = $request->json('data.reference');
+
+        // Store reusable card authorization on the user so they can be auto-debited later
+        $authorization = $request->json('data.authorization');
+        if ($authorization && ($authorization['reusable'] ?? false)) {
+            $deposit = Deposit::where('gateway_reference', $reference)
+                ->orWhere('transaction_ref', $reference)
+                ->first();
+            if ($deposit && $deposit->user) {
+                $deposit->user->update([
+                    'paystack_auth_code'      => $authorization['authorization_code'],
+                    'paystack_auth_email'     => $request->json('data.customer.email'),
+                    'paystack_auth_card_last4'=> $authorization['last4'] ?? null,
+                    'paystack_auth_card_type' => $authorization['card_type'] ?? null,
+                ]);
+                Log::info('Paystack authorization saved for user #' . $deposit->user_id);
+            }
+        }
+
+        $this->approveDepositByRef($reference, $request->getContent());
     }
 
     private function handleKorapayWebhook(Request $request): void
@@ -271,6 +297,18 @@ class DepositController extends Controller
         $this->approveDepositByRef($request->json('data.tx_ref'), $request->getContent());
     }
 
+    private function handleOpayWebhook(Request $request): void
+    {
+        $gatewayService = new PaymentGatewayService();
+        $signature = $request->header('Sign') ?? '';
+        if (! $gatewayService->verifyOpayWebhookSignature($request->getContent(), $signature)) {
+            Log::warning('OPay webhook: invalid signature');
+            return;
+        }
+        if ($request->json('status') !== 'SUCCESS') return;
+        $this->approveDepositByRef($request->json('reference'), $request->getContent());
+    }
+
     private function approveDepositByRef(string $reference, string $rawPayload): void
     {
         $deposit = Deposit::where('gateway_reference', $reference)
@@ -291,6 +329,92 @@ class DepositController extends Controller
             'reference'  => $reference,
             'amount'     => $deposit->amount,
         ]);
+
+        // Send approval email
+        try {
+            Mail::to($deposit->user->email)->send(new DepositApproved($deposit));
+        } catch (\Exception $e) {
+            Log::warning('Webhook deposit approval email failed: ' . $e->getMessage());
+        }
+
+        // Send Telegram alert to admin
+        $token  = config('services.telegram.token');
+        $chatId = config('services.telegram.chat_id');
+        if ($token && $chatId) {
+            $message = "✅ *Deposit Auto-Approved (Webhook)*\n\n"
+                . "👤 User: {$deposit->user->name} ({$deposit->user->email})\n"
+                . "💰 Amount: ₦" . number_format($deposit->amount, 2) . "\n"
+                . "🏦 Gateway: " . ucfirst($deposit->gateway ?? $deposit->payment_method) . "\n"
+                . "🔖 Reference: {$reference}";
+            try {
+                Http::withOptions(['verify' => 'C:\\xampp\\php\\extras\\ssl\\cacert.pem', 'timeout' => 10])
+                    ->post("https://api.telegram.org/bot{$token}/sendMessage", [
+                        'chat_id'    => $chatId,
+                        'text'       => $message,
+                        'parse_mode' => 'Markdown',
+                    ]);
+            } catch (\Exception $e) {
+                Log::warning('Webhook Telegram alert failed: ' . $e->getMessage());
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PAYSTACK AUTO-DEBIT — charge a saved card without redirect
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function chargeAuthorization(Request $request)
+    {
+        $user = auth()->user();
+
+        if (empty($user->paystack_auth_code)) {
+            return redirect()->back()
+                ->withErrors(['error' => 'No saved card found. Please make a deposit with Paystack first to save your card.']);
+        }
+
+        $request->validate([
+            'amount' => 'required|numeric|min:1000',
+        ]);
+
+        $ref = 'AUTO-' . Str::upper(Str::random(12));
+
+        $deposit = Deposit::create([
+            'user_id'           => $user->id,
+            'amount'            => $request->amount,
+            'currency'          => 'NGN',
+            'payment_method'    => 'paystack',
+            'transaction_ref'   => $ref,
+            'gateway'           => 'paystack',
+            'gateway_reference' => $ref,
+            'status'            => 'pending',
+        ]);
+
+        $gateway = new PaymentGatewayService();
+        $result  = $gateway->chargePaystackAuthorization([
+            'authorization_code' => $user->paystack_auth_code,
+            'email'              => $user->paystack_auth_email ?? $user->email,
+            'amount'             => $request->amount,
+            'reference'          => $ref,
+            'deposit_id'         => $deposit->id,
+        ]);
+
+        if (! $result['success']) {
+            $deposit->update(['status' => 'rejected']);
+            return redirect()->back()
+                ->withErrors(['error' => $result['message'] ?? 'Auto-debit failed. Please try the regular deposit flow.']);
+        }
+
+        // If instantly successful, approve right away
+        if (($result['status'] ?? '') === 'success') {
+            $this->approveDepositByRef($ref, json_encode($result['data'] ?? []));
+            return redirect()->route('deposits.index')
+                ->with('success', '₦' . number_format($request->amount, 2) . ' auto-debited and credited to your wallet!');
+        }
+
+        // Pending — will be confirmed via webhook
+        Log::info('Paystack auto-debit pending', ['deposit_id' => $deposit->id, 'reference' => $ref]);
+        return redirect()->route('deposits.index')
+            ->with('success', 'Auto-debit initiated. Your wallet will be credited once confirmed.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────

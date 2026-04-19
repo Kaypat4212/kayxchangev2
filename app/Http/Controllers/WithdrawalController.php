@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use App\Mail\TradeNotification;
+use App\Models\SiteContent;
 use App\Models\User;
 use App\Models\Withdrawal;
 use App\Services\AdminTradeAlertService;
+use App\Services\PayoutService;
 use Illuminate\Support\Str;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -229,6 +231,9 @@ class WithdrawalController extends Controller
             DB::commit();
             Log::info('Withdrawal approved: ', $withdrawal->toArray());
 
+            // ── Auto-payout after commit ────────────────────────────────
+            $this->attemptAutoPayout($withdrawal, $user);
+
             return response()->json(['message' => 'Transaction approved, funds sent.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -238,6 +243,185 @@ class WithdrawalController extends Controller
             ]);
             return response()->json(['error' => 'Approval failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Attempt to auto-payout via the configured gateway after approval.
+     * Runs outside the main DB transaction so a payout failure never rolls back the approval.
+     */
+    protected function attemptAutoPayout(Withdrawal $withdrawal, User $user): void
+    {
+        // Check master switch
+        if (SiteContent::get('auto_payout_enabled', '0') !== '1') {
+            return;
+        }
+
+        $gateway  = SiteContent::get('auto_payout_gateway', 'paystack'); // 'paystack' | 'opay'
+        $gatewayEnabled = SiteContent::get("auto_payout_{$gateway}_enabled", '0');
+        if ($gatewayEnabled !== '1') {
+            Log::info("[AutoPayout] Gateway '{$gateway}' disabled for withdrawal #{$withdrawal->id}");
+            return;
+        }
+
+        $bd = is_array($withdrawal->bank_account)
+            ? $withdrawal->bank_account
+            : (json_decode($withdrawal->bank_account, true) ?? []);
+
+        if (empty($bd['account_number']) || empty($bd['bank_code'])) {
+            Log::warning("[AutoPayout] Missing bank_code for withdrawal #{$withdrawal->id} — skipping auto-payout");
+            return;
+        }
+
+        $payoutService = app(PayoutService::class);
+        $amount        = (float) $withdrawal->amount;
+        $reference     = $withdrawal->reference . '-PAY';
+
+        try {
+            if ($gateway === 'paystack') {
+                $result = $payoutService->payoutViaPaystack($bd, $amount, $reference);
+            } elseif ($gateway === 'opay') {
+                $result = $payoutService->payoutViaOpay($bd, $amount, $reference, $user->name);
+            } else {
+                Log::warning("[AutoPayout] Unknown gateway '{$gateway}'");
+                return;
+            }
+
+            $withdrawal->payout_gateway       = $gateway;
+            $withdrawal->payout_reference     = $result['reference'] ?? $reference;
+            $withdrawal->payout_status        = $result['success'] ? ($result['payout_status'] ?? 'pending') : 'failed';
+            $withdrawal->payout_recipient_code = $result['recipient_code'] ?? null;
+            $withdrawal->payout_response      = json_encode($result);
+            $withdrawal->save();
+
+            if ($result['success']) {
+                Log::info("[AutoPayout] {$gateway} payout initiated for withdrawal #{$withdrawal->id}", $result);
+            } else {
+                Log::error("[AutoPayout] {$gateway} payout failed for withdrawal #{$withdrawal->id}: " . ($result['error'] ?? 'Unknown'));
+            }
+        } catch (\Throwable $e) {
+            Log::error("[AutoPayout] Exception for withdrawal #{$withdrawal->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Admin: manually retry a failed auto-payout.
+     */
+    public function retryPayout(Request $request, $id)
+    {
+        $withdrawal = Withdrawal::findOrFail($id);
+        $user       = User::findOrFail($withdrawal->user_id);
+
+        if ($withdrawal->status !== 'approved') {
+            return response()->json(['error' => 'Withdrawal must be approved first.'], 400);
+        }
+
+        $this->attemptAutoPayout($withdrawal, $user);
+
+        return response()->json(['message' => 'Payout retry triggered.', 'payout_status' => $withdrawal->fresh()->payout_status]);
+    }
+
+    /**
+     * Admin: toggle auto-payout settings.
+     */
+    public function toggleAutoPayout(Request $request)
+    {
+        $request->validate([
+            'key'   => 'required|in:auto_payout_enabled,auto_payout_paystack_enabled,auto_payout_opay_enabled,auto_payout_gateway',
+            'value' => 'required|string|max:50',
+        ]);
+
+        SiteContent::updateOrCreate(
+            ['key' => $request->key],
+            [
+                'group' => 'auto_payout',
+                'label' => ucwords(str_replace('_', ' ', $request->key)),
+                'value' => $request->value,
+            ]
+        );
+
+        return response()->json(['success' => true, 'key' => $request->key, 'value' => $request->value]);
+    }
+
+    /**
+     * Payout/Transfer webhook handler (Paystack transfer.* events / OPay disbursement callbacks).
+     */
+    public function payoutWebhook(Request $request, string $gateway)
+    {
+        $rawBody = $request->getContent();
+        $payoutService = app(PayoutService::class);
+
+        if ($gateway === 'paystack') {
+            // Verify HMAC-SHA512 signature
+            $secret    = config('services.paystack.secret_key');
+            $signature = $request->header('x-paystack-signature', '');
+            $expected  = hash_hmac('sha512', $rawBody, $secret);
+            if (!hash_equals($expected, $signature)) {
+                Log::warning('[PayoutWebhook] Paystack signature mismatch');
+                return response()->json(['error' => 'Invalid signature'], 401);
+            }
+
+            $payload = $request->json()->all();
+            $parsed  = $payoutService->parsePaystackTransferWebhook($payload);
+
+            if (!$parsed['handled']) {
+                return response()->json(['message' => 'Event ignored'], 200);
+            }
+
+            // Find withdrawal by payout_reference
+            $withdrawal = Withdrawal::where('payout_reference', $parsed['reference'])->first();
+            if (!$withdrawal) {
+                Log::warning('[PayoutWebhook] Paystack: no withdrawal found for reference ' . $parsed['reference']);
+                return response()->json(['message' => 'Not found'], 200);
+            }
+
+            $withdrawal->payout_status   = $parsed['status']; // 'success'|'failed'|'reversed'
+            $withdrawal->payout_response = json_encode($payload);
+            $withdrawal->save();
+
+            Log::info("[PayoutWebhook] Paystack transfer {$parsed['status']} for withdrawal #{$withdrawal->id}");
+
+            if ($parsed['status'] === 'failed' || $parsed['status'] === 'reversed') {
+                Log::error("[PayoutWebhook] Payout {$parsed['status']} for withdrawal #{$withdrawal->id} — manual review required");
+            }
+
+            return response()->json(['message' => 'OK'], 200);
+        }
+
+        if ($gateway === 'opay') {
+            $signature = $request->header('Sign', '');
+            if (!$payoutService->verifyOpayPayoutWebhookSignature($rawBody, $signature)) {
+                Log::warning('[PayoutWebhook] OPay signature mismatch');
+                return response()->json(['error' => 'Invalid signature'], 401);
+            }
+
+            $payload   = $request->json()->all();
+            $reference = $payload['reference'] ?? ($payload['data']['reference'] ?? null);
+            $status    = strtolower($payload['status'] ?? ($payload['data']['status'] ?? ''));
+
+            if (!$reference) {
+                return response()->json(['message' => 'No reference'], 200);
+            }
+
+            $withdrawal = Withdrawal::where('payout_reference', $reference)->first();
+            if (!$withdrawal) {
+                return response()->json(['message' => 'Not found'], 200);
+            }
+
+            $opayStatus = match ($status) {
+                'success', 'successful' => 'success',
+                'fail', 'failed'        => 'failed',
+                default                 => 'pending',
+            };
+
+            $withdrawal->payout_status   = $opayStatus;
+            $withdrawal->payout_response = json_encode($payload);
+            $withdrawal->save();
+
+            Log::info("[PayoutWebhook] OPay transfer {$opayStatus} for withdrawal #{$withdrawal->id}");
+            return response()->json(['message' => 'OK'], 200);
+        }
+
+        return response()->json(['error' => 'Unknown gateway'], 400);
     }
 
     public function cancelWithdrawal(Request $request, $id)
@@ -317,7 +501,13 @@ class WithdrawalController extends Controller
     public function listWithdrawals()
     {
         $withdrawals = Withdrawal::with('user')->latest()->get();
-        return view('admin.withdrawals', compact('withdrawals'));
+        $autoPayoutSettings = [
+            'auto_payout_enabled'          => SiteContent::get('auto_payout_enabled', '0'),
+            'auto_payout_gateway'          => SiteContent::get('auto_payout_gateway', 'paystack'),
+            'auto_payout_paystack_enabled' => SiteContent::get('auto_payout_paystack_enabled', '0'),
+            'auto_payout_opay_enabled'     => SiteContent::get('auto_payout_opay_enabled', '0'),
+        ];
+        return view('admin.withdrawals', compact('withdrawals', 'autoPayoutSettings'));
     }
 
     protected function sendTelegramNotification($user, $withdrawal, $bankDetails, $isApproval = false)
