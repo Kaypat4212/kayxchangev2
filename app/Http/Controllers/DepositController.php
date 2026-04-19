@@ -97,7 +97,7 @@ class DepositController extends Controller
 
         $gateway     = new PaymentGatewayService();
         // Use PAYSTACK_CALLBACK_URL override when APP_URL is localhost (local dev with live Paystack)
-        $baseCallback = env('PAYSTACK_CALLBACK_URL');
+        $baseCallback = config('services.paystack.callback_url');
         $callbackUrl  = $baseCallback
             ? rtrim($baseCallback, '/') . '?gateway=' . $request->payment_method
             : route('deposits.callback', ['gateway' => $request->payment_method]);
@@ -200,7 +200,7 @@ class DepositController extends Controller
                 'gateway_response' => json_encode($verification['data'] ?? []),
             ]);
 
-            $deposit->user->wallet()->increment('balance', $deposit->amount);
+            $deposit->user->increment('balance', $deposit->amount);
 
             Log::info('Gateway deposit approved', [
                 'deposit_id' => $deposit->id,
@@ -326,7 +326,7 @@ class DepositController extends Controller
             'gateway_response' => $rawPayload,
         ]);
 
-        $deposit->user->wallet()->increment('balance', $deposit->amount);
+        $deposit->user->increment('balance', $deposit->amount);
 
         Log::info('Deposit approved via webhook', [
             'deposit_id' => $deposit->id,
