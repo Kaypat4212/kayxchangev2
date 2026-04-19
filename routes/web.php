@@ -167,6 +167,10 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('env-editor', [EnvEditorController::class, 'index'])->name('admin.env.index');
     Route::put('env-editor', [EnvEditorController::class, 'update'])->name('admin.env.update');
     Route::post('env-editor/toggle-payment-method', [EnvEditorController::class, 'togglePaymentMethod'])->name('admin.env.toggle-pm');
+
+    // API Diagnostics
+    Route::get('diagnostics', [EnvEditorController::class, 'diagnostics'])->name('admin.diagnostics');
+    Route::post('diagnostics/run', [EnvEditorController::class, 'runDiagnostics'])->name('admin.diagnostics.run');
 });
 // Bank Verification AJAX Routes
 Route::middleware(['auth'])->prefix('ajax')->name('ajax.')->group(function () {

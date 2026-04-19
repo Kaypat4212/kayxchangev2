@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class EnvEditorController extends Controller
 {
@@ -171,6 +173,248 @@ class EnvEditorController extends Controller
         \App\Models\SiteContent::where('key', $key)->update(['value' => $value]);
 
         return response()->json(['success' => true, 'method' => $request->method, 'enabled' => (bool) $request->enabled]);
+    }
+
+    /** Show the diagnostics page */
+    public function diagnostics()
+    {
+        return view('admin.diagnostics');
+    }
+
+    /** Run all diagnostic checks and return JSON results */
+    public function runDiagnostics(\Illuminate\Http\Request $request)
+    {
+        set_time_limit(30);
+        $results = [];
+
+        // ── 1. SMTP / Email connectivity ──────────────────────────────────────
+        $results['smtp'] = $this->checkSmtp();
+
+        // ── 2. Telegram Bot Token ─────────────────────────────────────────────
+        $results['telegram'] = $this->checkTelegram();
+
+        // ── 3. Paystack ───────────────────────────────────────────────────────
+        $results['paystack'] = $this->checkPaystack();
+
+        // ── 4. Groq AI ────────────────────────────────────────────────────────
+        $results['groq'] = $this->checkGroq();
+
+        // ── 5. Etherscan ─────────────────────────────────────────────────────
+        $results['etherscan'] = $this->checkEtherscan();
+
+        // ── 6. BlockCypher ───────────────────────────────────────────────────
+        $results['blockcypher'] = $this->checkBlockCypher();
+
+        // ── 7. TronGrid ──────────────────────────────────────────────────────
+        $results['trongrid'] = $this->checkTronGrid();
+
+        // ── 8. PHP mail() function enabled ───────────────────────────────────
+        $results['php_mail'] = $this->checkPhpMail();
+
+        // ── 9. cURL / outbound HTTP ──────────────────────────────────────────
+        $results['curl'] = $this->checkCurl();
+
+        // ── 10. Database ─────────────────────────────────────────────────────
+        $results['database'] = $this->checkDatabase();
+
+        return response()->json($results);
+    }
+
+    private function checkSmtp(): array
+    {
+        $host = env('MAIL_HOST', '');
+        $port = (int) env('MAIL_PORT', 465);
+        $user = env('MAIL_USERNAME', '');
+        $pass = env('MAIL_PASSWORD', '');
+        $enc  = env('MAIL_ENCRYPTION', 'ssl');
+        $mailer = env('MAIL_MAILER', 'log');
+
+        if ($mailer === 'log') {
+            return ['status' => 'warn', 'message' => 'MAIL_MAILER is set to "log" — emails are written to log files, not actually sent. Change to "smtp" in your .env.'];
+        }
+        if (empty($host)) {
+            return ['status' => 'fail', 'message' => 'MAIL_HOST is not set.'];
+        }
+        if (empty($user)) {
+            return ['status' => 'fail', 'message' => 'MAIL_USERNAME is not set.'];
+        }
+        if (empty($pass)) {
+            return ['status' => 'fail', 'message' => 'MAIL_PASSWORD is empty — SMTP authentication will fail.'];
+        }
+
+        // Test TCP socket connection to the SMTP host/port
+        $errno  = 0; $errstr = '';
+        $prefix = ($enc === 'ssl') ? 'ssl://' : '';
+        $conn   = @fsockopen($prefix . $host, $port, $errno, $errstr, 8);
+        if (!$conn) {
+            return [
+                'status'  => 'fail',
+                'message' => "Cannot connect to {$host}:{$port} — {$errstr} (errno {$errno}). cPanel SMTP may be blocked by firewall or the host/port is wrong.",
+                'detail'  => "Tried: {$prefix}{$host}:{$port}",
+            ];
+        }
+        fclose($conn);
+
+        // Check FROM domain matches USERNAME domain (cPanel anti-spoofing)
+        $from      = env('MAIL_FROM_ADDRESS', '');
+        $fromDomain = strtolower(substr(strrchr($from, '@'), 1));
+        $userDomain = strtolower(substr(strrchr($user, '@'), 1));
+        if ($fromDomain && $userDomain && $fromDomain !== $userDomain) {
+            return [
+                'status'  => 'warn',
+                'message' => "TCP connection to {$host}:{$port} OK, but FROM domain ({$fromDomain}) ≠ USERNAME domain ({$userDomain}). cPanel will reject with 550 spam error.",
+            ];
+        }
+
+        return ['status' => 'ok', 'message' => "TCP connection to {$host}:{$port} successful. Credentials are set. FROM domain matches. Ready to send."];
+    }
+
+    private function checkTelegram(): array
+    {
+        $token = env('KAYXCHANGE_TELEGRAM_BOT_TOKEN', env('TELEGRAM_BOT_TOKEN', ''));
+        if (empty($token)) {
+            return ['status' => 'fail', 'message' => 'TELEGRAM_BOT_TOKEN is not set.'];
+        }
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(8)
+                ->get("https://api.telegram.org/bot{$token}/getMe");
+            if ($res->ok() && ($res->json('ok') === true)) {
+                $bot = $res->json('result');
+                return ['status' => 'ok', 'message' => "Bot valid — @{$bot['username']} ({$bot['first_name']})"];
+            }
+            return ['status' => 'fail', 'message' => 'Invalid token: ' . ($res->json('description') ?? 'Unknown error')];
+        } catch (\Throwable $e) {
+            return ['status' => 'fail', 'message' => 'Request failed: ' . $e->getMessage()];
+        }
+    }
+
+    private function checkPaystack(): array
+    {
+        $key = env('PAYSTACK_SECRET_KEY', '');
+        if (empty($key)) return ['status' => 'warn', 'message' => 'PAYSTACK_SECRET_KEY not set.'];
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(8)
+                ->withToken($key)
+                ->get('https://api.paystack.co/bank?perPage=1');
+            if ($res->ok() && $res->json('status') === true) {
+                return ['status' => 'ok', 'message' => 'Paystack API key is valid.'];
+            }
+            return ['status' => 'fail', 'message' => 'Invalid key: ' . ($res->json('message') ?? $res->status())];
+        } catch (\Throwable $e) {
+            return ['status' => 'fail', 'message' => 'Request failed: ' . $e->getMessage()];
+        }
+    }
+
+    private function checkGroq(): array
+    {
+        $key   = env('GROQ_API_KEY', '');
+        $model = env('GROQ_MODEL', 'llama-3.3-70b-versatile');
+        if (empty($key)) return ['status' => 'warn', 'message' => 'GROQ_API_KEY not set — AI features disabled.'];
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(12)
+                ->withToken($key)
+                ->post('https://api.groq.com/openai/v1/chat/completions', [
+                    'model'      => $model,
+                    'messages'   => [['role' => 'user', 'content' => 'Reply with the single word: OK']],
+                    'max_tokens' => 5,
+                ]);
+            if ($res->ok()) {
+                $reply = $res->json('choices.0.message.content') ?? '(no content)';
+                return ['status' => 'ok', 'message' => "Groq API valid. Model: {$model}. Reply: " . trim($reply)];
+            }
+            return ['status' => 'fail', 'message' => 'Groq error: ' . ($res->json('error.message') ?? $res->status())];
+        } catch (\Throwable $e) {
+            return ['status' => 'fail', 'message' => 'Request failed: ' . $e->getMessage()];
+        }
+    }
+
+    private function checkEtherscan(): array
+    {
+        $key = env('ETHERSCAN_API_KEY', '');
+        if (empty($key)) return ['status' => 'warn', 'message' => 'ETHERSCAN_API_KEY not set.'];
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(8)
+                ->get("https://api.etherscan.io/api", [
+                    'module' => 'stats', 'action' => 'ethsupply', 'apikey' => $key
+                ]);
+            if ($res->ok() && ($res->json('status') === '1' || $res->json('message') === 'OK')) {
+                return ['status' => 'ok', 'message' => 'Etherscan API key is valid.'];
+            }
+            $msg = $res->json('message') ?? $res->json('result') ?? 'Unknown';
+            if (str_contains(strtolower($msg), 'invalid') || str_contains(strtolower($msg), 'missing')) {
+                return ['status' => 'fail', 'message' => "Invalid API key: {$msg}"];
+            }
+            return ['status' => 'ok', 'message' => "Etherscan responded: {$msg}"];
+        } catch (\Throwable $e) {
+            return ['status' => 'fail', 'message' => 'Request failed: ' . $e->getMessage()];
+        }
+    }
+
+    private function checkBlockCypher(): array
+    {
+        $token = env('BLOCKCYPHER_TOKEN', '');
+        if (empty($token)) return ['status' => 'warn', 'message' => 'BLOCKCYPHER_TOKEN not set.'];
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(8)
+                ->get("https://api.blockcypher.com/v1/btc/main?token={$token}");
+            if ($res->ok() && isset($res->json()['name'])) {
+                return ['status' => 'ok', 'message' => 'BlockCypher token valid. Chain: ' . $res->json('name')];
+            }
+            return ['status' => 'fail', 'message' => 'Invalid token or request failed: ' . $res->status()];
+        } catch (\Throwable $e) {
+            return ['status' => 'fail', 'message' => 'Request failed: ' . $e->getMessage()];
+        }
+    }
+
+    private function checkTronGrid(): array
+    {
+        $key = trim(env('TRONGRID_API_KEY', ''));
+        if (empty($key)) return ['status' => 'warn', 'message' => 'TRONGRID_API_KEY not set.'];
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(8)
+                ->withHeaders(['TRON-PRO-API-KEY' => $key])
+                ->get('https://api.trongrid.io/v1/blocks/latest');
+            if ($res->ok() && isset($res->json()['data'])) {
+                return ['status' => 'ok', 'message' => 'TronGrid API key valid.'];
+            }
+            $err = $res->json('Error') ?? $res->json('message') ?? $res->status();
+            return ['status' => 'fail', 'message' => "TronGrid error: {$err}"];
+        } catch (\Throwable $e) {
+            return ['status' => 'fail', 'message' => 'Request failed: ' . $e->getMessage()];
+        }
+    }
+
+    private function checkPhpMail(): array
+    {
+        if (!function_exists('mail')) {
+            return ['status' => 'fail', 'message' => 'PHP mail() function is disabled on this server. Use SMTP instead.'];
+        }
+        // Check if sendmail path is configured
+        $sendmailPath = ini_get('sendmail_path');
+        if (empty($sendmailPath)) {
+            return ['status' => 'warn', 'message' => 'PHP mail() exists but sendmail_path is not configured. Use SMTP — it\'s more reliable on cPanel.'];
+        }
+        return ['status' => 'ok', 'message' => "PHP mail() enabled. sendmail_path: {$sendmailPath}. Note: SMTP is more reliable for cPanel."];
+    }
+
+    private function checkCurl(): array
+    {
+        if (!function_exists('curl_version')) {
+            return ['status' => 'fail', 'message' => 'cURL is not available on this server — all external API calls will fail.'];
+        }
+        $v = curl_version();
+        return ['status' => 'ok', 'message' => "cURL {$v['version']} available. SSL: {$v['ssl_version']}"];
+    }
+
+    private function checkDatabase(): array
+    {
+        try {
+            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            $db = config('database.connections.' . config('database.default') . '.database');
+            return ['status' => 'ok', 'message' => "Connected to database: {$db}"];
+        } catch (\Throwable $e) {
+            return ['status' => 'fail', 'message' => 'DB connection failed: ' . $e->getMessage()];
+        }
     }
 
     private function writeEnvValues(array $values): void

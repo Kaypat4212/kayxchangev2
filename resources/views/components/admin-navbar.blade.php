@@ -50,7 +50,7 @@
 
         {{-- Settings dropdown --}}
         <div class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle @if(request()->is('admin/site-content*') || request()->is('admin/email-settings*') || request()->is('admin/email-templates*') || request()->is('admin/env-editor*')) active @endif"
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/site-content*') || request()->is('admin/email-settings*') || request()->is('admin/email-templates*') || request()->is('admin/env-editor*') || request()->is('admin/diagnostics*')) active @endif"
              href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-gear-fill me-1"></i>Settings
           </a>
@@ -74,6 +74,11 @@
             <li>
               <a class="dropdown-item @if(request()->is('admin/env-editor*')) active @endif" href="{{ url('/admin/env-editor') }}">
                 <i class="bi bi-key-fill me-2"></i>API Keys
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/diagnostics*')) active @endif" href="{{ route('admin.diagnostics') }}">
+                <i class="bi bi-stethoscope me-2"></i>System Diagnostics
               </a>
             </li>
           </ul>

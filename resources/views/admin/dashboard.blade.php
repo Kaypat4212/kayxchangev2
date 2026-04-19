@@ -625,6 +625,7 @@
                     <div class="col-6"><a href="{{ url('/admin/email-settings') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-envelope-gear me-1"></i>Email Settings</a></div>
                     <div class="col-6"><a href="{{ route('admin.email-templates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-envelope-paper me-1"></i>Email Templates</a></div>
                     <div class="col-6"><a href="{{ url('/admin/env-editor') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-key me-1"></i>API Keys</a></div>
+                    <div class="col-6"><a href="{{ route('admin.diagnostics') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-stethoscope me-1"></i>Diagnostics</a></div>
                     <div class="col-6"><a href="{{ url('/admin/telegram') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-telegram me-1"></i>Telegram Bot</a></div>
                 </div>
             </div>
