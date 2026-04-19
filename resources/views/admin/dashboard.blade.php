@@ -492,7 +492,7 @@
             </div>
         </div>
 
-        <div class="kx-panel">
+        <div class="kx-panel" id="company-account">
             <div class="kx-panel-header">
                 <h5><i class="bi bi-building me-2" style="color:var(--kx-info)"></i>Company Bank Account</h5>
             </div>
@@ -757,13 +757,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     fetchCounts(); setInterval(fetchCounts, 30000);
 
-    // Load crypto rates
-    fetch('{{ route("admin.rates") }}', { credentials: 'same-origin', headers: { 'Accept':'application/json', 'X-CSRF-TOKEN': csrf() } })
-    .then(r => {
-        if (!r.ok) return Promise.reject(r.status);
-        return r.json();
-    })
-    .then(data => {
+    // Load crypto rates (server-rendered, no AJAX needed)
+    (function() {
+        const data = @json($cryptoRates);
         const container = document.getElementById('rates-container');
         if (!data || !data.length) {
             container.innerHTML = '<p style="color:var(--kx-muted);margin:0">No rates configured yet. <a href="{{ url("/admin/crypto-rates") }}" style="color:var(--kx-green)">Add rates →</a></p>';
@@ -787,13 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="number" step="0.01" class="form-control kx-input" name="sell_rate" value="${parseFloat(rate.sell_rate).toFixed(2)}" required>
                 </div>
             </div>`).join('');
-    })
-    .catch(status => {
-        const msg = status === 401 || status === 403
-            ? 'Session expired — please <a href="{{ url("/admin/login") }}" style="color:var(--kx-green)">log in again</a>.'
-            : 'Could not load rates. Run <code style="color:var(--kx-green)">php artisan migrate</code> on the server, then <a href="" onclick="location.reload();return false;" style="color:var(--kx-green)">reload</a>.';
-        document.getElementById('rates-container').innerHTML = `<p style="color:var(--kx-danger);margin:0">${msg}</p>`;
-    });
+    })();
 
     // Save rates
     document.getElementById('rates-form').addEventListener('submit', e => {

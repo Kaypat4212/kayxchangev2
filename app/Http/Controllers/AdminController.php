@@ -19,7 +19,9 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Models\CryptoRate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -102,7 +104,11 @@ class AdminController extends Controller
         $totalReferralRewards = Referral::where('status', 'completed')->sum('reward_amount');
         $siteMode = SiteContent::get('site_mode', 'production');
 
-        return view('admin.dashboard', compact('totalUsers', 'totalReferrals', 'totalReferralRewards', 'siteMode'));
+        $cryptoRates = Schema::hasTable('crypto_rates')
+            ? CryptoRate::all()->map(fn($r) => ['coin' => $r->coin, 'buy_rate' => $r->buy_rate, 'sell_rate' => $r->sell_rate])->values()
+            : collect();
+
+        return view('admin.dashboard', compact('totalUsers', 'totalReferrals', 'totalReferralRewards', 'siteMode', 'cryptoRates'));
     }
 
     public function toggleSiteMode(Request $request)
@@ -333,8 +339,11 @@ class AdminController extends Controller
         return response()->json(['error' => 'Unauthorized'], 403);
     }
 
-    public function getCompanyAccount()
+    public function getCompanyAccount(Request $request)
     {
+        if (!$request->expectsJson() && !$request->ajax()) {
+            return redirect()->route('admin.dashboard')->with('info', 'Manage company account below.');
+        }
         try {
             $companyAccount = CompanyAccount::first();
             return response()->json($companyAccount ?: null);

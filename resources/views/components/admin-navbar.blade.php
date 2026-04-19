@@ -131,8 +131,8 @@
         </div>
 
         {{-- Finance --}}
-        <a class="nav-link @if(request()->is('admin/company-account*')) active @endif"
-           href="{{ route('admin.company-account') }}">
+        <a class="nav-link @if(request()->is('admin/dashboard*')) active @endif"
+           href="{{ route('admin.dashboard') }}#company-account">
           <i class="bi bi-building me-1"></i>Company Account
         </a>
 
