@@ -608,6 +608,12 @@ class TelegramService
                         case 'sell_pin':
                             $this->handleSellPinInput($chatId, $text);
                             return true;
+                        case 'sell_txid':
+                            $this->handleSellTxidInput($chatId, $text);
+                            return true;
+                        case 'buy_txid':
+                            $this->handleBuyTxidInput($chatId, $text);
+                            return true;
                         case 'buy_pin':
                             $this->handleBuyPinInput($chatId, $text);
                             return true;
@@ -667,6 +673,10 @@ class TelegramService
                     $this->handleSellPayoutSelected($chatId, substr($data, 12));
                     return true;
                 }
+                if (str_starts_with($data, 'sell_proof_method:')) {
+                    $this->handleSellProofMethodSelected($chatId, substr($data, 18));
+                    return true;
+                }
                 if ($data === 'sell_confirm') {
                     $this->handleSellConfirm($chatId);
                     return true;
@@ -679,6 +689,10 @@ class TelegramService
                 }
                 if (str_starts_with($data, 'buy_network:')) {
                     $this->handleBuyNetworkSelected($chatId, substr($data, 12));
+                    return true;
+                }
+                if (str_starts_with($data, 'buy_proof_method:')) {
+                    $this->handleBuyProofMethodSelected($chatId, substr($data, 17));
                     return true;
                 }
                 if ($data === 'buy_confirm') {
@@ -1353,9 +1367,9 @@ class TelegramService
                     "  └ If your account has a PIN, you\'ll be asked to verify it\n\n" .
                     "💱 *Trading Commands*\n" .
                     "`/sell` — Sell cryptocurrency (BTC, ETH, USDT, SOL)\n" .
-                    "  └ PIN required if set → choose coin → amount → proof photo → payout\n" .
+                    "  └ PIN required if set → choose coin → amount → proof (photo or txid) → payout\n" .
                     "`/buy` — Buy cryptocurrency\n" .
-                    "  └ PIN required if set → choose coin → amount → wallet → proof photo\n" .
+                    "  └ PIN required if set → choose coin → amount → wallet → proof (photo or txid)\n" .
                     "`/rates` — View live NGN buy & sell rates\n" .
                     "`/balance` — Check your account balance\n" .
                     "`/trades` — View your last 5 trades\n\n" .
@@ -1607,17 +1621,22 @@ class TelegramService
         $network = $data['network'] ?? '';
 
         $this->mergeData($chatId, ['usd_amount' => $amount, 'naira_amount' => $naira]);
-        $this->setState($chatId, 'sell_proof');
+        $this->setState($chatId, 'sell_proof_method');
 
         $netLabel = $network && $network !== $coin ? " ({$network})" : '';
+        $keyboard = ['inline_keyboard' => [
+            [
+                ['text' => '📸 Upload Proof Photo', 'callback_data' => 'sell_proof_method:photo'],
+                ['text' => '🔢 Enter Transaction ID', 'callback_data' => 'sell_proof_method:txid'],
+            ],
+        ]];
         $this->sendMessage($chatId,
             "💰 *Trade Summary So Far:*\n\n" .
             "🪙 Coin: *{$coin}{$netLabel}*\n" .
             "💵 You sell: *\${$amount}*\n" .
             "💴 You receive: *₦" . number_format($naira, 2) . "*\n\n" .
-            "📸 *Now upload your payment proof (screenshot/photo)*\n" .
-            "_Send the photo as a Telegram photo (not a file)_",
-            'Markdown');
+            "📋 *How would you like to provide proof?*",
+            'Markdown', $keyboard);
     }
 
     private function handleSellProofUpload(int $chatId, string $fileId): void
@@ -1645,6 +1664,86 @@ class TelegramService
         $this->sendMessage($chatId,
             "✅ *Proof received!*\n\nSelect your payout method:",
             'Markdown', $keyboard);
+    }
+
+    private function handleBuyProofMethodSelected(int $chatId, string $method): void
+    {
+        $this->mergeData($chatId, ['proof_method' => $method]);
+
+        if ($method === 'photo') {
+            $this->setState($chatId, 'buy_proof');
+            $this->sendMessage($chatId,
+                "📸 *Upload your payment proof (screenshot/receipt as a photo)*\n" .
+                "_Send the photo as a Telegram photo (not a file)_",
+                'Markdown');
+        } elseif ($method === 'txid') {
+            $this->setState($chatId, 'buy_txid');
+            $this->sendMessage($chatId,
+                "🔢 *Enter your bank transfer reference/transaction ID*\n\n" .
+                "Please provide the reference number from your bank transfer:",
+                'Markdown');
+        }
+    }
+
+    private function handleSellTxidInput(int $chatId, string $txid): void
+    {
+        if (empty(trim($txid))) {
+            $this->sendMessage($chatId, "❌ Transaction ID cannot be empty. Please try again.");
+            return;
+        }
+
+        $this->mergeData($chatId, ['txid' => trim($txid)]);
+        $this->setState($chatId, 'sell_payout');
+
+        $user = User::find($this->getData($chatId)['user_id'] ?? 0);
+        $hasSavedBank = $user && !empty($user->bank_name) && $user->bank_name !== 'N/A';
+
+        $rows = [];
+        if ($hasSavedBank) {
+            $rows[] = [['text' => "🏦 Default Bank ({$user->bank_name} — {$user->account_number})", 'callback_data' => 'sell_payout:default_bank']];
+        }
+        $rows[] = [['text' => '💰 Wallet Balance (add to app balance)', 'callback_data' => 'sell_payout:wallet_balance']];
+        $rows[] = [['text' => '❌ Cancel', 'callback_data' => 'cancel']];
+
+        $keyboard = ['inline_keyboard' => $rows];
+        $this->sendMessage($chatId,
+            "✅ *Transaction ID received!*\n\nSelect your payout method:",
+            'Markdown', $keyboard);
+    }
+
+    private function handleBuyTxidInput(int $chatId, string $txid): void
+    {
+        if (empty(trim($txid))) {
+            $this->sendMessage($chatId, "❌ Transaction ID cannot be empty. Please try again.");
+            return;
+        }
+
+        $this->mergeData($chatId, ['txid' => trim($txid)]);
+        $this->setState($chatId, 'buy_confirm');
+
+        $data    = $this->getData($chatId);
+        $coin    = $data['coin'] ?? '?';
+        $network = $data['network'] ?? '';
+        $naira   = $data['naira_amount'] ?? 0;
+        $usd     = $data['usd_amount'] ?? 0;
+        $wallet  = $data['recipient_wallet'] ?? '?';
+
+        $netLabel = ($network && $network !== $coin) ? " ({$network})" : '';
+        $msg = "📋 *Confirm Your Buy Order*\n\n" .
+               "🪙 Coin: *{$coin}{$netLabel}*\n" .
+               "💴 You pay: *₦" . number_format($naira, 2) . "*\n" .
+               "💵 You receive: *≈{$usd} {$coin}*\n" .
+               "📬 Your wallet: `{$wallet}`\n\n" .
+               "💳 Payment method: Bank Transfer";
+
+        $keyboard = ['inline_keyboard' => [
+            [
+                ['text' => '✅ Confirm Order', 'callback_data' => 'buy_confirm'],
+                ['text' => '❌ Cancel',         'callback_data' => 'cancel'],
+            ],
+        ]];
+
+        $this->sendMessage($chatId, $msg, 'Markdown', $keyboard);
     }
 
     private function handleSellPayoutSelected(int $chatId, string $method): void
@@ -1699,9 +1798,10 @@ class TelegramService
         $usd     = $data['usd_amount']   ?? null;
         $naira   = $data['naira_amount'] ?? null;
         $proof   = $data['proof']        ?? null;
+        $txid    = $data['txid']         ?? null;
         $method  = $data['payout_method'] ?? null;
 
-        if (!$coin || !$usd || !$proof || !$method) {
+        if (!$coin || !$usd || (!$proof && !$txid) || !$method) {
             $this->sendMessage($chatId, "❌ Missing trade data. Please start again with /sell");
             $this->clearState($chatId);
             return;
@@ -1720,9 +1820,9 @@ class TelegramService
                 'usd_amount'      => $usd,
                 'naira_amount'    => $naira,
                 'proof'           => $proof,
+                'transaction_ref' => $txid ?: 'SELL-TG-' . Str::upper(Str::random(8)),
                 'payment_method'  => $method,
                 'status'          => 'pending',
-                'transaction_ref' => 'SELL-TG-' . Str::upper(Str::random(8)),
                 'wallet_address'  => $walletAddr,
                 'bank_name'       => match($method) {
                     'default_bank'   => ($user->bank_name ?? 'N/A'),
@@ -1908,7 +2008,7 @@ class TelegramService
         }
 
         $this->mergeData($chatId, ['recipient_wallet' => $wallet]);
-        $this->setState($chatId, 'buy_proof');
+        $this->setState($chatId, 'buy_proof_method');
 
         $data  = $this->getData($chatId);
         $coin  = $data['coin'] ?? '?';
@@ -1917,14 +2017,20 @@ class TelegramService
         // Show company account for payment
         $companyAccount = $this->getCompanyBankDetails();
 
+        $keyboard = ['inline_keyboard' => [
+            [
+                ['text' => '📸 Upload Proof Photo', 'callback_data' => 'buy_proof_method:photo'],
+                ['text' => '🔢 Enter Transaction ID', 'callback_data' => 'buy_proof_method:txid'],
+            ],
+        ]];
         $msg = "📋 *Payment Instructions*\n\n" .
                "Transfer *₦" . number_format($naira, 2) . "* to:\n\n" .
                "🏦 *Bank:* {$companyAccount['bank']}\n" .
                "💳 *Account:* `{$companyAccount['number']}`\n" .
                "👤 *Name:* {$companyAccount['name']}\n\n" .
-               "📸 After payment, *upload your payment screenshot/receipt as a photo*:";
+               "📋 *How would you like to provide proof?*";
 
-        $this->sendMessage($chatId, $msg, 'Markdown');
+        $this->sendMessage($chatId, $msg, 'Markdown', $keyboard);
     }
 
     private function handleBuyProofUpload(int $chatId, string $fileId): void
@@ -1979,9 +2085,10 @@ class TelegramService
         $usd     = $data['usd_amount']       ?? null;
         $naira   = $data['naira_amount']     ?? null;
         $proof   = $data['proof']            ?? null;
+        $txid    = $data['txid']             ?? null;
         $wallet  = $data['recipient_wallet'] ?? null;
 
-        if (!$coin || !$usd || !$proof || !$wallet) {
+        if (!$coin || !$usd || (!$proof && !$txid) || !$wallet) {
             $this->sendMessage($chatId, "❌ Missing trade data. Please start again with /buy");
             $this->clearState($chatId);
             return;
@@ -2000,7 +2107,7 @@ class TelegramService
                 'payment_proof'    => $proof,
                 'payment_method'   => 'Bank Transfer',
                 'status'           => 'pending',
-                'transaction_ref'  => 'BUY-TG-' . Str::upper(Str::random(8)),
+                'transaction_ref'  => $txid ?: 'BUY-TG-' . Str::upper(Str::random(8)),
                 'transaction_type' => 'buy',
                 'ip_address'       => '0.0.0.0',
             ]);

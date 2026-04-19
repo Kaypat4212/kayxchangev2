@@ -270,6 +270,35 @@ class AdminTelegramController extends Controller
     }
 
     /**
+     * Serve a proof image from local storage (for admin access)
+     */
+    public function serveProof(string $path)
+    {
+        // Ensure admin access
+        if (!auth()->check() || !auth()->user()->is_admin) {
+            abort(403);
+        }
+
+        // Validate path to prevent directory traversal
+        if (strpos($path, '..') !== false || strpos($path, '/') === 0) {
+            abort(400);
+        }
+
+        $fullPath = storage_path("app/public/payment_proofs/{$path}");
+
+        if (!file_exists($fullPath)) {
+            abort(404);
+        }
+
+        $mime = mime_content_type($fullPath) ?: 'application/octet-stream';
+
+        return response()->file($fullPath, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
+    /**
      * Reply directly to a chat_id (linked or unlinked users)
      */
     public function replyToChatId(Request $request)

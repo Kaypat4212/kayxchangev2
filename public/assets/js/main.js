@@ -27,7 +27,8 @@
     if (all) {
       select(el, all).forEach(e => e.addEventListener(type, listener))
     } else {
-      select(el, all).addEventListener(type, listener)
+      let selected = select(el, all)
+      if (selected) selected.addEventListener(type, listener)
     }
   }
 

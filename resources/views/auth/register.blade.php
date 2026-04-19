@@ -249,8 +249,8 @@
           <a href="https://wa.me/+2349016740523" target="_blank" class="lx-social-btn">
             <i class="bi bi-whatsapp" style="color:#25d366"></i> WhatsApp Trade
           </a>
-          <a href="https://t.me/TradewithkayxchangeBOT" target="_blank" class="lx-social-btn">
-            <i class="bi bi-telegram" style="color:#0088cc"></i> Telegram Bot
+          <a href="https://t.me/TradewithkayxchangeBOT?start=register" target="_blank" class="lx-social-btn">
+            <i class="bi bi-telegram" style="color:#0088cc"></i> Create with Telegram
           </a>
         </div>
       </div>

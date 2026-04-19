@@ -73,6 +73,8 @@ Route::get('/about', fn() => view('about'))->name('about');
 Route::get('/blog', [\App\Http\Controllers\BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [\App\Http\Controllers\BlogController::class, 'show'])->name('blog.show');
 Route::get('/offline', fn() => view('offline'))->name('offline');
+Route::get('/privacy', fn() => view('privacy'))->name('privacy');
+Route::get('/terms', fn() => view('terms'))->name('terms');
 
 // ── Telegram Login Widget callback (no auth required) ───────────────────────
 Route::post('/auth/telegram/callback', [TelegramLoginController::class, 'callback'])->name('telegram.login.callback');
@@ -136,6 +138,8 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('telegram/reply',        [AdminTelegramController::class, 'replyToChatId'])->name('admin.telegram.reply');
     Route::get('telegram/file/{fileId}', [AdminTelegramController::class, 'serveFile'])->name('admin.telegram.file')
          ->where('fileId', '[A-Za-z0-9_\-]+');
+    Route::get('proof/{path}', [AdminTelegramController::class, 'serveProof'])->name('admin.proof')
+         ->where('path', '.*');
     Route::post('telegram/ai-suggest',   [AdminTelegramController::class, 'aiSuggestReply'])->name('admin.telegram.ai-suggest');
     // AI Bot Config
     Route::get('telegram/ai-config',       [AdminAiBotController::class, 'index'])->name('admin.telegram.ai-config');

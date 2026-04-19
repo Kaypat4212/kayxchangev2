@@ -225,7 +225,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <td>
                         @if($t->payment_proof)
                             <a href="{{ asset('storage/'.$t->payment_proof) }}" target="_blank" title="View proof">
-                                <img src="{{ asset('storage/'.$t->payment_proof) }}" class="proof-thumb" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">
+                                <img src="{{ route('admin.proof', $t->payment_proof) }}" class="proof-thumb" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">
                                 <span class="btn-kx-icon" style="display:none"><i class="bi bi-image"></i></span>
                             </a>
                         @else
@@ -360,8 +360,8 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <td>
                         @php $proofPath = $t->payment_proof ?? $t->proof; @endphp
                         @if($proofPath)
-                            <a href="{{ asset('storage/'.$proofPath) }}" target="_blank">
-                                <img src="{{ asset('storage/'.$proofPath) }}" class="proof-thumb" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">
+                            <a href="{{ route('admin.proof', $proofPath) }}" target="_blank">
+                                <img src="{{ route('admin.proof', $proofPath) }}" class="proof-thumb" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">
                                 <span class="btn-kx-icon" style="display:none"><i class="bi bi-image"></i></span>
                             </a>
                         @else
