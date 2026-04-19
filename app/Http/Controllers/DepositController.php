@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Deposit;
 use App\Models\CompanyAccount;
+use App\Models\Referral;
+use App\Models\SiteContent;
+use App\Models\Wallet;
 use App\Services\PaymentGatewayService;
 use App\Mail\DepositApproved;
 use App\Mail\TradeNotification;
@@ -209,6 +212,7 @@ class DepositController extends Controller
                 'user_id'    => $deposit->user_id,
             ]);
 
+            $this->checkAndCompleteReferral($deposit);
             $this->sendTelegramAlert($deposit, false);
 
             return redirect()->route('deposits.index')
@@ -333,6 +337,8 @@ class DepositController extends Controller
             'reference'  => $reference,
             'amount'     => $deposit->amount,
         ]);
+
+        $this->checkAndCompleteReferral($deposit);
 
         // Send approval email
         try {
@@ -531,6 +537,8 @@ class DepositController extends Controller
 
             // Send email notification if approved
             if ($request->status === 'approved' && $deposit->user && $deposit->user->email) {
+                $deposit->user->increment('balance', $deposit->amount);
+                $this->checkAndCompleteReferral($deposit);
                 Mail::to($deposit->user->email)->send(new DepositApproved($deposit));
                 Log::info('Deposit approval email sent', [
                     'deposit_id' => $deposit->id,
@@ -683,5 +691,106 @@ class DepositController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * When a deposit is approved, check if the referred user now has >= ₦10,000 in total
+     * approved deposits. If yes and there's a pending referral, credit the referrer.
+     */
+    private function checkAndCompleteReferral(Deposit $deposit): void
+    {
+        try {
+            $user = $deposit->user;
+            if (!$user || !$user->referred_by) {
+                return;
+            }
+
+            // Find a pending referral for this user
+            $referral = Referral::where('referred_id', $user->id)
+                ->where('status', 'pending')
+                ->first();
+
+            if (!$referral) {
+                return;
+            }
+
+            // ── Anti-fraud gate: referred user must be KYC-verified ───────────
+            // This ensures every rewarded account has a unique government ID.
+            if (!$user->kyc_verified) {
+                Log::info('Referral reward held: referred user not KYC verified', [
+                    'referred_user' => $user->id,
+                    'referral_id'   => $referral->id,
+                ]);
+                return;
+            }
+
+            // Sum all approved deposits for this user
+            $totalDeposited = Deposit::where('user_id', $user->id)
+                ->where('status', 'approved')
+                ->sum('amount');
+
+            $minimumRequired = 10000.00;
+
+            if ($totalDeposited < $minimumRequired) {
+                Log::info('Referral reward not yet due', [
+                    'referred_user'    => $user->id,
+                    'total_deposited'  => $totalDeposited,
+                    'minimum_required' => $minimumRequired,
+                ]);
+                return;
+            }
+
+            // Get current admin-configured reward amount
+            $reward = (float) SiteContent::get('referral_reward_amount', '500');
+            if ($reward <= 0) {
+                return;
+            }
+
+            // Credit the referrer
+            $referrer = $referral->referrer;
+            if (!$referrer) {
+                return;
+            }
+
+            // Update referral to completed
+            $referral->update([
+                'status'        => 'completed',
+                'reward_amount' => $reward,
+            ]);
+
+            // Credit referrer's balance
+            $referrer->increment('balance', $reward);
+            $wallet = $referrer->wallet;
+            if ($wallet) {
+                $wallet->increment('balance', $reward);
+            } else {
+                Wallet::create([
+                    'user_id'  => $referrer->id,
+                    'balance'  => $reward,
+                    'currency' => 'NGN',
+                ]);
+            }
+
+            Log::info('Referral reward credited', [
+                'referrer_id'  => $referrer->id,
+                'referred_id'  => $user->id,
+                'reward'       => $reward,
+            ]);
+
+            // Notify referrer by email
+            try {
+                Mail::to($referrer->email)->send(new \App\Mail\TradeNotification([
+                    'subject' => 'Referral Reward Credited!',
+                    'body'    => "🎉 You've earned ₦" . number_format($reward, 2) . " for referring {$user->name}! "
+                               . "The reward has been added to your wallet.",
+                ]));
+            } catch (\Exception $e) {
+                Log::warning('Referral reward email failed: ' . $e->getMessage());
+            }
+        } catch (\Exception $e) {
+            Log::error('checkAndCompleteReferral error: ' . $e->getMessage(), [
+                'deposit_id' => $deposit->id,
+            ]);
+        }
     }
 }

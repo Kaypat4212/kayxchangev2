@@ -498,6 +498,94 @@
             @endif
         </div>
 
+        @if(isset($blogPosts) && $blogPosts->isNotEmpty())
+        <!-- ===== Blog Carousel ===== -->
+        <div class="kx-card p-4 mb-4">
+            <div class="kx-sec-title mb-3">
+                <i class="bi bi-newspaper"></i>Latest Blog Posts
+                <a href="{{ url('/blog') }}" class="kx-sec-tag ms-auto" style="text-decoration:none;cursor:pointer;">View All <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <style>
+            .kx-db-blog-wrap { overflow: hidden; position: relative; }
+            .kx-db-blog-track {
+                display: flex;
+                gap: 16px;
+                animation: kxDbBlogScroll linear infinite;
+                width: max-content;
+            }
+            .kx-db-blog-wrap:hover .kx-db-blog-track { animation-play-state: paused; }
+            @keyframes kxDbBlogScroll {
+                0%   { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+            }
+            .kx-db-bc {
+                flex: 0 0 240px;
+                background: rgba(255,255,255,0.03);
+                border: 1px solid rgba(0,204,0,0.1);
+                border-radius: 14px;
+                overflow: hidden;
+                text-decoration: none !important;
+                transition: border-color .25s, transform .25s;
+                display: flex;
+                flex-direction: column;
+            }
+            .kx-db-bc:hover { border-color: rgba(0,204,0,0.32); transform: translateY(-4px); }
+            body.light-mode .kx-db-bc { background: #f9fdf9; border-color: rgba(0,130,17,0.12); }
+            .kx-db-bc-img { width:100%; height:120px; object-fit:cover; display:block; background:rgba(0,80,0,0.2); }
+            .kx-db-bc-ph  { width:100%; height:120px; background:linear-gradient(135deg,rgba(0,50,0,.5),rgba(0,20,0,.8)); display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:rgba(0,204,0,0.25); }
+            .kx-db-bc-body { padding:12px 14px; flex:1; display:flex; flex-direction:column; gap:5px; }
+            .kx-db-bc-cat { font-size:.65rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#00cc00; }
+            .kx-db-bc-title { font-size:.82rem; font-weight:700; color:#e8f5e8; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+            body.light-mode .kx-db-bc-title { color:#0a1a0a; }
+            .kx-db-bc-date { font-size:.68rem; color:rgba(255,255,255,.3); margin-top:auto; }
+            body.light-mode .kx-db-bc-date { color:rgba(0,0,0,.35); }
+            </style>
+            <div class="kx-db-blog-wrap">
+                <div class="kx-db-blog-track" id="kxDbBlogTrack">
+                    @foreach($blogPosts as $post)
+                    <a href="{{ url('/blog/'.$post->slug) }}" class="kx-db-bc">
+                        @if($post->cover_image)
+                            <img class="kx-db-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy">
+                        @else
+                            <div class="kx-db-bc-ph"><i class="bi bi-newspaper"></i></div>
+                        @endif
+                        <div class="kx-db-bc-body">
+                            @if($post->category)<span class="kx-db-bc-cat">{{ $post->category }}</span>@endif
+                            <div class="kx-db-bc-title">{{ $post->title }}</div>
+                            <div class="kx-db-bc-date"><i class="bi bi-calendar3 me-1"></i>{{ $post->published_at?->format('M d, Y') }}</div>
+                        </div>
+                    </a>
+                    @endforeach
+                    {{-- Duplicate for seamless infinite scroll --}}
+                    @foreach($blogPosts as $post)
+                    <a href="{{ url('/blog/'.$post->slug) }}" class="kx-db-bc" aria-hidden="true" tabindex="-1">
+                        @if($post->cover_image)
+                            <img class="kx-db-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy">
+                        @else
+                            <div class="kx-db-bc-ph"><i class="bi bi-newspaper"></i></div>
+                        @endif
+                        <div class="kx-db-bc-body">
+                            @if($post->category)<span class="kx-db-bc-cat">{{ $post->category }}</span>@endif
+                            <div class="kx-db-bc-title">{{ $post->title }}</div>
+                            <div class="kx-db-bc-date"><i class="bi bi-calendar3 me-1"></i>{{ $post->published_at?->format('M d, Y') }}</div>
+                        </div>
+                    </a>
+                    @endforeach
+                </div>
+            </div>
+            <script>
+            (function(){
+                var t = document.getElementById('kxDbBlogTrack');
+                if (!t) return;
+                var count = {{ $blogPosts->count() }};
+                // card 240 + gap 16 = 256px per card
+                var dur = Math.max(count * 3.5, 16);
+                t.style.animationDuration = dur + 's';
+            })();
+            </script>
+        </div>
+        @endif
+
     </div>
 </div>
 

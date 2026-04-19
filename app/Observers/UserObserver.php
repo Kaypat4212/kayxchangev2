@@ -28,14 +28,14 @@ class UserObserver
         ]);
         $user->update(['balance' => 0]); // Sync with users.balance
 
-        // Process referral reward if referred
+        // Process referral — create as PENDING; reward credited after referred user deposits ₦10,000
         if ($user->referred_by) {
             $code = strtoupper(trim((string) $user->referred_by));
-            $defaultReferrerReward = 2000.00;
-            $defaultSignupBonus = 1000.00;
+            $defaultReferrerReward = 0.00;
+            $defaultSignupBonus = 0.00;
             if (Schema::hasTable('site_contents')) {
-                $defaultReferrerReward = (float) SiteContent::get('referral_reward_amount', '2000');
-                $defaultSignupBonus = (float) SiteContent::get('special_referral_signup_bonus', '1000');
+                $defaultReferrerReward = (float) SiteContent::get('referral_reward_amount', '500');
+                $defaultSignupBonus = (float) SiteContent::get('special_referral_signup_bonus', '0');
             }
 
             $specialCode = null;
@@ -50,19 +50,18 @@ class UserObserver
                     ? (float) $specialCode->referrer_reward
                     : $defaultReferrerReward;
 
-                if ($specialCode->owner_user_id && $specialCode->owner_user_id !== $user->id && $reward > 0) {
+                if ($specialCode->owner_user_id && $specialCode->owner_user_id !== $user->id) {
                     $referrer = User::find($specialCode->owner_user_id);
 
                     if ($referrer) {
+                        // Create pending — credit only after ₦10,000 deposit
                         Referral::create([
-                            'referrer_id' => $referrer->id,
-                            'referred_id' => $user->id,
-                            'reward_amount' => $reward,
+                            'referrer_id'     => $referrer->id,
+                            'referred_id'     => $user->id,
+                            'reward_amount'   => $reward,
                             'reward_currency' => 'NGN',
-                            'status' => 'completed',
+                            'status'          => 'pending',
                         ]);
-
-                        $this->creditWallet($referrer, $reward);
                     }
                 }
 
@@ -78,16 +77,16 @@ class UserObserver
             }
 
             $referrer = User::whereRaw('UPPER(referral_code) = ?', [$code])->first();
-            if ($referrer && $referrer->id !== $user->id && $defaultReferrerReward > 0) {
-                Referral::create([
-                    'referrer_id' => $referrer->id,
-                    'referred_id' => $user->id,
-                    'reward_amount' => $defaultReferrerReward,
-                    'reward_currency' => 'NGN',
-                    'status' => 'completed',
-                ]);
-
-                $this->creditWallet($referrer, $defaultReferrerReward);
+            if ($referrer && $referrer->id !== $user->id) {
+                // Create pending referral — reward credited after ₦10,000 deposit
+                Referral::firstOrCreate(
+                    ['referrer_id' => $referrer->id, 'referred_id' => $user->id],
+                    [
+                        'reward_amount'   => $defaultReferrerReward,
+                        'reward_currency' => 'NGN',
+                        'status'          => 'pending',
+                    ]
+                );
             }
         }
     }

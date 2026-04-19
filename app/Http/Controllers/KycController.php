@@ -98,6 +98,39 @@ class KycController extends Controller
 
             if ($status === 'approved') {
                 $kyc->user->update(['kyc_verified' => 1]);
+
+                // When KYC is approved, re-check if a pending referral can now be completed
+                // (the deposit threshold may already be met but reward was held until KYC)
+                try {
+                    $kycUser = $kyc->user->fresh();
+                    $pendingReferral = \App\Models\Referral::where('referred_id', $kycUser->id)
+                        ->where('status', 'pending')
+                        ->first();
+
+                    if ($pendingReferral) {
+                        $totalDeposited = \App\Models\Deposit::where('user_id', $kycUser->id)
+                            ->where('status', 'approved')
+                            ->sum('amount');
+
+                        if ($totalDeposited >= 10000) {
+                            $reward = (float) \App\Models\SiteContent::get('referral_reward_amount', '500');
+                            if ($reward > 0) {
+                                $pendingReferral->update(['status' => 'completed', 'reward_amount' => $reward]);
+                                $referrer = $pendingReferral->referrer;
+                                if ($referrer) {
+                                    $referrer->increment('balance', $reward);
+                                    Log::info('Referral reward credited on KYC approval', [
+                                        'referrer_id' => $referrer->id,
+                                        'referred_id' => $kycUser->id,
+                                        'reward'      => $reward,
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+                } catch (\Exception $refEx) {
+                    Log::warning('KYC referral check failed: ' . $refEx->getMessage());
+                }
             } else {
                 $kyc->user->update(['kyc_verified' => 0]);
             }

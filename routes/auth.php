@@ -15,7 +15,9 @@ Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
                 ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    // Limit registrations: max 3 per IP per 60 minutes to prevent bulk fake-account creation
+    Route::post('register', [RegisteredUserController::class, 'store'])
+                ->middleware('throttle:3,60');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
                 ->name('login');

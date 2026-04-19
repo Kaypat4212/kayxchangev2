@@ -97,7 +97,10 @@ class CryptoController extends Controller
         // Referral count for dashboard stat tile
         $referralCount = Auth::user()->referralsMade()->count();
 
-        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount'));
+        // Latest published blog posts for dashboard carousel
+        $blogPosts = \App\Models\BlogPost::published()->limit(8)->get();
+
+        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts'));
     }
 
     public function buy()

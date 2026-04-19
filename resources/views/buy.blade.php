@@ -277,88 +277,67 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         </div><!-- /step2 -->
     </form>
 
-    <!-- ===== OTHER SOURCES ===== -->
+    <!-- ===== RECOMMENDED WALLETS ===== -->
     <div class="os-section">
         <div class="kx-card">
             <div class="os-header">
-                <div class="os-header-icon"><i class="bi bi-shop"></i></div>
+                <div class="os-header-icon"><i class="bi bi-wallet2"></i></div>
                 <div>
-                    <h6>Other Places to Buy Crypto</h6>
-                    <p>External platforms you can use to source your crypto</p>
+                    <h6>Recommended Crypto Wallets</h6>
+                    <p>Safe wallets to store your crypto after purchase</p>
                 </div>
             </div>
 
             <div class="os-disclaimer">
-                <i class="bi bi-shield-exclamation me-1"></i>
-                <strong>Heads up:</strong> The platforms below are independent third-party services. We do <strong>not</strong> endorse or take responsibility for any transactions made on them. Use them at your own discretion and always verify you are on the correct website before transacting.
+                <i class="bi bi-shield-check me-1"></i>
+                <strong>Tip:</strong> You need a crypto wallet to receive your purchase. Download one of the trusted wallets below, copy your wallet address from it, and paste it in the order form above.
             </div>
 
             <div class="os-grid">
-                <!-- Simplex -->
-                <div class="os-card">
-                    <div class="os-card-icon" style="background:rgba(0,192,143,.12);color:#00c08f;"><i class="bi bi-credit-card-fill"></i></div>
-                    <div class="os-card-body">
-                        <div class="os-card-name">Simplex</div>
-                        <div class="os-card-desc">Buy crypto with debit/credit card instantly. No ID required for small amounts.</div>
-                        <span class="os-card-tag" style="background:rgba(0,192,143,.12);color:#00c08f;">Card</span>
+                <!-- Trust Wallet -->
+                <a href="https://trustwallet.com/download" target="_blank" rel="noopener noreferrer" class="os-card" style="text-decoration:none;">
+                    <div class="os-card-icon" style="background:rgba(51,117,249,.12);color:#3375f9;">
+                        <i class="bi bi-shield-lock-fill"></i>
                     </div>
-                </div>
-                <!-- MoonPay -->
-                <div class="os-card">
-                    <div class="os-card-icon" style="background:rgba(118,67,255,.12);color:#7643ff;"><i class="bi bi-moon-stars-fill"></i></div>
                     <div class="os-card-body">
-                        <div class="os-card-name">MoonPay</div>
-                        <div class="os-card-desc">Fast fiat-to-crypto gateway. Supports card, bank &amp; Apple Pay.</div>
-                        <span class="os-card-tag" style="background:rgba(118,67,255,.12);color:#7643ff;">Fast</span>
+                        <div class="os-card-name">Trust Wallet</div>
+                        <div class="os-card-desc">Supports BTC, ETH, USDT &amp; thousands of tokens. Mobile app.</div>
+                        <span class="os-card-tag" style="background:rgba(51,117,249,.12);color:#3375f9;">Download</span>
                     </div>
-                </div>
-                <!-- BitPay -->
-                <div class="os-card">
-                    <div class="os-card-icon" style="background:rgba(0,126,255,.12);color:#007eff;"><i class="bi bi-shield-check-fill"></i></div>
+                </a>
+                <!-- Exodus -->
+                <a href="https://www.exodus.com/download/" target="_blank" rel="noopener noreferrer" class="os-card" style="text-decoration:none;">
+                    <div class="os-card-icon" style="background:rgba(139,95,248,.12);color:#8b5ff8;">
+                        <i class="bi bi-box-arrow-in-down-right"></i>
+                    </div>
                     <div class="os-card-body">
-                        <div class="os-card-name">BitPay</div>
-                        <div class="os-card-desc">Trusted crypto payment processor. Buy BTC, ETH &amp; more securely.</div>
-                        <span class="os-card-tag" style="background:rgba(0,126,255,.12);color:#007eff;">Trusted</span>
+                        <div class="os-card-name">Exodus Wallet</div>
+                        <div class="os-card-desc">Beautiful desktop &amp; mobile wallet. Easy to use for beginners.</div>
+                        <span class="os-card-tag" style="background:rgba(139,95,248,.12);color:#8b5ff8;">Download</span>
                     </div>
-                </div>
-                <!-- Bybit -->
-                <div class="os-card">
-                    <div class="os-card-icon" style="background:rgba(255,99,72,.12);color:#ff6348;"><i class="bi bi-bar-chart-fill"></i></div>
+                </a>
+                <!-- SafePal -->
+                <a href="https://www.safepal.com/download" target="_blank" rel="noopener noreferrer" class="os-card" style="text-decoration:none;">
+                    <div class="os-card-icon" style="background:rgba(0,183,138,.12);color:#00b78a;">
+                        <i class="bi bi-safe2-fill"></i>
+                    </div>
                     <div class="os-card-body">
-                        <div class="os-card-name">Bybit</div>
-                        <div class="os-card-desc">P2P buying with NGN support and competitive rates.</div>
-                        <span class="os-card-tag" style="background:rgba(255,99,72,.12);color:#ff6348;">P2P</span>
+                        <div class="os-card-name">SafePal</div>
+                        <div class="os-card-desc">Secure software &amp; hardware wallet. Supports BTC, ETH, TRC-20 USDT.</div>
+                        <span class="os-card-tag" style="background:rgba(0,183,138,.12);color:#00b78a;">Download</span>
                     </div>
-                </div>
-                <!-- Coinbase -->
-                <div class="os-card">
-                    <div class="os-card-icon" style="background:rgba(0,129,255,.12);color:#0081ff;"><i class="bi bi-hexagon-fill"></i></div>
-                    <div class="os-card-body">
-                        <div class="os-card-name">Coinbase</div>
-                        <div class="os-card-desc">Beginner-friendly exchange. Buy with card or bank transfer.</div>
-                        <span class="os-card-tag" style="background:rgba(0,129,255,.12);color:#0081ff;">Beginner</span>
-                    </div>
-                </div>
-                <!-- Noones -->
-                <div class="os-card">
-                    <div class="os-card-icon" style="background:rgba(255,140,0,.12);color:#ff8c00;"><i class="bi bi-people-fill"></i></div>
-                    <div class="os-card-body">
-                        <div class="os-card-name">Noones</div>
-                        <div class="os-card-desc">Nigeria-popular P2P platform. Buy direct from local traders.</div>
-                        <span class="os-card-tag" style="background:rgba(255,140,0,.12);color:#ff8c00;">Nigeria</span>
-                    </div>
-                </div>
+                </a>
             </div>
 
             <div class="os-manual-note">
                 <i class="bi bi-clock-history"></i>
                 <div>
-                    <strong style="color:var(--kx-text);">Our process is 100% manual.</strong> Once you place an order here, our team processes it by hand &#8212; verifying your details, sourcing the crypto, and sending it to your provided wallet. This typically takes <strong style="color:var(--kx-green);">15 &#8211; 60 minutes</strong> depending on network conditions. You can use any external platform above to buy crypto independently, but if you choose to buy through us, rest assured we take our time to ensure every order is handled carefully and delivered safely.
+                    <strong style="color:var(--kx-text);">Our process is 100% manual.</strong> Once you place an order, our team verifies your payment and sends the crypto to your wallet address. This typically takes <strong style="color:var(--kx-green);">15 – 60 minutes</strong> depending on network conditions. Every order is handled carefully and delivered safely.
                 </div>
             </div>
         </div>
     </div>
-    <!-- /other sources -->
+    <!-- /recommended wallets -->
 
 </div>
 </div>

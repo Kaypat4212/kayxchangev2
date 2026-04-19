@@ -198,6 +198,22 @@
             @enderror
           </div>
 
+          <div class="mb-3">
+            <label for="phone" class="lx-label">Phone number <span style="font-size:.72rem;color:rgba(255,255,255,.38);font-weight:400">(required — for account security)</span></label>
+            <input id="phone" name="phone" type="tel"
+              class="lx-field @error('phone') is-invalid @enderror"
+              value="{{ old('phone') }}"
+              placeholder="e.g. 08012345678"
+              required autocomplete="tel">
+            @error('phone')
+              <div class="lx-error"><i class="bi bi-exclamation-circle"></i>{{ $message }}</div>
+            @enderror
+            <div style="margin-top:.4rem;font-size:.72rem;color:rgba(255,255,255,.32);display:flex;align-items:center;gap:.4rem">
+              <i class="bi bi-shield-lock-fill" style="color:rgba(0,204,0,.5)"></i>
+              Each phone number can only be registered once. This prevents duplicate accounts.
+            </div>
+          </div>
+
           <div class="lx-pw-row">
             <div>
               <label for="password" class="lx-label">Password</label>

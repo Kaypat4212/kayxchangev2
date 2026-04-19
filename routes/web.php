@@ -65,7 +65,10 @@ Route::prefix('install')->name('install.')->group(function () {
 });
 
 Route::get('/', fn() => view('index'))->name('home');
-Route::get('/home', fn() => view('home'));
+Route::get('/home', function () {
+    $blogPosts = \App\Models\BlogPost::published()->limit(8)->get();
+    return view('home', compact('blogPosts'));
+});
 Route::get('/faqs', fn() => view('faqs'))->name('faqs');
 Route::get('/about', fn() => view('about'))->name('about');
 

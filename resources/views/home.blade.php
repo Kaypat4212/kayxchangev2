@@ -1679,34 +1679,173 @@
         </div>
     </section>
 
-    <!-- ======= Blog Section ======= -->
+    <!-- ======= Blog Carousel Section ======= -->
     <section class="kx-sec kx-sec-alt" id="blog">
         <div class="container">
             <div class="text-center mb-5" data-aos="fade-up">
-                <div class="kx-sec-tag mx-auto"><i class="bi bi-newspaper"></i>Learn</div>
-                <h2 class="kx-sec-h">Crypto Knowledge Hub</h2>
-                <p class="kx-sec-sub mx-auto">Well-curated guides to get you started with cryptocurrency.</p>
+                <div class="kx-sec-tag mx-auto"><i class="bi bi-newspaper"></i>Blog</div>
+                <h2 class="kx-sec-h">Latest from Our Blog</h2>
+                <p class="kx-sec-sub mx-auto">Crypto tips, guides, and market insights — updated regularly.</p>
             </div>
-            <div class="row g-4">
-                @php
-                $posts = [
-                    ['date' => 'Sep 15', 'title' => 'Introduction to Blockchain Technology', 'url' => url('/Blogpost/introductiontoblockchain.html')],
-                    ['date' => 'Aug 28', 'title' => 'Understanding Cryptocurrency Wallets',   'url' => url('/Blogpost/Understandingcryptocurrencywallets.html')],
-                    ['date' => 'Jul 11', 'title' => 'The Basics of Cryptocurrency',           'url' => url('/Blogpost/Thebasicsofcryptocurrency.html')],
-                    ['date' => 'Jul 11', 'title' => 'Types of Cryptocurrencies',              'url' => url('/Blogpost/Typesofcryptocurrency.html')],
-                ];
-                @endphp
-                @foreach($posts as $i => $post)
-                <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="{{ ($i+1)*80 }}">
-                    <div class="kx-blog-card">
-                        <span class="kx-blog-date"><i class="bi bi-calendar3 me-1"></i>{{ $post['date'] }}</span>
-                        <h3 class="kx-blog-title">{{ $post['title'] }}</h3>
-                        <a href="{{ $post['url'] }}" class="kx-blog-link">Read More <i class="bi bi-arrow-right"></i></a>
+        </div>
+
+        @if(isset($blogPosts) && $blogPosts->isNotEmpty())
+        <style>
+        .kx-blog-carousel-wrap {
+            position: relative;
+            overflow: hidden;
+            padding: 0 0 16px;
+        }
+        .kx-blog-carousel-track {
+            display: flex;
+            gap: 20px;
+            padding: 0 40px;
+            animation: kxBlogScroll linear infinite;
+            width: max-content;
+        }
+        .kx-blog-carousel-wrap:hover .kx-blog-carousel-track { animation-play-state: paused; }
+        @keyframes kxBlogScroll {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .kx-bc-card {
+            flex: 0 0 300px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(0,204,0,0.12);
+            border-radius: 18px;
+            overflow: hidden;
+            text-decoration: none !important;
+            transition: transform .28s ease, border-color .28s ease, box-shadow .28s ease;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+        }
+        .kx-bc-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0,204,0,0.38);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+        }
+        .kx-bc-img {
+            width: 100%;
+            height: 165px;
+            object-fit: cover;
+            display: block;
+            background: rgba(0,204,0,0.06);
+        }
+        .kx-bc-img-placeholder {
+            width: 100%;
+            height: 165px;
+            background: linear-gradient(135deg, rgba(0,60,0,0.5), rgba(0,30,0,0.8));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: rgba(0,204,0,0.3);
+        }
+        .kx-bc-body { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+        .kx-bc-cat {
+            font-size: 0.68rem; font-weight: 700; letter-spacing: .6px;
+            text-transform: uppercase; color: #00cc00;
+            background: rgba(0,204,0,0.1); border: 1px solid rgba(0,204,0,0.2);
+            padding: 2px 10px; border-radius: 20px;
+            display: inline-block; width: fit-content;
+        }
+        .kx-bc-title {
+            font-size: .93rem; font-weight: 700; color: #e8f5e8;
+            line-height: 1.4;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .kx-bc-excerpt {
+            font-size: .78rem; color: rgba(255,255,255,0.42); line-height: 1.55;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .kx-bc-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); }
+        .kx-bc-date { font-size: .72rem; color: rgba(255,255,255,0.32); }
+        .kx-bc-read { font-size: .75rem; font-weight: 600; color: #00cc00; display: flex; align-items: center; gap: 4px; }
+        .kx-blog-view-all { display: inline-flex; align-items: center; gap: 8px; margin-top: 32px; padding: 10px 26px; border: 1.5px solid rgba(0,204,0,0.4); border-radius: 25px; color: #00cc00; font-weight: 600; font-size: .875rem; text-decoration: none; transition: all .25s; background: rgba(0,204,0,0.06); }
+        .kx-blog-view-all:hover { background: rgba(0,204,0,0.14); border-color: #00cc00; color: #00cc00; transform: translateY(-2px); }
+        body.light-mode .kx-bc-card { background: #fff; border-color: rgba(0,130,17,0.14); }
+        body.light-mode .kx-bc-title { color: #111; }
+        body.light-mode .kx-bc-excerpt { color: rgba(0,0,0,0.48); }
+        body.light-mode .kx-bc-footer { border-color: rgba(0,0,0,0.07); }
+        body.light-mode .kx-bc-date { color: rgba(0,0,0,0.38); }
+        </style>
+
+        <div class="kx-blog-carousel-wrap">
+            {{-- Duplicate cards for infinite loop --}}
+            <div class="kx-blog-carousel-track" id="kxBlogTrack">
+                @foreach($blogPosts as $post)
+                <a href="{{ url('/blog/'.$post->slug) }}" class="kx-bc-card">
+                    @if($post->cover_image)
+                        <img class="kx-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy">
+                    @else
+                        <div class="kx-bc-img-placeholder"><i class="bi bi-newspaper"></i></div>
+                    @endif
+                    <div class="kx-bc-body">
+                        @if($post->category)
+                        <span class="kx-bc-cat">{{ $post->category }}</span>
+                        @endif
+                        <div class="kx-bc-title">{{ $post->title }}</div>
+                        @if($post->excerpt)
+                        <div class="kx-bc-excerpt">{{ $post->excerpt }}</div>
+                        @endif
+                        <div class="kx-bc-footer">
+                            <span class="kx-bc-date"><i class="bi bi-calendar3 me-1"></i>{{ $post->published_at?->format('M d, Y') ?? '' }}</span>
+                            <span class="kx-bc-read">Read <i class="bi bi-arrow-right"></i></span>
+                        </div>
                     </div>
-                </div>
+                </a>
+                @endforeach
+                {{-- Duplicate for seamless infinite scroll --}}
+                @foreach($blogPosts as $post)
+                <a href="{{ url('/blog/'.$post->slug) }}" class="kx-bc-card" aria-hidden="true" tabindex="-1">
+                    @if($post->cover_image)
+                        <img class="kx-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy">
+                    @else
+                        <div class="kx-bc-img-placeholder"><i class="bi bi-newspaper"></i></div>
+                    @endif
+                    <div class="kx-bc-body">
+                        @if($post->category)
+                        <span class="kx-bc-cat">{{ $post->category }}</span>
+                        @endif
+                        <div class="kx-bc-title">{{ $post->title }}</div>
+                        @if($post->excerpt)
+                        <div class="kx-bc-excerpt">{{ $post->excerpt }}</div>
+                        @endif
+                        <div class="kx-bc-footer">
+                            <span class="kx-bc-date"><i class="bi bi-calendar3 me-1"></i>{{ $post->published_at?->format('M d, Y') ?? '' }}</span>
+                            <span class="kx-bc-read">Read <i class="bi bi-arrow-right"></i></span>
+                        </div>
+                    </div>
+                </a>
                 @endforeach
             </div>
         </div>
+
+        <script>
+        (function(){
+            var track = document.getElementById('kxBlogTrack');
+            if (!track) return;
+            var count = {{ $blogPosts->count() }};
+            // Card width 300 + gap 20 = 320px per card
+            var totalWidth = count * 320;
+            var duration = Math.max(count * 4, 20); // 4s per card, min 20s
+            track.style.animationDuration = duration + 's';
+        })();
+        </script>
+
+        <div class="text-center">
+            <a href="{{ url('/blog') }}" class="kx-blog-view-all"><i class="bi bi-grid-3x3-gap-fill"></i>View All Posts</a>
+        </div>
+
+        @else
+        <div class="container">
+            <div class="text-center py-5" style="color:rgba(255,255,255,0.35)">
+                <i class="bi bi-newspaper" style="font-size:2.5rem;display:block;margin-bottom:12px;opacity:.3"></i>
+                No blog posts published yet. Check back soon!
+            </div>
+        </div>
+        @endif
     </section>
 
     </main>
