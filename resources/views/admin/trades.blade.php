@@ -224,8 +224,8 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     </td>
                     <td>
                         @if($t->payment_proof)
-                            <a href="{{ asset('storage/'.$t->payment_proof) }}" target="_blank" title="View proof">
-                                <img src="{{ route('admin.proof', $t->payment_proof) }}" class="proof-thumb" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">
+                            <a href="{{ route('storage.file', $t->payment_proof) }}" target="_blank" title="View proof">
+                                <img src="{{ route('storage.file', $t->payment_proof) }}" class="proof-thumb" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">
                                 <span class="btn-kx-icon" style="display:none"><i class="bi bi-image"></i></span>
                             </a>
                         @else
@@ -262,8 +262,8 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                     wallet:'{{ addslashes($t->wallet_address ?? '—') }}',
                                     usd:'{{ number_format($t->usd_amount ?? 0,2) }}',
                                     naira:'{{ number_format($t->naira_amount ?? 0,2) }}',
-                                    proof:'{{ $t->payment_proof ? asset('storage/'.$t->payment_proof) : '' }}',
-                                    adminProof:'{{ $t->admin_payment_proof ? asset('storage/'.$t->admin_payment_proof) : '' }}',
+                                    proof:'{{ $t->payment_proof ? route('storage.file', $t->payment_proof) : '' }}',
+                                    adminProof:'{{ $t->admin_payment_proof ? route('storage.file', $t->admin_payment_proof) : '' }}',
                                     txid:'{{ addslashes($t->blockchain_txid ?? '—') }}',
                                     method:'{{ addslashes($t->payment_method ?? 'Bank Transfer') }}',
                                     status:'{{ $s }}'
@@ -281,7 +281,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                 <button type="button"
                                     class="btn-kx-green"
                                     style="padding:.3rem .6rem;font-size:.72rem"
-                                    onclick="handleBuyApprove({{ $t->id }},'{{ addslashes($user->name ?? $t->name ?? 'N/A') }}','{{ addslashes($user->bank_name ?? 'N/A') }}','{{ addslashes($user->account_number ?? 'N/A') }}','{{ addslashes($user->account_name ?? 'N/A') }}','{{ addslashes($t->wallet_address ?? 'N/A') }}','{{ strtoupper($t->coin ?? '') }}','{{ number_format($t->naira_amount ?? 0,2) }}','{{ number_format($t->usd_amount ?? 0,2) }}','{{ addslashes($t->blockchain_txid ?? '') }}','{{ $t->admin_payment_proof ? asset('storage/'.$t->admin_payment_proof) : '' }}')">
+                                    onclick="handleBuyApprove({{ $t->id }},'{{ addslashes($user->name ?? $t->name ?? 'N/A') }}','{{ addslashes($user->bank_name ?? 'N/A') }}','{{ addslashes($user->account_number ?? 'N/A') }}','{{ addslashes($user->account_name ?? 'N/A') }}','{{ addslashes($t->wallet_address ?? 'N/A') }}','{{ strtoupper($t->coin ?? '') }}','{{ number_format($t->naira_amount ?? 0,2) }}','{{ number_format($t->usd_amount ?? 0,2) }}','{{ addslashes($t->blockchain_txid ?? '') }}','{{ $t->admin_payment_proof ? route('storage.file', $t->admin_payment_proof) : '' }}')">
                                     <i class="bi bi-save"></i>
                                 </button>
                             </form>
@@ -401,7 +401,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                     accNum:'{{ addslashes($t->account_number ?? '—') }}',
                                     accName:'{{ addslashes($t->account_name ?? '—') }}',
                                     method:'{{ addslashes($t->payment_method ?? 'Bank Transfer') }}',
-                                    proof:'{{ $proofPath ? asset('storage/'.$proofPath) : '' }}',
+                                    proof:'{{ $proofPath ? route('storage.file', $proofPath) : '' }}',
                                     status:'{{ $s }}'
                                 })">
                                 <i class="bi bi-eye"></i> View

@@ -111,7 +111,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                 $idDocPath = ltrim((string) $kyc->id_document_path, '/');
                                 $idDocUrl = preg_match('/^https?:\/\//i', $idDocPath)
                                     ? $idDocPath
-                                    : asset('storage/' . preg_replace('/^storage\//', '', $idDocPath));
+                                    : route('storage.file', preg_replace('/^storage\//', '', $idDocPath));
                             @endphp
                             <a href="{{ $idDocUrl }}" target="_blank" class="btn-kx-edit" style="font-size:.72rem;padding:.25rem .55rem">
                                 <i class="bi bi-file-earmark-person"></i> View ID
@@ -125,7 +125,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                 $selfiePath = ltrim((string) $kyc->selfie_path, '/');
                                 $selfieUrl = preg_match('/^https?:\/\//i', $selfiePath)
                                     ? $selfiePath
-                                    : asset('storage/' . preg_replace('/^storage\//', '', $selfiePath));
+                                    : route('storage.file', preg_replace('/^storage\//', '', $selfiePath));
                             @endphp
                             <a href="{{ $selfieUrl }}" target="_blank" class="btn-kx-edit" style="font-size:.72rem;padding:.25rem .55rem">
                                 <i class="bi bi-person-badge"></i> View

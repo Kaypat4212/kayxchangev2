@@ -136,7 +136,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                 $proofPath = ltrim((string) $dep->proof_of_payment, '/');
                                 $proofUrl = preg_match('/^https?:\/\//i', $proofPath)
                                     ? $proofPath
-                                    : asset('storage/' . preg_replace('/^storage\//', '', $proofPath));
+                                    : route('storage.file', preg_replace('/^storage\//', '', $proofPath));
                             @endphp
                             <a href="{{ $proofUrl }}" target="_blank" class="btn-kx-edit" style="font-size:.72rem;padding:.25rem .55rem">
                                 <i class="bi bi-file-image"></i> View

@@ -148,11 +148,28 @@
         </div>
         @php
             $proofExt = strtolower(pathinfo($trade->proof, PATHINFO_EXTENSION));
-            $proofUrl = asset('storage/' . $trade->proof);
+            $proofUrl = route('storage.file', $trade->proof);
         @endphp
         <div class="kx-proof-box">
-            @if(in_array($proofExt, ['jpg','jpeg','png']))
-                <img src="{{ $proofUrl }}" alt="Payment proof" class="kx-proof-img">
+            @if(in_array($proofExt, ['jpg','jpeg','png','webp','gif']))
+                <img src="{{ $proofUrl }}" alt="Payment proof" class="kx-proof-img"
+                     onerror="this.style.display='none';document.getElementById('proof-fallback').style.display='flex';">
+                <a id="proof-fallback" href="{{ $proofUrl }}" target="_blank" class="kx-proof-pdf" style="display:none;margin-top:.75rem;">
+                    <i class="bi bi-image icon" style="color:var(--kx-green)"></i>
+                    <div class="info">
+                        <div class="name">View Payment Proof</div>
+                        <div class="hint">Image could not load — tap to open directly</div>
+                    </div>
+                    <i class="bi bi-box-arrow-up-right ms-auto" style="color:var(--kx-muted)"></i>
+                </a>
+                <a href="{{ $proofUrl }}" target="_blank" class="kx-proof-pdf" style="margin-top:.75rem;">
+                    <i class="bi bi-arrows-fullscreen icon" style="color:var(--kx-green);font-size:1rem;"></i>
+                    <div class="info">
+                        <div class="name">View Full Image</div>
+                        <div class="hint">Open in new tab</div>
+                    </div>
+                    <i class="bi bi-box-arrow-up-right ms-auto" style="color:var(--kx-muted)"></i>
+                </a>
             @else
                 <a href="{{ $proofUrl }}" target="_blank" class="kx-proof-pdf">
                     <i class="bi bi-file-earmark-pdf-fill icon"></i>

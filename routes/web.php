@@ -69,6 +69,17 @@ Route::get('/home', fn() => view('home'));
 Route::get('/faqs', fn() => view('faqs'))->name('faqs');
 Route::get('/about', fn() => view('about'))->name('about');
 
+// Secure file serving — serves files from storage/app/public without requiring a symlink
+Route::get('/file/{path}', function (string $path) {
+    $disk = \Illuminate\Support\Facades\Storage::disk('public');
+    // Prevent directory traversal
+    $path = ltrim($path, '/');
+    if (!$disk->exists($path)) {
+        abort(404);
+    }
+    return $disk->response($path);
+})->where('path', '.*')->name('storage.file');
+
 // Public Blog Routes
 Route::get('/blog', [\App\Http\Controllers\BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [\App\Http\Controllers\BlogController::class, 'show'])->name('blog.show');
@@ -78,6 +89,10 @@ Route::get('/terms', fn() => view('terms'))->name('terms');
 
 // ── Telegram Login Widget callback (no auth required) ───────────────────────
 Route::match(['get', 'post'], '/auth/telegram/callback', [TelegramLoginController::class, 'callback'])->name('telegram.login.callback');
+
+// ── WhatsApp Bot Webhook (no auth required — called by Meta servers) ─────────
+Route::get('/whatsapp/webhook',  [\App\Http\Controllers\WhatsAppController::class, 'verify'])->name('whatsapp.verify');
+Route::post('/whatsapp/webhook', [\App\Http\Controllers\WhatsAppController::class, 'webhook'])->name('whatsapp.webhook');
 
 // ── Onboarding ──────────────────────────────────────────────────────────────
 Route::middleware('auth')->group(function () {

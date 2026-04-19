@@ -37,6 +37,15 @@ return [
         'bot_username' => env('TELEGRAM_BOT_USERNAME', 'TradewithkayxchangeBOT'),
     ],
 
+    'whatsapp' => [
+        'access_token'       => env('WHATSAPP_ACCESS_TOKEN'),
+        'phone_number_id'    => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'business_account_id'=> env('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+        'verify_token'       => env('WHATSAPP_VERIFY_TOKEN', 'kayxchange_whatsapp_webhook_secret'),
+        'enabled'            => env('WHATSAPP_ENABLED', false),
+        'api_url'            => 'https://graph.facebook.com/v19.0',
+    ],
+
     'groq' => [
         'api_key' => env('GROQ_API_KEY'),
         'model'   => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),

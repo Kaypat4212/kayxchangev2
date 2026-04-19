@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\SpecialReferralCode;
+use App\Models\Referral;
 use App\Services\TelegramService;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
@@ -73,6 +74,20 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
             'referred_by' => $referralCode !== '' ? $referralCode : null,
         ]);
+
+        // Create Referral record if a valid referrer exists
+        if ($referralCode !== '') {
+            $referrer = User::whereRaw('UPPER(referral_code) = ?', [$referralCode])->first();
+            if ($referrer) {
+                Referral::create([
+                    'referrer_id'     => $referrer->id,
+                    'referred_id'     => $user->id,
+                    'reward_amount'   => 0,
+                    'reward_currency' => 'NGN',
+                    'status'          => 'pending',
+                ]);
+            }
+        }
 
         try {
             $message = "🆕 *New User Registration*\n\n"
