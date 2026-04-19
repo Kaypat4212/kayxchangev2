@@ -43,6 +43,14 @@
 
 /* Post cards grid */
 .bl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
+.bl-grid-carousel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+
+@media (max-width: 768px) {
+    .bl-grid-carousel { grid-template-columns: 1fr; }
+}
+@media (min-width: 769px) and (max-width: 992px) {
+    .bl-grid-carousel { grid-template-columns: repeat(2, 1fr); }
+}
 
 .bl-card {
     background: var(--blog-card);
@@ -121,29 +129,48 @@
             @endif
 
             @if($posts->count())
-                <div class="bl-grid">
-                    @foreach($posts as $post)
-                    <a href="{{ url('/blog/'.$post->slug) }}" class="bl-card">
-                        <div class="bl-card-cover">
-                            @if($post->cover_image)
-                                <img src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}">
-                            @else
-                                <i class="bi bi-journal-text"></i>
-                            @endif
-                        </div>
-                        <div class="bl-card-body">
-                            <span class="bl-card-cat">{{ $post->category }}</span>
-                            <div class="bl-card-title">{{ $post->title }}</div>
-                            @if($post->excerpt)
-                                <div class="bl-card-excerpt">{{ $post->excerpt }}</div>
-                            @endif
-                            <div class="bl-card-footer">
-                                <span><i class="bi bi-calendar3 me-1"></i>{{ $post->published_at?->format('M d, Y') }}</span>
-                                <span><i class="bi bi-clock me-1"></i>{{ $post->readingTime() }} min read</span>
+                <div id="blogCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        @php
+                            $chunks = $posts->chunk(3); // 3 posts per slide
+                        @endphp
+                        @foreach($chunks as $index => $chunk)
+                        <div class="carousel-item {{ $index === 0 ? 'active' : '' }}">
+                            <div class="bl-grid-carousel">
+                                @foreach($chunk as $post)
+                                <a href="{{ url('/blog/'.$post->slug) }}" class="bl-card">
+                                    <div class="bl-card-cover">
+                                        @if($post->cover_image)
+                                            <img src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}">
+                                        @else
+                                            <i class="bi bi-journal-text"></i>
+                                        @endif
+                                    </div>
+                                    <div class="bl-card-body">
+                                        <span class="bl-card-cat">{{ $post->category }}</span>
+                                        <div class="bl-card-title">{{ $post->title }}</div>
+                                        @if($post->excerpt)
+                                            <div class="bl-card-excerpt">{{ $post->excerpt }}</div>
+                                        @endif
+                                        <div class="bl-card-footer">
+                                            <span><i class="bi bi-calendar3 me-1"></i>{{ $post->published_at?->format('M d, Y') }}</span>
+                                            <span><i class="bi bi-clock me-1"></i>{{ $post->readingTime() }} min read</span>
+                                        </div>
+                                    </div>
+                                </a>
+                                @endforeach
                             </div>
                         </div>
-                    </a>
-                    @endforeach
+                        @endforeach
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#blogCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#blogCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
                 </div>
 
                 <div class="mt-4">{{ $posts->links() }}</div>

@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             BuyTradeSeeder::class,
             SellTradeSeeder::class,
+            BlogPostSeeder::class,
         ]);
     }
 }

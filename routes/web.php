@@ -77,7 +77,7 @@ Route::get('/privacy', fn() => view('privacy'))->name('privacy');
 Route::get('/terms', fn() => view('terms'))->name('terms');
 
 // ── Telegram Login Widget callback (no auth required) ───────────────────────
-Route::post('/auth/telegram/callback', [TelegramLoginController::class, 'callback'])->name('telegram.login.callback');
+Route::match(['get', 'post'], '/auth/telegram/callback', [TelegramLoginController::class, 'callback'])->name('telegram.login.callback');
 
 // ── Onboarding ──────────────────────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
