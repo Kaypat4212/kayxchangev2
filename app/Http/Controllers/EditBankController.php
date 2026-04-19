@@ -58,7 +58,7 @@ class EditBankController extends Controller
 
         // Verify account details with Paystack
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('services.paystack.secret'),
+            'Authorization' => 'Bearer ' . config('services.paystack.secret_key'),
             'Cache-Control' => 'no-cache',
         ])->get('https://api.paystack.co/bank/resolve', [
             'account_number' => $request->account_number,
@@ -100,7 +100,7 @@ class EditBankController extends Controller
     public function getPaystackBanks()
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('services.paystack.secret'),
+            'Authorization' => 'Bearer ' . config('services.paystack.secret_key'),
             'Cache-Control' => 'no-cache',
         ])->get('https://api.paystack.co/bank', [
             'country' => 'nigeria',
@@ -126,7 +126,7 @@ class EditBankController extends Controller
         }
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('services.paystack.secret'),
+            'Authorization' => 'Bearer ' . config('services.paystack.secret_key'),
             'Cache-Control' => 'no-cache',
         ])->get('https://api.paystack.co/bank/resolve', [
             'account_number' => $request->account_number,
@@ -144,7 +144,7 @@ class EditBankController extends Controller
     private function getBankName($bankCode)
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('services.paystack.secret'),
+            'Authorization' => 'Bearer ' . config('services.paystack.secret_key'),
             'Cache-Control' => 'no-cache',
         ])->get('https://api.paystack.co/bank', [
             'country' => 'nigeria',
