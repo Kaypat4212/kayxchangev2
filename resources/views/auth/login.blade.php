@@ -234,8 +234,8 @@
 
         {{--
           Telegram Login Widget (redirect / JS-callback mode).
-          Requires: BotFather → /setdomain → set to your app domain.
-          Local dev: use ngrok domain or set domain to the ngrok URL in BotFather.
+          Requires: BotFather → /setdomain → set to your app domain (tradewithkay.com).
+          Step: open @BotFather → /mybots → your bot → Bot Settings → Domain.
         --}}
         <div class="lx-tg-login-wrap" id="tg-widget-wrap">
           <script
@@ -245,8 +245,13 @@
             data-size="large"
             data-radius="10"
             data-onauth="onTelegramAuth(user)"
-            data-request-access="write">
+            data-request-access="write"
+            onerror="telegramWidgetError()">
           </script>
+        </div>
+        <div id="tg-domain-error" style="display:none;margin-top:8px;padding:10px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:9px;font-size:0.78rem;color:#f87171;">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+          <strong>Telegram login unavailable</strong> — bot domain not verified. Admin: open <strong>@BotFather</strong> → /mybots → your bot → <strong>Bot Settings → Domain</strong> → set to <code style="color:#fca5a5">tradewithkay.com</code>.
         </div>
 
         {{-- Hidden form that gets submitted by the JS widget callback --}}
@@ -337,6 +342,37 @@
       document.getElementById('tg_f_hash').value       = user.hash       || '';
       document.getElementById('tg-auth-form').submit();
     }
+
+    function telegramWidgetError() {
+      document.getElementById('tg-domain-error').style.display = 'block';
+      document.getElementById('tg-widget-wrap').style.display  = 'none';
+    }
+
+    // Telegram widget signals "bot domain invalid" via an iframe with specific content.
+    // Poll until the widget iframe appears, then check its title / src for the error.
+    (function detectTelegramDomainError() {
+      var attempts = 0;
+      var timer = setInterval(function () {
+        attempts++;
+        var wrap  = document.getElementById('tg-widget-wrap');
+        var frame = wrap ? wrap.querySelector('iframe') : null;
+        if (frame) {
+          // The "Bot domain invalid" iframe loads a page that contains that text
+          try {
+            var title = frame.contentDocument && frame.contentDocument.title;
+            if (title && title.toLowerCase().includes('invalid')) {
+              telegramWidgetError(); clearInterval(timer); return;
+            }
+          } catch(e) { /* cross-origin — can't read */ }
+          // If the iframe src contains "error" or no button rendered after 5s, show warning
+          if (frame.src && frame.src.includes('error')) {
+            telegramWidgetError(); clearInterval(timer); return;
+          }
+          clearInterval(timer); // widget loaded fine
+        }
+        if (attempts > 30) clearInterval(timer); // give up after 6s
+      }, 200);
+    })();
   </script>
 </body>
 </html>
