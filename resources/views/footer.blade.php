@@ -1,5 +1,8 @@
 <!-- Footer Section -->
-@php($supportEmail = config('app.support_email'))
+@php
+    $dbEmail = \App\Models\EmailSetting::current()->support_email;
+    $supportEmail = $dbEmail ?: config('app.support_email');
+@endphp
 <footer class="bg-dark text-white py-4 mt-5">
     <div class="container">
         <div class="row justify-content-between align-items-center">

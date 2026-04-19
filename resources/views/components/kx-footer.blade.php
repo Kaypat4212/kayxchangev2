@@ -1,6 +1,7 @@
 <footer class="kx-footer">
 @php
-    $supportEmail = config('app.support_email');
+    $dbEmail = \App\Models\EmailSetting::current()->support_email;
+    $supportEmail = $dbEmail ?: config('app.support_email');
 @endphp
 <div class="kx-footer-inner container-xl">
     <div class="kx-footer-grid">

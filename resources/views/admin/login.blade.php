@@ -145,12 +145,17 @@
             <button type="submit" class="btn btn-login w-100 mt-2">Login</button>
         </form>
 
+        @php
+            $dbSettings    = \App\Models\EmailSetting::current();
+            $supportEmail  = $dbSettings->support_email  ?: config('app.support_email');
+            $securityEmail = $dbSettings->security_email ?: config('app.security_email');
+        @endphp
         <div class="help-row">
             <a href="{{ route('admin.password.request') }}"><i class="bi bi-key me-1"></i>Forgot password (secret key)</a>
-            <a href="mailto:{{ config('app.support_email') }}"><i class="bi bi-life-preserver me-1"></i>{{ config('app.support_email') }}</a>
+            <a href="mailto:{{ $supportEmail }}"><i class="bi bi-life-preserver me-1"></i>{{ $supportEmail }}</a>
         </div>
         <div class="help-row" style="justify-content:flex-start;color:#90a099;">
-            Security contact: <a href="mailto:{{ config('app.security_email') }}">{{ config('app.security_email') }}</a>
+            Security contact: <a href="mailto:{{ $securityEmail }}">{{ $securityEmail }}</a>
         </div>
     </div>
 </body>

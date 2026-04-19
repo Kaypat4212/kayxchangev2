@@ -46,6 +46,8 @@ class EmailSettingsController extends Controller
             'mail_from_address'            => 'required|email|max:255',
             'mail_from_name'               => 'required|string|max:255',
             'mail_encryption'              => 'nullable|in:tls,ssl,',
+            'support_email'                => 'nullable|email|max:255',
+            'security_email'               => 'nullable|email|max:255',
             'welcome_email_enabled'        => 'sometimes|boolean',
             'login_success_email_enabled'  => 'sometimes|boolean',
             'login_failed_email_enabled'   => 'sometimes|boolean',
@@ -61,6 +63,8 @@ class EmailSettingsController extends Controller
             'mail_from_address',
             'mail_from_name',
             'mail_encryption',
+            'support_email',
+            'security_email',
         ]);
 
         // Only update password if provided

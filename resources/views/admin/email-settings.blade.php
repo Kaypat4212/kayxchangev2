@@ -201,6 +201,39 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 </form>
             </div>
 
+            {{-- Contact Addresses --}}
+            <div class="kx-card">
+                <div class="kx-card-title"><i class="bi bi-envelope-at-fill"></i>Contact Email Addresses</div>
+                <form method="POST" action="{{ route('admin.email-settings.update') }}">
+                    @csrf
+                    @method('PUT')
+                    {{-- Send dummy values for required SMTP fields so the shared PUT handler passes validation --}}
+                    <input type="hidden" name="mail_mailer"       value="{{ $settings->mail_mailer }}">
+                    <input type="hidden" name="mail_host"         value="{{ $settings->mail_host }}">
+                    <input type="hidden" name="mail_port"         value="{{ $settings->mail_port }}">
+                    <input type="hidden" name="mail_username"     value="{{ $settings->mail_username }}">
+                    <input type="hidden" name="mail_from_address" value="{{ $settings->mail_from_address }}">
+                    <input type="hidden" name="mail_from_name"    value="{{ $settings->mail_from_name }}">
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="kx-label">Support Email <span style="font-size:.7rem;color:var(--kx-muted);text-transform:none;font-weight:400;">— shown in footer &amp; help links</span></label>
+                            <input type="email" name="support_email" class="kx-input" value="{{ $settings->support_email }}" placeholder="support@tradewithkay.com">
+                        </div>
+                        <div class="col-12">
+                            <label class="kx-label">Security / Abuse Email <span style="font-size:.7rem;color:var(--kx-muted);text-transform:none;font-weight:400;">— for security alerts</span></label>
+                            <input type="email" name="security_email" class="kx-input" value="{{ $settings->security_email }}" placeholder="security@tradewithkay.com">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn-kx w-100">
+                            <i class="bi bi-floppy-fill me-1"></i>Save Contact Emails
+                        </button>
+                    </div>
+                </form>
+            </div>
+
             {{-- Test Email --}}
             <div class="kx-card">
                 <div class="kx-card-title"><i class="bi bi-send-fill"></i>Send Test Email</div>
