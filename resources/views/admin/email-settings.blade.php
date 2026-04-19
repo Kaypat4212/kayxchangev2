@@ -125,25 +125,36 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                                 @endforeach
                             </select>
                         </div>
+                        {{-- cPanel quick-fill --}}
+                        <div class="col-12">
+                            <div style="background:rgba(0,204,0,0.06);border:1px solid rgba(0,204,0,0.2);border-radius:10px;padding:12px 16px;">
+                                <div style="font-size:.78rem;color:var(--kx-green);font-weight:600;margin-bottom:8px;"><i class="bi bi-lightning-fill me-1"></i>cPanel Quick-Fill</div>
+                                <div style="font-size:.75rem;color:var(--kx-muted);margin-bottom:10px;">Auto-fills host, port &amp; encryption for your cPanel hosting domain.</div>
+                                <button type="button" onclick="cpanelFill()" style="background:rgba(0,204,0,0.15);color:var(--kx-green);border:1px solid rgba(0,204,0,0.3);border-radius:7px;padding:6px 14px;font-size:.8rem;font-weight:600;cursor:pointer;">
+                                    <i class="bi bi-server me-1"></i>Fill cPanel SMTP Settings
+                                </button>
+                            </div>
+                        </div>
                         <div class="col-8">
                             <label class="kx-label">SMTP Host</label>
-                            <input type="text" name="mail_host" id="field_host" class="kx-input" value="{{ $settings->mail_host }}" placeholder="smtp.gmail.com">
+                            <input type="text" name="mail_host" id="field_host" class="kx-input" value="{{ $settings->mail_host }}" placeholder="mail.tradewithkay.com">
                         </div>
                         <div class="col-4">
                             <label class="kx-label">Port</label>
-                            <input type="number" name="mail_port" id="field_port" class="kx-input" value="{{ $settings->mail_port }}" placeholder="587">
+                            <input type="number" name="mail_port" id="field_port" class="kx-input" value="{{ $settings->mail_port }}" placeholder="465">
                         </div>
                         <div class="col-12">
                             <label class="kx-label">Encryption</label>
                             <select name="mail_encryption" id="field_encryption" class="kx-select">
-                                <option value="tls" {{ $settings->mail_encryption==='tls'?'selected':'' }}>TLS</option>
-                                <option value="ssl" {{ $settings->mail_encryption==='ssl'?'selected':'' }}>SSL</option>
+                                <option value="tls" {{ $settings->mail_encryption==='tls'?'selected':'' }}>TLS (Port 587)</option>
+                                <option value="ssl" {{ $settings->mail_encryption==='ssl'?'selected':'' }}>SSL (Port 465) — recommended for cPanel</option>
                                 <option value="" {{ !$settings->mail_encryption?'selected':'' }}>None</option>
                             </select>
                         </div>
                         <div class="col-12">
                             <label class="kx-label">SMTP Username</label>
-                            <input type="text" name="mail_username" id="field_username" class="kx-input" value="{{ $settings->mail_username }}" placeholder="your@email.com" autocomplete="off">
+                            <input type="text" name="mail_username" id="field_username" class="kx-input" value="{{ $settings->mail_username }}" placeholder="noreply@tradewithkay.com" autocomplete="off">
+                            <div style="font-size:.72rem;color:var(--kx-muted);margin-top:4px;"><i class="bi bi-info-circle me-1"></i>This must be a real cPanel email account (e.g. <code style="color:var(--kx-green)">noreply@tradewithkay.com</code>)</div>
                         </div>
                         <div class="col-12">
                             <label class="kx-label">SMTP Password <span style="text-transform:none;font-weight:400;">(leave blank to keep current)</span></label>
@@ -151,7 +162,10 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         </div>
                         <div class="col-12">
                             <label class="kx-label">From Address</label>
-                            <input type="email" name="mail_from_address" class="kx-input" value="{{ $settings->mail_from_address }}" placeholder="noreply@kayxchange.com">
+                            <input type="email" name="mail_from_address" id="field_from" class="kx-input" value="{{ $settings->mail_from_address }}" placeholder="noreply@tradewithkay.com">
+                            <div id="from-warn" style="display:none;font-size:.72rem;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:#fbbf24;border-radius:7px;padding:6px 10px;margin-top:6px;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i><strong>Warning:</strong> From Address domain does not match SMTP Username domain. cPanel will reject this with a 550 spam error. They must share the same domain (e.g. both <code>@tradewithkay.com</code>).
+                            </div>
                         </div>
                         <div class="col-12">
                             <label class="kx-label">From Name</label>
@@ -426,6 +440,45 @@ function applyPreset(key) {
     event.currentTarget.style.opacity = '1';
     event.currentTarget.style.boxShadow = '0 0 0 2px rgba(0,204,0,0.3)';
 }
+
+// Quick-fill for cPanel SMTP from the banner button
+function cpanelFill() {
+    const domain = window.location.hostname.replace(/^www\./, '');
+    const safeDomain = /^(localhost|127\.0\.0\.1)$/.test(domain) ? 'tradewithkay.com' : domain;
+    document.getElementById('field_mailer').value = 'smtp';
+    document.getElementById('field_host').value   = 'mail.' + safeDomain;
+    document.getElementById('field_port').value   = 465;
+    const encSelect = document.getElementById('field_encryption');
+    for (let i = 0; i < encSelect.options.length; i++) {
+        if (encSelect.options[i].value === 'ssl') { encSelect.selectedIndex = i; break; }
+    }
+    const noteEl = document.getElementById('preset-note');
+    if (noteEl) {
+        noteEl.innerHTML = '&#127968; cPanel SMTP filled. Now enter your cPanel email address as the username (e.g. <strong>noreply@' + safeDomain + '</strong>), set the matching From Address, and enter the email account password.';
+        noteEl.style.display = 'block';
+    }
+    checkFromDomainMatch();
+}
+
+// Live warning: FROM domain must match SMTP username domain
+function checkFromDomainMatch() {
+    const user    = (document.getElementById('field_username')?.value || '').trim();
+    const from    = (document.getElementById('field_from')?.value || '').trim();
+    const warnEl  = document.getElementById('from-warn');
+    if (!warnEl) return;
+    if (!user || !from) { warnEl.style.display = 'none'; return; }
+    const uDomain = user.includes('@') ? user.split('@').pop().toLowerCase() : '';
+    const fDomain = from.includes('@') ? from.split('@').pop().toLowerCase() : '';
+    warnEl.style.display = (uDomain && fDomain && uDomain !== fDomain) ? 'block' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const userField = document.getElementById('field_username');
+    const fromField = document.getElementById('field_from');
+    if (userField) userField.addEventListener('input', checkFromDomainMatch);
+    if (fromField) fromField.addEventListener('input', checkFromDomainMatch);
+    checkFromDomainMatch(); // run once on load
+});
 </script>
 @endpush
 

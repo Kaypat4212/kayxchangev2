@@ -92,15 +92,32 @@ class EmailSettingsController extends Controller
             $settings = EmailSetting::current();
             if ($settings->mail_host) {
                 config([
-                    'mail.default'                 => $settings->mail_mailer,
+                    'mail.default'                 => 'smtp',
+                    'mail.mailers.smtp.transport'  => 'smtp',
                     'mail.mailers.smtp.host'       => $settings->mail_host,
-                    'mail.mailers.smtp.port'       => $settings->mail_port,
+                    'mail.mailers.smtp.port'       => (int) $settings->mail_port,
                     'mail.mailers.smtp.username'   => $settings->mail_username,
                     'mail.mailers.smtp.password'   => $settings->mail_password ? decrypt($settings->mail_password) : null,
                     'mail.mailers.smtp.encryption' => $settings->mail_encryption ?: null,
                     'mail.from.address'            => $settings->mail_from_address,
                     'mail.from.name'               => $settings->mail_from_name,
                 ]);
+
+                // CRITICAL: purge cached mailer so Laravel rebuilds the transport
+                // with the updated runtime config (without this, the old .env transport is used)
+                Mail::forgetMailers();
+            }
+
+            // Warn if FROM domain doesn't match SMTP username domain (cPanel anti-spoofing)
+            if ($settings->mail_username && $settings->mail_from_address) {
+                $usernameDomain = substr(strrchr($settings->mail_username, '@'), 1);
+                $fromDomain     = substr(strrchr($settings->mail_from_address, '@'), 1);
+                if ($usernameDomain && $fromDomain && strtolower($usernameDomain) !== strtolower($fromDomain)) {
+                    Log::warning('Email FROM domain mismatch — cPanel may reject this', [
+                        'smtp_username' => $settings->mail_username,
+                        'from_address'  => $settings->mail_from_address,
+                    ]);
+                }
             }
 
             // Use a dummy user object for the test welcome email
