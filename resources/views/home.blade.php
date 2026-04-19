@@ -815,6 +815,18 @@
     }
     </style>
 
+    {{-- Hero: use CSS keyframe animations so content is visible immediately without waiting for AOS.js --}}
+    <style>
+    @keyframes kxFadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+    @keyframes kxZoomIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:none}}
+    .kx-hero-anim-1{animation:kxFadeUp .55s ease both}
+    .kx-hero-anim-2{animation:kxFadeUp .55s .1s ease both}
+    .kx-hero-anim-3{animation:kxFadeUp .55s .18s ease both}
+    .kx-hero-anim-4{animation:kxFadeUp .55s .26s ease both}
+    .kx-hero-anim-5{animation:kxFadeUp .55s .34s ease both}
+    .kx-hero-anim-6{animation:kxZoomIn .65s .18s ease both}
+    </style>
+
     <section id="hero" class="kx-hero">
         <div class="kx-h-grid"></div>
         <div class="kx-h-orb1"></div>
@@ -824,19 +836,19 @@
             <div class="row align-items-center">
                 <!-- Left: Text -->
                 <div class="col-lg-6">
-                    <div class="kx-h-badge" data-aos="fade-up">
+                    <div class="kx-h-badge kx-hero-anim-1">
                         <span class="kx-h-dot"></span>
                         Nigeria's Premier Crypto Exchange
                     </div>
-                    <h1 class="kx-h-title" data-aos="fade-up" data-aos-delay="80">
+                    <h1 class="kx-h-title kx-hero-anim-2">
                         Trade Crypto<br>
                         <span class="kx-h-grad">Instantly</span> &amp; Securely
                     </h1>
-                    <p class="kx-h-sub" data-aos="fade-up" data-aos-delay="160">
+                    <p class="kx-h-sub kx-hero-anim-3">
                         Buy, sell &amp; exchange BTC, USDT, ETH, LTC and XRP to NGN at the best rates. Fast settlements, zero hidden fees, 24/7 support.
                     </p>
                     <!-- Stats -->
-                    <div class="kx-h-stats" data-aos="fade-up" data-aos-delay="220">
+                    <div class="kx-h-stats kx-hero-anim-4">
                         <div class="kx-h-stat">
                             <span class="kx-h-snum">3K+</span>
                             <span class="kx-h-slbl">Happy Traders</span>
@@ -858,7 +870,7 @@
                         </div>
                     </div>
                     <!-- CTAs -->
-                    <div class="kx-h-ctas" data-aos="fade-up" data-aos-delay="300">
+                    <div class="kx-h-ctas kx-hero-anim-5">
                         @auth
                         <a href="{{ url('/dashboard') }}" class="kx-h-cta1">
                             <i class="bi bi-grid-1x2-fill"></i>Go to Dashboard<i class="bi bi-arrow-right"></i>
@@ -873,7 +885,7 @@
                         @endauth
                     </div>
                     <!-- Trust badges -->
-                    <div class="kx-h-trust" data-aos="fade-up" data-aos-delay="380">
+                    <div class="kx-h-trust kx-hero-anim-5">
                         <span class="kx-h-tbadge"><i class="bi bi-shield-check-fill" style="color:#00cc00"></i>Secure</span>
                         <span class="kx-h-tbadge"><i class="bi bi-lightning-charge-fill" style="color:#fbbf24"></i>Instant</span>
                         <span class="kx-h-tbadge"><i class="bi bi-star-fill" style="color:#f59e0b"></i>Best Rates</span>
@@ -887,10 +899,10 @@
                 </div>
 
                 <!-- Right: Visual -->
-                <div class="col-lg-6 kx-h-visual" data-aos="zoom-in" data-aos-delay="200">
+                <div class="col-lg-6 kx-h-visual kx-hero-anim-6">
                     <div class="kx-h-card-wrap">
                         <div class="kx-h-mockup">
-                            <img src="{{ asset('Assests/images/kay-xchange-logo-mockup.png') }}" alt="KayXchange Platform">
+                            <img src="{{ asset('Assests/images/kay-xchange-logo-mockup.png') }}" alt="KayXchange Platform" fetchpriority="high" loading="eager">
                         </div>
                         <!-- Floating coin badges -->
                         <div class="kx-h-coin kx-h-c1">

@@ -9,43 +9,131 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="adminNavbarNav">
-      <div class="navbar-nav me-auto">
-        <a class="nav-link @if(request()->is('admin/dashboard') || request()->is('admin/enhanced-dashboard')) active @endif" @if(request()->is('admin/dashboard') || request()->is('admin/enhanced-dashboard')) aria-current="page" @endif href="{{ url('/admin/dashboard') }}">
+      <div class="navbar-nav me-auto flex-wrap">
+
+        {{-- Dashboard --}}
+        <a class="nav-link @if(request()->is('admin/dashboard') || request()->is('admin/enhanced-dashboard')) active @endif"
+           href="{{ url('/admin/dashboard') }}">
           <i class="bi bi-speedometer2 me-1"></i>Dashboard
         </a>
-        <a class="nav-link @if(request()->is('admin/users*')) active @endif" @if(request()->is('admin/users*')) aria-current="page" @endif href="{{ url('/admin/users') }}">
-          <i class="bi bi-people me-1"></i>Users
-        </a>
-        <a class="nav-link @if(request()->is('admin/trades*')) active @endif" @if(request()->is('admin/trades*')) aria-current="page" @endif href="{{ url('/admin/trades') }}">
-          <i class="bi bi-arrow-left-right me-1"></i>Buy Trades
-        </a>
-        <a class="nav-link @if(request()->is('admin/sells*')) active @endif" @if(request()->is('admin/sells*')) aria-current="page" @endif href="{{ url('/admin/sells') }}">
-          <i class="bi bi-arrow-right-left me-1"></i>Sell Trades
-        </a>
-        <a class="nav-link @if(request()->is('admin/deposits*')) active @endif" @if(request()->is('admin/deposits*')) aria-current="page" @endif href="{{ route('admin.deposits.index') }}">
-          <i class="bi bi-wallet2 me-1"></i>Deposits
-        </a>
-        <a class="nav-link @if(request()->is('admin/withdrawals*')) active @endif" @if(request()->is('admin/withdrawals*')) aria-current="page" @endif href="{{ route('admin.withdrawals') }}">
-          <i class="bi bi-bank me-1"></i>Withdrawals
-        </a>
-        <a class="nav-link @if(request()->is('admin/crypto-rates*')) active @endif" @if(request()->is('admin/crypto-rates*')) aria-current="page" @endif href="{{ url('/admin/crypto-rates') }}">
-          <i class="bi bi-currency-bitcoin me-1"></i>Crypto Rates
-        </a>
-        <a class="nav-link @if(request()->is('admin/gift-card-rates*')) active @endif" @if(request()->is('admin/gift-card-rates*')) aria-current="page" @endif href="{{ url('/admin/gift-card-rates') }}">
-          <i class="bi bi-gift me-1"></i>Gift Card Rates
-        </a>
 
-        <a class="nav-link @if(request()->is('admin/blog*')) active @endif" href="{{ url('/admin/blog') }}">
-          <i class="bi bi-journal-richtext me-1"></i>Blog
-        </a>
-        <a class="nav-link @if(request()->is('admin/telegram*')) active @endif" href="{{ url('/admin/telegram') }}">
-          <i class="bi bi-telegram me-1"></i>Telegram Bot
-        </a>
-        <a class="nav-link @if(request()->is('admin/chat*')) active @endif" href="{{ route('admin.chat') }}">
-          <i class="bi bi-headset me-1"></i>Support Inbox
-        </a>
-        <a class="nav-link @if(request()->is('admin/referrals/settings*')) active @endif" href="{{ route('admin.referrals.settings') }}">
-          <i class="bi bi-megaphone me-1"></i>Referrals
+        {{-- Trades dropdown --}}
+        <div class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/trades*') || request()->is('admin/sells*') || request()->is('admin/deposits*') || request()->is('admin/withdrawals*')) active @endif"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-arrow-left-right me-1"></i>Trades
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/trades*')) active @endif" href="{{ url('/admin/trades') }}">
+                <i class="bi bi-arrow-left-right me-2"></i>Buy Trades
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/sells*')) active @endif" href="{{ url('/admin/sells') }}">
+                <i class="bi bi-arrow-right-left me-2"></i>Sell Trades
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/deposits*')) active @endif" href="{{ route('admin.deposits.index') }}">
+                <i class="bi bi-wallet2 me-2"></i>Deposits
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/withdrawals*')) active @endif" href="{{ route('admin.withdrawals') }}">
+                <i class="bi bi-bank me-2"></i>Withdrawals
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {{-- Users & KYC dropdown --}}
+        <div class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/users*') || request()->is('admin/kyc*') || request()->is('admin/referrals*')) active @endif"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-people me-1"></i>Users
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/users*')) active @endif" href="{{ url('/admin/users') }}">
+                <i class="bi bi-people-fill me-2"></i>All Users
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/kyc*')) active @endif" href="{{ route('admin.kyc') }}">
+                <i class="bi bi-person-vcard-fill me-2"></i>KYC Verification
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/referrals*')) active @endif" href="{{ route('admin.referrals.settings') }}">
+                <i class="bi bi-megaphone me-2"></i>Referrals
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {{-- Rates dropdown --}}
+        <div class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/crypto-rates*') || request()->is('admin/gift-card-rates*')) active @endif"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-currency-bitcoin me-1"></i>Rates
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/crypto-rates*')) active @endif" href="{{ url('/admin/crypto-rates') }}">
+                <i class="bi bi-currency-bitcoin me-2"></i>Crypto Rates
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/gift-card-rates*')) active @endif" href="{{ url('/admin/gift-card-rates') }}">
+                <i class="bi bi-gift me-2"></i>Gift Card Rates
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {{-- Support dropdown --}}
+        <div class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/chat*') || request()->is('admin/notifications*') || request()->is('admin/telegram*') || request()->is('admin/blog*')) active @endif"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-headset me-1"></i>Support
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/chat*')) active @endif" href="{{ route('admin.chat') }}">
+                <i class="bi bi-chat-dots me-2"></i>Support Inbox
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/notifications*')) active @endif" href="{{ url('/admin/notifications') }}">
+                <i class="bi bi-bell-fill me-2"></i>Notifications
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/telegram*')) active @endif" href="{{ url('/admin/telegram') }}">
+                <i class="bi bi-telegram me-2"></i>Telegram Bot
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/telegram/ai-config*')) active @endif" href="{{ route('admin.telegram.ai-config') }}">
+                <i class="bi bi-robot me-2"></i>AI Bot Config
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/blog*')) active @endif" href="{{ url('/admin/blog') }}">
+                <i class="bi bi-journal-richtext me-2"></i>Blog
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {{-- Finance --}}
+        <a class="nav-link @if(request()->is('admin/company-account*')) active @endif"
+           href="{{ route('admin.company-account') }}">
+          <i class="bi bi-building me-1"></i>Company Account
         </a>
 
         {{-- Settings dropdown --}}
@@ -83,6 +171,7 @@
             </li>
           </ul>
         </div>
+
       </div>
 
       <!-- Right side navigation -->
