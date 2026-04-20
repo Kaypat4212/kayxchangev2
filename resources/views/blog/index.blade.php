@@ -76,6 +76,8 @@
     flex-shrink: 0;
 }
 .bl-card-cover img { width: 100%; height: 100%; object-fit: cover; }
+.bl-card-cover.bl-cover-fallback { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(0,50,0,.55), rgba(0,20,0,.85)); }
+.bl-card-cover.bl-cover-fallback::after { content: '📰'; font-size: 2.8rem; opacity: .35; }
 
 .bl-card-body { padding: 1rem 1.1rem 1.25rem; flex: 1; display: flex; flex-direction: column; }
 .bl-card-cat {
@@ -141,7 +143,10 @@
                                 <a href="{{ url('/blog/'.$post->slug) }}" class="bl-card">
                                     <div class="bl-card-cover">
                                         @if($post->cover_image)
-                                            <img src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}">
+                                            <img src="{{ asset('storage/'.$post->cover_image) }}"
+                                                 alt="{{ $post->title }}"
+                                                 loading="lazy"
+                                                 onerror="this.style.display='none';this.parentElement.classList.add('bl-cover-fallback')">
                                         @else
                                             <i class="bi bi-journal-text"></i>
                                         @endif
