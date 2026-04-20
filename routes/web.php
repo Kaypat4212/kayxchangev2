@@ -149,6 +149,8 @@ use App\Http\Controllers\Admin\SiteContentController;
 use App\Http\Controllers\Admin\EmailSettingsController;
 use App\Http\Controllers\Admin\EnvEditorController;
 use App\Http\Controllers\Admin\AdminTelegramController;
+use App\Http\Controllers\Admin\AdminBackupController;
+use App\Http\Controllers\Admin\AdminProfileController;
 
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     // ── Telegram Bot Management ─────────────────────────────────────────────
@@ -199,6 +201,20 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     // API Diagnostics
     Route::get('diagnostics', [EnvEditorController::class, 'diagnostics'])->name('admin.diagnostics');
     Route::post('diagnostics/run', [EnvEditorController::class, 'runDiagnostics'])->name('admin.diagnostics.run');
+
+    // Backup
+    Route::get('backup',                   [AdminBackupController::class, 'index'])->name('admin.backup.index');
+    Route::post('backup/run',              [AdminBackupController::class, 'run'])->name('admin.backup.run');
+    Route::get('backup/download/{filename}', [AdminBackupController::class, 'download'])->name('admin.backup.download')->where('filename', '[\w.\-]+');
+    Route::delete('backup/{filename}',     [AdminBackupController::class, 'delete'])->name('admin.backup.delete')->where('filename', '[\w.\-]+');
+
+    // Admin Profile
+    Route::get('profile',                  [AdminProfileController::class, 'index'])->name('admin.profile.index');
+    Route::post('profile/email',           [AdminProfileController::class, 'updateEmail'])->name('admin.profile.email');
+    Route::post('profile/password',        [AdminProfileController::class, 'updatePassword'])->name('admin.profile.password');
+    Route::post('profile/2fa/setup',       [AdminProfileController::class, 'setup2fa'])->name('admin.profile.2fa.setup');
+    Route::post('profile/2fa/confirm',     [AdminProfileController::class, 'confirm2fa'])->name('admin.profile.2fa.confirm');
+    Route::post('profile/2fa/disable',     [AdminProfileController::class, 'disable2fa'])->name('admin.profile.2fa.disable');
 
     // Auto-payout settings toggle
     Route::post('withdrawals/auto-payout/toggle', [WithdrawalController::class, 'toggleAutoPayout'])

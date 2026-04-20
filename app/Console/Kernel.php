@@ -31,6 +31,12 @@ class Kernel extends ConsoleKernel
             ->everyFiveMinutes()
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Daily backup at 2:00 AM — DB dump + storage, notify admin
+        $schedule->command('backup:run --notify')
+            ->dailyAt('02:00')
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

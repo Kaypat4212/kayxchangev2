@@ -117,7 +117,7 @@
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
-              <a class="dropdown-item @if(request()->is('admin/telegram*')) active @endif" href="{{ url('/admin/telegram') }}">
+              <a class="dropdown-item @if(request()->is('admin/telegram') || request()->is('admin/telegram/messages*')) active @endif" href="{{ url('/admin/telegram') }}">
                 <i class="bi bi-telegram me-2"></i>Telegram Bot
               </a>
             </li>
@@ -135,11 +135,42 @@
           </ul>
         </div>
 
-        {{-- Finance --}}
-        <a class="nav-link @if(request()->is('admin/dashboard*')) active @endif"
-           href="{{ route('admin.dashboard') }}#company-account">
+        {{-- Finance / Company Account --}}
+        <a class="nav-link @if(request()->is('admin/company-account*')) active @endif"
+           href="{{ route('admin.company-account') }}">
           <i class="bi bi-building me-1"></i>Company Account
         </a>
+
+        {{-- Tools dropdown (Terminal, Bug Reports, Feature Requests) --}}
+        <div class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/terminal*') || request()->is('admin/bug-reports*') || request()->is('admin/feature-requests*')) active @endif"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-tools me-1"></i>Tools
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/terminal*')) active @endif" href="{{ route('admin.terminal') }}">
+                <i class="bi bi-terminal-fill me-2"></i>Terminal
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/bug-reports*')) active @endif" href="{{ route('admin.bug-reports') }}">
+                <i class="bi bi-bug-fill me-2"></i>Bug Reports
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/feature-requests*')) active @endif" href="{{ route('admin.feature-requests') }}">
+                <i class="bi bi-lightbulb-fill me-2"></i>Feature Requests
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/backup*')) active @endif" href="{{ route('admin.backup.index') }}">
+                <i class="bi bi-cloud-arrow-up me-2"></i>Backup
+              </a>
+            </li>
+          </ul>
+        </div>
 
         {{-- Settings dropdown --}}
         <div class="nav-item dropdown">
@@ -166,7 +197,7 @@
             <li><hr class="dropdown-divider"></li>
             <li>
               <a class="dropdown-item @if(request()->is('admin/env-editor*')) active @endif" href="{{ url('/admin/env-editor') }}">
-                <i class="bi bi-key-fill me-2"></i>API Keys
+                <i class="bi bi-key-fill me-2"></i>API Keys / .env
               </a>
             </li>
             <li>
@@ -180,27 +211,67 @@
       </div>
 
       <!-- Right side navigation -->
-      <div class="d-flex align-items-center">
+      <div class="d-flex align-items-center gap-1">
         @if (session('admin_id'))
-        <a class="btn btn-outline-warning me-2" href="{{ route('admin.revert') }}" title="Revert to User">
+        <a class="btn btn-outline-warning btn-sm" href="{{ route('admin.revert') }}" title="Revert to User">
           <i class="bi bi-arrow-left me-1"></i>Revert to User
         </a>
         @endif
-        
-        <button id="adminModeToggleBtn" class="btn btn-outline-secondary me-2" title="Toggle light/dark mode" style="min-width:40px;">
+
+        <button id="adminModeToggleBtn" class="btn btn-outline-secondary btn-sm" title="Toggle light/dark mode" style="min-width:38px;">
           <i id="adminModeIcon" class="bi bi-moon-stars-fill"></i>
         </button>
 
-        <a class="btn btn-outline-info me-2" href="{{ url('/') }}" title="View Site" target="_blank">
+        <a class="btn btn-outline-info btn-sm" href="{{ url('/') }}" title="View Site" target="_blank">
           <i class="bi bi-eye me-1"></i>View Site
         </a>
-        
-        <form method="POST" action="{{ route('logout') }}" class="d-inline">
-            @csrf
-            <button type="submit" class="btn btn-outline-danger" title="Logout">
-              <i class="bi bi-box-arrow-right me-1"></i>Logout
-            </button>
-        </form>
+
+        {{-- Profile dropdown --}}
+        <div class="nav-item dropdown">
+          <a class="btn btn-outline-secondary btn-sm dropdown-toggle @if(request()->is('admin/profile*')) active @endif"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="My Profile">
+            <i class="bi bi-person-circle me-1"></i>
+            {{ Str::limit(auth()->user()->name ?? 'Admin', 12) }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+            <li>
+              <span class="dropdown-item-text text-muted small">{{ auth()->user()->email ?? '' }}</span>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/profile') && !request()->is('admin/profile/2fa*')) active @endif"
+                 href="{{ route('admin.profile.index') }}">
+                <i class="bi bi-person-gear me-2"></i>Edit Profile
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/profile*')) active @endif"
+                 href="{{ route('admin.profile.index') }}#tab-password">
+                <i class="bi bi-key me-2"></i>Change Password
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/profile*')) active @endif"
+                 href="{{ route('admin.profile.index') }}#tab-2fa">
+                @if(auth()->user()->two_factor_enabled ?? false)
+                  <i class="bi bi-shield-fill-check me-2 text-success"></i>2FA Enabled
+                @else
+                  <i class="bi bi-shield-exclamation me-2 text-warning"></i>Enable 2FA
+                @endif
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="dropdown-item text-danger">
+                  <i class="bi bi-box-arrow-right me-2"></i>Logout
+                </button>
+              </form>
+            </li>
+          </ul>
+        </div>
+
       </div>
     </div>
   </div>
