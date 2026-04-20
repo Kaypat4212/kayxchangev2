@@ -208,6 +208,12 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('backup/download/{filename}', [AdminBackupController::class, 'download'])->name('admin.backup.download')->where('filename', '[\w.\-]+');
     Route::delete('backup/{filename}',     [AdminBackupController::class, 'delete'])->name('admin.backup.delete')->where('filename', '[\w.\-]+');
 
+    // Newsletter Subscribers
+    Route::get('newsletter',               [App\Http\Controllers\Admin\AdminNewsletterController::class, 'index'])->name('admin.newsletter.index');
+    Route::get('newsletter/export',        [App\Http\Controllers\Admin\AdminNewsletterController::class, 'export'])->name('admin.newsletter.export');
+    Route::post('newsletter/campaign',     [App\Http\Controllers\Admin\AdminNewsletterController::class, 'sendCampaign'])->name('admin.newsletter.campaign');
+    Route::delete('newsletter/{subscriber}', [App\Http\Controllers\Admin\AdminNewsletterController::class, 'destroy'])->name('admin.newsletter.destroy');
+
     // Admin Profile
     Route::get('profile',                  [AdminProfileController::class, 'index'])->name('admin.profile.index');
     Route::post('profile/email',           [AdminProfileController::class, 'updateEmail'])->name('admin.profile.email');
@@ -254,7 +260,7 @@ Route::middleware(['auth'])->group(function () {
 
 // Newsletter
 Route::post('/newsletter/subscribe', [App\Http\Controllers\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
-Route::post('/newsletter/unsubscribe', [App\Http\Controllers\NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');
+Route::match(['get','post'], '/newsletter/unsubscribe', [App\Http\Controllers\NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');
 
 // Test routes (remove in production)
 Route::get('/test-deposit', [App\Http\Controllers\DepositTestController::class, 'testDeposit'])->name('test.deposit');
