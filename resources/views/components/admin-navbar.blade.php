@@ -174,11 +174,22 @@
 
         {{-- Settings dropdown --}}
         <div class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle @if(request()->is('admin/site-content*') || request()->is('admin/email-settings*') || request()->is('admin/email-templates*') || request()->is('admin/env-editor*') || request()->is('admin/diagnostics*')) active @endif"
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/settings*') || request()->is('admin/site-content*') || request()->is('admin/email-settings*') || request()->is('admin/email-templates*') || request()->is('admin/env-editor*') || request()->is('admin/diagnostics*')) active @endif"
              href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-gear-fill me-1"></i>Settings
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/settings') && !request()->is('admin/settings/*')) active @endif" href="{{ route('admin.settings.index') }}">
+                <i class="bi bi-sliders me-2"></i>App Settings
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/settings/ai-usage*')) active @endif" href="{{ route('admin.settings.ai-usage') }}">
+                <i class="bi bi-robot me-2"></i>AI Usage &amp; Models
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
             <li>
               <a class="dropdown-item @if(request()->is('admin/site-content*')) active @endif" href="{{ url('/admin/site-content') }}">
                 <i class="bi bi-pencil-square me-2"></i>Site Content

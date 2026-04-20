@@ -44,10 +44,11 @@ body.light-mode #kaybot-header .meta h6{color:#111;}
 body.light-mode #kaybot-header .meta p{color:#007a0c;}
 body.light-mode #kaybot-close{color:#555;}
 body.light-mode #kaybot-close:hover{color:#000;}
-body.light-mode #kaybot-msgs{background:#f8f9fa;}
+body.light-mode #kaybot-msgs{background:#f8f9fa;color:#111111;}
 body.light-mode #kaybot-msgs::-webkit-scrollbar-thumb{background:rgba(0,150,0,.2);}
-body.light-mode .kb-msg.bot{background:#e8e8e8;color:#111111;}
-body.light-mode .kb-msg.typing{color:#555;}
+body.light-mode .kb-msg.bot{background:#e8e8e8;color:#111111 !important;}
+body.light-mode .kb-msg.bot *{color:#111111 !important;}
+body.light-mode .kb-msg.typing{color:#555 !important;}
 body.light-mode .kb-quick{border-top-color:rgba(0,0,0,.08);}
 body.light-mode .kb-quick button{background:rgba(0,150,0,.08);border-color:rgba(0,150,0,.25);color:#007a0c;}
 body.light-mode .kb-quick button:hover{background:rgba(0,150,0,.18);}
