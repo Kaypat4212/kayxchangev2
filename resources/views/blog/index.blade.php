@@ -143,7 +143,7 @@
                                 <a href="{{ url('/blog/'.$post->slug) }}" class="bl-card">
                                     <div class="bl-card-cover">
                                         @if($post->cover_image)
-                                            <img src="{{ asset('storage/'.$post->cover_image) }}"
+                                            <img src="{{ Str::startsWith($post->cover_image, ['http://', 'https://']) ? $post->cover_image : asset('storage/'.$post->cover_image) }}"
                                                  alt="{{ $post->title }}"
                                                  loading="lazy"
                                                  onerror="this.style.display='none';this.parentElement.classList.add('bl-cover-fallback')">
