@@ -120,7 +120,7 @@
     </div>
 
     @if($post->cover_image)
-        <img src="{{ Str::startsWith($post->cover_image, ['http://', 'https://']) ? $post->cover_image : asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" class="bls-cover">
+        <img src="{{ (str_starts_with($post->cover_image, 'http://') || str_starts_with($post->cover_image, 'https://')) ? $post->cover_image : asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" class="bls-cover">
     @else
         <div class="bls-cover-placeholder"><i class="bi bi-journal-text"></i></div>
     @endif
