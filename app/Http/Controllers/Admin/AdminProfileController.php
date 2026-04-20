@@ -63,15 +63,14 @@ class AdminProfileController extends Controller
         session(['2fa_pending_secret' => $secret]);
 
         $appName = config('app.name', 'KayXchange');
-        $email   = rawurlencode($admin->email);
-        $otpUri  = "otpauth://totp/{$appName}:{$email}?secret={$secret}&issuer=" . rawurlencode($appName) . "&algorithm=SHA1&digits=6&period=30";
 
-        // Use free qrserver.com API — no library required
-        $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . rawurlencode($otpUri);
+        // Build a standards-compliant otpauth URI (RFC 6238 / Google Key URI Format)
+        // Label = issuer:account — encode issuer, leave email bare (@ is valid in path)
+        $label  = rawurlencode($appName) . ':' . $admin->email;
+        $otpUri = "otpauth://totp/{$label}?secret={$secret}&issuer=" . rawurlencode($appName);
 
         return response()->json([
-            'secret' => $secret,
-            'qr_url' => $qrUrl,
+            'secret'  => $secret,
             'otp_uri' => $otpUri,
         ]);
     }
@@ -121,15 +120,23 @@ class AdminProfileController extends Controller
     // ── TOTP helpers ──────────────────────────────────────────────────────
 
     /**
-     * Generate a cryptographically random Base32 secret (16 chars = 80 bits).
+     * Generate a cryptographically random Base32 secret (32 chars = 160 bits).
+     * Properly encodes 20 random bytes as Base32 per RFC 4648.
      */
     private function generateTotpSecret(): string
     {
-        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        $secret = '';
-        $bytes  = random_bytes(20);
-        for ($i = 0; $i < 20; $i++) {
-            $secret .= $chars[ord($bytes[$i]) & 0x1F];
+        $chars    = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $secret   = '';
+        $bytes    = random_bytes(20); // 160 bits → 32 Base32 chars
+        $buffer   = 0;
+        $bitsLeft = 0;
+        foreach (str_split($bytes) as $byte) {
+            $buffer    = ($buffer << 8) | ord($byte);
+            $bitsLeft += 8;
+            while ($bitsLeft >= 5) {
+                $bitsLeft -= 5;
+                $secret   .= $chars[($buffer >> $bitsLeft) & 0x1F];
+            }
         }
         return $secret;
     }

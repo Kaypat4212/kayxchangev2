@@ -167,7 +167,7 @@
                             <div class="card bg-light border-0 p-3 mb-3">
                                 <div class="row align-items-center g-3">
                                     <div class="col-auto text-center">
-                                        <img id="qrImage" src="" alt="QR Code" width="180" height="180" class="border rounded p-1 bg-white">
+                                        <canvas id="qrCanvas" class="border rounded p-1 bg-white d-block" style="width:180px;height:180px;"></canvas>
                                     </div>
                                     <div class="col">
                                         <p class="fw-semibold mb-1">1. Open Authy or Google Authenticator</p>
@@ -209,7 +209,22 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <script>
+function renderQR(otpUri) {
+    QRCode.toCanvas(document.getElementById('qrCanvas'), otpUri, {
+        width: 180,
+        margin: 2,
+        errorCorrectionLevel: 'M',
+        color: { dark: '#000000', light: '#ffffff' }
+    }, function (err) {
+        if (err) {
+            document.getElementById('qrCanvas').insertAdjacentHTML('afterend',
+                '<p class="text-danger small mt-1">QR error: ' + err.message + '</p>');
+        }
+    });
+}
+
 document.getElementById('startSetupBtn')?.addEventListener('click', function () {
     this.disabled = true;
     this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generating…';
@@ -223,10 +238,10 @@ document.getElementById('startSetupBtn')?.addEventListener('click', function () 
     })
     .then(r => r.json())
     .then(data => {
-        document.getElementById('qrImage').src = data.qr_url;
         document.getElementById('secretDisplay').textContent = data.secret;
         document.getElementById('step1').classList.add('d-none');
         document.getElementById('step2').classList.remove('d-none');
+        renderQR(data.otp_uri);
     })
     .catch(() => {
         alert('Failed to start 2FA setup. Please try again.');
@@ -258,10 +273,10 @@ function copySecret() {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
     }).then(r => r.json()).then(data => {
-        document.getElementById('qrImage').src = data.qr_url;
         document.getElementById('secretDisplay').textContent = data.secret;
         document.getElementById('step1').classList.add('d-none');
         document.getElementById('step2').classList.remove('d-none');
+        renderQR(data.otp_uri);
     });
 })();
 @endif
