@@ -30,6 +30,10 @@ class AdminProfileController extends Controller
         }
 
         Auth::user()->update(['email' => $request->email]);
+
+        // Re-login so the session reflects the new email immediately
+        Auth::login(Auth::user()->fresh());
+
         return back()->with('success_email', 'Email updated successfully.');
     }
 
