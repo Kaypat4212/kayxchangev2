@@ -21,6 +21,8 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        // Security headers on every response
+        \App\Http\Middleware\SecurityHeaders::class,
     ];
 
     /**
@@ -36,6 +38,10 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            // Visitor logging + Telegram notification
+            \App\Http\Middleware\LogVisitor::class,
+            // Global web rate limit (120 req/min per IP)
+            \Illuminate\Routing\Middleware\ThrottleRequests::class . ':web-public',
         ],
 
         'api' => [

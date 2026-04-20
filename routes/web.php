@@ -214,6 +214,11 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('newsletter/campaign',     [App\Http\Controllers\Admin\AdminNewsletterController::class, 'sendCampaign'])->name('admin.newsletter.campaign');
     Route::delete('newsletter/{subscriber}', [App\Http\Controllers\Admin\AdminNewsletterController::class, 'destroy'])->name('admin.newsletter.destroy');
 
+    // Visitor Logs
+    Route::get('visitor-logs',             [App\Http\Controllers\Admin\AdminVisitorLogController::class, 'index'])->name('admin.visitor-logs.index');
+    Route::get('visitor-logs/export',      [App\Http\Controllers\Admin\AdminVisitorLogController::class, 'export'])->name('admin.visitor-logs.export');
+    Route::delete('visitor-logs/clear',    [App\Http\Controllers\Admin\AdminVisitorLogController::class, 'clear'])->name('admin.visitor-logs.clear');
+
     // Admin Profile
     Route::get('profile',                  [AdminProfileController::class, 'index'])->name('admin.profile.index');
     Route::post('profile/email',           [AdminProfileController::class, 'updateEmail'])->name('admin.profile.email');
@@ -259,7 +264,9 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Newsletter
-Route::post('/newsletter/subscribe', [App\Http\Controllers\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
+Route::post('/newsletter/subscribe', [App\Http\Controllers\NewsletterController::class, 'subscribe'])
+    ->middleware('throttle:newsletter')
+    ->name('newsletter.subscribe');
 Route::match(['get','post'], '/newsletter/unsubscribe', [App\Http\Controllers\NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');
 
 // Test routes (remove in production)
@@ -439,7 +446,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
 
 // Admin Login Routes (Outside middleware)
 Route::get('/admin', [AdminController::class, 'showLoginForm'])->name('admin.login');
-Route::post('/admin', [AdminController::class, 'login']);
+Route::post('/admin', [AdminController::class, 'login'])->middleware('throttle:auth-endpoints');
 Route::get('/admin/forgot-password', [AdminController::class, 'showForgotPasswordForm'])->name('admin.password.request');
 Route::post('/admin/forgot-password', [AdminController::class, 'resetPasswordWithSecret'])->name('admin.password.reset.secret');
 
