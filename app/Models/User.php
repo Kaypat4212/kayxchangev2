@@ -64,6 +64,7 @@ class User extends Authenticatable
         'whatsapp_phone',
         'whatsapp_verified',
         'whatsapp_notifications',
+        'registration_ip',
     ];
 
     /**

@@ -85,10 +85,11 @@ class RegisteredUserController extends Controller
 
         $user = User::create([
             'name'        => $request->name,
-            'email'       => $request->email,
-            'phone'       => preg_replace('/\D/', '', $request->phone), // store digits only
-            'password'    => Hash::make($request->password),
-            'referred_by' => $referralCode !== '' ? $referralCode : null,
+            'email'           => $request->email,
+            'phone'           => preg_replace('/\D/', '', $request->phone), // store digits only
+            'password'        => Hash::make($request->password),
+            'referred_by'     => $referralCode !== '' ? $referralCode : null,
+            'registration_ip' => $request->ip(),
         ]);
 
         // Create Referral record if a valid referrer exists

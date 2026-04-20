@@ -66,8 +66,13 @@
               </a>
             </li>
             <li>
-              <a class="dropdown-item @if(request()->is('admin/referrals*')) active @endif" href="{{ route('admin.referrals.settings') }}">
+              <a class="dropdown-item @if(request()->is('admin/referrals') || request()->routeIs('admin.referrals.index')) active @endif" href="{{ route('admin.referrals.index') }}">
                 <i class="bi bi-megaphone me-2"></i>Referrals
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/referrals/settings*')) active @endif" href="{{ route('admin.referrals.settings') }}">
+                <i class="bi bi-gear me-2"></i>Referral Settings
               </a>
             </li>
           </ul>

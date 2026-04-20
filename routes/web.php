@@ -360,7 +360,10 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         return response()->json(['message' => $output ?: 'Escalation scan complete.']);
     })->name('admin.run-trade-escalation');
 
-    // Referral settings and special referral code management
+    // Referral management
+    Route::get('/referrals', [ReferralSettingsController::class, 'referrals'])->name('admin.referrals.index');
+    Route::post('/referrals/{referral}/block', [ReferralSettingsController::class, 'block'])->name('admin.referrals.block');
+    Route::post('/referrals/{referral}/unblock', [ReferralSettingsController::class, 'unblock'])->name('admin.referrals.unblock');
     Route::get('/referrals/settings', [ReferralSettingsController::class, 'index'])->name('admin.referrals.settings');
     Route::put('/referrals/settings/defaults', [ReferralSettingsController::class, 'updateDefaults'])->name('admin.referrals.defaults.update');
     Route::post('/referrals/settings/codes', [ReferralSettingsController::class, 'storeCode'])->name('admin.referrals.codes.store');

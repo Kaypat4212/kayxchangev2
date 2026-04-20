@@ -724,6 +724,63 @@ class DepositController extends Controller
                 return;
             }
 
+            // ── Anti-fraud gate: block if reward already manually blocked by admin ──
+            if ($referral->blocked_at !== null) {
+                Log::warning('Referral reward blocked by admin', [
+                    'referral_id' => $referral->id,
+                    'reason'      => $referral->fraud_reason,
+                ]);
+                return;
+            }
+
+            // ── Anti-fraud: same registration IP as referrer → auto-flag ─────────
+            $referrerUser = $referral->referrer;
+            if (
+                $referrerUser &&
+                $user->registration_ip &&
+                $referrerUser->registration_ip &&
+                $user->registration_ip === $referrerUser->registration_ip
+            ) {
+                $referral->update([
+                    'fraud_flagged' => true,
+                    'fraud_reason'  => 'Referrer and referred user registered from the same IP address (' . $user->registration_ip . ')',
+                    'blocked_at'    => now(),
+                ]);
+                Log::warning('Referral auto-blocked: same registration IP', [
+                    'referral_id'  => $referral->id,
+                    'ip'           => $user->registration_ip,
+                    'referrer_id'  => $referrerUser->id,
+                    'referred_id'  => $user->id,
+                ]);
+                return;
+            }
+
+            // ── Anti-fraud: same phone prefix pattern (optional extra signal) ─────
+            // Flag (but don't block) if referrer and referred share the same phone
+            // number prefix (first 7 digits identical — strong indicator of same person).
+            if (
+                $referrerUser &&
+                $user->phone &&
+                $referrerUser->phone &&
+                strlen($user->phone) >= 7 &&
+                substr($user->phone, 0, 7) === substr($referrerUser->phone, 0, 7)
+            ) {
+                // Flag for admin review but don't auto-block (same family could share prefix)
+                if (!$referral->fraud_flagged) {
+                    $referral->update([
+                        'fraud_flagged' => true,
+                        'fraud_reason'  => 'Referrer and referred user share the same phone number prefix — possible family or duplicate account.',
+                    ]);
+                    Log::warning('Referral flagged: matching phone prefix', [
+                        'referral_id' => $referral->id,
+                        'referrer_id' => $referrerUser->id,
+                        'referred_id' => $user->id,
+                    ]);
+                }
+                // Do NOT return here — let admin review it, reward still held until admin unblocks
+                return;
+            }
+
             // Sum all approved deposits for this user
             $totalDeposited = Deposit::where('user_id', $user->id)
                 ->where('status', 'approved')
