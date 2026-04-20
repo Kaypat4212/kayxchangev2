@@ -210,11 +210,13 @@
           <p>Subscribe to our newsletter to stay updated with the latest <br> Market news & Updates</p>
         </div>
         <div class="col-lg-6 ">
-          <form method="post" action="./subscribe.php">
-            <input type="text" placeholder="Your name" name="name"> <br>
-            <input class="mt-4" type="email" placeholder="Email address" name="email">
-            <input type="submit" value="Subscribe">
+          <form id="footerNewsletterForm">
+            @csrf
+            <input type="text" placeholder="Your name" name="name" id="footerNewsletterName"> <br>
+            <input class="mt-4" type="email" placeholder="Email address" name="email" id="footerNewsletterEmail" required>
+            <input type="submit" value="Subscribe" id="footerNewsletterBtn">
           </form>
+          <div id="footerNewsletterMsg" style="display:none;margin-top:.6rem;font-size:.85rem;"></div>
         </div>
       </div>
     </div>
@@ -255,4 +257,39 @@
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
 <script>
   AOS.init();
+</script>
+<script>
+(function () {
+    const form = document.getElementById('footerNewsletterForm');
+    if (!form) return;
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn  = document.getElementById('footerNewsletterBtn');
+        const msg  = document.getElementById('footerNewsletterMsg');
+        const orig = btn.value;
+        btn.value = 'Subscribing...';
+        btn.disabled = true;
+        msg.style.display = 'none';
+        try {
+            const fd = new FormData(form);
+            const res  = await fetch('{{ route("newsletter.subscribe") }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('[name="_token"]')?.value || '' },
+                body: fd,
+            });
+            const data = await res.json();
+            msg.style.display = 'block';
+            msg.style.color   = data.success ? '#4ade80' : '#f87171';
+            msg.textContent   = data.message || (data.success ? 'Subscribed!' : 'Error. Try again.');
+            if (data.success) form.reset();
+        } catch (_) {
+            msg.style.display = 'block';
+            msg.style.color   = '#f87171';
+            msg.textContent   = 'Network error. Please try again.';
+        } finally {
+            btn.value    = orig;
+            btn.disabled = false;
+        }
+    });
+})();
 </script>

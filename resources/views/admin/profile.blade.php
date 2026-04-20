@@ -212,6 +212,11 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <script>
 function renderQR(otpUri) {
+    if (typeof QRCode === 'undefined') {
+        document.getElementById('qrCanvas').insertAdjacentHTML('afterend',
+            '<p class="text-warning small mt-1">QR library not loaded. Enter the secret manually below.</p>');
+        return;
+    }
     QRCode.toCanvas(document.getElementById('qrCanvas'), otpUri, {
         width: 180,
         margin: 2,
@@ -236,15 +241,24 @@ document.getElementById('startSetupBtn')?.addEventListener('click', function () 
             'Accept': 'application/json',
         }
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) {
+            return r.text().then(text => {
+                let msg = 'Server error ' + r.status;
+                try { const j = JSON.parse(text); msg = j.error || j.message || msg; } catch(e) {}
+                throw new Error(msg);
+            });
+        }
+        return r.json();
+    })
     .then(data => {
         document.getElementById('secretDisplay').textContent = data.secret;
         document.getElementById('step1').classList.add('d-none');
         document.getElementById('step2').classList.remove('d-none');
         renderQR(data.otp_uri);
     })
-    .catch(() => {
-        alert('Failed to start 2FA setup. Please try again.');
+    .catch(err => {
+        alert('Failed to start 2FA setup: ' + err.message);
         this.disabled = false;
         this.innerHTML = '<i class="bi bi-qr-code me-1"></i> Set Up Two-Factor Auth';
     });
@@ -272,12 +286,13 @@ function copySecret() {
     fetch('{{ route("admin.profile.2fa.setup") }}', {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
-    }).then(r => r.json()).then(data => {
+    }).then(r => r.ok ? r.json() : r.text().then(t => { throw new Error('HTTP ' + r.status); }))
+    .then(data => {
         document.getElementById('secretDisplay').textContent = data.secret;
         document.getElementById('step1').classList.add('d-none');
         document.getElementById('step2').classList.remove('d-none');
         renderQR(data.otp_uri);
-    });
+    }).catch(err => console.error('2FA auto-setup error:', err.message));
 })();
 @endif
 </script>

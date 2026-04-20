@@ -465,7 +465,7 @@ class TelegramService
         // Extract the first word (command without arguments)
         $command = strtolower(explode(' ', $text)[0]);
 
-        $known = ['start', 'register', 'rates', 'buy', 'sell', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai'];
+        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai'];
 
         return in_array($command, $known, true) ? $command : null;
     }
@@ -541,6 +541,8 @@ class TelegramService
                         $this->handleSellProofUpload($chatId, $fileId);
                     } elseif ($state === 'buy_proof') {
                         $this->handleBuyProofUpload($chatId, $fileId);
+                    } elseif ($state === 'deposit_proof') {
+                        $this->handleDepositProofUpload($chatId, $fileId);
                     } else {
                         $this->sendMessage($chatId, "📸 Photo received, but I'm not expecting one right now. Use /sell or /buy to start a trade.");
                     }
@@ -570,6 +572,7 @@ class TelegramService
                         'rates'    => $this->handleRatesCommand($chatId),
                         'buy'      => $this->handleBuyCommand($chatId),
                         'sell'     => $this->handleSellCommand($chatId),
+                        'deposit'  => $this->handleDepositCommand($chatId),
                         'balance'  => $this->handleBalanceCommand($chatId),
                         'trades'   => $this->handleTradesCommand($chatId),
                         'verify'   => $this->handleVerifyCommand($chatId, $text, $username),
@@ -616,6 +619,9 @@ class TelegramService
                             return true;
                         case 'buy_pin':
                             $this->handleBuyPinInput($chatId, $text);
+                            return true;
+                        case 'deposit_amount':
+                            $this->handleDepositAmountInput($chatId, $text);
                             return true;
                         case 'reg_name':
                             $this->handleRegNameInput($chatId, $text);
@@ -733,6 +739,18 @@ class TelegramService
                     $this->handleAdminRejectWithdrawal($chatId, (int) substr($data, 18), $messageId);
                     return true;
                 }
+                if (str_starts_with($data, 'deposit_account:')) {
+                    $this->handleDepositAccountSelected($chatId, (int) substr($data, 16));
+                    return true;
+                }
+                if (str_starts_with($data, 'approve_deposit:')) {
+                    $this->handleAdminApproveDeposit($chatId, (int) substr($data, 16), $messageId);
+                    return true;
+                }
+                if (str_starts_with($data, 'reject_deposit:')) {
+                    $this->handleAdminRejectDeposit($chatId, (int) substr($data, 15), $messageId);
+                    return true;
+                }
 
                 // ── Legacy command callbacks ───────────────────────────────────────
                 match ($data) {
@@ -741,6 +759,7 @@ class TelegramService
                     'cmd_rates'    => $this->handleRatesCommand($chatId),
                     'cmd_buy'      => $this->handleBuyCommand($chatId),
                     'cmd_sell'     => $this->handleSellCommand($chatId),
+                    'cmd_deposit'  => $this->handleDepositCommand($chatId),
                     'cmd_balance'  => $this->handleBalanceCommand($chatId),
                     'cmd_trades'   => $this->handleTradesCommand($chatId),
                     'cmd_help'     => $this->handleHelpCommand($chatId),
@@ -1370,6 +1389,8 @@ class TelegramService
                     "  └ PIN required if set → choose coin → amount → proof (photo or txid) → payout\n" .
                     "`/buy` — Buy cryptocurrency\n" .
                     "  └ PIN required if set → choose coin → amount → wallet → proof (photo or txid)\n" .
+                    "`/deposit` — Deposit NGN into your wallet balance\n" .
+                    "  └ Pick account → enter amount → upload proof photo\n" .
                     "`/rates` — View live NGN buy & sell rates\n" .
                     "`/balance` — Check your account balance\n" .
                     "`/trades` — View your last 5 trades\n\n" .
@@ -3011,5 +3032,218 @@ class TelegramService
 
             $this->sendMessage($chatId, $message);
         }
+    }
+
+    // ─────────────────────────────── DEPOSIT FLOW ────────────────────────────────
+
+    private function handleDepositCommand(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (!$user) {
+            $this->sendMessage($chatId, "🔒 *Account not linked*\n\nSend your KayXchange email address or use /register to get started.", 'Markdown');
+            return;
+        }
+
+        $accounts = \App\Models\CompanyAccount::where('is_active', true)->get();
+        if ($accounts->isEmpty()) {
+            $this->sendMessage($chatId, "❌ No bank accounts are currently available for deposit. Please contact support.");
+            return;
+        }
+
+        $rows = $accounts->map(fn($acc) => [
+            ['text' => "🏦 {$acc->bank_name} — {$acc->account_number}", 'callback_data' => "deposit_account:{$acc->id}"],
+        ])->toArray();
+        $rows[] = [['text' => '❌ Cancel', 'callback_data' => 'cancel']];
+
+        $this->setState($chatId, 'deposit_select_account');
+        $this->setData($chatId, ['user_id' => $user->id]);
+
+        $this->sendMessage($chatId,
+            "💳 *Deposit NGN to your wallet*\n\nSelect the bank account you'll transfer to:",
+            'Markdown',
+            ['inline_keyboard' => $rows]
+        );
+    }
+
+    private function handleDepositAccountSelected(int $chatId, int $accountId): void
+    {
+        $account = \App\Models\CompanyAccount::find($accountId);
+        if (!$account) {
+            $this->sendMessage($chatId, "❌ Account not found. Please try /deposit again.");
+            return;
+        }
+
+        $this->mergeData($chatId, ['account_id' => $accountId]);
+        $this->setState($chatId, 'deposit_amount');
+
+        $this->sendMessage($chatId,
+            "🏦 *Bank Details*\n\n" .
+            "Bank: *{$account->bank_name}*\n" .
+            "Account Name: *{$account->account_name}*\n" .
+            "Account Number: `{$account->account_number}`\n\n" .
+            "💵 Please enter the *exact amount in NGN* you are depositing:\n_(e.g. 50000)_",
+            'Markdown'
+        );
+    }
+
+    private function handleDepositAmountInput(int $chatId, string $text): void
+    {
+        $amount = (float) preg_replace('/[^0-9.]/', '', $text);
+        if ($amount < 100) {
+            $this->sendMessage($chatId, "❌ Minimum deposit is ₦100. Please enter a valid amount:");
+            return;
+        }
+
+        $this->mergeData($chatId, ['amount' => $amount]);
+        $this->setState($chatId, 'deposit_proof');
+
+        $this->sendMessage($chatId,
+            "✅ Amount: *₦" . number_format($amount, 2) . "*\n\n" .
+            "📸 Now send a *photo* of your payment receipt/teller as proof.\n" .
+            "_Send it as a Telegram photo (not a file/document)._",
+            'Markdown'
+        );
+    }
+
+    private function handleDepositProofUpload(int $chatId, string $fileId): void
+    {
+        $data = $this->getData($chatId);
+        $user = User::find($data['user_id'] ?? 0);
+
+        if (!$user || empty($data['amount']) || empty($data['account_id'])) {
+            $this->sendMessage($chatId, "❌ Session expired. Please start again with /deposit");
+            $this->clearState($chatId);
+            return;
+        }
+
+        $localPath = $this->downloadTelegramFile($fileId, 'payment_proofs');
+        if (!$localPath) {
+            $this->sendMessage($chatId, "❌ Could not save your proof photo. Please try again.");
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $ref = 'DEP-TG-' . strtoupper(\Illuminate\Support\Str::random(8));
+            $deposit = \App\Models\Deposit::create([
+                'user_id'           => $user->id,
+                'amount'            => $data['amount'],
+                'currency'          => 'NGN',
+                'status'            => 'pending',
+                'company_account_id'=> $data['account_id'],
+                'transaction_ref'   => $ref,
+                'proof_of_payment'  => $localPath,
+                'proof'             => $localPath,
+                'payment_method'    => 'Bank Transfer (Telegram)',
+            ]);
+
+            DB::commit();
+            $this->clearState($chatId);
+
+            $this->sendMessage($chatId,
+                "✅ *Deposit Submitted!*\n\n" .
+                "🔖 Ref: `{$ref}`\n" .
+                "💴 Amount: *₦" . number_format($data['amount'], 2) . "*\n" .
+                "⏳ Status: *Pending Review*\n\n" .
+                "Admin will credit your wallet once payment is confirmed. You'll be notified here.",
+                'Markdown'
+            );
+
+            // Notify admin
+            $adminMsg = "💰 *New Deposit via Telegram*\n\n" .
+                "👤 User: *{$user->name}* ({$user->email})\n" .
+                "💴 Amount: *₦" . number_format($data['amount'], 2) . "*\n" .
+                "🔖 Ref: `{$ref}`\n" .
+                "📋 Deposit ID: #{$deposit->id}\n\n" .
+                "Tap below to approve or reject:";
+
+            $keyboard = ['inline_keyboard' => [[
+                ['text' => '✅ Approve', 'callback_data' => "approve_deposit:{$deposit->id}"],
+                ['text' => '❌ Reject',  'callback_data' => "reject_deposit:{$deposit->id}"],
+            ]]];
+
+            $this->sendToAdminChats($adminMsg, $keyboard);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Telegram deposit creation failed', ['error' => $e->getMessage()]);
+            $this->sendMessage($chatId, "❌ Could not submit your deposit. Please try again or contact support.");
+        }
+    }
+
+    public function handleAdminApproveDeposit(int $chatId, int $depositId, ?int $messageId): void
+    {
+        $deposit = \App\Models\Deposit::with('user')->find($depositId);
+        if (!$deposit) {
+            $this->sendMessage($chatId, "❌ Deposit #{$depositId} not found.");
+            return;
+        }
+        if ($deposit->status !== 'pending') {
+            $this->sendMessage($chatId, "⚠️ Deposit #{$depositId} is already *{$deposit->status}*.", 'Markdown');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $deposit->update(['status' => 'approved']);
+            $user = $deposit->user;
+            if ($user) {
+                $user->increment('balance', $deposit->amount);
+                // In-app notification
+                \App\Models\Notification::create([
+                    'user_id' => $user->id,
+                    'type'    => 'deposit_approved',
+                    'title'   => 'Deposit Approved',
+                    'message' => "Your deposit of ₦" . number_format($deposit->amount, 2) . " has been approved and added to your wallet.",
+                ]);
+                // Telegram notification to user
+                if ($user->telegram_chat_id) {
+                    $this->sendMessage((int) $user->telegram_chat_id,
+                        "✅ *Deposit Approved!*\n\n" .
+                        "₦" . number_format($deposit->amount, 2) . " has been added to your wallet balance.\n" .
+                        "🔖 Ref: `{$deposit->transaction_ref}`",
+                        'Markdown'
+                    );
+                }
+            }
+            DB::commit();
+            $this->sendMessage($chatId, "✅ Deposit #{$depositId} approved. ₦" . number_format($deposit->amount, 2) . " credited to user.", 'Markdown');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            $this->sendMessage($chatId, "❌ Failed to approve deposit: " . $e->getMessage());
+        }
+    }
+
+    public function handleAdminRejectDeposit(int $chatId, int $depositId, ?int $messageId): void
+    {
+        $deposit = \App\Models\Deposit::with('user')->find($depositId);
+        if (!$deposit) {
+            $this->sendMessage($chatId, "❌ Deposit #{$depositId} not found.");
+            return;
+        }
+        if ($deposit->status !== 'pending') {
+            $this->sendMessage($chatId, "⚠️ Deposit #{$depositId} is already *{$deposit->status}*.", 'Markdown');
+            return;
+        }
+
+        $deposit->update(['status' => 'rejected']);
+        $user = $deposit->user;
+        if ($user) {
+            \App\Models\Notification::create([
+                'user_id' => $user->id,
+                'type'    => 'deposit_rejected',
+                'title'   => 'Deposit Rejected',
+                'message' => "Your deposit of ₦" . number_format($deposit->amount, 2) . " was rejected. Please contact support if this is an error.",
+            ]);
+            if ($user->telegram_chat_id) {
+                $this->sendMessage((int) $user->telegram_chat_id,
+                    "❌ *Deposit Rejected*\n\n" .
+                    "Your deposit of ₦" . number_format($deposit->amount, 2) . " was not approved.\n" .
+                    "Please contact support if you believe this is an error.",
+                    'Markdown'
+                );
+            }
+        }
+        $this->sendMessage($chatId, "✅ Deposit #{$depositId} rejected.", 'Markdown');
     }
 }

@@ -244,6 +244,18 @@ Route::middleware(['auth'])->group(function () {
         ->where('withdrawal', '[0-9]+');
 });
 
+// Price Alerts
+Route::middleware(['auth'])->group(function () {
+    Route::get('/price-alerts', [App\Http\Controllers\PriceAlertController::class, 'index'])->name('price-alerts.index');
+    Route::post('/price-alerts', [App\Http\Controllers\PriceAlertController::class, 'store'])->name('price-alerts.store');
+    Route::patch('/price-alerts/{priceAlert}', [App\Http\Controllers\PriceAlertController::class, 'toggle'])->name('price-alerts.toggle');
+    Route::delete('/price-alerts/{priceAlert}', [App\Http\Controllers\PriceAlertController::class, 'destroy'])->name('price-alerts.destroy');
+});
+
+// Newsletter
+Route::post('/newsletter/subscribe', [App\Http\Controllers\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
+Route::post('/newsletter/unsubscribe', [App\Http\Controllers\NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');
+
 // Test routes (remove in production)
 Route::get('/test-deposit', [App\Http\Controllers\DepositTestController::class, 'testDeposit'])->name('test.deposit');
 Route::post('/test-validation', [App\Http\Controllers\DepositTestController::class, 'testValidation'])->name('test.validation');

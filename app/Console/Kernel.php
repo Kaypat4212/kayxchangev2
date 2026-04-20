@@ -26,6 +26,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Check price alerts every 5 minutes
+        $schedule->command('alerts:check')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // Auto-escalate pending trades that exceed SLA threshold
         $schedule->command('trades:escalate-pending')
             ->everyFiveMinutes()

@@ -56,23 +56,26 @@ class AdminProfileController extends Controller
     // ── 2FA: generate secret + show QR ───────────────────────────────────
     public function setup2fa()
     {
-        $admin  = Auth::user();
-        $secret = $this->generateTotpSecret();
+        try {
+            $admin  = Auth::user();
+            $secret = $this->generateTotpSecret();
 
-        // Store temporarily in session — only persisted after verification
-        session(['2fa_pending_secret' => $secret]);
+            // Store temporarily in session — only persisted after verification
+            session(['2fa_pending_secret' => $secret]);
 
-        $appName = config('app.name', 'KayXchange');
+            $appName = config('app.name', 'KayXchange');
 
-        // Build a standards-compliant otpauth URI (RFC 6238 / Google Key URI Format)
-        // Label = issuer:account — encode issuer, leave email bare (@ is valid in path)
-        $label  = rawurlencode($appName) . ':' . $admin->email;
-        $otpUri = "otpauth://totp/{$label}?secret={$secret}&issuer=" . rawurlencode($appName);
+            // Build a standards-compliant otpauth URI (RFC 6238 / Google Key URI Format)
+            $label  = rawurlencode($appName) . ':' . $admin->email;
+            $otpUri = "otpauth://totp/{$label}?secret={$secret}&issuer=" . rawurlencode($appName);
 
-        return response()->json([
-            'secret'  => $secret,
-            'otp_uri' => $otpUri,
-        ]);
+            return response()->json([
+                'secret'  => $secret,
+                'otp_uri' => $otpUri,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     // ── 2FA: confirm + enable ─────────────────────────────────────────────

@@ -55,6 +55,23 @@ class BackupSystem extends Command
             $this->addDirToZip($zip, $storagePath, 'storage');
         }
 
+        // Add application source code directories
+        $appRoot = base_path();
+        $sourceDirs = ['app', 'routes', 'resources', 'config', 'database'];
+        foreach ($sourceDirs as $dir) {
+            $fullPath = $appRoot . '/' . $dir;
+            if (is_dir($fullPath)) {
+                $this->addDirToZip($zip, $fullPath, "source/{$dir}");
+            }
+        }
+        // Add key root files
+        foreach (['composer.json', 'composer.lock', 'artisan'] as $file) {
+            $fileFull = $appRoot . '/' . $file;
+            if (file_exists($fileFull)) {
+                $zip->addFile($fileFull, "source/{$file}");
+            }
+        }
+
         $zip->close();
 
         // Clean up raw SQL file
@@ -216,7 +233,7 @@ class BackupSystem extends Command
         $caption = "🗄️ *KayXchange Backup Complete*\n\n"
             . "📅 Date: {$timestamp}\n"
             . "📦 Size: {$sizeMb} MB\n"
-            . "✅ Contains: DB dump + user uploads\n\n"
+            . "✅ Contains: DB dump + user uploads + app source code\n\n"
             . "_Backup retained for 7 days on server._";
 
         // Telegram has 50MB limit for bots — send summary only if file too big
@@ -260,7 +277,7 @@ class BackupSystem extends Command
                         "<h2>KayXchange Backup Complete</h2>"
                         . "<p><strong>Date:</strong> {$timestamp}<br>"
                         . "<strong>Size:</strong> {$sizeMb} MB<br>"
-                        . "<strong>Contents:</strong> Full DB dump + user uploads</p>"
+                        . "<strong>Contents:</strong> Full DB dump + user uploads + app source code</p>"
                         . "<p>The backup file is stored on the server. "
                         . "You can also download it from the <strong>Admin → Backup</strong> panel.</p>"
                         . "<p style='color:#888;font-size:12px'>Note: Due to email attachment size limits, the backup is not directly attached. Download from the admin panel.</p>"

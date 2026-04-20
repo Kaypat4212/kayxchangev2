@@ -1936,7 +1936,7 @@
     (function(){
         var form = document.getElementById('kxNlForm');
         if(!form) return;
-        form.addEventListener('submit', function(e){
+        form.addEventListener('submit', async function(e){
             e.preventDefault();
             var email = document.getElementById('kxNlEmail').value.trim();
             var btn   = document.getElementById('kxNlBtn');
@@ -1948,17 +1948,29 @@
             var orig = btn.innerHTML;
             btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Subscribing...';
             btn.disabled = true;
-            // Replace with real AJAX to your subscribe endpoint
-            setTimeout(function(){
-                btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Subscribed!';
-                btn.style.background = '#00a010';
+            try {
+                var csrf = document.querySelector('meta[name="csrf-token"]')?.content
+                        || document.querySelector('[name="_token"]')?.value || '';
+                var fd = new FormData();
+                fd.append('email', email);
+                fd.append('_token', csrf);
+                var res  = await fetch('{{ route("newsletter.subscribe") }}', { method:'POST', body: fd });
+                var data = await res.json();
+                btn.innerHTML = data.success
+                    ? '<i class="bi bi-check-circle-fill"></i> ' + (data.message || 'Subscribed!')
+                    : '<i class="bi bi-x-circle-fill"></i> ' + (data.message || 'Error');
+                btn.style.background = data.success ? '#00a010' : 'rgba(239,68,68,.6)';
                 setTimeout(function(){
                     btn.innerHTML = orig;
                     btn.style.background = '';
                     btn.disabled = false;
-                    form.reset();
+                    if(data.success) form.reset();
                 }, 3000);
-            }, 1200);
+            } catch(_) {
+                btn.innerHTML = '<i class="bi bi-x-circle-fill"></i> Network error';
+                btn.style.background = 'rgba(239,68,68,.6)';
+                setTimeout(function(){ btn.innerHTML=orig; btn.style.background=''; btn.disabled=false; }, 3000);
+            }
         });
     })();
     </script>
