@@ -35,6 +35,25 @@
 #kaybot-send:hover{background:#009900;}
 #kaybot-send svg{width:16px;height:16px;fill:#081108;}
 .kb-badge{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#ef4444;border-radius:50%;font-size:.62rem;color:#fff;display:flex;align-items:center;justify-content:center;display:none;}
+
+/* ── Light mode overrides ─────────────────────────────────────────── */
+body.light-mode #kaybot-box{background:#ffffff;border-color:rgba(0,150,0,.25);box-shadow:0 8px 40px rgba(0,0,0,.18);}
+body.light-mode #kaybot-header{background:linear-gradient(135deg,#f0fff0,#e8f4f8);border-bottom-color:rgba(0,0,0,.08);}
+body.light-mode #kaybot-header .meta h6{color:#111;}
+body.light-mode #kaybot-header .meta p{color:#007a0c;}
+body.light-mode #kaybot-close{color:#555;}
+body.light-mode #kaybot-close:hover{color:#000;}
+body.light-mode #kaybot-msgs{background:#f8f9fa;}
+body.light-mode #kaybot-msgs::-webkit-scrollbar-thumb{background:rgba(0,150,0,.2);}
+body.light-mode .kb-msg.bot{background:#e8e8e8;color:#111111;}
+body.light-mode .kb-msg.typing{color:#555;}
+body.light-mode .kb-quick{border-top-color:rgba(0,0,0,.08);}
+body.light-mode .kb-quick button{background:rgba(0,150,0,.08);border-color:rgba(0,150,0,.25);color:#007a0c;}
+body.light-mode .kb-quick button:hover{background:rgba(0,150,0,.18);}
+body.light-mode #kaybot-input-area{background:#f0f0f0;border-top-color:rgba(0,0,0,.08);}
+body.light-mode #kaybot-input{background:#ffffff;border-color:rgba(0,0,0,.15);color:#111111;}
+body.light-mode #kaybot-input::placeholder{color:#888;}
+body.light-mode #kaybot-input:focus{border-color:rgba(0,150,0,.45);}
 </style>
 
 <div id="kaybot-wrap">

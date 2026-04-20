@@ -197,6 +197,14 @@
             <i class="bi bi-headset"></i>Support
           </a>
         </li>
+        @php $kaybotVisible = \App\Models\AdminSetting::get('ai_chatbot_enabled','1') == '1' && (\App\Models\AdminSetting::get('openai_api_key') || \App\Models\AdminSetting::get('groq_api_key')); @endphp
+        @if($kaybotVisible)
+        <li class="nav-item">
+          <button type="button" onclick="kaybotToggle()" class="kx-nav-link" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:.4rem;" title="Chat with KayBot AI">
+            <i class="bi bi-robot" style="color:#00cc00"></i><span style="color:inherit">KayBot</span>
+          </button>
+        </li>
+        @endif
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('referrals')) kx-active @endif" href="{{ url('/referrals') }}">
             <i class="bi bi-people-fill"></i>Referrals

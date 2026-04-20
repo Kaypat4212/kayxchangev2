@@ -154,16 +154,28 @@
 
     <!-- ══ Mobile Bottom Navigation (visible ≤ 992px) ══ -->
     @auth
+    @php $kaybotBnav = \App\Models\AdminSetting::get('ai_chatbot_enabled','1') == '1' && (\App\Models\AdminSetting::get('openai_api_key') || \App\Models\AdminSetting::get('groq_api_key')); @endphp
     <nav class="kx-bottom-nav" id="kxBottomNav" aria-label="Mobile navigation">
         <a href="{{ url('/dashboard') }}"
            class="kx-bnav-item @if(request()->is('dashboard')) kx-bnav-active @endif">
             <i class="bi bi-grid-1x2-fill"></i><span>Home</span>
         </a>
-        <a href="{{ url('/rate') }}"
-           class="kx-bnav-item @if(request()->is('rate')) kx-bnav-active @endif">
-            <i class="bi bi-graph-up-arrow"></i><span>Rates</span>
+        <a href="{{ Auth::user()->kyc_verified ? url('/buy') : url('/kyc') }}"
+           class="kx-bnav-item @if(request()->is('buy*')) kx-bnav-active @endif">
+            <i class="bi bi-arrow-down-circle-fill"></i><span>Buy</span>
         </a>
-        <!-- Centre FAB: Buy -->
+        <!-- Centre FAB: KayBot AI -->
+        @if($kaybotBnav)
+        <div class="kx-bnav-item kx-bnav-center" id="bnav-kaybot-wrap">
+            <button type="button" onclick="kaybotToggle()" id="bnav-kaybot-btn"
+               class="kx-bnav-center-btn" title="KayBot AI Assistant"
+               style="background:linear-gradient(135deg,#00cc00,#007a0c);border:none;cursor:pointer;">
+                <i class="bi bi-robot"></i>
+            </button>
+            <span class="kx-bnav-center-lbl">KayBot</span>
+        </div>
+        @else
+        <!-- Centre FAB: Buy (fallback when KayBot disabled) -->
         <div class="kx-bnav-item kx-bnav-center">
             <a href="{{ Auth::user()->kyc_verified ? url('/buy') : url('/kyc') }}"
                class="kx-bnav-center-btn" title="Buy Crypto">
@@ -171,6 +183,7 @@
             </a>
             <span class="kx-bnav-center-lbl">Buy</span>
         </div>
+        @endif
         <a href="{{ url('/sell') }}"
            class="kx-bnav-item @if(request()->is('sell*')) kx-bnav-active @endif">
             <i class="bi bi-arrow-up-circle-fill"></i><span>Sell</span>
