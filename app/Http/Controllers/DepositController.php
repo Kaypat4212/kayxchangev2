@@ -714,8 +714,7 @@ class DepositController extends Controller
                 return;
             }
 
-            // ── Anti-fraud gate: referred user must be KYC-verified ───────────
-            // This ensures every rewarded account has a unique government ID.
+            // ── Hard gate 1: KYC required ─────────────────────────────────────
             if (!$user->kyc_verified) {
                 Log::info('Referral reward held: referred user not KYC verified', [
                     'referred_user' => $user->id,
@@ -724,7 +723,7 @@ class DepositController extends Controller
                 return;
             }
 
-            // ── Anti-fraud gate: block if reward already manually blocked by admin ──
+            // ── Hard gate 2: admin manually blocked ───────────────────────────
             if ($referral->blocked_at !== null) {
                 Log::warning('Referral reward blocked by admin', [
                     'referral_id' => $referral->id,
@@ -733,55 +732,149 @@ class DepositController extends Controller
                 return;
             }
 
-            // ── Anti-fraud: same registration IP as referrer → auto-flag ─────────
+            // ── Risk scoring — IP is one soft signal among many ───────────────
+            // ISPs (MTN, Airtel, Glo) rotate IPs — never auto-block on IP alone.
+            // Each signal adds points; auto-block ≥ 70, flag for review ≥ 30.
             $referrerUser = $referral->referrer;
-            if (
-                $referrerUser &&
-                $user->registration_ip &&
-                $referrerUser->registration_ip &&
-                $user->registration_ip === $referrerUser->registration_ip
-            ) {
-                $referral->update([
+            $riskScore    = $referral->risk_score ?? 0; // preserve any previously computed score
+            $signals      = $referral->risk_signals ?? [];
+
+            if ($referrerUser) {
+
+                // Signal 1 — same registration IP (+30)
+                // Soft signal: same IP is suspicious but ISPs do use CGNAT (shared IPs).
+                if (
+                    $user->registration_ip &&
+                    $referrerUser->registration_ip &&
+                    $user->registration_ip === $referrerUser->registration_ip &&
+                    !in_array('same_ip', array_column($signals, 'key'))
+                ) {
+                    $riskScore += 30;
+                    $signals[] = [
+                        'key'   => 'same_ip',
+                        'score' => 30,
+                        'note'  => 'Same registration IP (' . $user->registration_ip . '). Could be CGNAT/mobile ISP — needs review.',
+                    ];
+                }
+
+                // Signal 2 — same bank account used for deposits (+55)
+                // Extremely strong signal: two people using the same bank account number.
+                $referrerBank = \App\Models\Deposit::where('user_id', $referrerUser->id)
+                    ->whereNotNull('account_number')
+                    ->value('account_number');
+                $referredBank = \App\Models\Deposit::where('user_id', $user->id)
+                    ->whereNotNull('account_number')
+                    ->value('account_number');
+                if (
+                    $referrerBank &&
+                    $referredBank &&
+                    $referrerBank === $referredBank &&
+                    !in_array('same_bank_account', array_column($signals, 'key'))
+                ) {
+                    $riskScore += 55;
+                    $signals[] = [
+                        'key'   => 'same_bank_account',
+                        'score' => 55,
+                        'note'  => 'Referrer and referred share the same bank account number (' . substr($referrerBank, -4) . ').',
+                    ];
+                }
+
+                // Signal 3 — registered within 15 minutes of each other (+25)
+                // Genuine referrals rarely sign up seconds apart.
+                if (
+                    $user->created_at &&
+                    $referrerUser->created_at &&
+                    abs($user->created_at->diffInMinutes($referrerUser->created_at)) <= 15 &&
+                    !in_array('rapid_signup', array_column($signals, 'key'))
+                ) {
+                    $riskScore += 25;
+                    $signals[] = [
+                        'key'   => 'rapid_signup',
+                        'score' => 25,
+                        'note'  => 'Referred and referrer accounts created within 15 minutes of each other.',
+                    ];
+                }
+
+                // Signal 4 — referrer already has 5+ pending/completed referrals in last 7 days (+20)
+                // Normal users don't flood referrals this fast — smells like a network of fake accounts.
+                $recentReferrals = Referral::where('referrer_id', $referrerUser->id)
+                    ->where('created_at', '>=', now()->subDays(7))
+                    ->count();
+                if (
+                    $recentReferrals >= 5 &&
+                    !in_array('high_velocity', array_column($signals, 'key'))
+                ) {
+                    $riskScore += 20;
+                    $signals[] = [
+                        'key'   => 'high_velocity',
+                        'score' => 20,
+                        'note'  => 'Referrer generated ' . $recentReferrals . ' referrals within 7 days — high velocity.',
+                    ];
+                }
+
+                // Signal 5 — same name (exact or very similar) between referrer & referred (+20)
+                if (
+                    $user->name &&
+                    $referrerUser->name &&
+                    !in_array('name_match', array_column($signals, 'key'))
+                ) {
+                    similar_text(strtolower($user->name), strtolower($referrerUser->name), $namePct);
+                    if ($namePct >= 80) {
+                        $riskScore += 20;
+                        $signals[] = [
+                            'key'   => 'name_match',
+                            'score' => 20,
+                            'note'  => 'Names are ' . round($namePct) . '% similar (' . $user->name . ' / ' . $referrerUser->name . ').',
+                        ];
+                    }
+                }
+            }
+
+            // Cap at 100
+            $riskScore = min(100, $riskScore);
+
+            // Persist updated score
+            $updateData = ['risk_score' => $riskScore, 'risk_signals' => $signals];
+
+            if ($riskScore >= 70) {
+                // AUTO-BLOCK: score is very high, clear fraud evidence
+                $reasons = implode(' | ', array_column($signals, 'note'));
+                $updateData = array_merge($updateData, [
                     'fraud_flagged' => true,
-                    'fraud_reason'  => 'Referrer and referred user registered from the same IP address (' . $user->registration_ip . ')',
+                    'fraud_reason'  => 'Auto-blocked (risk score ' . $riskScore . '/100): ' . $reasons,
                     'blocked_at'    => now(),
                 ]);
-                Log::warning('Referral auto-blocked: same registration IP', [
-                    'referral_id'  => $referral->id,
-                    'ip'           => $user->registration_ip,
-                    'referrer_id'  => $referrerUser->id,
-                    'referred_id'  => $user->id,
+                $referral->update($updateData);
+                Log::warning('Referral auto-blocked (high risk score)', [
+                    'referral_id' => $referral->id,
+                    'risk_score'  => $riskScore,
+                    'signals'     => $signals,
                 ]);
                 return;
-            }
 
-            // ── Anti-fraud: same phone prefix pattern (optional extra signal) ─────
-            // Flag (but don't block) if referrer and referred share the same phone
-            // number prefix (first 7 digits identical — strong indicator of same person).
-            if (
-                $referrerUser &&
-                $user->phone &&
-                $referrerUser->phone &&
-                strlen($user->phone) >= 7 &&
-                substr($user->phone, 0, 7) === substr($referrerUser->phone, 0, 7)
-            ) {
-                // Flag for admin review but don't auto-block (same family could share prefix)
+            } elseif ($riskScore >= 30) {
+                // FLAGGED: suspicious but not conclusive — admin must review
                 if (!$referral->fraud_flagged) {
-                    $referral->update([
+                    $reasons = implode(' | ', array_column($signals, 'note'));
+                    $updateData = array_merge($updateData, [
                         'fraud_flagged' => true,
-                        'fraud_reason'  => 'Referrer and referred user share the same phone number prefix — possible family or duplicate account.',
-                    ]);
-                    Log::warning('Referral flagged: matching phone prefix', [
-                        'referral_id' => $referral->id,
-                        'referrer_id' => $referrerUser->id,
-                        'referred_id' => $user->id,
+                        'fraud_reason'  => 'Flagged for review (risk score ' . $riskScore . '/100): ' . $reasons,
                     ]);
                 }
-                // Do NOT return here — let admin review it, reward still held until admin unblocks
+                $referral->update($updateData);
+                Log::warning('Referral flagged for admin review', [
+                    'referral_id' => $referral->id,
+                    'risk_score'  => $riskScore,
+                ]);
+                // Hold reward until admin clears it
                 return;
+
+            } else {
+                // Save updated score even if clean
+                $referral->update($updateData);
             }
 
-            // Sum all approved deposits for this user
+            // ── Deposit threshold check ───────────────────────────────────────
             $totalDeposited = Deposit::where('user_id', $user->id)
                 ->where('status', 'approved')
                 ->sum('amount');

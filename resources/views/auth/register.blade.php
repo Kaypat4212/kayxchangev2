@@ -255,6 +255,11 @@
             @error('referral_code')
               <div class="lx-error"><i class="bi bi-exclamation-circle"></i>{{ $message }}</div>
             @enderror
+            <div style="margin-top:.4rem;font-size:.72rem;color:rgba(255,255,255,.4);line-height:1.5;">
+              <i class="bi bi-shield-check" style="color:rgba(0,204,0,.6)"></i>
+              Referral bonuses are only paid after your first ₦10,000 deposit + KYC verification.
+              Creating a second account to abuse referrals leads to a permanent ban.
+            </div>
           </div>
 
           <button type="submit" class="lx-submit" id="lx-submit-btn">

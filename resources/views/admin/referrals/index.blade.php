@@ -73,7 +73,17 @@
 .ref-amt { font-weight: 600; color: #00cc00; }
 .ref-deposit-bar { height: 4px; border-radius: 2px; background: var(--kx-border); min-width: 60px; position: relative; overflow: hidden; }
 .ref-deposit-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 2px; background: #fbbf24; }
-.ref-fraud-reason { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 6px; padding: .35rem .55rem; font-size: .7rem; color: #ef4444; margin-top: 4px; max-width: 220px; }
+.ref-risk-bar { height: 5px; border-radius: 3px; background: var(--kx-border); min-width: 55px; position: relative; overflow: hidden; }
+.ref-risk-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 3px; transition: width .4s; }
+.ref-risk-low  .ref-risk-fill { background: #00cc00; }
+.ref-risk-mid  .ref-risk-fill { background: #f97316; }
+.ref-risk-high .ref-risk-fill { background: #ef4444; }
+.ref-risk-val  { font-size: .72rem; font-weight: 700; }
+.ref-risk-val.low  { color: #00cc00; }
+.ref-risk-val.mid  { color: #f97316; }
+.ref-risk-val.high { color: #ef4444; }
+.ref-signals { list-style: none; padding: 0; margin: 4px 0 0; font-size: .68rem; color: var(--kx-muted); }
+.ref-signals li::before { content: '⚠ '; color: #f97316; }
 .ref-action-btn { border: none; border-radius: 7px; font-size: .72rem; font-weight: 600; padding: .3rem .6rem; cursor: pointer; transition: .15s; }
 .ref-action-btn.block   { background: rgba(239,68,68,.13); color: #ef4444; }
 .ref-action-btn.block:hover   { background: rgba(239,68,68,.25); }
@@ -190,7 +200,8 @@
                         <th>Deposits</th>
                         <th>Reward</th>
                         <th>Status</th>
-                        <th>Fraud</th>
+                        <th>Risk Score</th>
+                        <th>Fraud Signals</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -207,7 +218,10 @@
                             && $referred->registration_ip
                             && $referrer->registration_ip
                             && $referred->registration_ip === $referrer->registration_ip;
-                        $isBlocked = $ref->blocked_at !== null;
+                        $isBlocked  = $ref->blocked_at !== null;
+                        $riskScore  = $ref->risk_score ?? 0;
+                        $riskClass  = $riskScore >= 70 ? 'high' : ($riskScore >= 30 ? 'mid' : 'low');
+                        $riskSignals = $ref->risk_signals ?? [];
                     @endphp
                     <tr class="{{ $ref->fraud_flagged ? 'fraud-row' : '' }}">
                         <td class="ref-muted">{{ $referrals->firstItem() + $loop->index }}</td>
@@ -272,14 +286,35 @@
                                 <span class="ref-pill {{ $ref->status }}">{{ ucfirst($ref->status) }}</span>
                             @endif
                         </td>
+                        {{-- Risk score --}}
                         <td>
-                            @if($ref->fraud_flagged)
-                                <span class="ref-pill flagged"><i class="bi bi-flag-fill me-1"></i>Flagged</span>
-                                @if($ref->fraud_reason)
-                                    <div class="ref-fraud-reason">{{ $ref->fraud_reason }}</div>
-                                @endif
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="ref-risk-bar ref-risk-{{ $riskClass }}" style="flex:1;min-width:50px">
+                                    <div class="ref-risk-fill" style="width:{{ $riskScore }}%"></div>
+                                </div>
+                                <span class="ref-risk-val {{ $riskClass }}">{{ $riskScore }}</span>
+                            </div>
+                            @if($riskScore >= 70)
+                                <div style="font-size:.64rem;color:#ef4444;margin-top:2px">Auto-blocked</div>
+                            @elseif($riskScore >= 30)
+                                <div style="font-size:.64rem;color:#f97316;margin-top:2px">Needs review</div>
+                            @endif
+                        </td>
+                        {{-- Fraud signals --}}
+                        <td>
+                            @if(count($riskSignals) > 0)
+                                <ul class="ref-signals">
+                                @foreach($riskSignals as $sig)
+                                    <li title="{{ $sig['note'] ?? '' }}">
+                                        {{ $sig['key'] ?? '?' }}
+                                        <span style="color:#f97316">(+{{ $sig['score'] ?? 0 }})</span>
+                                    </li>
+                                @endforeach
+                                </ul>
+                            @elseif($ref->fraud_reason)
+                                <div style="font-size:.7rem;color:#ef4444;max-width:200px;word-break:break-word">{{ Str::limit($ref->fraud_reason, 80) }}</div>
                             @else
-                                <span class="ref-muted" style="font-size:.75rem">Clean</span>
+                                <span class="ref-muted" style="font-size:.72rem">None</span>
                             @endif
                         </td>
                         <td>

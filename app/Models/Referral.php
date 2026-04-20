@@ -9,7 +9,13 @@ class Referral extends Model
     protected $table = 'referrals';
     protected $fillable = [
         'referrer_id', 'referred_id', 'reward_amount', 'reward_currency', 'status',
-        'fraud_flagged', 'fraud_reason', 'blocked_at',
+        'fraud_flagged', 'fraud_reason', 'blocked_at', 'risk_score', 'risk_signals',
+    ];
+
+    protected $casts = [
+        'blocked_at'   => 'datetime',
+        'risk_signals' => 'array',
+        'fraud_flagged' => 'boolean',
     ];
 
     public function referred()
