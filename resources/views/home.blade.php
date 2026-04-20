@@ -1679,7 +1679,7 @@
         </div>
     </section>
 
-    <!-- ======= Blog Carousel Section ======= -->
+    <!-- ======= Blog Section ======= -->
     <section class="kx-sec kx-sec-alt" id="blog">
         <div class="container">
             <div class="text-center mb-5" data-aos="fade-up">
@@ -1687,165 +1687,103 @@
                 <h2 class="kx-sec-h">Latest from Our Blog</h2>
                 <p class="kx-sec-sub mx-auto">Crypto tips, guides, and market insights — updated regularly.</p>
             </div>
-        </div>
 
         @if(isset($blogPosts) && $blogPosts->isNotEmpty())
         <style>
-        .kx-blog-carousel-wrap {
-            position: relative;
-            overflow: hidden;
-            padding: 0 0 16px;
-        }
-        .kx-blog-carousel-track {
-            display: flex;
-            gap: 20px;
-            padding: 0 40px;
-            animation: kxBlogScroll linear infinite;
-            width: max-content;
-        }
-        .kx-blog-carousel-wrap:hover .kx-blog-carousel-track { animation-play-state: paused; }
-        @keyframes kxBlogScroll {
-            0%   { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-        .kx-bc-card {
-            flex: 0 0 300px;
+        .kx-bp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        @media(max-width:991px){ .kx-bp-grid { grid-template-columns: repeat(2,1fr); } }
+        @media(max-width:575px){ .kx-bp-grid { grid-template-columns: 1fr; } }
+
+        .kx-bp-card {
             background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(0,204,0,0.12);
-            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 20px;
             overflow: hidden;
-            text-decoration: none !important;
-            transition: transform .28s ease, border-color .28s ease, box-shadow .28s ease;
             display: flex;
             flex-direction: column;
-            cursor: pointer;
+            text-decoration: none !important;
+            transition: transform .25s, border-color .25s, box-shadow .25s;
         }
-        .kx-bc-card:hover {
+        .kx-bp-card:hover {
             transform: translateY(-5px);
-            border-color: rgba(0,204,0,0.38);
-            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+            border-color: rgba(0,204,0,0.30);
+            box-shadow: 0 18px 48px rgba(0,0,0,0.35);
         }
-        .kx-bc-img {
-            width: 100%;
-            height: 165px;
-            object-fit: cover;
-            display: block;
-            background: rgba(0,204,0,0.06);
-        }
-        .kx-bc-img-placeholder {
-            width: 100%;
-            height: 165px;
-            background: linear-gradient(135deg, rgba(0,60,0,0.5), rgba(0,30,0,0.8));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            color: rgba(0,204,0,0.3);
-        }
-        .kx-bc-body { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
-        .kx-bc-cat {
-            font-size: 0.68rem; font-weight: 700; letter-spacing: .6px;
-            text-transform: uppercase; color: #00cc00;
-            background: rgba(0,204,0,0.1); border: 1px solid rgba(0,204,0,0.2);
-            padding: 2px 10px; border-radius: 20px;
-            display: inline-block; width: fit-content;
-        }
-        .kx-bc-title {
-            font-size: .93rem; font-weight: 700; color: #e8f5e8;
-            line-height: 1.4;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-        }
-        .kx-bc-excerpt {
-            font-size: .78rem; color: rgba(255,255,255,0.42); line-height: 1.55;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-        }
-        .kx-bc-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); }
-        .kx-bc-date { font-size: .72rem; color: rgba(255,255,255,0.32); }
-        .kx-bc-read { font-size: .75rem; font-weight: 600; color: #00cc00; display: flex; align-items: center; gap: 4px; }
-        .kx-blog-view-all { display: inline-flex; align-items: center; gap: 8px; margin-top: 32px; padding: 10px 26px; border: 1.5px solid rgba(0,204,0,0.4); border-radius: 25px; color: #00cc00; font-weight: 600; font-size: .875rem; text-decoration: none; transition: all .25s; background: rgba(0,204,0,0.06); }
-        .kx-blog-view-all:hover { background: rgba(0,204,0,0.14); border-color: #00cc00; color: #00cc00; transform: translateY(-2px); }
-        body.light-mode .kx-bc-card { background: #fff; border-color: rgba(0,130,17,0.14); }
-        body.light-mode .kx-bc-title { color: #111; }
-        body.light-mode .kx-bc-excerpt { color: rgba(0,0,0,0.48); }
-        body.light-mode .kx-bc-footer { border-color: rgba(0,0,0,0.07); }
-        body.light-mode .kx-bc-date { color: rgba(0,0,0,0.38); }
+        .kx-bp-img-wrap { position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; background: linear-gradient(135deg,rgba(0,60,0,.55),rgba(0,20,0,.85)); flex-shrink: 0; }
+        .kx-bp-img { width:100%; height:100%; object-fit:cover; display:block; transition: transform .35s; }
+        .kx-bp-card:hover .kx-bp-img { transform: scale(1.04); }
+        .kx-bp-img-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:2.8rem; color:rgba(0,204,0,.25); }
+        .kx-bp-body { padding: 18px 20px 20px; flex:1; display:flex; flex-direction:column; gap:10px; }
+        .kx-bp-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .kx-bp-cat { font-size:.67rem; font-weight:700; letter-spacing:.55px; text-transform:uppercase; color:#00cc00; background:rgba(0,204,0,.1); border:1px solid rgba(0,204,0,.22); padding:2px 10px; border-radius:20px; }
+        .kx-bp-date { font-size:.7rem; color:rgba(255,255,255,.32); margin-left:auto; }
+        .kx-bp-title { font-size:.97rem; font-weight:700; color:#e6f5e6; line-height:1.42; flex:1; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .kx-bp-excerpt { font-size:.78rem; color:rgba(255,255,255,.42); line-height:1.6; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+        .kx-bp-footer { display:flex; align-items:center; justify-content:flex-end; padding-top:10px; border-top:1px solid rgba(255,255,255,.06); margin-top:auto; }
+        .kx-bp-read { font-size:.78rem; font-weight:600; color:#00cc00; display:inline-flex; align-items:center; gap:5px; transition:gap .2s; }
+        .kx-bp-card:hover .kx-bp-read { gap:9px; }
+
+        .kx-bp-featured { grid-column: span 2; }
+        @media(max-width:767px){ .kx-bp-featured { grid-column: span 1; } }
+        .kx-bp-featured .kx-bp-img-wrap { aspect-ratio: 21/9; }
+        .kx-bp-featured .kx-bp-title { font-size:1.15rem; -webkit-line-clamp:3; }
+
+        .kx-blog-view-all { display:inline-flex; align-items:center; gap:8px; margin-top:36px; padding:11px 28px; border:1.5px solid rgba(0,204,0,.4); border-radius:25px; color:#00cc00; font-weight:600; font-size:.875rem; text-decoration:none; transition:all .25s; background:rgba(0,204,0,.06); }
+        .kx-blog-view-all:hover { background:rgba(0,204,0,.14); border-color:#00cc00; color:#00cc00; transform:translateY(-2px); }
+
+        body.light-mode .kx-bp-card { background:#fff; border-color:rgba(0,0,0,.07); }
+        body.light-mode .kx-bp-title { color:#0a1a0a; }
+        body.light-mode .kx-bp-excerpt { color:rgba(0,0,0,.5); }
+        body.light-mode .kx-bp-date { color:rgba(0,0,0,.38); }
+        body.light-mode .kx-bp-footer { border-color:rgba(0,0,0,.07); }
         </style>
 
-        <div class="kx-blog-carousel-wrap">
-            {{-- Duplicate cards for infinite loop --}}
-            <div class="kx-blog-carousel-track" id="kxBlogTrack">
-                @foreach($blogPosts as $post)
-                <a href="{{ url('/blog/'.$post->slug) }}" class="kx-bc-card">
+        <div class="kx-bp-grid" data-aos="fade-up" data-aos-delay="100">
+            @foreach($blogPosts->take(6) as $i => $post)
+            <a href="{{ url('/blog/'.$post->slug) }}" class="kx-bp-card{{ $i === 0 ? ' kx-bp-featured' : '' }}">
+                <div class="kx-bp-img-wrap">
                     @if($post->cover_image)
-                        <img class="kx-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy">
+                        <img class="kx-bp-img"
+                             src="{{ asset('storage/'.$post->cover_image) }}"
+                             alt="{{ $post->title }}"
+                             loading="lazy"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="kx-bp-img-ph" style="display:none"><i class="bi bi-newspaper"></i></div>
                     @else
-                        <div class="kx-bc-img-placeholder"><i class="bi bi-newspaper"></i></div>
+                        <div class="kx-bp-img-ph"><i class="bi bi-newspaper"></i></div>
                     @endif
-                    <div class="kx-bc-body">
+                </div>
+                <div class="kx-bp-body">
+                    <div class="kx-bp-meta">
                         @if($post->category)
-                        <span class="kx-bc-cat">{{ $post->category }}</span>
+                        <span class="kx-bp-cat">{{ $post->category }}</span>
                         @endif
-                        <div class="kx-bc-title">{{ $post->title }}</div>
-                        @if($post->excerpt)
-                        <div class="kx-bc-excerpt">{{ $post->excerpt }}</div>
-                        @endif
-                        <div class="kx-bc-footer">
-                            <span class="kx-bc-date"><i class="bi bi-calendar3 me-1"></i>{{ $post->published_at?->format('M d, Y') ?? '' }}</span>
-                            <span class="kx-bc-read">Read <i class="bi bi-arrow-right"></i></span>
-                        </div>
+                        <span class="kx-bp-date"><i class="bi bi-calendar3 me-1"></i>{{ $post->published_at?->format('M d, Y') ?? '' }}</span>
                     </div>
-                </a>
-                @endforeach
-                {{-- Duplicate for seamless infinite scroll --}}
-                @foreach($blogPosts as $post)
-                <a href="{{ url('/blog/'.$post->slug) }}" class="kx-bc-card" aria-hidden="true" tabindex="-1">
-                    @if($post->cover_image)
-                        <img class="kx-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy">
-                    @else
-                        <div class="kx-bc-img-placeholder"><i class="bi bi-newspaper"></i></div>
+                    <div class="kx-bp-title">{{ $post->title }}</div>
+                    @if($post->excerpt)
+                    <div class="kx-bp-excerpt">{{ $post->excerpt }}</div>
                     @endif
-                    <div class="kx-bc-body">
-                        @if($post->category)
-                        <span class="kx-bc-cat">{{ $post->category }}</span>
-                        @endif
-                        <div class="kx-bc-title">{{ $post->title }}</div>
-                        @if($post->excerpt)
-                        <div class="kx-bc-excerpt">{{ $post->excerpt }}</div>
-                        @endif
-                        <div class="kx-bc-footer">
-                            <span class="kx-bc-date"><i class="bi bi-calendar3 me-1"></i>{{ $post->published_at?->format('M d, Y') ?? '' }}</span>
-                            <span class="kx-bc-read">Read <i class="bi bi-arrow-right"></i></span>
-                        </div>
+                    <div class="kx-bp-footer">
+                        <span class="kx-bp-read">Read more <i class="bi bi-arrow-right"></i></span>
                     </div>
-                </a>
-                @endforeach
-            </div>
+                </div>
+            </a>
+            @endforeach
         </div>
-
-        <script>
-        (function(){
-            var track = document.getElementById('kxBlogTrack');
-            if (!track) return;
-            var count = {{ $blogPosts->count() }};
-            // Card width 300 + gap 20 = 320px per card
-            var totalWidth = count * 320;
-            var duration = Math.max(count * 4, 20); // 4s per card, min 20s
-            track.style.animationDuration = duration + 's';
-        })();
-        </script>
 
         <div class="text-center">
             <a href="{{ url('/blog') }}" class="kx-blog-view-all"><i class="bi bi-grid-3x3-gap-fill"></i>View All Posts</a>
         </div>
 
         @else
-        <div class="container">
-            <div class="text-center py-5" style="color:rgba(255,255,255,0.35)">
-                <i class="bi bi-newspaper" style="font-size:2.5rem;display:block;margin-bottom:12px;opacity:.3"></i>
-                No blog posts published yet. Check back soon!
-            </div>
+        <div class="text-center py-5" style="color:rgba(255,255,255,.35)">
+            <i class="bi bi-newspaper" style="font-size:2.5rem;display:block;margin-bottom:12px;opacity:.3"></i>
+            No blog posts published yet. Check back soon!
         </div>
         @endif
+
+        </div>
     </section>
 
     </main>

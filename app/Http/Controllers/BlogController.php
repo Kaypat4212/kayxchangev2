@@ -19,7 +19,7 @@ class BlogController extends Controller
         $categories = BlogPost::published()
             ->select('category')
             ->distinct()
-            ->orderBy('category')
+            ->reorder('category', 'asc')   // clear the scope's published_at order — DISTINCT requires this
             ->pluck('category');
 
         return view('blog.index', compact('posts', 'categories', 'category'));
