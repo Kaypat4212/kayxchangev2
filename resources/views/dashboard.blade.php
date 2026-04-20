@@ -545,7 +545,9 @@
                     @foreach($blogPosts as $post)
                     <a href="{{ url('/blog/'.$post->slug) }}" class="kx-db-bc">
                         @if($post->cover_image)
-                            <img class="kx-db-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy">
+                            <img class="kx-db-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                            <div class="kx-db-bc-ph" style="display:none"><i class="bi bi-newspaper"></i></div>
                         @else
                             <div class="kx-db-bc-ph"><i class="bi bi-newspaper"></i></div>
                         @endif
@@ -560,7 +562,9 @@
                     @foreach($blogPosts as $post)
                     <a href="{{ url('/blog/'.$post->slug) }}" class="kx-db-bc" aria-hidden="true" tabindex="-1">
                         @if($post->cover_image)
-                            <img class="kx-db-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy">
+                            <img class="kx-db-bc-img" src="{{ asset('storage/'.$post->cover_image) }}" alt="{{ $post->title }}" loading="lazy"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                            <div class="kx-db-bc-ph" style="display:none"><i class="bi bi-newspaper"></i></div>
                         @else
                             <div class="kx-db-bc-ph"><i class="bi bi-newspaper"></i></div>
                         @endif
