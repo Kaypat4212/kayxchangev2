@@ -65,5 +65,7 @@
         }
     </script>
     @stack('scripts')
+
+    @include('components.ai-chatbot-widget')
 </body>
 </html>

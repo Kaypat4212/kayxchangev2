@@ -585,6 +585,22 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+// ── Admin Settings (API Keys, Cloudflare, AI) ───────────────────────────────
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('settings',                    [\App\Http\Controllers\Admin\AdminSettingsController::class, 'index'])->name('settings.index');
+    Route::post('settings',                   [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('settings.update');
+    Route::post('settings/cloudflare-action', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'cloudflareAction'])->name('settings.cloudflare-action');
+    Route::get('settings/ai-usage',           [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiUsage'])->name('settings.ai-usage');
+    Route::get('settings/ai-test',            [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiTest'])->name('settings.ai-test');
+    Route::get('settings/groq-test',          [\App\Http\Controllers\Admin\AdminSettingsController::class, 'groqTest'])->name('settings.groq-test');
+});
+
+// ── AI Chatbot (authenticated users) ─────────────────────────────────────────
+Route::middleware('auth')->group(function () {
+    Route::post('/ai-chat',         [\App\Http\Controllers\AiChatController::class, 'chat'])->name('ai.chat');
+    Route::post('/ai-chat/clear',   [\App\Http\Controllers\AiChatController::class, 'clearSession'])->name('ai.chat.clear');
+});
+
 // Admin Terminal + Feedback Moderation
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/terminal', [AdminTerminalController::class, 'index'])->name('admin.terminal');

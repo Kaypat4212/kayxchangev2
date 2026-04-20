@@ -76,7 +76,7 @@ class DepositController extends Controller
         $sc = \App\Models\SiteContent::allKeyed();
         $allowedGateways = array_values(array_filter(
             ['paystack', 'korapay', 'flutterwave', 'opay'],
-            fn($g) => !empty($sc['pm_enabled_' . $g]) && !empty(config('services.' . $g . '.secret_key') ?? config('services.' . $g . '.private_key'))
+            fn($g) => (bool) ($sc['pm_enabled_' . $g] ?? true) && !empty(config('services.' . $g . '.secret_key') ?? config('services.' . $g . '.private_key'))
         ));
 
         $request->validate([

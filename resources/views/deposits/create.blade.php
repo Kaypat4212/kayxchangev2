@@ -271,6 +271,7 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
                 </div>
 
                 @error('payment_method')<div class="kx-error mt-2"><i class="bi bi-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
+                @error('amount')<div class="kx-error mt-2"><i class="bi bi-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
             </div>
         </div>
 
@@ -548,6 +549,16 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
 
     // Restore if old() value was set (validation error redirect)
     if (pmInput.value) applyMethodUI(pmInput.value);
+
+    // Show any server-side validation errors as a toast on page load
+    @if($errors->any())
+    window.addEventListener('DOMContentLoaded', function () {
+        const msgs = @json($errors->all());
+        document.getElementById('err-toast-msg').textContent = msgs.join(' · ');
+        const t = new bootstrap.Toast(document.getElementById('err-toast'), { delay: 6000 });
+        t.show();
+    });
+    @endif
 
     // ── Account / wallet details ───────────────────────────────────
     acctSel.addEventListener('change', function () {
