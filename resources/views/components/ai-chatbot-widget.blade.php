@@ -128,13 +128,17 @@ async function kaybotSend() {
     const msg   = input.value.trim();
     if (!msg) return;
 
+    @if(!$kaybotReady)
+    return; // AI not configured yet
+    @endif
+
     input.value = '';
     kaybotBusy  = true;
     kaybotAppend('user', msg);
     const typing = kaybotAppend('bot', '…', true);
 
     try {
-        const r = await fetch('{{ route("ai.chat") }}', {
+        const r = await fetch('{{ url("/ai-chat") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({ message: msg })
