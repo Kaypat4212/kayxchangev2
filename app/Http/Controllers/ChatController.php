@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\ChatMessage;
 use App\Models\User;
 use App\Services\AdminTradeAlertService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
 {
@@ -139,4 +142,112 @@ class ChatController extends Controller
 
         return response()->json($messages);
     }
+
+    // ── Admin: AI-powered reply assistant ────────────────────────────────
+    // mode=suggest → generate a reply from conversation context
+    // mode=rewrite → professionally rewrite the admin's draft
+    public function aiAssist(Request $request): JsonResponse
+    {
+        $request->validate([
+            'mode'        => 'required|in:suggest,rewrite',
+            'user_id'     => 'required|integer|exists:users,id',
+            'draft'       => 'nullable|string|max:2000',
+        ]);
+
+        $apiKey = config('services.groq.api_key');
+        $apiUrl = config('services.groq.api_url', 'https://api.groq.com/openai/v1/chat/completions');
+        $model  = config('services.groq.model', 'llama-3.3-70b-versatile');
+
+        if (empty($apiKey)) {
+            return response()->json(['error' => 'AI is not configured (GROQ_API_KEY missing).'], 503);
+        }
+
+        $targetUser = User::find($request->user_id);
+
+        // Fetch last 8 messages in this conversation for context
+        $history = ChatMessage::where(function ($q) use ($request) {
+                $q->where('sender_id', $request->user_id)->whereNull('receiver_id');
+            })
+            ->orWhere('receiver_id', $request->user_id)
+            ->orderBy('created_at', 'asc')
+            ->latest('id')
+            ->limit(8)
+            ->get()
+            ->sortBy('id')
+            ->values();
+
+        $adminId = Auth::id();
+        $chatHistory = $history->map(function ($m) use ($adminId) {
+            $role = ($m->sender_id === $adminId) ? 'Support' : 'User';
+            return "{$role}: {$m->content}";
+        })->join("\n");
+
+        $userContext = $targetUser
+            ? "Name: {$targetUser->name} | KYC: " . ($targetUser->kyc_verified ? 'Verified' : 'Not verified') .
+              ' | Balance: ₦' . number_format($targetUser->balance ?? 0, 2)
+            : 'Unknown user.';
+
+        $system = <<<'PROMPT'
+You are a customer support assistant for KayXchange — a Nigerian crypto exchange platform.
+The platform lets users sell crypto (BTC, ETH, USDT, TRON, LTC, XRP) for Nigerian Naira (NGN), buy crypto, make NGN deposits and withdrawals, and complete KYC verification.
+Admin features include approving trades, managing deposits, verifying KYC, and monitoring wallets.
+
+Your job: help the KayXchange support admin compose professional, warm, and concise replies to users.
+
+Rules:
+- Be friendly, professional, and empathetic — you represent the KayXchange brand
+- Keep replies concise (2–5 sentences)
+- Address the user's specific issue directly
+- Plain text only — NO markdown, asterisks, or bullet points in the actual reply
+- Never promise specific exchange rates or timelines you cannot guarantee
+- If the issue needs admin action (trade approval, KYC, etc.), assure the user the team will handle it promptly
+PROMPT;
+
+        if ($request->mode === 'rewrite') {
+            $draft = trim($request->draft ?? '');
+            if (empty($draft)) {
+                return response()->json(['error' => 'No draft text to rewrite.'], 422);
+            }
+            $prompt = "Customer info: {$userContext}\n\n";
+            if ($chatHistory) {
+                $prompt .= "Conversation context:\n{$chatHistory}\n\n";
+            }
+            $prompt .= "Admin's draft reply:\n{$draft}\n\n";
+            $prompt .= "Rewrite this reply to sound more professional, clear, and helpful while keeping the same meaning. Output ONLY the rewritten reply text, nothing else.";
+        } else {
+            // mode=suggest
+            if (empty($chatHistory)) {
+                return response()->json(['error' => 'No conversation history to generate a reply from.'], 422);
+            }
+            $prompt = "Customer info: {$userContext}\n\n";
+            $prompt .= "Conversation so far:\n{$chatHistory}\n\n";
+            $prompt .= "Based on the user's latest message, write a helpful, professional support reply on behalf of KayXchange admin. Output ONLY the reply text, nothing else.";
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->withToken($apiKey)
+                ->post($apiUrl, [
+                    'model'       => $model,
+                    'temperature' => 0.5,
+                    'max_tokens'  => 300,
+                    'messages'    => [
+                        ['role' => 'system', 'content' => $system],
+                        ['role' => 'user',   'content' => $prompt],
+                    ],
+                ]);
+
+            if ($response->failed()) {
+                Log::error('Chat aiAssist failed', ['status' => $response->status(), 'body' => $response->body()]);
+                return response()->json(['error' => 'AI request failed. Try again.'], 502);
+            }
+
+            $result = trim($response->json('choices.0.message.content', ''));
+            return response()->json(['suggestion' => $result]);
+        } catch (\Throwable $e) {
+            Log::error('Chat aiAssist exception', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'AI request failed: ' . $e->getMessage()], 500);
+        }
+    }
 }
+

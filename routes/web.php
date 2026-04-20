@@ -454,6 +454,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/admin/chat', [ChatController::class, 'adminChat'])->name('admin.chat');
         Route::post('/chat/send/admin', [ChatController::class, 'adminReply'])->name('chat.send.admin');
+        Route::post('/chat/ai-assist', [ChatController::class, 'aiAssist'])->name('chat.ai.assist');
     });
 
     // Buy Routes

@@ -41,6 +41,15 @@
     .adm-send-btn:disabled { opacity:.35;cursor:not-allowed; }
     .adm-no-user      { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;gap:.75rem; }
     .adm-no-user i    { font-size:3rem;color:rgba(0,204,0,0.2); }
+    .adm-ai-bar       { padding:.35rem 1rem .3rem;border-top:1px solid rgba(255,255,255,0.05);display:flex;gap:.5rem;align-items:center;flex-wrap:wrap; }
+    .adm-ai-lbl       { font-size:.65rem;font-weight:600;color:#555;letter-spacing:.05em;margin-right:.25rem; }
+    .adm-ai-btn       { display:inline-flex;align-items:center;gap:.3rem;padding:.28rem .7rem;font-size:.72rem;font-weight:600;border-radius:8px;border:1px solid;cursor:pointer;transition:all .2s;background:none;white-space:nowrap; }
+    .adm-ai-suggest   { border-color:rgba(0,204,0,0.35);color:#00aa00; }
+    .adm-ai-suggest:hover:not(:disabled) { background:rgba(0,204,0,0.1); }
+    .adm-ai-rewrite   { border-color:rgba(99,102,241,0.4);color:#818cf8; }
+    .adm-ai-rewrite:hover:not(:disabled) { background:rgba(99,102,241,0.1); }
+    .adm-ai-btn:disabled { opacity:.4;cursor:not-allowed; }
+    .adm-ai-status    { font-size:.68rem;color:#555;margin-left:.35rem;display:none; }
     @media(max-width:768px){
         .adm-user-list { width:100%;height:200px;border-right:none;border-bottom:1px solid rgba(255,255,255,0.07); }
         .adm-sup-layout { flex-direction:column;height:auto; }
@@ -94,6 +103,16 @@
                 </div>
             </div>
             <div class="adm-chat-body" id="adm-chat-body"></div>
+            <div class="adm-ai-bar" id="adm-ai-bar">
+                <span class="adm-ai-lbl"><i class="bi bi-stars me-1"></i>AI</span>
+                <button class="adm-ai-btn adm-ai-suggest" id="adm-ai-suggest-btn" title="Generate a reply based on the conversation">
+                    <i class="bi bi-magic"></i> Suggest Reply
+                </button>
+                <button class="adm-ai-btn adm-ai-rewrite" id="adm-ai-rewrite-btn" title="Rewrite your draft more professionally">
+                    <i class="bi bi-arrow-repeat"></i> Rewrite Draft
+                </button>
+                <span class="adm-ai-status" id="adm-ai-status">⏳ Thinking…</span>
+            </div>
             <div class="adm-chat-footer">
                 <textarea id="adm-chat-input" class="adm-chat-input" rows="1"
                     placeholder="Type a reply..." maxlength="2000"></textarea>
@@ -124,6 +143,7 @@
     var historyBaseUrl = @json(url('/chat/history'));
     var pollUrl = @json(route('chat.poll'));
     var adminSendUrl = @json(route('chat.send.admin'));
+    var aiAssistUrl  = @json(route('chat.ai.assist'));
     var lastId   = 0;
     var pollTimer;
 
@@ -237,6 +257,53 @@
         });
         if(sendBtn) sendBtn.addEventListener('click',sendReply);
     }
+
+    // ── AI assist ────────────────────────────────────────────────────────
+    var aiSuggestBtn = document.getElementById('adm-ai-suggest-btn');
+    var aiRewriteBtn = document.getElementById('adm-ai-rewrite-btn');
+    var aiStatus     = document.getElementById('adm-ai-status');
+
+    function aiRequest(mode){
+        if(!activeUid) return;
+        var draft = chatInput ? chatInput.value.trim() : '';
+        if(mode==='rewrite' && !draft){
+            alert('Type a draft reply first, then click Rewrite Draft.');
+            return;
+        }
+        if(aiSuggestBtn) aiSuggestBtn.disabled=true;
+        if(aiRewriteBtn) aiRewriteBtn.disabled=true;
+        if(aiStatus){ aiStatus.style.display='inline'; aiStatus.textContent='⏳ Thinking…'; }
+
+        fetch(aiAssistUrl,{
+            method:'POST',
+            headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},
+            body:JSON.stringify({mode:mode, user_id:activeUid, draft:draft})
+        })
+        .then(function(r){return r.json();})
+        .then(function(data){
+            if(data.suggestion){
+                if(chatInput){
+                    chatInput.value=data.suggestion;
+                    chatInput.dispatchEvent(new Event('input'));
+                    chatInput.focus();
+                }
+                if(aiStatus) aiStatus.textContent='✓ Done';
+            } else {
+                if(aiStatus) aiStatus.textContent='⚠ '+(data.error||'AI failed');
+            }
+        })
+        .catch(function(){
+            if(aiStatus) aiStatus.textContent='⚠ Network error';
+        })
+        .finally(function(){
+            if(aiSuggestBtn) aiSuggestBtn.disabled=false;
+            if(aiRewriteBtn) aiRewriteBtn.disabled=false;
+            setTimeout(function(){ if(aiStatus) aiStatus.style.display='none'; }, 3000);
+        });
+    }
+
+    if(aiSuggestBtn) aiSuggestBtn.addEventListener('click', function(){ aiRequest('suggest'); });
+    if(aiRewriteBtn) aiRewriteBtn.addEventListener('click', function(){ aiRequest('rewrite'); });
 
     if(activeUid) loadConversation(activeUid);
 })();
