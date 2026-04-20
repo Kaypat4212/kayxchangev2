@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('adminnavlayout')
 
 @section('title', 'Server Backup')
 
