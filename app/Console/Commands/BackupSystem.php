@@ -76,49 +76,102 @@ class BackupSystem extends Command
         return self::SUCCESS;
     }
 
-    // ── DB dump via mysqldump ─────────────────────────────────────────────
+    // ── Pure-PHP PDO database dump (no exec/shell required) ──────────────
     private function dumpDatabase(string $outPath): bool
     {
-        $host     = config('database.connections.mysql.host', '127.0.0.1');
-        $port     = config('database.connections.mysql.port', '3306');
-        $db       = config('database.connections.mysql.database');
-        $user     = config('database.connections.mysql.username');
-        $pass     = config('database.connections.mysql.password');
+        $host = config('database.connections.mysql.host', '127.0.0.1');
+        $port = config('database.connections.mysql.port', '3306');
+        $db   = config('database.connections.mysql.database');
+        $user = config('database.connections.mysql.username');
+        $pass = config('database.connections.mysql.password');
 
-        // Build command — pass password via env var to avoid shell history leak
-        $cmd = sprintf(
-            'mysqldump --host=%s --port=%s --user=%s --single-transaction --routines --triggers %s > %s 2>&1',
-            escapeshellarg($host),
-            escapeshellarg($port),
-            escapeshellarg($user),
-            escapeshellarg($db),
-            escapeshellarg($outPath)
-        );
-
-        $env = "MYSQL_PWD=" . escapeshellarg($pass);
-
-        // Windows fallback (XAMPP): use MYSQL_PWD or -p inline
-        if (PHP_OS_FAMILY === 'Windows') {
-            $cmd = sprintf(
-                'mysqldump --host=%s --port=%s --user=%s --password=%s --single-transaction --routines --triggers %s > %s 2>&1',
-                escapeshellarg($host),
-                escapeshellarg($port),
-                escapeshellarg($user),
-                escapeshellarg($pass),
-                escapeshellarg($db),
-                escapeshellarg($outPath)
+        try {
+            $pdo = new \PDO(
+                "mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4",
+                $user,
+                $pass,
+                [
+                    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+                    \PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
+                ]
             );
-            exec($cmd, $output, $exitCode);
-        } else {
-            exec("{$env} {$cmd}", $output, $exitCode);
-        }
-
-        if ($exitCode !== 0) {
-            Log::error('BackupSystem: mysqldump failed', ['output' => implode("\n", $output)]);
+        } catch (\PDOException $e) {
+            Log::error('BackupSystem: PDO connection failed: ' . $e->getMessage());
             return false;
         }
 
-        return file_exists($outPath) && filesize($outPath) > 100;
+        try {
+            $fh = fopen($outPath, 'w');
+            if (!$fh) {
+                Log::error('BackupSystem: Cannot open output file: ' . $outPath);
+                return false;
+            }
+
+            $now = now()->toDateTimeString();
+            fwrite($fh, "-- KayXchange Database Backup\n");
+            fwrite($fh, "-- Generated: {$now}\n");
+            fwrite($fh, "-- Database: {$db}\n\n");
+            fwrite($fh, "SET FOREIGN_KEY_CHECKS=0;\n");
+            fwrite($fh, "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n");
+            fwrite($fh, "SET NAMES utf8mb4;\n\n");
+
+            // Get all tables
+            $tables = $pdo->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'")->fetchAll(\PDO::FETCH_COLUMN);
+
+            foreach ($tables as $table) {
+                $quoted = "`{$table}`";
+
+                // DROP + CREATE
+                fwrite($fh, "-- -------------------------------------------------------\n");
+                fwrite($fh, "-- Table: {$table}\n");
+                fwrite($fh, "-- -------------------------------------------------------\n");
+                fwrite($fh, "DROP TABLE IF EXISTS {$quoted};\n");
+
+                $createRow = $pdo->query("SHOW CREATE TABLE {$quoted}")->fetch(\PDO::FETCH_ASSOC);
+                $createSql = $createRow['Create Table'] ?? $createRow[array_key_last($createRow)];
+                fwrite($fh, $createSql . ";\n\n");
+
+                // Row count check
+                $count = (int) $pdo->query("SELECT COUNT(*) FROM {$quoted}")->fetchColumn();
+                if ($count === 0) {
+                    continue;
+                }
+
+                // Dump rows in batches of 500
+                $offset = 0;
+                $batch  = 500;
+
+                while ($offset < $count) {
+                    $rows = $pdo->query("SELECT * FROM {$quoted} LIMIT {$batch} OFFSET {$offset}")->fetchAll(\PDO::FETCH_ASSOC);
+                    if (empty($rows)) break;
+
+                    $cols   = '`' . implode('`, `', array_keys($rows[0])) . '`';
+                    $values = [];
+
+                    foreach ($rows as $row) {
+                        $escaped = array_map(function ($val) use ($pdo) {
+                            if ($val === null) return 'NULL';
+                            return $pdo->quote((string) $val);
+                        }, $row);
+                        $values[] = '(' . implode(', ', $escaped) . ')';
+                    }
+
+                    fwrite($fh, "INSERT INTO {$quoted} ({$cols}) VALUES\n");
+                    fwrite($fh, implode(",\n", $values) . ";\n\n");
+
+                    $offset += $batch;
+                }
+            }
+
+            fwrite($fh, "SET FOREIGN_KEY_CHECKS=1;\n");
+            fclose($fh);
+
+        } catch (\Throwable $e) {
+            Log::error('BackupSystem: dump error: ' . $e->getMessage());
+            return false;
+        }
+
+        return file_exists($outPath) && filesize($outPath) > 50;
     }
 
     // ── Recursively add directory to zip ─────────────────────────────────
