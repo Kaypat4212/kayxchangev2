@@ -3,8 +3,9 @@
 @php
     $kaybotEnabled = \App\Models\AdminSetting::get('ai_chatbot_enabled', '1') == '1';
     $kaybotHasKey  = (bool) (\App\Models\AdminSetting::get('openai_api_key') || \App\Models\AdminSetting::get('groq_api_key'));
+    $kaybotReady   = $kaybotEnabled && $kaybotHasKey;
 @endphp
-@if($kaybotEnabled && $kaybotHasKey)
+@if($kaybotEnabled)
 <style>
 #kaybot-wrap{position:fixed;bottom:24px;right:24px;z-index:9999;font-family:'Inter',sans-serif;}
 #kaybot-toggle{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#00cc00,#009900);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,204,0,.45);transition:transform .2s;}
@@ -68,19 +69,25 @@ body.light-mode #kaybot-input:focus{border-color:rgba(0,150,0,.45);}
         </div>
 
         <div id="kaybot-msgs">
+            @if($kaybotReady)
             <div class="kb-msg bot">👋 Hi{{ auth()->check() ? ' ' . auth()->user()->name : '' }}! I'm <strong>KayBot</strong>, your KayXchange trading assistant.<br><br>I can help you with rates, how to buy/sell crypto, account questions, and more. What would you like to know?</div>
+            @else
+            <div class="kb-msg bot">🤖 <strong>KayBot</strong> is almost ready!<br><br>Our AI assistant is being set up. Check back soon — it'll be available to help you with trading questions shortly.</div>
+            @endif
         </div>
 
+        @if($kaybotReady)
         <div class="kb-quick">
             <button onclick="kaybotAsk('How do I buy crypto?')">Buy crypto</button>
             <button onclick="kaybotAsk('What are the current rates?')">Current rates</button>
             <button onclick="kaybotAsk('How long does a trade take?')">Trade time</button>
             <button onclick="kaybotAsk('How do I contact support?')">Support</button>
         </div>
+        @endif
 
         <div id="kaybot-input-area">
-            <textarea id="kaybot-input" placeholder="Ask anything about trading…" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();kaybotSend();}"></textarea>
-            <button id="kaybot-send" onclick="kaybotSend()">
+            <textarea id="kaybot-input" placeholder="{{ $kaybotReady ? 'Ask anything about trading…' : 'Coming soon…' }}" rows="1" {{ $kaybotReady ? '' : 'disabled' }} onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();kaybotSend();}"></textarea>
+            <button id="kaybot-send" onclick="kaybotSend()" {{ $kaybotReady ? '' : 'disabled' }}>
                 <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
             </button>
         </div>
