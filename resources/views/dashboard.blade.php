@@ -48,6 +48,12 @@
     body.light-mode .kx-db-head { border-color: rgba(0,0,0,0.07); }
     .kx-db-label { font-size: 0.75rem; color: rgba(255,255,255,0.38); letter-spacing: 0.6px; text-transform: uppercase; font-weight: 500; margin-bottom: 4px; }
     body.light-mode .kx-db-label { color: rgba(0,0,0,0.38); }
+    /* AI insight text colours */
+    #ai-insight-text { color: rgba(255,255,255,.72); }
+    body.light-mode #ai-insight-text { color: #1a2e1a !important; }
+    body.light-mode #ai-insight-text * { color: #1a2e1a !important; }
+    .ai-insight-unavailable { color: rgba(255,255,255,.3); }
+    body.light-mode .ai-insight-unavailable { color: rgba(0,0,0,.4) !important; }
     .kx-db-name { font-size: clamp(1.5rem,3.5vw,2.3rem); font-weight: 800; color: #fff; margin: 0 0 12px; line-height: 1.15; }
     body.light-mode .kx-db-name { color: #0a1a0a; }
     .kx-db-badge { display:inline-flex; align-items:center; gap:5px; font-size:0.7rem; font-weight:600; padding:4px 11px; border-radius:20px; }
@@ -367,7 +373,7 @@
             <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,204,0,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--primary-green);font-size:1rem">
                 <i class="bi bi-robot"></i>
             </div>
-            <div id="ai-insight-text" style="font-size:.83rem;color:rgba(255,255,255,.55)">
+            <div id="ai-insight-text" style="font-size:.83rem">
                 <span class="spinner-border spinner-border-sm me-1" style="color:var(--primary-green)"></span> Loading your AI insight…
             </div>
         </div>
@@ -857,7 +863,7 @@
     })
     .catch(() => {
         const el = document.getElementById('ai-insight-text');
-        if (el) el.innerHTML = '<span style="color:rgba(255,255,255,.3)">AI insight unavailable.</span>';
+        if (el) el.innerHTML = '<span class="ai-insight-unavailable">AI insight unavailable.</span>';
     });
 })();
 </script>
