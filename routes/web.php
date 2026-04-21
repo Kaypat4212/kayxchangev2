@@ -170,6 +170,12 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('telegram/ai-suggest',   [AdminTelegramController::class, 'aiSuggestReply'])->name('admin.telegram.ai-suggest');
     // AI Bot Config
     Route::get('telegram/ai-config',       [AdminAiBotController::class, 'index'])->name('admin.telegram.ai-config');
+
+    // KayBot Support Tickets
+    Route::get('kaybot/tickets',                        [\App\Http\Controllers\Admin\AdminKaybotTicketsController::class, 'index'])->name('admin.kaybot.tickets');
+    Route::post('kaybot/tickets/{ticket}/reply',        [\App\Http\Controllers\Admin\AdminKaybotTicketsController::class, 'reply'])->name('admin.kaybot.tickets.reply');
+    Route::post('kaybot/tickets/{ticket}/close',        [\App\Http\Controllers\Admin\AdminKaybotTicketsController::class, 'close'])->name('admin.kaybot.tickets.close');
+    Route::post('kaybot/tickets/{ticket}/reopen',       [\App\Http\Controllers\Admin\AdminKaybotTicketsController::class, 'reopen'])->name('admin.kaybot.tickets.reopen');
     Route::put('telegram/ai-config',       [AdminAiBotController::class, 'update'])->name('admin.telegram.ai-config.update');
     Route::post('telegram/ai-config/test', [AdminAiBotController::class, 'testChat'])->name('admin.telegram.ai-config.test');
 
