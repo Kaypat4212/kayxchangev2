@@ -29,6 +29,7 @@ use App\Http\Controllers\{
     DepositController,
     TelegramSettingsController,
     InstallController,
+    TradeController,
 };
 use App\Http\Controllers\Admin\AdminCryptoRateController;
 use App\Http\Controllers\RateCalculatorController;
@@ -319,6 +320,9 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin')->name('admin.')->group(
     Route::post('/rate', [CryptoRateupdateController::class, 'update'])->name('rates.update');
     Route::post('/trade/{trade_id}/status', [AdminTradeController::class, 'updateStatus'])->name('trade.updateStatus');
     Route::post('/buy/{id}/update-status', [AdminController::class, 'updateBuyStatus'])->name('buy.updateStatus');
+    // Admin trade cancellation (immediate)
+    Route::post('/buy/{id}/cancel',  [TradeController::class, 'adminCancelBuy'])->name('buy.cancel');
+    Route::post('/sell/{id}/cancel', [TradeController::class, 'adminCancelSell'])->name('sell.cancel');
     Route::get('/trade/{trade_id}/status', function ($trade_id) {
         return redirect()->route('admin.trades')->with('info', 'Use the form buttons to update a trade status.');
     });
@@ -599,6 +603,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 Route::middleware('auth')->group(function () {
     Route::post('/ai-chat',         [\App\Http\Controllers\AiChatController::class, 'chat'])->name('ai.chat');
     Route::post('/ai-chat/clear',   [\App\Http\Controllers\AiChatController::class, 'clearSession'])->name('ai.chat.clear');
+
+    // Trade cancellation (user: 30-min rule)
+    Route::post('/trades/buy/{id}/cancel',  [TradeController::class, 'cancelBuy'])->name('trade.buy.cancel');
+    Route::post('/trades/sell/{id}/cancel', [TradeController::class, 'cancelSell'])->name('trade.sell.cancel');
 });
 
 // Admin Terminal + Feedback Moderation

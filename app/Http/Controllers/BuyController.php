@@ -150,6 +150,13 @@ class BuyController extends Controller
                 Log::warning('Buy trade admin alert failed: ' . $alertEx->getMessage());
             }
 
+            // Telegram alert immediately on trade creation (before proof upload)
+            try {
+                $this->sendTelegramAlert($buyTrade, false);
+            } catch (\Throwable $tgEx) {
+                Log::warning('Buy trade Telegram alert on submit failed: ' . $tgEx->getMessage());
+            }
+
             // Redirect to trade summary
             return redirect()->route('buy.summary', ['id' => $buyTrade->id])
                 ->with('success', 'Please review your trade details.');

@@ -285,6 +285,16 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                     <i class="bi bi-save"></i>
                                 </button>
                             </form>
+                            {{-- Admin cancel button (only for pending) --}}
+                            @if($t->status === 'pending')
+                            <form action="{{ route('admin.buy.cancel', $t->id) }}" method="POST"
+                                  onsubmit="return confirm('Cancel this buy trade #{{ $t->id }}?')" style="display:inline">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="padding:.25rem .5rem;font-size:.72rem" title="Cancel Trade">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </form>
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -421,6 +431,26 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                     <i class="bi bi-save"></i>
                                 </button>
                             </form>
+                            {{-- Admin cancel button (only for pending) --}}
+                            @if($t->status === 'pending')
+                            <form action="{{ route('admin.sell.cancel', $t->id) }}" method="POST"
+                                  onsubmit="return confirm('Cancel this sell trade #{{ $t->id }}?')" style="display:inline">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="padding:.25rem .5rem;font-size:.72rem" title="Cancel Trade">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </form>
+                            @endif
+                            {{-- Admin cancel button (only for pending) --}}
+                            @if($t->status === 'pending')
+                            <form action="{{ route('admin.sell.cancel', $t->id) }}" method="POST"
+                                  onsubmit="return confirm('Cancel this sell trade #{{ $t->id }}?')" style="display:inline">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="padding:.25rem .5rem;font-size:.72rem" title="Cancel Trade">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </form>
+                            @endif
                             @if($t->user_id)
                             <button type="button" class="btn-kx-icon" title="AI Fraud Check"
                                 onclick="aiSpotSuspicious({{ $t->user_id }}, '{{ addslashes($user->name ?? 'User') }}')"

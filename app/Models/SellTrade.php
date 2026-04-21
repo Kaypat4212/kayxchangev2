@@ -26,7 +26,11 @@ class SellTrade extends Model
         'wallet_address',
         'payment_proof',
         'transaction_ref',
+        'cancelled_at',
+        'cancelled_by',
     ];
+
+    protected $dates = ['cancelled_at'];
 
     protected $casts = [
         'amount' => 'decimal:2',

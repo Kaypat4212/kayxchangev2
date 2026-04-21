@@ -178,6 +178,26 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         <i class="bi bi-house me-2"></i>Back to Dashboard
     </a>
 
+    @if($trade->status === 'pending')
+    @php $canCancelNow = $trade->created_at->diffInMinutes(now()) >= 30; @endphp
+    <div class="mt-3">
+        @if($canCancelNow)
+        <form method="POST" action="{{ route('trade.buy.cancel', $trade->id) }}"
+              onsubmit="return confirm('Are you sure you want to cancel this trade?')">
+            @csrf
+            <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                <i class="bi bi-x-circle me-1"></i>Cancel Trade
+            </button>
+        </form>
+        @else
+        @php $remaining = 30 - $trade->created_at->diffInMinutes(now()); @endphp
+        <div class="text-center" style="font-size:.78rem;color:#f59e0b;margin-top:.5rem;">
+            <i class="bi bi-clock me-1"></i>Cancel available in {{ $remaining }} min(s)
+        </div>
+        @endif
+    </div>
+    @endif
+
     <div style="height:2rem;"></div>
 
 </div>

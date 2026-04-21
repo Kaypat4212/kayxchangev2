@@ -23,11 +23,15 @@ class BuyTrade extends Model
         'admin_payment_proof',
         'approved_by_admin_id',
         'approved_at',
+        'cancelled_at',
+        'cancelled_by',
         'status',
         'ip_address',
         'transaction_ref',
         'transaction_type',
     ];
+
+    protected $dates = ['cancelled_at', 'approved_at'];
 
     public function user()
     {

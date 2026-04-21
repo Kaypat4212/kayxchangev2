@@ -185,7 +185,7 @@
     @endif
 
     {{-- Actions --}}
-    <div class="d-flex gap-3" style="margin-bottom:2rem;">
+    <div class="d-flex gap-3" style="margin-bottom:1.25rem;">
         <a href="{{ route('dashboard') }}" class="kx-btn kx-btn-outline flex-fill">
             <i class="bi bi-house"></i> Dashboard
         </a>
@@ -193,6 +193,25 @@
             <i class="bi bi-clock-history"></i> View History
         </a>
     </div>
+
+    @if($trade->status === 'pending')
+    @php $canCancelNow = $trade->created_at->diffInMinutes(now()) >= 30; @endphp
+    @if($canCancelNow)
+    <form method="POST" action="{{ route('trade.sell.cancel', $trade->id) }}"
+          onsubmit="return confirm('Are you sure you want to cancel this trade?')"
+          style="margin-bottom:2rem;">
+        @csrf
+        <button type="submit" class="kx-btn w-100" style="background:rgba(220,53,69,.1);border:1.5px solid rgba(220,53,69,.3);color:#f87171;">
+            <i class="bi bi-x-circle me-1"></i>Cancel Trade
+        </button>
+    </form>
+    @else
+    @php $remaining = 30 - $trade->created_at->diffInMinutes(now()); @endphp
+    <div class="text-center" style="font-size:.78rem;color:#f59e0b;margin-bottom:2rem;">
+        <i class="bi bi-clock me-1"></i>Cancel available in {{ $remaining }} min(s)
+    </div>
+    @endif
+    @endif
 
 </div>
 </div>
