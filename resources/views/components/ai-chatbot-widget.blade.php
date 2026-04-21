@@ -150,12 +150,16 @@ async function kaybotSend() {
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({ message: msg })
         });
-        const data = await r.json();
+        if (r.status === 419) { typing.remove(); kaybotAppend('bot', '⚠️ Session expired. Please refresh the page.'); kaybotBusy = false; return; }
+        if (r.status === 401 || r.status === 403) { typing.remove(); kaybotAppend('bot', '⚠️ Please log in to use KayBot.'); kaybotBusy = false; return; }
+        const text = await r.text();
+        let data;
+        try { data = JSON.parse(text); } catch { typing.remove(); kaybotAppend('bot', 'Sorry, something went wrong. Please try again.'); kaybotBusy = false; return; }
         typing.remove();
         kaybotAppend('bot', data.reply ?? 'Sorry, something went wrong.');
     } catch (e) {
         typing.remove();
-        kaybotAppend('bot', '⚠️ Connection error. Please try again.');
+        kaybotAppend('bot', '⚠️ Could not reach KayBot. Check your connection and try again.');
     }
     kaybotBusy = false;
 }
