@@ -9,6 +9,9 @@
     $kaybotReady   = $kaybotEnabled && $kaybotHasKey;
 @endphp
 @if($kaybotEnabled)
+@php
+try { $kaybotChatUrl = route('ai.chat'); } catch (\Throwable $e) { $kaybotChatUrl = url('/ai-chat'); }
+@endphp
 <style>
 #kaybot-wrap{position:fixed;bottom:24px;right:24px;z-index:9999;font-family:'Inter',sans-serif;}
 #kaybot-toggle{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#00cc00,#009900);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,204,0,.45);transition:transform .2s;}
@@ -142,7 +145,7 @@ async function kaybotSend() {
     const typing = kaybotAppend('bot', '…', true);
 
     try {
-        const r = await fetch('{{ route("ai.chat") }}', {
+        const r = await fetch('{{ $kaybotChatUrl }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({ message: msg })
