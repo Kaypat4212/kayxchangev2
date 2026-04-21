@@ -18,7 +18,14 @@ class AdminSetting extends Model
     {
         $row = static::where('key', $key)->first();
         if (! $row) return $default;
-        return $row->is_encrypted ? Crypt::decryptString($row->value ?? '') : $row->value;
+        if ($row->is_encrypted) {
+            try {
+                return Crypt::decryptString($row->value ?? '');
+            } catch (\Exception $e) {
+                return $default;
+            }
+        }
+        return $row->value;
     }
 
     /** Set / upsert a setting value (auto-encrypts if is_encrypted flag already set). */
@@ -36,9 +43,15 @@ class AdminSetting extends Model
     {
         return static::where('group', $group)->get()
             ->mapWithKeys(function ($row) {
-                $val = $row->is_encrypted
-                    ? (($row->value && $row->value !== '') ? Crypt::decryptString($row->value) : '')
-                    : $row->value;
+                if ($row->is_encrypted) {
+                    try {
+                        $val = ($row->value && $row->value !== '') ? Crypt::decryptString($row->value) : '';
+                    } catch (\Exception $e) {
+                        $val = '';
+                    }
+                } else {
+                    $val = $row->value;
+                }
                 return [$row->key => $val];
             })->all();
     }
