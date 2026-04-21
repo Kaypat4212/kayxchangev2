@@ -55,19 +55,28 @@ class AiChatController extends Controller
         $request->session()->put('ai_chat_session', $sessionId);
         $message   = trim($request->message);
 
-        // 1. Check for pending admin reply
-        $pendingReply = $this->checkPendingAdminReply($sessionId, $user);
-        if ($pendingReply) {
-            $this->saveMessage($user?->id, $sessionId, 'user', $message);
-            return response()->json(['reply' => $pendingReply, 'admin_reply' => true]);
+        // 1. Check for pending admin reply (graceful fallback if table not yet migrated)
+        try {
+            $pendingReply = $this->checkPendingAdminReply($sessionId, $user);
+            if ($pendingReply) {
+                $this->saveMessage($user?->id, $sessionId, 'user', $message);
+                return response()->json(['reply' => $pendingReply, 'admin_reply' => true]);
+            }
+        } catch (\Exception $e) {
+            Log::warning('KayBot: admin reply check skipped — ' . $e->getMessage());
         }
 
         // 2. Manual escalation request
         if ($this->isEscalationRequest($message)) {
             $this->saveMessage($user?->id, $sessionId, 'user', $message);
-            $ticketReply = $user
-                ? $this->createSupportTicket($user, $sessionId, $message, $this->getRecentContext($sessionId))
-                : 'Please log in so our team can follow up. You can also reach us on Telegram: @TradewithkayxchangeBOT';
+            try {
+                $ticketReply = $user
+                    ? $this->createSupportTicket($user, $sessionId, $message, $this->getRecentContext($sessionId))
+                    : 'Please log in so our team can follow up. You can also reach us on Telegram: @TradewithkayxchangeBOT';
+            } catch (\Exception $e) {
+                Log::warning('KayBot: ticket creation failed — ' . $e->getMessage());
+                $ticketReply = 'Your request has been noted. Please reach us on Telegram: @TradewithkayxchangeBOT';
+            }
             $this->saveMessage($user?->id, $sessionId, 'assistant', $ticketReply);
             return response()->json(['reply' => $ticketReply, 'escalated' => true]);
         }
