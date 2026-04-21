@@ -57,17 +57,22 @@ PROMPT;
 
         $request->validate(['message' => 'required|string|max:1000']);
 
-        $provider   = AdminSetting::get('ai_provider', 'openai');
-        $provConfig = self::PROVIDERS[$provider] ?? self::PROVIDERS['openai'];
-        $apiKey     = AdminSetting::get($provConfig['key_setting']);
+        $provider   = AdminSetting::get('ai_provider', 'groq');
+        $provConfig = self::PROVIDERS[$provider] ?? self::PROVIDERS['groq'];
+
+        // DB first, then .env fallback (e.g. groq_api_key → GROQ_API_KEY)
+        $apiKey = AdminSetting::get($provConfig['key_setting'])
+               ?: env(strtoupper($provConfig['key_setting']));
 
         // Fallback: if active provider has no key, try the other one
         if (! $apiKey) {
             $other = $provider === 'openai' ? 'groq' : 'openai';
             $fallbackConfig = self::PROVIDERS[$other];
-            $apiKey = AdminSetting::get($fallbackConfig['key_setting']);
+            $apiKey = AdminSetting::get($fallbackConfig['key_setting'])
+                   ?: env(strtoupper($fallbackConfig['key_setting']));
             if ($apiKey) {
                 $provConfig = $fallbackConfig;
+                $provider   = $other;
             } else {
                 return response()->json(['reply' => 'AI assistant is not configured yet. Please contact support.']);
             }

@@ -2,7 +2,10 @@
 {{-- Include this in your main user layout (navlayout.blade.php), just before </body> --}}
 @php
     $kaybotEnabled = \App\Models\AdminSetting::get('ai_chatbot_enabled', '1') == '1';
-    $kaybotHasKey  = (bool) (\App\Models\AdminSetting::get('openai_api_key') || \App\Models\AdminSetting::get('groq_api_key'));
+    $kaybotHasKey  = (bool) (
+        \App\Models\AdminSetting::get('openai_api_key') ?: env('OPENAI_API_KEY') ?:
+        \App\Models\AdminSetting::get('groq_api_key')   ?: env('GROQ_API_KEY')
+    );
     $kaybotReady   = $kaybotEnabled && $kaybotHasKey;
 @endphp
 @if($kaybotEnabled)

@@ -197,7 +197,7 @@
             <i class="bi bi-headset"></i>Support
           </a>
         </li>
-        @php $kaybotVisible = \App\Models\AdminSetting::get('ai_chatbot_enabled','1') == '1' && (\App\Models\AdminSetting::get('openai_api_key') || \App\Models\AdminSetting::get('groq_api_key')); @endphp
+        @php $kaybotVisible = \App\Models\AdminSetting::get('ai_chatbot_enabled','1') == '1' && (\App\Models\AdminSetting::get('openai_api_key') ?: env('OPENAI_API_KEY') ?: \App\Models\AdminSetting::get('groq_api_key') ?: env('GROQ_API_KEY')); @endphp
         @if($kaybotVisible)
         <li class="nav-item">
           <button type="button" onclick="kaybotToggle()" class="kx-nav-link" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:.4rem;" title="Chat with KayBot AI">
