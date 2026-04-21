@@ -142,7 +142,7 @@ async function kaybotSend() {
     const typing = kaybotAppend('bot', '…', true);
 
     try {
-        const r = await fetch('{{ url("/ai-chat") }}', {
+        const r = await fetch('{{ route("ai.chat") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({ message: msg })
