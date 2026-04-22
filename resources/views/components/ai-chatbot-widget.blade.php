@@ -1,12 +1,10 @@
 {{-- AI Trading Chatbot Widget --}}
 {{-- Always rendered so kaybotToggle() is always defined for the mobile FAB --}}
 @php
-    $kaybotEnabled = \App\Models\AdminSetting::get('ai_chatbot_enabled', '1') == '1';
-    $kaybotHasKey  = (bool) (
-        \App\Models\AdminSetting::get('openai_api_key') ?: env('OPENAI_API_KEY') ?:
-        \App\Models\AdminSetting::get('groq_api_key')   ?: env('GROQ_API_KEY')
-    );
-    $kaybotReady = $kaybotEnabled && $kaybotHasKey;
+    // Use !== '0' so null (DB key missing / APP_KEY mismatch) still defaults to enabled
+    $kaybotEnabled = \App\Models\AdminSetting::get('ai_chatbot_enabled', '1') !== '0';
+    // Don't gate on key at widget level — the controller returns a friendly message if key is missing
+    $kaybotReady   = $kaybotEnabled;
 @endphp
 @php
 try { $kaybotChatUrl = route('ai.chat'); } catch (\Throwable $e) { $kaybotChatUrl = url('/ai-chat'); }
@@ -75,13 +73,7 @@ body.light-mode #kaybot-input:focus{border-color:rgba(0,150,0,.45);}
         </div>
 
         <div id="kaybot-msgs">
-            @if($kaybotReady)
-            <div class="kb-msg bot">👋 Hi{{ auth()->check() ? ' ' . auth()->user()->name : '' }}! I'm <strong>KayBot</strong>, your KayXchange trading assistant.<br><br>I can help you with rates, how to buy/sell crypto, account questions, and more. What would you like to know?</div>
-            @elseif($kaybotEnabled)
-            <div class="kb-msg bot">🤖 <strong>KayBot</strong> is almost ready!<br><br>Our AI assistant is being set up. Check back soon — it'll be available to help you with trading questions shortly.</div>
-            @else
-            <div class="kb-msg bot">🔧 <strong>KayBot</strong> is temporarily offline.<br><br>Our team is working on it. In the meantime, reach us on Telegram: <strong>@TradewithkayxchangeBOT</strong></div>
-            @endif
+            <div class="kb-msg bot">👋 Hi{{ auth()->check() ? ' ' . auth()->user()->name : '' }}! I'm <strong>KayBot</strong>, your KayXchange trading assistant.<br><br>I can help you with live crypto prices, rates, how to buy/sell crypto, account questions, and more. What would you like to know?</div>
         </div>
 
         @if($kaybotReady)
