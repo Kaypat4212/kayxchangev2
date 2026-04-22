@@ -165,7 +165,7 @@
         </a>
         <!-- Centre FAB: KayBot AI -->
         <div class="kx-bnav-item kx-bnav-center" id="bnav-kaybot-wrap">
-            <button type="button" onclick="if (typeof window.kaybotToggle === 'function') { window.kaybotToggle(); }" id="bnav-kaybot-btn"
+            <button type="button" onclick="kaybotToggle()" id="bnav-kaybot-btn"
                class="kx-bnav-center-btn" title="KayBot AI Assistant"
                style="background:linear-gradient(135deg,#00cc00,#007a0c);border:none;cursor:pointer;">
                 <i class="bi bi-robot"></i>
@@ -362,13 +362,6 @@
     @stack('scripts')
 
     @include('components.ai-chatbot-widget')
-
-    <script>
-    // Keep the mobile KayBot button safe when widget script is disabled/unavailable.
-    if (typeof window.kaybotToggle !== 'function') {
-        window.kaybotToggle = function () {};
-    }
-    </script>
 </body>
 
 </html>
