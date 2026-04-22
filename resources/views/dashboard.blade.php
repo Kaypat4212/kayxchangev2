@@ -294,10 +294,11 @@
                 </div>
                 <div class="d-flex align-items-center gap-2" style="padding-top:4px">
                     <!-- Notifications -->
-                    <div class="dropdown">
-                        <button class="kx-hbtn" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="position:relative">
+                    <div class="dropdown" id="notif-dropdown">
+                        <button class="kx-hbtn" type="button" id="notif-bell-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="position:relative">
                             <i class="bi bi-bell-fill"></i>
                             <span class="kx-notif-dot" id="notif-dot"></span>
+                            <span id="notif-count-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:0.6rem;font-weight:700;min-width:17px;height:17px;border-radius:50%;display:none;align-items:center;justify-content:center;line-height:1;padding:0 3px;border:2px solid var(--kx-bg,#0f131e)"></span>
                         </button>
                         <ul class="dropdown-menu kx-dropdown" id="notifications-container">
                             <li class="kx-notif-item">
@@ -630,7 +631,45 @@
         fetchPrices();
         renderTransactions(allTransactions);
         loadNotifications();
-        setInterval(loadNotifications, 60000); // refresh every 60s
+
+        // Smart polling: 10s when dropdown open, 30s when closed, paused when tab hidden
+        let notifDropdownOpen = false;
+        let notifPollTimer = null;
+
+        function scheduleNotifPoll() {
+            clearTimeout(notifPollTimer);
+            if (document.hidden) return;
+            notifPollTimer = setTimeout(() => {
+                loadNotifications();
+                scheduleNotifPoll();
+            }, notifDropdownOpen ? 10000 : 30000);
+        }
+
+        // Reload immediately when dropdown opens
+        const notifDropEl = document.getElementById('notif-dropdown');
+        if (notifDropEl) {
+            notifDropEl.addEventListener('show.bs.dropdown', () => {
+                notifDropdownOpen = true;
+                loadNotifications();
+                scheduleNotifPoll();
+            });
+            notifDropEl.addEventListener('hide.bs.dropdown', () => {
+                notifDropdownOpen = false;
+                scheduleNotifPoll();
+            });
+        }
+
+        // Pause when tab hidden, resume on focus
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearTimeout(notifPollTimer);
+            } else {
+                loadNotifications();
+                scheduleNotifPoll();
+            }
+        });
+
+        scheduleNotifPoll();
     });
 
     // ---- Notifications ----
@@ -655,11 +694,20 @@
     function renderNotifications(data) {
         const container = document.getElementById('notifications-container');
         const dot = document.getElementById('notif-dot');
+        const badge = document.getElementById('notif-count-badge');
         const count = data.unread_count || 0;
         const notes = data.notifications || [];
 
-        // Badge dot
+        // Badge dot + numeric count
         dot.style.display = count > 0 ? 'block' : 'none';
+        if (badge) {
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
 
         if (!notes.length) {
             container.innerHTML = `

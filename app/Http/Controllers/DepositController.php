@@ -11,6 +11,7 @@ use App\Services\PaymentGatewayService;
 use App\Mail\DepositApproved;
 use App\Mail\TradeNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -943,5 +944,51 @@ class DepositController extends Controller
                 'deposit_id' => $deposit->id,
             ]);
         }
+    }
+
+    /**
+     * User cancels their own pending deposit.
+     */
+    public function userCancelDeposit(Request $request, $id)
+    {
+        $deposit = Deposit::findOrFail($id);
+
+        if ($deposit->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
+        if ($deposit->status !== 'pending') {
+            return response()->json(['error' => 'Only pending deposits can be cancelled.'], 422);
+        }
+
+        $deposit->update([
+            'status' => 'cancelled',
+        ]);
+
+        // Notify user by email
+        try {
+            Mail::to(Auth::user()->email)->send(new TradeNotification(
+                user: Auth::user(),
+                templateKey: 'deposit_rejected',
+                data: [
+                    'amount'         => number_format((float) $deposit->amount, 2),
+                    'payment_method' => ucfirst($deposit->payment_method ?? 'Bank Transfer'),
+                    'reference'      => $deposit->transaction_ref ?? ('DEP-' . $deposit->id),
+                    'reason'         => 'You cancelled this deposit.',
+                ],
+                badge: ['text' => 'Deposit Cancelled', 'color' => '#6b7280'],
+                ctaUrl: url('/dashboard'),
+                ctaText: 'Back to Dashboard',
+            ));
+        } catch (\Exception $e) {
+            Log::warning('Cancel deposit email failed: ' . $e->getMessage());
+        }
+
+        Log::info('Deposit cancelled by user', ['deposit_id' => $deposit->id, 'user_id' => Auth::id()]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Deposit cancelled successfully.']);
+        }
+        return redirect()->route('deposits.index')->with('success', 'Deposit cancelled successfully.');
     }
 }

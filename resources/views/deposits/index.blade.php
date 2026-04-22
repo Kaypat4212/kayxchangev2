@@ -39,6 +39,7 @@
                                 <th scope="col" class="sortable" data-sort="created_at">
                                     Created At <span class="sort-icon"></span>
                                 </th>
+                                <th scope="col">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -53,6 +54,19 @@
                                     <td>{{ $deposit->transaction_ref }}</td>
                                     <td>{{ $deposit->admin_note ?? 'N/A' }}</td>
                                     <td>{{ $deposit->created_at->format('M d, Y H:i') }}</td>
+                                    <td>
+                                        @if($deposit->status === 'pending')
+                                            <form method="POST" action="{{ route('deposit.user.cancel', $deposit->id) }}"
+                                                  onsubmit="return confirm('Cancel this deposit? This cannot be undone.')">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size:.75rem;padding:.2rem .6rem;">
+                                                    <i class="bi bi-x-circle me-1"></i>Cancel
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="text-muted" style="font-size:.78rem;">—</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

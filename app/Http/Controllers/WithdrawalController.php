@@ -671,4 +671,55 @@ class WithdrawalController extends Controller
             return back()->with('error', 'Failed to update withdrawal status.');
         }
     }
+
+    /**
+     * User cancels their own pending withdrawal (no balance deduction yet, so no refund needed).
+     */
+    public function userCancelWithdrawal(Request $request, $id)
+    {
+        $withdrawal = Withdrawal::findOrFail($id);
+
+        if ($withdrawal->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
+        if ($withdrawal->status !== 'pending') {
+            return response()->json(['error' => 'Only pending withdrawals can be cancelled.'], 422);
+        }
+
+        $withdrawal->update([
+            'status'       => 'cancelled',
+            'processed_at' => now(),
+        ]);
+
+        // Notify user by email
+        try {
+            $bd = is_array($withdrawal->bank_account)
+                ? $withdrawal->bank_account
+                : (json_decode($withdrawal->bank_account, true) ?? []);
+            $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — ' . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
+            Mail::to(Auth::user()->email)->send(new TradeNotification(
+                user: Auth::user(),
+                templateKey: 'withdrawal_cancelled',
+                data: [
+                    'amount'          => number_format((float) ($withdrawal->amount ?? 0), 2),
+                    'payment_method'  => 'Bank Transfer',
+                    'account_details' => $accountDetails,
+                    'reason'          => 'You cancelled this withdrawal.',
+                ],
+                badge: ['text' => 'Withdrawal Cancelled', 'color' => '#6b7280'],
+                ctaUrl: url('/dashboard'),
+                ctaText: 'Go to Dashboard',
+            ));
+        } catch (\Exception $e) {
+            Log::warning('Cancel withdrawal email failed: ' . $e->getMessage());
+        }
+
+        Log::info('Withdrawal cancelled by user', ['withdrawal_id' => $withdrawal->id, 'user_id' => Auth::id()]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Withdrawal cancelled successfully.']);
+        }
+        return redirect()->route('dashboard')->with('success', 'Withdrawal cancelled successfully.');
+    }
 }

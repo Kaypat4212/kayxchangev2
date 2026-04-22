@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BuyTrade;
+use App\Models\Deposit;
 use App\Models\SellTrade;
 use App\Models\Withdrawal;
 use Illuminate\Http\Request;
@@ -218,6 +219,7 @@ class UserTransactionController extends Controller
                     'network'          => $record->network,
                     'usd_amount'       => $record->usd_amount,
                     'naira_amount'     => $record->naira_amount,
+                    'rate_used'        => $record->rate_used,
                     'wallet_address'   => $record->wallet_address,
                     'payment_method'   => $record->payment_method,
                     'payment_proof'    => $record->payment_proof ? asset('storage/' . $record->payment_proof) : null,
@@ -226,6 +228,7 @@ class UserTransactionController extends Controller
                     'proof_upload_url' => ($record->status === 'pending' && ! $record->payment_proof) ? route('buy.payment', $record->id) : null,
                     'created_at'       => $record->created_at->format('d M Y, H:i'),
                     'updated_at'       => $record->updated_at->format('d M Y, H:i'),
+                    'created_at_unix'  => $record->created_at->timestamp,
                 ];
                 break;
 
@@ -240,6 +243,7 @@ class UserTransactionController extends Controller
                     'network'          => $record->network,
                     'usd_amount'       => $record->usd_amount,
                     'naira_amount'     => $record->naira_amount,
+                    'rate_used'        => $record->rate_used,
                     'wallet_address'   => $record->wallet_address,
                     'bank_name'        => $record->bank_name,
                     'account_name'     => $record->account_name,
@@ -251,6 +255,7 @@ class UserTransactionController extends Controller
                     'proof_upload_url' => ($record->status === 'pending' && ! $proofUrl) ? route('sell.payment', $record->id) : null,
                     'created_at'       => $record->created_at->format('d M Y, H:i'),
                     'updated_at'       => $record->updated_at->format('d M Y, H:i'),
+                    'created_at_unix'  => $record->created_at->timestamp,
                 ];
                 break;
 
@@ -273,6 +278,25 @@ class UserTransactionController extends Controller
                     'processed_at'  => $record->processed_at ? $record->processed_at->format('d M Y, H:i') : null,
                     'created_at'    => $record->created_at->format('d M Y, H:i'),
                     'updated_at'    => $record->updated_at->format('d M Y, H:i'),
+                    'created_at_unix' => $record->created_at->timestamp,
+                ];
+                break;
+
+            case 'deposit':
+                $record = Deposit::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+                $data = [
+                    'type'           => 'deposit',
+                    'id'             => $record->id,
+                    'coin'           => $record->currency ?? 'NGN',
+                    'amount'         => $record->amount,
+                    'naira_amount'   => $record->amount,
+                    'payment_method' => ucfirst($record->payment_method ?? 'Bank Transfer'),
+                    'status'         => $record->status,
+                    'reference'      => $record->transaction_ref,
+                    'processed_at'   => $record->processed_at ? $record->processed_at->format('d M Y, H:i') : null,
+                    'created_at'     => $record->created_at->format('d M Y, H:i'),
+                    'updated_at'     => $record->updated_at->format('d M Y, H:i'),
+                    'created_at_unix' => $record->created_at->timestamp,
                 ];
                 break;
 

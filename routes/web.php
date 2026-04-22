@@ -614,6 +614,10 @@ Route::middleware('auth')->group(function () {
     // Trade cancellation (user: 30-min rule)
     Route::post('/trades/buy/{id}/cancel',  [TradeController::class, 'cancelBuy'])->name('trade.buy.cancel');
     Route::post('/trades/sell/{id}/cancel', [TradeController::class, 'cancelSell'])->name('trade.sell.cancel');
+
+    // Deposit / Withdrawal cancellation (user-facing, no time restriction)
+    Route::post('/deposits/{id}/cancel',    [DepositController::class, 'userCancelDeposit'])->name('deposit.user.cancel');
+    Route::post('/withdrawals/{id}/cancel', [WithdrawalController::class, 'userCancelWithdrawal'])->name('withdrawal.user.cancel');
 });
 
 // Admin Terminal + Feedback Moderation

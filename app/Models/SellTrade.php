@@ -23,6 +23,7 @@ class SellTrade extends Model
         'payment_method',
         'usd_amount', 
         'naira_amount',
+        'rate_used',
         'wallet_address',
         'payment_proof',
         'transaction_ref',

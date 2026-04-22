@@ -24,13 +24,16 @@ class TradeController extends Controller
         }
 
         if ($trade->status !== 'pending') {
+            if ($request->expectsJson()) return response()->json(['error' => 'Only pending trades can be cancelled.'], 422);
             return back()->with('error', 'Only pending trades can be cancelled.');
         }
 
         $minutesElapsed = $trade->created_at->diffInMinutes(now());
         if ($minutesElapsed < 30) {
             $remaining = 30 - $minutesElapsed;
-            return back()->with('error', "You can cancel this trade in {$remaining} minute(s). Cancellation is allowed 30 minutes after submission.");
+            $msg = "You can cancel this trade in {$remaining} minute(s). Cancellation is allowed 30 minutes after submission.";
+            if ($request->expectsJson()) return response()->json(['error' => $msg], 422);
+            return back()->with('error', $msg);
         }
 
         $trade->update([
@@ -61,6 +64,7 @@ class TradeController extends Controller
 
         Log::info('Buy trade cancelled by user', ['trade_id' => $trade->id, 'user_id' => Auth::id()]);
 
+        if ($request->expectsJson()) return response()->json(['message' => 'Buy trade cancelled successfully.']);
         return redirect()->route('dashboard')->with('success', 'Buy trade cancelled successfully.');
     }
 
@@ -76,13 +80,16 @@ class TradeController extends Controller
         }
 
         if ($trade->status !== 'pending') {
+            if ($request->expectsJson()) return response()->json(['error' => 'Only pending trades can be cancelled.'], 422);
             return back()->with('error', 'Only pending trades can be cancelled.');
         }
 
         $minutesElapsed = $trade->created_at->diffInMinutes(now());
         if ($minutesElapsed < 30) {
             $remaining = 30 - $minutesElapsed;
-            return back()->with('error', "You can cancel this trade in {$remaining} minute(s). Cancellation is allowed 30 minutes after submission.");
+            $msg = "You can cancel this trade in {$remaining} minute(s). Cancellation is allowed 30 minutes after submission.";
+            if ($request->expectsJson()) return response()->json(['error' => $msg], 422);
+            return back()->with('error', $msg);
         }
 
         $trade->update([
@@ -114,6 +121,7 @@ class TradeController extends Controller
 
         Log::info('Sell trade cancelled by user', ['trade_id' => $trade->id, 'user_id' => Auth::id()]);
 
+        if ($request->expectsJson()) return response()->json(['message' => 'Sell trade cancelled successfully.']);
         return redirect()->route('dashboard')->with('success', 'Sell trade cancelled successfully.');
     }
 

@@ -156,6 +156,15 @@
 
     <div class="text-center">
         <a href="{{ route('dashboard') }}" class="btn btn-primary animate-pulse">Back to Dashboard</a>
+        @if($withdrawal->status === 'pending')
+            <form method="POST" action="{{ route('withdrawal.user.cancel', $withdrawal->id) }}" class="d-inline ms-2"
+                  onsubmit="return confirm('Cancel this withdrawal? This cannot be undone.')">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-x-circle me-1"></i>Cancel Withdrawal
+                </button>
+            </form>
+        @endif
     </div>
 </div>
 

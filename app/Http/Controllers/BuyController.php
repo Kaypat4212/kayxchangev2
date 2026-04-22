@@ -95,6 +95,7 @@ class BuyController extends Controller
                 'coin' => $validated['coin'],
                 'usd_amount' => $usd_amount,
                 'naira_amount' => $naira_amount,
+                'rate_used' => $rate,
                 'wallet_address' => $validated['wallet_address'],
                 'network' => $validated['network'],
                 'payment_method' => 'Bank Transfer',

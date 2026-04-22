@@ -215,8 +215,12 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     </td>
                     <td style="font-weight:700">₦{{ number_format($t->naira_amount ?? 0, 2) }}</td>
                     <td style="font-size:.76rem;color:var(--kx-muted);white-space:nowrap">
-                        @if(($t->usd_amount ?? 0) > 0)
-                        <span style="color:var(--kx-green);font-weight:600">₦{{ number_format(($t->naira_amount ?? 0) / $t->usd_amount, 0) }}/$1</span>
+                        @if($t->rate_used)
+                        <span style="color:var(--kx-green);font-weight:600">₦{{ number_format($t->rate_used, 0) }}/$1</span>
+                        <div style="font-size:.65rem;color:var(--kx-muted)">locked at submit</div>
+                        @elseif(($t->usd_amount ?? 0) > 0)
+                        <span style="color:var(--kx-yellow);font-weight:600">₦{{ number_format(($t->naira_amount ?? 0) / $t->usd_amount, 0) }}/$1</span>
+                        <div style="font-size:.65rem;color:var(--kx-muted)">calculated</div>
                         @else
                         <span style="color:var(--kx-muted)">—</span>
                         @endif
@@ -360,8 +364,12 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     </td>
                     <td style="font-size:.76rem;white-space:nowrap">
                         @php $sellUsd = $t->usd_amount ?? 0; $sellNgn = $t->naira_amount ?? $t->amount ?? 0; @endphp
-                        @if($sellUsd > 0)
-                        <span style="color:var(--kx-green);font-weight:600">₦{{ number_format($sellNgn / $sellUsd, 0) }}/$1</span>
+                        @if($t->rate_used)
+                        <span style="color:var(--kx-green);font-weight:600">₦{{ number_format($t->rate_used, 0) }}/$1</span>
+                        <div style="font-size:.65rem;color:var(--kx-muted)">locked at submit</div>
+                        @elseif($sellUsd > 0)
+                        <span style="color:var(--kx-yellow);font-weight:600">₦{{ number_format($sellNgn / $sellUsd, 0) }}/$1</span>
+                        <div style="font-size:.65rem;color:var(--kx-muted)">calculated</div>
                         @else
                         <span style="color:var(--kx-muted)">—</span>
                         @endif

@@ -15,6 +15,7 @@ class BuyTrade extends Model
         'coin',
         'usd_amount',
         'naira_amount',
+        'rate_used',
         'network',
         'payment_method',
         'wallet_address',

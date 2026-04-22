@@ -460,6 +460,7 @@ class SellController extends Controller
             $sellTrade->coin = Session::get('sell.coin');
             $sellTrade->usd_amount = Session::get('sell.usd_amount');
             $sellTrade->naira_amount = Session::get('sell.naira_amount');
+            $sellTrade->rate_used = Session::get('sell.rate');
             $sellTrade->proof = Session::get('sell.proof');
             $sellTrade->payment_method = $request->payout_method;
             $sellTrade->status = 'pending';

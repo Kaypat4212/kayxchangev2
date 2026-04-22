@@ -162,6 +162,14 @@
 .kx-copy-btn{background:none;border:none;padding:0 0 0 6px;color:var(--kx-muted);cursor:pointer;font-size:.8rem;vertical-align:middle;transition:color .15s;}
 .kx-copy-btn:hover{color:#00cc00;}
 
+/* Cancel trade button */
+.kx-cancel-btn{width:100%;padding:.7rem 1rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;color:#ef4444;font-size:.84rem;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.5rem;}
+.kx-cancel-btn:hover:not(:disabled){background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.5);}
+.kx-cancel-btn:disabled{opacity:.5;cursor:not-allowed;}
+.kx-cancel-msg{margin-top:.6rem;padding:.55rem .9rem;border-radius:8px;font-size:.78rem;text-align:center;}
+.kx-cancel-msg.success{background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.2);color:#00cc00;}
+.kx-cancel-msg.error{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#ef4444;}
+
 /* Skeleton loader */
 .kx-skel{background:linear-gradient(90deg,#1e2535 25%,#252d3f 50%,#1e2535 75%);background-size:200% 100%;animation:kx-skel .9s ease-in-out infinite;border-radius:6px;}
 @keyframes kx-skel{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
@@ -513,6 +521,41 @@ function copyText(text, btn) {
     });
 }
 
+function cancelTrade(url, btn) {
+    if (!confirm('Are you sure you want to cancel this transaction? This cannot be undone.')) return;
+    const msgEl = document.getElementById('kx-cancel-msg');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Cancelling...';
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+        if (ok) {
+            msgEl.className = 'kx-cancel-msg success';
+            msgEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>' + (data.message || 'Cancelled successfully.');
+            msgEl.style.display = 'block';
+            btn.style.display = 'none';
+            setTimeout(() => closeDrawer(), 2200);
+        } else {
+            msgEl.className = 'kx-cancel-msg error';
+            msgEl.innerHTML = '<i class="bi bi-exclamation-circle-fill me-1"></i>' + (data.error || 'Cancellation failed.');
+            msgEl.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-x-circle-fill"></i> Cancel This Transaction';
+        }
+    })
+    .catch(() => {
+        msgEl.className = 'kx-cancel-msg error';
+        msgEl.innerHTML = '<i class="bi bi-exclamation-circle-fill me-1"></i>Network error. Please try again.';
+        msgEl.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-x-circle-fill"></i> Cancel This Transaction';
+    });
+}
+
 function statusColor(s) {
     if (['completed','approved'].includes(s)) return 'green';
     if (s === 'pending' || s === 'processing') return 'yellow';
@@ -621,9 +664,16 @@ function renderDrawer(data) {
     if (data.network)   html += row('Network', data.network);
     if (data.usd_amount) html += row('Amount (USD)', fmtUsd(data.usd_amount));
     if ((data.naira_amount || data.amount)) html += row('Amount (NGN)', fmt(data.naira_amount ?? data.amount));
-    if (data.usd_amount > 0 && (data.naira_amount || data.amount)) {
+    if (data.rate_used) {
+        html += row('Exchange Rate',
+            '<span style="color:#00cc00;font-weight:700">₦' +
+            parseFloat(data.rate_used).toLocaleString('en-NG', {minimumFractionDigits:0, maximumFractionDigits:0}) +
+            ' / $1</span>' +
+            '<span style="font-size:.68rem;color:#f59e0b;margin-left:.4rem;font-weight:600">locked at submit</span>'
+        );
+    } else if (data.usd_amount > 0 && (data.naira_amount || data.amount)) {
         const impliedRate = ((data.naira_amount ?? data.amount) / data.usd_amount);
-        html += row('Exchange Rate', '<span style="color:#00cc00;font-weight:700">₦' + impliedRate.toLocaleString('en-NG', {minimumFractionDigits:0, maximumFractionDigits:0}) + ' / $1</span>');
+        html += row('Exchange Rate', '<span style="color:#7a8599;font-weight:700">₦' + impliedRate.toLocaleString('en-NG', {minimumFractionDigits:0, maximumFractionDigits:0}) + ' / $1</span>' + '<span style="font-size:.68rem;color:#7a8599;margin-left:.4rem">estimated</span>');
     }
     if (data.reference) html += row('Reference', `<span class="mono">${data.reference}</span>`, '', data.reference);
     if (data.created_at) html += row('Submitted', data.created_at, 'muted');
@@ -702,6 +752,37 @@ function renderDrawer(data) {
             if (data.account_name)   html += row('Account Name', data.account_name);
             if (data.account_number) html += row('Account No.', `<span class="mono">${data.account_number}</span>`, '', data.account_number);
             html += `</div>`;
+        }
+    }
+
+    if (data.type === 'deposit') {
+        html += `<div class="kx-detail-section">
+            <div class="kx-detail-section-title">Payment Info</div>`;
+        if (data.payment_method) html += row('Method', data.payment_method);
+        html += `</div>`;
+    }
+
+    // Cancel button for pending transactions
+    if (data.status === 'pending') {
+        const cancelRoutes = {
+            buy:        '/trades/buy/' + data.id + '/cancel',
+            sell:       '/trades/sell/' + data.id + '/cancel',
+            deposit:    '/deposits/' + data.id + '/cancel',
+            withdrawal: '/withdrawals/' + data.id + '/cancel',
+        };
+        const cancelUrl = cancelRoutes[data.type];
+        if (cancelUrl) {
+            const lockNote = (data.type === 'buy' || data.type === 'sell')
+                ? `<div style="font-size:.73rem;color:rgba(255,193,7,.75);text-align:center;margin-top:.4rem;"><i class="bi bi-clock me-1"></i>Buy & sell trades can be cancelled 30 minutes after submission.</div>`
+                : '';
+            html += `<div class="kx-detail-section" style="margin-top:.25rem;">
+                <div class="kx-detail-section-title">Actions</div>
+                <button class="kx-cancel-btn" id="kx-cancel-btn" onclick="cancelTrade('${cancelUrl}', this)">
+                    <i class="bi bi-x-circle-fill"></i> Cancel This ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}
+                </button>
+                ${lockNote}
+                <div class="kx-cancel-msg" id="kx-cancel-msg" style="display:none;"></div>
+            </div>`;
         }
     }
 
