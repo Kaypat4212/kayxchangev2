@@ -191,7 +191,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             <div class="kx-table-wrap">
             <table class="kx-table" id="buy-table">
                 <thead><tr>
-                    <th>#</th><th>User</th><th>Coin</th><th>USD</th><th>Amount (₦)</th><th>Method</th><th>Wallet</th><th>Proof</th><th>Status</th><th>Date</th><th>Actions</th>
+                    <th>#</th><th>User</th><th>Coin</th><th>USD</th><th>Amount (₦)</th><th>Rate</th><th>Method</th><th>Wallet</th><th>Proof</th><th>Status</th><th>Date</th><th>Actions</th>
                 </tr></thead>
                 <tbody>
                 @forelse($buyTrades as $t)
@@ -214,6 +214,13 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div class="kx-crypto-sub" data-coin="{{ strtoupper($t->coin ?? '') }}" data-usd="{{ $t->usd_amount ?? 0 }}" style="font-size:.68rem;color:#f7931a;margin-top:.1rem"></div>
                     </td>
                     <td style="font-weight:700">₦{{ number_format($t->naira_amount ?? 0, 2) }}</td>
+                    <td style="font-size:.76rem;color:var(--kx-muted);white-space:nowrap">
+                        @if(($t->usd_amount ?? 0) > 0)
+                        <span style="color:var(--kx-green);font-weight:600">₦{{ number_format(($t->naira_amount ?? 0) / $t->usd_amount, 0) }}/$1</span>
+                        @else
+                        <span style="color:var(--kx-muted)">—</span>
+                        @endif
+                    </td>
                     <td style="font-size:.74rem;color:var(--kx-muted);white-space:nowrap">{{ $t->payment_method ?? 'Bank Transfer' }}</td>
                     <td>
                         @if($t->wallet_address)
@@ -328,7 +335,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             <div class="kx-table-wrap">
             <table class="kx-table" id="sell-table">
                 <thead><tr>
-                    <th>#</th><th>User</th><th>Coin</th><th>Amount (₦)</th><th>Bank Details</th><th>Wallet</th><th>Proof</th><th>Status</th><th>Date</th><th>Actions</th>
+                    <th>#</th><th>User</th><th>Coin</th><th>Amount (₦)</th><th>Rate</th><th>Bank Details</th><th>Wallet</th><th>Proof</th><th>Status</th><th>Date</th><th>Actions</th>
                 </tr></thead>
                 <tbody>
                 @forelse($sellTrades as $t)
@@ -350,6 +357,14 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         ₦{{ number_format($t->naira_amount ?? $t->amount ?? 0, 2) }}
                         <div style="font-size:.72rem;color:var(--kx-blue);margin-top:.1rem">${{ number_format($t->usd_amount ?? 0, 2) }}</div>
                         <div class="kx-crypto-sub" data-coin="{{ strtoupper($t->coin ?? '') }}" data-usd="{{ $t->usd_amount ?? 0 }}" style="font-size:.68rem;color:var(--kx-yellow);margin-top:.05rem"></div>
+                    </td>
+                    <td style="font-size:.76rem;white-space:nowrap">
+                        @php $sellUsd = $t->usd_amount ?? 0; $sellNgn = $t->naira_amount ?? $t->amount ?? 0; @endphp
+                        @if($sellUsd > 0)
+                        <span style="color:var(--kx-green);font-weight:600">₦{{ number_format($sellNgn / $sellUsd, 0) }}/$1</span>
+                        @else
+                        <span style="color:var(--kx-muted)">—</span>
+                        @endif
                     </td>
                     <td>
                         {{-- Sell trade: show where admin must PAY the user --}}

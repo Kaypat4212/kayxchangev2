@@ -191,8 +191,45 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
         <div class="dep-card">
             <div class="dep-card-title"><i class="bi bi-cash-stack"></i> Deposit Amount</div>
 
+            {{-- Crypto USD Conversion Block (visible only for crypto_transfer) --}}
+            <div id="crypto-conversion-block" class="d-none">
+                <div class="mb-3">
+                    <div class="kx-label">Select Coin <span style="color:#ef4444;">*</span></div>
+                    <select id="crypto-coin-sel" class="kx-select">
+                        <option value="">— Choose a coin —</option>
+                        @foreach($cryptoRates as $coin => $rate)
+                        <option value="{{ $coin }}"
+                                data-buy-rate="{{ $rate->buy_rate }}"
+                                data-sell-rate="{{ $rate->sell_rate }}">
+                            {{ strtoupper($coin) }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <div class="kx-label">Amount in USD <span style="color:#ef4444;">*</span></div>
+                    <div class="kx-input-wrap">
+                        <span class="kx-currency-prefix" style="color:#f59e0b;">$</span>
+                        <input type="number" id="usd-amount-input" min="1" step="0.01"
+                               class="kx-input has-prefix" placeholder="e.g. 50">
+                    </div>
+                </div>
+                {{-- Live rate + conversion display --}}
+                <div id="rate-info-box" class="d-none" style="background:rgba(0,204,0,.05);border:1px solid rgba(0,204,0,.18);border-radius:12px;padding:.9rem 1.1rem;margin-bottom:1rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+                        <span style="font-size:.8rem;color:var(--kx-muted);">Platform Buy Rate</span>
+                        <span id="rate-display" style="font-weight:700;color:var(--kx-green);font-size:.92rem;">—</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:.8rem;color:var(--kx-muted);">NGN Equivalent</span>
+                        <span id="ngn-equiv-display" style="font-weight:700;color:#fff;font-size:.92rem;">—</span>
+                    </div>
+                </div>
+                <div style="height:1px;background:var(--kx-border);margin-bottom:1rem;"></div>
+            </div>
+
             <div class="mb-3">
-                <div class="kx-label">Amount (NGN) <span style="color:#ef4444;">*</span></div>
+                <div class="kx-label" id="ngn-amount-label">Amount (NGN) <span style="color:#ef4444;">*</span></div>
                 <div class="kx-input-wrap">
                     <span class="kx-currency-prefix">&#8358;</span>
                     <input type="number" name="amount" id="amount" min="1000" required
@@ -460,6 +497,40 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
     const gatewayMethods     = ['paystack', 'korapay', 'flutterwave'];
     const manualMethods      = ['bank_transfer', 'crypto_transfer'];
 
+    // Crypto conversion elements
+    const cryptoBlock   = document.getElementById('crypto-conversion-block');
+    const coinSel       = document.getElementById('crypto-coin-sel');
+    const usdInput      = document.getElementById('usd-amount-input');
+    const rateInfoBox   = document.getElementById('rate-info-box');
+    const rateDisplay   = document.getElementById('rate-display');
+    const ngnEquiv      = document.getElementById('ngn-equiv-display');
+    const amountLabel   = document.getElementById('ngn-amount-label');
+    const amountInput   = document.getElementById('amount');
+
+    function updateCryptoConversion() {
+        const usd = parseFloat(usdInput.value);
+        const opt = coinSel.options[coinSel.selectedIndex];
+        const rate = opt && opt.value ? parseFloat(opt.dataset.buyRate) : 0;
+        if (rate > 0) {
+            rateDisplay.textContent = '₦' + rate.toLocaleString('en-NG') + ' / $1';
+            rateInfoBox.classList.remove('d-none');
+            if (usd > 0) {
+                const ngn = usd * rate;
+                ngnEquiv.textContent = '$' + usd.toFixed(2) + ' = ₦' + ngn.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
+                amountInput.value = Math.round(ngn); // store as NGN
+            } else {
+                ngnEquiv.textContent = '—';
+                amountInput.value = '';
+            }
+        } else {
+            rateInfoBox.classList.add('d-none');
+            ngnEquiv.textContent = '—';
+        }
+    }
+
+    coinSel.addEventListener('change', updateCryptoConversion);
+    usdInput.addEventListener('input', updateCryptoConversion);
+
     let acctNum = '';
 
     // ── Method card selection ──────────────────────────────────────
@@ -471,6 +542,14 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
     };
 
     function applyMethodUI(value) {
+        // Always reset crypto block
+        cryptoBlock.classList.add('d-none');
+        usdInput.value = '';
+        coinSel.value = '';
+        rateInfoBox.classList.add('d-none');
+        amountLabel.innerHTML = 'Amount (NGN) <span style="color:#ef4444;">*</span>';
+        amountInput.placeholder = 'Minimum ₦1,000';
+
         if (value === 'bank_transfer') {
             acctSec.classList.remove('d-none');
             proofSec.classList.remove('d-none');
@@ -496,6 +575,10 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
             if (acctSel.options.length) acctSel.options[0].text = 'Choose account to transfer to';
             acctSel.dispatchEvent(new Event('change'));
         } else if (value === 'crypto_transfer') {
+            // Show crypto USD converter
+            cryptoBlock.classList.remove('d-none');
+            amountLabel.innerHTML = 'NGN Amount (auto-calculated from USD above) <span style="color:#ef4444;">*</span>';
+            amountInput.placeholder = 'Auto-filled from USD amount above';
             acctSec.classList.remove('d-none');
             proofSec.classList.remove('d-none');
             autoBanner.classList.add('d-none');
@@ -638,8 +721,14 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
         const pm     = pmInput.value;
         const errors = [];
 
-        if (!amount || amount < 1000) errors.push('Amount must be at least ₦1,000');
         if (!pm) errors.push('Please select a payment method');
+        if (pm === 'crypto_transfer') {
+            if (!coinSel.value) errors.push('Please select a coin for crypto transfer');
+            if (!parseFloat(usdInput.value)) errors.push('Please enter the USD amount');
+            if (!amount || amount < 1) errors.push('USD amount must be greater than zero');
+        } else {
+            if (!amount || amount < 1000) errors.push('Amount must be at least ₦1,000');
+        }
         if (manualMethods.includes(pm)) {
             if (pm === 'bank_transfer' && !acctSel.value) errors.push('Please select a company account');
             if (pm === 'crypto_transfer' && !walletSel.value) errors.push('Please select a receiving wallet');

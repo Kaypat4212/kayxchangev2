@@ -621,6 +621,10 @@ function renderDrawer(data) {
     if (data.network)   html += row('Network', data.network);
     if (data.usd_amount) html += row('Amount (USD)', fmtUsd(data.usd_amount));
     if ((data.naira_amount || data.amount)) html += row('Amount (NGN)', fmt(data.naira_amount ?? data.amount));
+    if (data.usd_amount > 0 && (data.naira_amount || data.amount)) {
+        const impliedRate = ((data.naira_amount ?? data.amount) / data.usd_amount);
+        html += row('Exchange Rate', '<span style="color:#00cc00;font-weight:700">₦' + impliedRate.toLocaleString('en-NG', {minimumFractionDigits:0, maximumFractionDigits:0}) + ' / $1</span>');
+    }
     if (data.reference) html += row('Reference', `<span class="mono">${data.reference}</span>`, '', data.reference);
     if (data.created_at) html += row('Submitted', data.created_at, 'muted');
     if (data.updated_at && data.updated_at !== data.created_at) html += row('Last Updated', data.updated_at, 'muted');

@@ -7,7 +7,21 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentGatewayService
 {
-    private string $sslCert = 'C:\xampp\php\extras\ssl\cacert.pem';
+    /**
+     * Resolve the best SSL CA cert path available on this server.
+     * Tries ini_get('curl.cainfo'), then openssl cafile, then falls back to true.
+     */
+    private function sslVerify(): bool|string
+    {
+        foreach (['curl.cainfo', 'openssl.cafile'] as $ini) {
+            $path = ini_get($ini);
+            if ($path && file_exists($path)) {
+                return $path;
+            }
+        }
+        // Let PHP/curl use its built-in defaults (works on cPanel/production)
+        return true;
+    }
 
     // ──────────────────────────────────────────────────────────────
     // PAYSTACK
@@ -19,7 +33,7 @@ class PaymentGatewayService
 
         try {
             $response = Http::withToken($secret)
-                ->withOptions(['verify' => $this->sslCert, 'timeout' => 15])
+                ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 15])
                 ->post('https://api.paystack.co/transaction/initialize', [
                     'email'        => $data['email'],
                     'amount'       => (int) ($data['amount'] * 100), // kobo
@@ -50,7 +64,7 @@ class PaymentGatewayService
 
         try {
             $response = Http::withToken($secret)
-                ->withOptions(['verify' => $this->sslCert, 'timeout' => 15])
+                ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 15])
                 ->get("https://api.paystack.co/transaction/verify/{$reference}");
 
             if ($response->successful() && $response->json('data.status') === 'success') {
@@ -78,7 +92,7 @@ class PaymentGatewayService
 
         try {
             $response = Http::withToken($secret)
-                ->withOptions(['verify' => $this->sslCert, 'timeout' => 15])
+                ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 15])
                 ->post('https://api.korapay.com/merchant/api/v1/charges/initialize', [
                     'reference'    => $data['reference'],
                     'amount'       => $data['amount'],
@@ -110,7 +124,7 @@ class PaymentGatewayService
 
         try {
             $response = Http::withToken($secret)
-                ->withOptions(['verify' => $this->sslCert, 'timeout' => 15])
+                ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 15])
                 ->get("https://api.korapay.com/merchant/api/v1/charges/{$reference}");
 
             if ($response->successful() && $response->json('data.status') === 'success') {
@@ -138,7 +152,7 @@ class PaymentGatewayService
 
         try {
             $response = Http::withToken($secret)
-                ->withOptions(['verify' => $this->sslCert, 'timeout' => 15])
+                ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 15])
                 ->post('https://api.flutterwave.com/v3/payments', [
                     'tx_ref'         => $data['reference'],
                     'amount'         => $data['amount'],
@@ -177,7 +191,7 @@ class PaymentGatewayService
 
         try {
             $response = Http::withToken($secret)
-                ->withOptions(['verify' => $this->sslCert, 'timeout' => 15])
+                ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 15])
                 ->get('https://api.flutterwave.com/v3/transactions', ['tx_ref' => $txRef]);
 
             if ($response->successful() && $response->json('status') === 'success') {
@@ -215,7 +229,7 @@ class PaymentGatewayService
 
         try {
             $response = Http::withToken($secret)
-                ->withOptions(['verify' => $this->sslCert, 'timeout' => 15])
+                ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 15])
                 ->post('https://api.paystack.co/transaction/charge_authorization', [
                     'authorization_code' => $data['authorization_code'],
                     'email'              => $data['email'],
@@ -278,7 +292,7 @@ class PaymentGatewayService
                 'Sign'          => $signature,
                 'Content-Type'  => 'application/json',
             ])
-            ->withOptions(['verify' => $this->sslCert, 'timeout' => 15])
+            ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 15])
             ->post("{$baseUrl}/api/v3/cashier/checkout", $payload);
 
             if ($response->successful() && $response->json('code') === '00000') {
@@ -314,7 +328,7 @@ class PaymentGatewayService
                 'Sign'          => $signature,
                 'Content-Type'  => 'application/json',
             ])
-            ->withOptions(['verify' => $this->sslCert, 'timeout' => 15])
+            ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 15])
             ->post("{$baseUrl}/api/v3/cashier/query", ['reference' => $reference, 'orderNo' => '']);
 
             if ($response->successful() && $response->json('data.status') === 'SUCCESS') {

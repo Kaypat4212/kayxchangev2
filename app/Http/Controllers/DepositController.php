@@ -45,6 +45,7 @@ class DepositController extends Controller
     {
         $companyAccounts = CompanyAccount::all();
         $cryptoWallets = $this->getConfiguredCryptoWallets();
+        $cryptoRates = \App\Models\CryptoRate::all()->keyBy('coin');
         Log::info('Company Accounts Loaded', ['count' => $companyAccounts->count()]);
 
         // A method is available only when BOTH the admin toggle is on AND API keys are present
@@ -63,7 +64,7 @@ class DepositController extends Controller
                               && (bool) ($sc['pm_enabled_flutterwave'] ?? true),
         ];
 
-        return view('deposits.create', compact('companyAccounts', 'enabledMethods', 'cryptoWallets'));
+        return view('deposits.create', compact('companyAccounts', 'enabledMethods', 'cryptoWallets', 'cryptoRates'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
