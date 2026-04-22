@@ -28,6 +28,7 @@ class SellTrade extends Model
         'transaction_ref',
         'cancelled_at',
         'cancelled_by',
+        'source',
     ];
 
     protected $dates = ['cancelled_at'];

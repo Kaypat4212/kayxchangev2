@@ -465,7 +465,7 @@ class TelegramService
         // Extract the first word (command without arguments)
         $command = strtolower(explode(' ', $text)[0]);
 
-        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai'];
+        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai', 'upload'];
 
         return in_array($command, $known, true) ? $command : null;
     }
@@ -543,6 +543,8 @@ class TelegramService
                         $this->handleBuyProofUpload($chatId, $fileId);
                     } elseif ($state === 'deposit_proof') {
                         $this->handleDepositProofUpload($chatId, $fileId);
+                    } elseif ($state === 'upload_proof') {
+                        $this->handleUploadProofSubmit($chatId, $fileId);
                     } else {
                         $this->sendMessage($chatId, "📸 Photo received, but I'm not expecting one right now. Use /sell or /buy to start a trade.");
                     }
@@ -578,6 +580,7 @@ class TelegramService
                         'verify'   => $this->handleVerifyCommand($chatId, $text, $username),
                         'help'     => $this->handleHelpCommand($chatId),
                         'ai'       => $this->handleAiChatCommand($chatId),
+                        'upload'   => $this->handleUploadCommand($chatId),
                         default    => $this->handleUnknownCommand($chatId),
                     };
                     return true;
@@ -589,6 +592,9 @@ class TelegramService
                     switch ($state) {
                         case 'ai_chat':
                             $this->handleAiChatInput($chatId, $text);
+                            return true;
+                        case 'upload_ref':
+                            $this->handleUploadRefInput($chatId, $text);
                             return true;
                         case 'sell_amount':
                             $this->handleSellAmountInput($chatId, $text);
@@ -1844,6 +1850,7 @@ class TelegramService
                 'transaction_ref' => $txid ?: 'SELL-TG-' . Str::upper(Str::random(8)),
                 'payment_method'  => $method,
                 'status'          => 'pending',
+                'source'          => 'telegram_bot',
                 'wallet_address'  => $walletAddr,
                 'bank_name'       => match($method) {
                     'default_bank'   => ($user->bank_name ?? 'N/A'),
@@ -2128,6 +2135,7 @@ class TelegramService
                 'payment_proof'    => $proof,
                 'payment_method'   => 'Bank Transfer',
                 'status'           => 'pending',
+                'source'           => 'telegram_bot',
                 'transaction_ref'  => $txid ?: 'BUY-TG-' . Str::upper(Str::random(8)),
                 'transaction_type' => 'buy',
                 'ip_address'       => '0.0.0.0',
@@ -3245,5 +3253,198 @@ class TelegramService
             }
         }
         $this->sendMessage($chatId, "✅ Deposit #{$depositId} rejected.", 'Markdown');
+    }
+
+    // ─────────────────────── UPLOAD PROOF (for existing trades) ──────────────
+
+    /**
+     * Handle /upload command — lets users upload proof for any pending trade by ref.
+     */
+    private function handleUploadCommand(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (!$user) {
+            $this->sendMessage($chatId,
+                "🔒 *Account Not Linked*\n\nSend me your KayXchange email to link your account first.");
+            return;
+        }
+
+        // Count pending trades that still need proof
+        $needsBuyProof  = BuyTrade::where('user_id', $user->id)
+            ->where('status', 'pending')->whereNull('payment_proof')->count();
+        $needsSellProof = SellTrade::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where(function ($q) { $q->whereNull('proof')->orWhere('proof', 'bot_initiated'); })
+            ->count();
+
+        if ($needsBuyProof + $needsSellProof === 0) {
+            // Show latest pending trades for reference
+            $this->sendMessage($chatId,
+                "✅ *No Pending Proofs Needed*\n\n" .
+                "All your pending trades already have proof uploaded.\n\n" .
+                "Use /trades to view your trade history.");
+            return;
+        }
+
+        $this->clearState($chatId);
+        $this->setState($chatId, 'upload_ref');
+        $this->setData($chatId, ['user_id' => $user->id]);
+
+        $lines = "📋 *Trades needing proof:*\n";
+        if ($needsBuyProof > 0) {
+            $buys = BuyTrade::where('user_id', $user->id)->where('status', 'pending')
+                ->whereNull('payment_proof')->latest()->take(3)->get();
+            foreach ($buys as $b) {
+                $lines .= "• BUY `{$b->transaction_ref}` — {$b->coin} \${$b->usd_amount}\n";
+            }
+        }
+        if ($needsSellProof > 0) {
+            $sells = SellTrade::where('user_id', $user->id)->where('status', 'pending')
+                ->where(function ($q) { $q->whereNull('proof')->orWhere('proof', 'bot_initiated'); })
+                ->latest()->take(3)->get();
+            foreach ($sells as $s) {
+                $lines .= "• SELL `{$s->transaction_ref}` — {$s->coin} \${$s->usd_amount}\n";
+            }
+        }
+
+        $this->sendMessage($chatId,
+            "📸 *Upload Payment Proof*\n\n{$lines}\n" .
+            "Type your *trade reference number* (e.g. `BUY-BOT-XXXXXXXX`) and I'll ask for the photo.\n\n" .
+            "_Type /cancel to stop._",
+            'Markdown');
+    }
+
+    /**
+     * Handle trade reference input in upload_ref state.
+     */
+    private function handleUploadRefInput(int $chatId, string $text): void
+    {
+        $data = $this->getData($chatId);
+        $user = User::find($data['user_id'] ?? 0);
+
+        if (!$user) {
+            $this->sendMessage($chatId, "❌ Session expired. Please use /upload again.");
+            $this->clearState($chatId);
+            return;
+        }
+
+        $ref = trim(strtoupper($text));
+
+        // Search buy trades
+        $buyTrade = BuyTrade::where('transaction_ref', $ref)
+            ->where('user_id', $user->id)->first();
+        if ($buyTrade) {
+            if ($buyTrade->status !== 'pending') {
+                $this->sendMessage($chatId,
+                    "❌ Trade `{$ref}` is *{$buyTrade->status}* — only pending trades can have proof uploaded.\n\n_Type /cancel to stop._",
+                    'Markdown');
+                return;
+            }
+            $this->mergeData($chatId, [
+                'trade_type' => 'buy',
+                'trade_id'   => $buyTrade->id,
+                'trade_ref'  => $ref,
+            ]);
+            $this->setState($chatId, 'upload_proof');
+            $hasProof = !empty($buyTrade->payment_proof);
+            $note = $hasProof ? "\n_Existing proof will be replaced._" : '';
+            $this->sendMessage($chatId,
+                "✅ Found: *Buy {$buyTrade->coin}* — \$" . number_format($buyTrade->usd_amount, 2) . " (₦" . number_format($buyTrade->naira_amount, 2) . ")\n" .
+                "Ref: `{$ref}`{$note}\n\n" .
+                "📸 Send your *payment screenshot as a photo* now.\n_(Not a file — use Telegram's Photo option)_",
+                'Markdown');
+            return;
+        }
+
+        // Search sell trades
+        $sellTrade = SellTrade::where('transaction_ref', $ref)
+            ->where('user_id', $user->id)->first();
+        if ($sellTrade) {
+            if ($sellTrade->status !== 'pending') {
+                $this->sendMessage($chatId,
+                    "❌ Trade `{$ref}` is *{$sellTrade->status}* — only pending trades can have proof uploaded.\n\n_Type /cancel to stop._",
+                    'Markdown');
+                return;
+            }
+            $this->mergeData($chatId, [
+                'trade_type' => 'sell',
+                'trade_id'   => $sellTrade->id,
+                'trade_ref'  => $ref,
+            ]);
+            $this->setState($chatId, 'upload_proof');
+            $this->sendMessage($chatId,
+                "✅ Found: *Sell {$sellTrade->coin}* — \$" . number_format($sellTrade->usd_amount, 2) . " (₦" . number_format($sellTrade->naira_amount, 2) . ")\n" .
+                "Ref: `{$ref}`\n\n" .
+                "📸 Send your *crypto send screenshot as a photo* now.\n_(Not a file — use Telegram's Photo option)_",
+                'Markdown');
+            return;
+        }
+
+        $this->sendMessage($chatId,
+            "❌ No trade found with reference `{$ref}`.\n\nPlease double-check and try again, or type /cancel to stop.",
+            'Markdown');
+    }
+
+    /**
+     * Handle photo upload in upload_proof state.
+     */
+    private function handleUploadProofSubmit(int $chatId, string $fileId): void
+    {
+        $data = $this->getData($chatId);
+        $user = User::find($data['user_id'] ?? 0);
+
+        if (!$user || empty($data['trade_type']) || empty($data['trade_id'])) {
+            $this->sendMessage($chatId, "❌ Session expired. Please use /upload again.");
+            $this->clearState($chatId);
+            return;
+        }
+
+        $localPath = $this->downloadTelegramFile($fileId, 'payment_proofs');
+        if (!$localPath) {
+            $this->sendMessage($chatId, "❌ Could not save your photo. Please try again.");
+            return;
+        }
+
+        $tradeType = $data['trade_type'];
+        $tradeId   = (int) $data['trade_id'];
+        $ref       = $data['trade_ref'] ?? '?';
+
+        if ($tradeType === 'buy') {
+            $trade = BuyTrade::where('id', $tradeId)->where('user_id', $user->id)->first();
+            if (!$trade) {
+                $this->sendMessage($chatId, "❌ Trade not found. Please use /upload again.");
+                $this->clearState($chatId);
+                return;
+            }
+            $trade->update(['payment_proof' => $localPath]);
+            $adminMsg = "📸 *Buy Proof Uploaded via Telegram*\n\n" .
+                "👤 {$user->name} ({$user->email})\n" .
+                "🔖 Ref: `{$ref}`\n" .
+                "🪙 {$trade->coin}: \$" . number_format($trade->usd_amount, 2) . "\n" .
+                "💴 ₦" . number_format($trade->naira_amount, 2);
+        } else {
+            $trade = SellTrade::where('id', $tradeId)->where('user_id', $user->id)->first();
+            if (!$trade) {
+                $this->sendMessage($chatId, "❌ Trade not found. Please use /upload again.");
+                $this->clearState($chatId);
+                return;
+            }
+            $trade->update(['proof' => $localPath]);
+            $adminMsg = "📸 *Sell Proof Uploaded via Telegram*\n\n" .
+                "👤 {$user->name} ({$user->email})\n" .
+                "🔖 Ref: `{$ref}`\n" .
+                "🪙 {$trade->coin}: \$" . number_format($trade->usd_amount, 2) . "\n" .
+                "💴 ₦" . number_format($trade->naira_amount, 2);
+        }
+
+        $this->clearState($chatId);
+        $this->sendMessage($chatId,
+            "✅ *Proof uploaded successfully!*\n\n" .
+            "🔖 Ref: `{$ref}`\n\n" .
+            "Our team will review your trade shortly. Usually within 15–30 minutes. 🚀",
+            'Markdown');
+
+        // Notify admins
+        $this->sendToAdminChats($adminMsg);
     }
 }

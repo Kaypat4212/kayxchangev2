@@ -29,6 +29,7 @@ class BuyTrade extends Model
         'ip_address',
         'transaction_ref',
         'transaction_type',
+        'source',
     ];
 
     protected $dates = ['cancelled_at', 'approved_at'];

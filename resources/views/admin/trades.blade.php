@@ -242,6 +242,11 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         @else
                             <span class="kx-badge kx-badge-gray">{{ ucfirst($s) }}</span>
                         @endif
+                        @if(($t->source ?? 'web') === 'web_bot')
+                            <div style="margin-top:.3rem"><span class="kx-badge kx-badge-purple" title="Placed via KayBot web chatbot"><i class="bi bi-robot me-1"></i>KayBot</span></div>
+                        @elseif(($t->source ?? 'web') === 'telegram_bot')
+                            <div style="margin-top:.3rem"><span class="kx-badge kx-badge-blue" title="Placed via Telegram bot"><i class="bi bi-telegram me-1"></i>Telegram Bot</span></div>
+                        @endif
                     </td>
                     <td style="font-size:.74rem;color:var(--kx-muted);white-space:nowrap">
                         <div>{{ $t->created_at?->format('d M Y H:i') ?? '—' }}</div>
@@ -387,6 +392,11 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                             <span class="kx-badge kx-badge-red">{{ ucfirst($s) }}</span>
                         @else
                             <span class="kx-badge kx-badge-gray">{{ ucfirst($s) }}</span>
+                        @endif
+                        @if(($t->source ?? 'web') === 'web_bot')
+                            <div style="margin-top:.3rem"><span class="kx-badge kx-badge-purple" title="Placed via KayBot web chatbot"><i class="bi bi-robot me-1"></i>KayBot</span></div>
+                        @elseif(($t->source ?? 'web') === 'telegram_bot')
+                            <div style="margin-top:.3rem"><span class="kx-badge kx-badge-blue" title="Placed via Telegram bot"><i class="bi bi-telegram me-1"></i>Telegram Bot</span></div>
                         @endif
                     </td>
                     <td style="font-size:.74rem;color:var(--kx-muted);white-space:nowrap">
