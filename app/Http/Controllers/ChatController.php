@@ -86,7 +86,12 @@ class ChatController extends Controller
     // ── Admin: list users with open support messages ──────────────────────
     public function adminChat()
     {
-        // Get users who have sent at least one message to support (receiver_id = null)
+        return $this->adminChatUser(null);
+    }
+
+    // ── Admin: open chat pre-selected on a specific user ─────────────────
+    public function adminChatUser(?int $userId)
+    {
         $users = User::where('is_admin', false)
             ->whereHas('sentMessages', function ($q) {
                 $q->whereNull('receiver_id');
@@ -97,7 +102,21 @@ class ChatController extends Controller
             ->orderByDesc('unread_count')
             ->get();
 
-        return view('admin.chat', compact('users'));
+        // If a userId was supplied but that user has no messages yet, still add them
+        // so the admin can see the conversation (e.g. they only received one)
+        $openUserId = null;
+        if ($userId) {
+            $openUserId = (int) $userId;
+            if ($users->doesntContain('id', $openUserId)) {
+                $extra = User::find($openUserId);
+                if ($extra) {
+                    $extra->unread_count = 0;
+                    $users->prepend($extra);
+                }
+            }
+        }
+
+        return view('admin.chat', compact('users', 'openUserId'));
     }
 
     // ── Admin: reply to a user ───────────────────────────────────────────

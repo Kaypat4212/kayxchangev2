@@ -408,7 +408,10 @@ class AdminTradeAlertService
         $message = "💬 *New Support Message*\n\n"
             . implode("\n", array_map(fn($l) => $this->escapeMarkdown($l), $lines));
 
-        $adminChatUrl = rtrim((string) config('app.url'), '/') . '/admin/chat/' . $user->id;
+        $baseUrl = rtrim((string) config('app.url'), '/');
+        // Strip trailing /public if APP_URL was set to the public sub-path
+        $baseUrl = preg_replace('#/public$#', '', $baseUrl);
+        $adminChatUrl = $baseUrl . '/admin/chat/' . $user->id;
 
         $buttons = [
             [

@@ -139,13 +139,23 @@
     var chatInput= document.getElementById('adm-chat-input');
     var sendBtn  = document.getElementById('adm-send-btn');
     var adminId  = {{ Auth::id() }};
-    var activeUid= {{ $users->isNotEmpty() ? $users->first()->id : 'null' }};
+    var openUserId= {{ $openUserId ?? 'null' }};
+    var activeUid= openUserId || {{ $users->isNotEmpty() ? $users->first()->id : 'null' }};
     var historyBaseUrl = @json(url('/chat/history'));
     var pollUrl = @json(route('chat.poll'));
     var adminSendUrl = @json(route('chat.send.admin'));
     var aiAssistUrl  = @json(route('chat.ai.assist'));
     var lastId   = 0;
     var pollTimer;
+
+    // Auto-open a specific user if linked from Telegram notification
+    if (openUserId) {
+        var targetItem = document.querySelector('.adm-user-item[data-uid="'+openUserId+'"]');
+        if (targetItem) {
+            document.querySelectorAll('.adm-user-item').forEach(function(i){ i.classList.remove('active'); });
+            targetItem.classList.add('active');
+        }
+    }
 
     function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
