@@ -114,13 +114,17 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             <i class="bi bi-shield-exclamation" style="color:#ef4444;font-size:1.3rem;margin-top:.1rem;flex-shrink:0;"></i>
             <div>
                 <div style="font-weight:700;color:#ef4444;font-size:.88rem;margin-bottom:.35rem;">Important — Fair Play Policy</div>
-                <ul style="margin:0;padding-left:1.1rem;color:rgba(255,255,255,.65);font-size:.78rem;line-height:1.8;">
-                    <li>Each person may only receive a referral bonus <strong style="color:#fff">once</strong>. Duplicate accounts are automatically detected.</li>
+                <ul style="margin:0;padding-left:1.1rem;color:rgba(255,255,255,.65);font-size:.78rem;line-height:1.8;" class="kx-policy-list">
+                    <li>Each person may only receive a referral bonus <strong style="color:#fff" class="kx-policy-strong">once</strong>. Duplicate accounts are automatically detected.</li>
                     <li>Referring yourself (creating a second account) will result in <strong style="color:#ef4444">permanent account ban</strong> and forfeiture of all rewards.</li>
                     <li>Rewards are only paid after the referred person deposits ₦10,000 and completes KYC — not on signup.</li>
                     <li>We check device, IP, phone, bank account and timing patterns. Suspicious referrals are held for manual review.</li>
                     <li>If you are an ambassador or influencer, your account will be revoked if fraud is traced to codes you distribute.</li>
                 </ul>
+                <style>
+                    body.light-mode .kx-policy-list { color: #374151 !important; }
+                    body.light-mode .kx-policy-strong { color: #111827 !important; }
+                </style>
             </div>
         </div>
     </div>
