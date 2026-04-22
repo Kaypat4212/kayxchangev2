@@ -703,6 +703,64 @@
     }
     .kx-h-stat { display: flex; flex-direction: column; }
     .kx-h-snum { font-size: 1.55rem; font-weight: 800; color: #00cc00; line-height: 1; }
+
+    /* ── KYC Glitch Text ─────────────────────────────────── */
+    .kx-kyc-glitch {
+        position: relative;
+        display: inline-block;
+        color: #00cc00;
+        font-size: 1.55rem;
+        font-weight: 800;
+        line-height: 1;
+        white-space: nowrap;
+    }
+    .kx-kyc-glitch::before,
+    .kx-kyc-glitch::after {
+        content: attr(data-text);
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+        white-space: nowrap;
+        overflow: hidden;
+        clip-path: inset(0 100% 0 0);
+    }
+    .kx-kyc-glitch::before {
+        color: #ff2d78;
+        animation: kxGlitchTop 3.5s infinite;
+        clip-path: polygon(0 0, 100% 0, 100% 33%, 0 33%);
+    }
+    .kx-kyc-glitch::after {
+        color: #00e5ff;
+        animation: kxGlitchBot 3.5s infinite;
+        clip-path: polygon(0 67%, 100% 67%, 100% 100%, 0 100%);
+    }
+    @keyframes kxGlitchTop {
+        0%,85%,100% { transform: none; opacity: 0; }
+        87%  { transform: translate(-3px, -1px); opacity: .7; }
+        89%  { transform: translate(3px, 1px);  opacity: .7; }
+        91%  { transform: translate(-2px, 0);   opacity: .7; }
+        93%  { transform: none;                 opacity: 0; }
+    }
+    @keyframes kxGlitchBot {
+        0%,85%,100% { transform: none; opacity: 0; }
+        88%  { transform: translate(3px, 1px);  opacity: .7; }
+        90%  { transform: translate(-3px, -1px);opacity: .7; }
+        92%  { transform: translate(2px, 0);    opacity: .7; }
+        94%  { transform: none;                 opacity: 0; }
+    }
+    @keyframes kxGlitchSwap {
+        0%   { opacity: 1; transform: none; }
+        20%  { opacity: 0; transform: translate(-4px, 0) skewX(-8deg); filter: blur(1px); }
+        40%  { opacity: 0; transform: translate(4px, 0)  skewX(8deg);  filter: blur(1px); }
+        70%  { opacity: .6; transform: translate(-2px,0);  filter: none; }
+        100% { opacity: 1; transform: none; filter: none; }
+    }
+    .kx-kyc-glitching {
+        animation: kxGlitchSwap 0.18s linear forwards !important;
+    }
     .kx-h-slbl { font-size: 0.72rem; color: rgba(255,255,255,0.45); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
     .kx-h-sdiv { width: 1px; height: 36px; background: rgba(255,255,255,0.13); }
     .kx-h-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 30px; }
@@ -865,7 +923,9 @@
                         </div>
                         <div class="kx-h-sdiv"></div>
                         <div class="kx-h-stat">
-                            <span class="kx-h-snum">No KYC</span>
+                            <span class="kx-h-snum">
+                                <span class="kx-kyc-glitch" id="kycGlitch" data-text="No KYC">No KYC</span>
+                            </span>
                             <span class="kx-h-slbl">Required</span>
                         </div>
                     </div>
@@ -1982,6 +2042,32 @@
             AOS.init({ duration: 600, once: true, offset: 60 });
         }
     });
+
+    // ── KYC glitch cycling text ────────────────────────────
+    (function() {
+        const el = document.getElementById('kycGlitch');
+        if (!el) return;
+        const phrases = [
+            'No KYC',
+            'Easy Sign-Up',
+            'No KYC',
+            'Minimal Docs',
+            'No KYC',
+            'Simple KYC',
+        ];
+        let i = 0;
+        function glitchSwap() {
+            // Trigger glitch flicker
+            el.classList.add('kx-kyc-glitching');
+            setTimeout(function() {
+                i = (i + 1) % phrases.length;
+                el.setAttribute('data-text', phrases[i]);
+                el.textContent = phrases[i];
+                el.classList.remove('kx-kyc-glitching');
+            }, 180);
+        }
+        setInterval(glitchSwap, 2800);
+    })();
     </script>
 
 @endsection
