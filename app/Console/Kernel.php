@@ -43,6 +43,20 @@ class Kernel extends ConsoleKernel
             ->dailyAt('02:00')
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Rate update notifications — 8:00 AM WAT (07:00 UTC) every day
+        $schedule->command('rates:notify --context=scheduled')
+            ->dailyAt('07:00')
+            ->timezone('UTC')
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Rate update notifications — 1:00 PM WAT (12:00 UTC) every day
+        $schedule->command('rates:notify --context=scheduled')
+            ->dailyAt('12:00')
+            ->timezone('UTC')
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

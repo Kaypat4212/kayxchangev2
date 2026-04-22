@@ -9,12 +9,33 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\TelegramSettingsController;
+use App\Services\RateNotificationService;
+use Illuminate\Support\Facades\Artisan;
 
 class AdminCryptoRateController extends Controller
 {
     public function __construct()
     {
         $this->middleware(['auth', 'admin']);
+    }
+
+    /**
+     * Fire rate notifications in the background (non-blocking).
+     */
+    private function dispatchRateNotifications(): void
+    {
+        try {
+            // Run in background so the admin redirect is instant
+            Artisan::queue('rates:notify', ['--context' => 'admin_update']);
+        } catch (\Throwable $e) {
+            Log::warning('Rate notification dispatch failed: ' . $e->getMessage());
+            // Fallback: run synchronously if queue not available
+            try {
+                app(RateNotificationService::class)->notifyAllUsers('admin_update');
+            } catch (\Throwable $e2) {
+                Log::warning('Rate notification sync fallback failed: ' . $e2->getMessage());
+            }
+        }
     }
 
     /**
@@ -148,7 +169,9 @@ class AdminCryptoRateController extends Controller
                 'new_sell_rate' => $rate->sell_rate,
             ]);
 
-            return redirect()->back()->with('success', "Successfully updated {$rate->coin} rates!");
+            $this->dispatchRateNotifications();
+
+            return redirect()->back()->with('success', "Successfully updated {$rate->coin} rates! Users will be notified.");
         } catch (\Exception $e) {
             Log::error('Failed to update cryptocurrency rate', [
                 'error' => $e->getMessage(),
@@ -210,10 +233,11 @@ class AdminCryptoRateController extends Controller
                 }
             }
 
-            // Notify users about rate changes if significant
+            // Notify users about rate changes
             $this->notifyRateChanges($selectedRates);
+            $this->dispatchRateNotifications();
 
-            return redirect()->back()->with('success', "Successfully updated {$updatedCount} cryptocurrency rates!");
+            return redirect()->back()->with('success', "Successfully updated {$updatedCount} cryptocurrency rates! Users will be notified.");
         } catch (\Exception $e) {
             Log::error('Failed to bulk update cryptocurrency rates', [
                 'error' => $e->getMessage(),
@@ -343,7 +367,9 @@ class AdminCryptoRateController extends Controller
                 'usd_to_naira_rate' => $usdToNaira,
             ]);
 
-            return redirect()->back()->with('success', "Auto-updated {$updatedCount} cryptocurrency rates with {$marginPercentage}% margin!");
+            $this->dispatchRateNotifications();
+
+            return redirect()->back()->with('success', "Auto-updated {$updatedCount} cryptocurrency rates with {$marginPercentage}% margin! Users will be notified.");
         } catch (\Exception $e) {
             Log::error('Failed to auto-update cryptocurrency rates', [
                 'error' => $e->getMessage(),
