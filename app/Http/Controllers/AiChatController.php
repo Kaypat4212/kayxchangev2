@@ -197,14 +197,41 @@ class AiChatController extends Controller
             $state = array_merge($state, [
                 'usd_amount'   => $usd,
                 'naira_amount' => $naira,
-                'step'         => $type === 'buy' ? 'wallet' : 'bank',
+                'step'         => 'amount_review',
             ]);
             $request->session()->put('kaybot_trade', $state);
             $summary = "**{$type} {$coin}**\nUSD: \${$usd}\nNGN: N" . number_format($naira, 2) . "\n\n";
             if ($type === 'buy') {
-                return ['reply' => $summary . "Provide your **{$coin} wallet address** to receive the crypto.\n_(Type **cancel** to stop)_", 'trade_step' => 'wallet'];
+                // For buy, just ask to confirm the amount before wallet step
+                return ['reply' => $summary . "Is this amount correct?\n• Type **yes** to continue\n• Type **change** to enter a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
             }
+            // For sell, also show bank option
             if ($user && $user->bank_name && $user->account_number) {
+                return ['reply' => $summary . "Is this amount correct?\n• Type **yes** to use your saved bank (**{$user->bank_name}** - {$user->account_number})\n• Type **external** to use a different bank account\n• Type **change** to enter a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+            }
+            return ['reply' => $summary . "Is this amount correct?\n• Type **yes** to continue and enter your bank details\n• Type **change** to enter a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+        }
+
+        if ($step === 'amount_review') {
+            $lower = strtolower(trim($message));
+            if (str_contains($lower, 'change')) {
+                $state = array_merge($state, ['step' => 'amount']);
+                $request->session()->put('kaybot_trade', $state);
+                $rate     = $this->getPlatformRate($state['coin'], $type);
+                $rateText = $rate ? "\nCurrent rate: **N" . number_format($rate) . " per \$1 USD**" : '';
+                return ['reply' => "No problem! Enter the new amount:{$rateText}\n\ne.g. *50 USD*, *\$100*, or *N50,000*\n_(Type **cancel** to stop)_", 'trade_step' => 'amount'];
+            }
+            if (! preg_match('/\byes\b|\bexternal\b/i', $lower)) {
+                return ['reply' => "Type **yes** to continue" . ($type === 'sell' && $user && $user->bank_name ? ", **external** for a different bank," : "") . " or **change** to enter a different amount.", 'trade_step' => 'amount_review'];
+            }
+            // They said "yes" or "external"
+            $useSaved = $type === 'sell' && $user && $user->bank_name && $user->account_number && ! str_contains($lower, 'external');
+            if ($type === 'buy') {
+                $state = array_merge($state, ['step' => 'wallet']);
+                $request->session()->put('kaybot_trade', $state);
+                return ['reply' => "Provide your **{$state['coin']} wallet address** to receive the crypto.\n_(Type **cancel** to stop)_", 'trade_step' => 'wallet'];
+            }
+            if ($useSaved) {
                 $state = array_merge($state, [
                     'bank_name'      => $user->bank_name,
                     'account_number' => $user->account_number,
@@ -212,9 +239,13 @@ class AiChatController extends Controller
                     'step'           => 'confirm',
                 ]);
                 $request->session()->put('kaybot_trade', $state);
-                return ['reply' => $summary . "I'll pay to your saved bank:\n**{$user->bank_name}** - {$user->account_number}\n\nType **confirm** to submit or **cancel** to stop.", 'trade_step' => 'confirm'];
+                $summary = "**sell {$state['coin']}**\nUSD: \${$state['usd_amount']}\nNGN: N" . number_format($state['naira_amount'], 2) . "\n\n";
+                return ['reply' => $summary . "✅ I'll pay to your saved bank:\n**{$user->bank_name}** - {$user->account_number}\n\nType **confirm** to submit or **cancel** to stop.", 'trade_step' => 'confirm'];
             }
-            return ['reply' => $summary . "Provide your bank details for NGN payout:\n\n*Bank Name | Account Number | Account Name*\n\nExample: *GTBank | 0123456789 | John Doe*\n_(Type **cancel** to stop)_", 'trade_step' => 'bank'];
+            // External bank — collect details
+            $state = array_merge($state, ['step' => 'bank']);
+            $request->session()->put('kaybot_trade', $state);
+            return ['reply' => "Provide the bank details for NGN payout:\n\n*Bank Name | Account Number | Account Name*\n\nExample: *GTBank | 0123456789 | John Doe*\n_(Type **cancel** to stop)_", 'trade_step' => 'bank'];
         }
 
         if ($step === 'wallet') {
@@ -231,7 +262,31 @@ class AiChatController extends Controller
         if ($step === 'bank') {
             $parts = array_map('trim', explode('|', $message));
             if (count($parts) < 3 || strlen($parts[1]) < 9) {
-                return ['reply' => "Please use this format:\n\n*Bank Name | Account Number | Account Name*\n\nExample: *GTBank | 0123456789 | John Doe*", 'trade_step' => 'bank'];
+                return ['reply' => "Please use this format:\n\n*Bank Name | Account Number | Account Name*\n\nExample: *GTBank | 0123456789 | John Doe*\n_(Type **cancel** to stop)_", 'trade_step' => 'bank'];
+            }
+            // Validate account via Paystack if secret key is available
+            $paystackKey = config('services.paystack.secret_key');
+            if ($paystackKey) {
+                $bankCode = $this->lookupBankCode($parts[0]);
+                if ($bankCode) {
+                    try {
+                        $resp = \Illuminate\Support\Facades\Http::withToken($paystackKey)
+                            ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 10])
+                            ->get('https://api.paystack.co/bank/resolve', [
+                                'account_number' => $parts[1],
+                                'bank_code'      => $bankCode,
+                            ]);
+                        if ($resp->successful() && $resp->json('status') === true) {
+                            $verified = $resp->json('data.account_name');
+                            // Overwrite account_name with Paystack verified name
+                            $parts[2] = $verified;
+                        } elseif ($resp->status() === 422 || $resp->json('status') === false) {
+                            return ['reply' => "❌ Could not verify account **{$parts[1]}** at **{$parts[0]}**. Please check the details and try again:\n\n*Bank Name | Account Number | Account Name*", 'trade_step' => 'bank'];
+                        }
+                    } catch (\Throwable $e) {
+                        // Network issue — proceed without validation
+                    }
+                }
             }
             $state = array_merge($state, [
                 'bank_name'      => $parts[0],
@@ -645,6 +700,44 @@ class AiChatController extends Controller
     private function defaultSystemPrompt(): string
     {
         return "You are KayBot, a smart and friendly crypto trading assistant for KayXchange - a Nigerian crypto exchange.\n\nCapabilities:\n- Answer general crypto questions (Bitcoin, blockchain, wallets, DeFi, etc.)\n- Provide KayXchange platform info (rates, fees, how to trade, deposit, trade status)\n- Help users place buy/sell trades conversationally\n- Escalate to human support when needed\n\nPlatform:\n- KayXchange lets Nigerians trade NGN <-> BTC/ETH/USDT/USDC/SOL/BNB\n- Buy: Pay NGN via bank transfer -> receive crypto to wallet\n- Sell: Send crypto -> receive NGN to bank account\n- KYC required before trading\n- Support Telegram: @TradewithkayxchangeBOT\n\nRules:\n- Be friendly, concise (2-4 sentences unless explaining a process)\n- NEVER give financial investment advice or price predictions\n- If you can't answer, offer to escalate to support\n- Use English or Nigerian Pidgin based on how the user writes\n- Use live data provided in context for prices - never guess";
+    }
+
+    private function sslVerify(): bool|string
+    {
+        foreach (['curl.cainfo', 'openssl.cafile'] as $ini) {
+            $path = ini_get($ini);
+            if ($path && file_exists($path)) return $path;
+        }
+        return true;
+    }
+
+    private function lookupBankCode(string $bankName): ?string
+    {
+        $map = [
+            'access'         => '044', 'access bank'    => '044',
+            'gtbank'         => '058', 'gtb'            => '058', 'guaranty trust' => '058',
+            'zenith'         => '057', 'zenith bank'    => '057',
+            'first bank'     => '011', 'firstbank'      => '011', 'fbn'            => '011',
+            'uba'            => '033', 'united bank'    => '033',
+            'fidelity'       => '070', 'fidelity bank'  => '070',
+            'sterling'       => '232', 'sterling bank'  => '232',
+            'union bank'     => '032', 'union'          => '032',
+            'fcmb'           => '214',
+            'stanbic'        => '221', 'stanbic ibtc'   => '221',
+            'ecobank'        => '050',
+            'heritage'       => '030', 'heritage bank'  => '030',
+            'keystone'       => '082', 'keystone bank'  => '082',
+            'polaris'        => '076', 'polaris bank'   => '076',
+            'wema'           => '035', 'wema bank'      => '035', 'alat' => '035',
+            'citibank'       => '023',
+            'jaiz'           => '301', 'jaiz bank'      => '301',
+            'opay'           => '999992',
+            'palmpay'        => '999991',
+            'kuda'           => '090267', 'kuda bank'   => '090267',
+            'moniepoint'     => '090405',
+            'vfd'            => '566',
+        ];
+        return $map[strtolower(trim($bankName))] ?? null;
     }
 
     public function clearSession(Request $request)

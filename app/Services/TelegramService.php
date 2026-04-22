@@ -599,6 +599,9 @@ class TelegramService
                         case 'sell_amount':
                             $this->handleSellAmountInput($chatId, $text);
                             return true;
+                        case 'sell_ext_bank':
+                            $this->handleSellExtBankInput($chatId, $text);
+                            return true;
                         case 'buy_amount':
                             $this->handleBuyAmountInput($chatId, $text);
                             return true;
@@ -673,6 +676,10 @@ class TelegramService
                 }
 
                 // ── Sell flow callbacks ────────────────────────────────────────────
+                if (str_starts_with($data, 'sell_amount_action:')) {
+                    $this->handleSellAmountAction($chatId, substr($data, 19));
+                    return true;
+                }
                 if (str_starts_with($data, 'sell_coin:')) {
                     $this->handleSellCoinSelected($chatId, substr($data, 10));
                     return true;
@@ -1648,21 +1655,60 @@ class TelegramService
         $network = $data['network'] ?? '';
 
         $this->mergeData($chatId, ['usd_amount' => $amount, 'naira_amount' => $naira]);
+        $this->setState($chatId, 'sell_amount_review');
+
+        $netLabel = $network && $network !== $coin ? " ({$network})" : '';
+        $keyboard = ['inline_keyboard' => [
+            [
+                ['text' => '✅ Amount is Correct', 'callback_data' => 'sell_amount_action:correct'],
+                ['text' => '✏️ Change Amount',     'callback_data' => 'sell_amount_action:change'],
+            ],
+            [['text' => '❌ Cancel', 'callback_data' => 'cancel']],
+        ]];
+        $this->sendMessage($chatId,
+            "💰 *Trade Summary:*\n\n" .
+            "🪙 Coin: *{$coin}{$netLabel}*\n" .
+            "💵 You sell: *\${$amount}*\n" .
+            "💴 You receive: *₦" . number_format($naira, 2) . "*\n" .
+            "📈 Rate: ₦" . number_format($rate, 2) . "/USD\n\n" .
+            "Is this amount correct?",
+            'Markdown', $keyboard);
+    }
+
+    private function handleSellAmountAction(int $chatId, string $action): void
+    {
+        if ($action === 'change') {
+            $data = $this->getData($chatId);
+            $coin = $data['coin'] ?? '?';
+            $rate = (float)($data['rate'] ?? 0);
+            $this->setState($chatId, 'sell_amount');
+            $this->sendMessage($chatId,
+                "✏️ *Enter the new USD amount:*\n\n" .
+                "💱 Rate: ₦" . number_format($rate, 2) . "/USD\n" .
+                "_Minimum: \$1_",
+                'Markdown');
+            return;
+        }
+
+        // Amount is correct — proceed to proof method
+        $data    = $this->getData($chatId);
+        $coin    = $data['coin'] ?? '?';
+        $network = $data['network'] ?? '';
+        $amount  = $data['usd_amount'] ?? 0;
+        $naira   = $data['naira_amount'] ?? 0;
         $this->setState($chatId, 'sell_proof_method');
 
         $netLabel = $network && $network !== $coin ? " ({$network})" : '';
         $keyboard = ['inline_keyboard' => [
             [
-                ['text' => '📸 Upload Proof Photo', 'callback_data' => 'sell_proof_method:photo'],
+                ['text' => '📸 Upload Proof Photo',    'callback_data' => 'sell_proof_method:photo'],
                 ['text' => '🔢 Enter Transaction ID', 'callback_data' => 'sell_proof_method:txid'],
             ],
         ]];
         $this->sendMessage($chatId,
-            "💰 *Trade Summary So Far:*\n\n" .
-            "🪙 Coin: *{$coin}{$netLabel}*\n" .
-            "💵 You sell: *\${$amount}*\n" .
-            "💴 You receive: *₦" . number_format($naira, 2) . "*\n\n" .
-            "📋 *How would you like to provide proof?*",
+            "✅ *Amount confirmed!*\n\n" .
+            "💰 *{$coin}{$netLabel}*: \${$amount} → ₦" . number_format($naira, 2) . "\n\n" .
+            "📋 *How would you like to provide proof of the crypto transfer?*",
             'Markdown', $keyboard);
     }
 
@@ -1682,8 +1728,9 @@ class TelegramService
 
         $rows = [];
         if ($hasSavedBank) {
-            $rows[] = [['text' => "🏦 Default Bank ({$user->bank_name} — {$user->account_number})", 'callback_data' => 'sell_payout:default_bank']];
+            $rows[] = [['text' => "🏦 Saved Bank ({$user->bank_name} — {$user->account_number})", 'callback_data' => 'sell_payout:default_bank']];
         }
+        $rows[] = [['text' => '🏦 External/Different Bank', 'callback_data' => 'sell_payout:external_bank']];
         $rows[] = [['text' => '💰 Wallet Balance (add to app balance)', 'callback_data' => 'sell_payout:wallet_balance']];
         $rows[] = [['text' => '❌ Cancel', 'callback_data' => 'cancel']];
 
@@ -1727,8 +1774,9 @@ class TelegramService
 
         $rows = [];
         if ($hasSavedBank) {
-            $rows[] = [['text' => "🏦 Default Bank ({$user->bank_name} — {$user->account_number})", 'callback_data' => 'sell_payout:default_bank']];
+            $rows[] = [['text' => "🏦 Saved Bank ({$user->bank_name} — {$user->account_number})", 'callback_data' => 'sell_payout:default_bank']];
         }
+        $rows[] = [['text' => '🏦 External/Different Bank', 'callback_data' => 'sell_payout:external_bank']];
         $rows[] = [['text' => '💰 Wallet Balance (add to app balance)', 'callback_data' => 'sell_payout:wallet_balance']];
         $rows[] = [['text' => '❌ Cancel', 'callback_data' => 'cancel']];
 
@@ -1775,6 +1823,19 @@ class TelegramService
 
     private function handleSellPayoutSelected(int $chatId, string $method): void
     {
+        // External bank — collect details first
+        if ($method === 'external_bank') {
+            $this->mergeData($chatId, ['payout_method' => 'external_bank']);
+            $this->setState($chatId, 'sell_ext_bank');
+            $this->sendMessage($chatId,
+                "🏦 *Enter your bank details for payout:*\n\n" .
+                "Format: `Bank Name | Account Number | Account Name`\n\n" .
+                "Example:\n`GTBank | 0123456789 | John Doe`\n\n" .
+                "_Your account will be verified with Paystack before proceeding._",
+                'Markdown');
+            return;
+        }
+
         $this->mergeData($chatId, ['payout_method' => $method]);
         $this->setState($chatId, 'sell_confirm');
 
@@ -1786,9 +1847,10 @@ class TelegramService
         $naira   = $data['naira_amount'] ?? 0;
 
         $payoutLabel = match($method) {
-            'default_bank' => "🏦 Bank: {$user->bank_name} — {$user->account_number} ({$user->account_name})",
+            'default_bank'   => "🏦 Bank: {$user->bank_name} — {$user->account_number} ({$user->account_name})",
             'wallet_balance' => '💰 Add to Wallet Balance',
-            default => $method,
+            'external_bank'  => '🏦 ' . ($data['ext_bank_name'] ?? '?') . ' — ' . ($data['ext_account_number'] ?? '?') . ' (' . ($data['ext_account_name'] ?? '?') . ')',
+            default          => $method,
         };
 
         $netLabel = ($network && $network !== $coin) ? " ({$network})" : '';
@@ -1837,6 +1899,25 @@ class TelegramService
         $walletKey  = ($coin === 'USDT' && $network) ? "USDT_{$network}" : $coin;
         $walletAddr = config("wallets.{$walletKey}", config("wallets.{$coin}", 'N/A'));
 
+        // Resolve bank details based on payout method
+        $bankName  = match($method) {
+            'default_bank'   => ($user->bank_name ?? 'N/A'),
+            'external_bank'  => ($data['ext_bank_name'] ?? 'N/A'),
+            'wallet_balance' => 'WALLET BALANCE',
+            default          => 'N/A',
+        };
+        $acctNumber = match($method) {
+            'default_bank'  => ($user->account_number ?? 'N/A'),
+            'external_bank' => ($data['ext_account_number'] ?? 'N/A'),
+            default         => 'N/A',
+        };
+        $acctName = match($method) {
+            'default_bank'   => ($user->account_name ?? 'N/A'),
+            'external_bank'  => ($data['ext_account_name'] ?? 'N/A'),
+            'wallet_balance' => ($user->name ?? 'N/A'),
+            default          => 'N/A',
+        };
+
         DB::beginTransaction();
         try {
             $trade = SellTrade::create([
@@ -1852,20 +1933,9 @@ class TelegramService
                 'status'          => 'pending',
                 'source'          => 'telegram_bot',
                 'wallet_address'  => $walletAddr,
-                'bank_name'       => match($method) {
-                    'default_bank'   => ($user->bank_name ?? 'N/A'),
-                    'wallet_balance' => 'WALLET BALANCE',
-                    default          => 'N/A',
-                },
-                'account_number'  => match($method) {
-                    'default_bank'   => ($user->account_number ?? 'N/A'),
-                    default          => 'N/A',
-                },
-                'account_name'    => match($method) {
-                    'default_bank'   => ($user->account_name ?? 'N/A'),
-                    'wallet_balance' => ($user->name ?? 'N/A'),
-                    default          => 'N/A',
-                },
+                'bank_name'       => $bankName,
+                'account_number'  => $acctNumber,
+                'account_name'    => $acctName,
             ]);
 
             DB::commit();
@@ -3446,5 +3516,102 @@ class TelegramService
 
         // Notify admins
         $this->sendToAdminChats($adminMsg);
+    }
+
+    private function handleSellExtBankInput(int $chatId, string $text): void
+    {
+        $parts = array_map('trim', explode('|', $text));
+        if (count($parts) < 3 || strlen($parts[1]) < 9) {
+            $this->sendMessage($chatId,
+                "⚠️ *Invalid format.* Please use:\n\n" .
+                "`Bank Name | Account Number | Account Name`\n\n" .
+                "Example:\n`GTBank | 0123456789 | John Doe`\n\n" .
+                "_Type /cancel to abort._",
+                'Markdown');
+            return;
+        }
+
+        [$bankName, $accountNumber, $accountName] = [$parts[0], $parts[1], $parts[2]];
+
+        // Validate with Paystack
+        $paystackKey = config('services.paystack.secret_key');
+        $bankCode    = $this->lookupNgBankCode($bankName);
+
+        if ($paystackKey && $bankCode) {
+            $this->sendMessage($chatId, "🔍 Verifying your account with Paystack...");
+            try {
+                $resp = Http::withToken($paystackKey)
+                    ->withOptions(['verify' => $this->resolveSSL(), 'timeout' => 12])
+                    ->get('https://api.paystack.co/bank/resolve', [
+                        'account_number' => $accountNumber,
+                        'bank_code'      => $bankCode,
+                    ]);
+
+                if ($resp->successful() && $resp->json('status') === true) {
+                    // Use Paystack's verified account name
+                    $accountName = $resp->json('data.account_name');
+                    $this->sendMessage($chatId, "✅ Account verified: *{$accountName}*", 'Markdown');
+                } elseif ($resp->json('status') === false || $resp->status() === 422) {
+                    $errMsg = $resp->json('message') ?? 'Account not found';
+                    $this->sendMessage($chatId,
+                        "❌ *Could not verify account:* {$errMsg}\n\n" .
+                        "Please double-check your bank name and account number, then try again:\n\n" .
+                        "`Bank Name | Account Number | Account Name`",
+                        'Markdown');
+                    return;
+                }
+                // On other errors (500, timeout etc.) — proceed without blocking the user
+            } catch (\Throwable $e) {
+                Log::warning("Paystack bank verify failed in Telegram sell: " . $e->getMessage());
+            }
+        }
+
+        // Store external bank details and jump to confirm
+        $this->mergeData($chatId, [
+            'ext_bank_name'      => $bankName,
+            'ext_account_number' => $accountNumber,
+            'ext_account_name'   => $accountName,
+        ]);
+
+        // Now show confirm screen
+        $this->handleSellPayoutSelected($chatId, 'external_bank');
+    }
+
+    private function lookupNgBankCode(string $bankName): ?string
+    {
+        $map = [
+            'access'         => '044', 'access bank'    => '044',
+            'gtbank'         => '058', 'gtb'            => '058', 'guaranty trust' => '058',
+            'zenith'         => '057', 'zenith bank'    => '057',
+            'first bank'     => '011', 'firstbank'      => '011', 'fbn'            => '011',
+            'uba'            => '033', 'united bank'    => '033',
+            'fidelity'       => '070', 'fidelity bank'  => '070',
+            'sterling'       => '232', 'sterling bank'  => '232',
+            'union bank'     => '032', 'union'          => '032',
+            'fcmb'           => '214',
+            'stanbic'        => '221', 'stanbic ibtc'   => '221',
+            'ecobank'        => '050',
+            'heritage'       => '030', 'heritage bank'  => '030',
+            'keystone'       => '082', 'keystone bank'  => '082',
+            'polaris'        => '076', 'polaris bank'   => '076',
+            'wema'           => '035', 'wema bank'      => '035', 'alat' => '035',
+            'citibank'       => '023',
+            'jaiz'           => '301', 'jaiz bank'      => '301',
+            'opay'           => '999992',
+            'palmpay'        => '999991',
+            'kuda'           => '090267', 'kuda bank'   => '090267',
+            'moniepoint'     => '090405',
+            'vfd'            => '566',
+        ];
+        return $map[strtolower(trim($bankName))] ?? null;
+    }
+
+    private function resolveSSL(): bool|string
+    {
+        foreach (['curl.cainfo', 'openssl.cafile'] as $ini) {
+            $path = ini_get($ini);
+            if ($path && file_exists($path)) return $path;
+        }
+        return true;
     }
 }
