@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class SellController extends Controller
 {
@@ -621,5 +621,44 @@ class SellController extends Controller
         }
 
         return view('sell.summary', compact('trade'));
+    }
+
+    /**
+     * Show the proof upload page for a sell trade (used for bot-submitted trades).
+     */
+    public function paymentPage(int $id)
+    {
+        $trade = SellTrade::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        $walletAddress = config("wallets.{$trade->coin}", null);
+        return view('sell.payment', compact('trade', 'walletAddress'));
+    }
+
+    /**
+     * Handle proof upload for a sell trade (standalone, not wizard-based).
+     */
+    public function uploadPayment(Request $request, int $id)
+    {
+        $request->validate([
+            'proof' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $trade = SellTrade::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+
+        if ($trade->proof && $trade->proof !== 'bot_initiated') {
+            Storage::disk('public')->delete($trade->proof);
+        }
+
+        $path         = $request->file('proof')->store('payment_proofs', 'public');
+        $trade->proof = $path;
+        $trade->save();
+
+        Log::info('Sell proof uploaded via payment page', ['trade_id' => $id, 'user_id' => Auth::id()]);
+
+        try {
+            $this->sendTelegramNotification("📤 Sell proof uploaded for trade #{$id} by user #{$trade->user_id} ({$trade->coin})");
+        } catch (\Throwable) {}
+
+        return redirect()->route('trade.summary', $id)
+            ->with('success', 'Proof uploaded! We will process your trade shortly.');
     }
 }

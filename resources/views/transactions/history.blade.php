@@ -107,6 +107,10 @@
 .kx-preview-btn{display:inline-flex;align-items:center;gap:.3rem;background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.18);border-radius:7px;color:#00cc00;font-size:.74rem;font-weight:600;padding:.28rem .65rem;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .kx-preview-btn:hover{background:rgba(0,204,0,.18);border-color:rgba(0,204,0,.4);}
 
+/* ── Upload proof button (inside drawer) ── */
+.btn-kx-upload-proof{display:inline-flex;align-items:center;gap:.45rem;background:linear-gradient(135deg,#00cc00,#009900);color:#000;border:none;border-radius:10px;font-size:.84rem;font-weight:700;padding:.65rem 1.2rem;cursor:pointer;text-decoration:none;transition:all .2s;}
+.btn-kx-upload-proof:hover{filter:brightness(1.08);color:#000;}
+
 /* ── Detail Drawer ── */
 .kx-drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1050;opacity:0;pointer-events:none;transition:opacity .25s;}
 .kx-drawer-overlay.open{opacity:1;pointer-events:all;}
@@ -637,6 +641,16 @@ function renderDrawer(data) {
                     <img src="${data.payment_proof}" class="kx-proof-img" alt="Payment proof">
                 </a>
             </div>`;
+        } else if (data.proof_upload_url) {
+            html += `<div class="kx-detail-section">
+                <div class="kx-detail-section-title">Payment Proof</div>
+                <div style="background:rgba(255,193,7,.07);border:1px solid rgba(255,193,7,.2);border-radius:10px;padding:.85rem 1rem;font-size:.82rem;color:#ffc107;margin-bottom:.75rem;">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>No payment proof uploaded yet. Your trade cannot be processed until you upload proof.
+                </div>
+                <a href="${data.proof_upload_url}" class="btn-kx-upload-proof">
+                    <i class="bi bi-upload"></i> Upload Payment Proof
+                </a>
+            </div>`;
         }
     }
 
@@ -658,9 +672,19 @@ function renderDrawer(data) {
         }
         if (data.payment_proof) {
             html += `<div class="kx-detail-section">
-                <div class="kx-detail-section-title">Payment Proof</div>
+                <div class="kx-detail-section-title">Send Proof</div>
                 <a href="${data.payment_proof}" target="_blank">
                     <img src="${data.payment_proof}" class="kx-proof-img" alt="Payment proof">
+                </a>
+            </div>`;
+        } else if (data.proof_upload_url) {
+            html += `<div class="kx-detail-section">
+                <div class="kx-detail-section-title">Send Proof</div>
+                <div style="background:rgba(255,193,7,.07);border:1px solid rgba(255,193,7,.2);border-radius:10px;padding:.85rem 1rem;font-size:.82rem;color:#ffc107;margin-bottom:.75rem;">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>No proof uploaded yet. Upload a screenshot showing you sent the crypto.
+                </div>
+                <a href="${data.proof_upload_url}" class="btn-kx-upload-proof">
+                    <i class="bi bi-upload"></i> Upload Send Proof
                 </a>
             </div>`;
         }

@@ -132,20 +132,23 @@ function kaybotAsk(text) {
 }
 
 function kaybotRenderText(text) {
-    // Escape HTML entities first (security — only process bot text this way)
+    // 1. Escape HTML to prevent XSS (bot text only)
     let s = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-    // Bold: **text**
+    // 2. Bold: **text**
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    // Inline code: `text`
+    // 3. Inline code: `text`
     s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-    // Markdown link: [label](url)
-    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-    // Italic: _text_
-    s = s.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em>$1</em>');
-    // Newlines → <br>
+    // 4. Markdown link: [label](url)  — unescape &amp; inside URLs so they stay valid
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => {
+        const cleanUrl = url.replace(/&amp;/g, '&');
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    });
+    // 5. Italic: _text_ (not preceded/followed by a word char)
+    s = s.replace(/(^|[^a-zA-Z0-9])_([^_\n]+)_([^a-zA-Z0-9]|$)/g, '$1<em>$2</em>$3');
+    // 6. Newlines → <br>
     s = s.replace(/\n/g, '<br>');
     return s;
 }

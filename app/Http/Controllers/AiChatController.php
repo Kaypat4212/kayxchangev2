@@ -254,7 +254,17 @@ class AiChatController extends Controller
             $request->session()->forget('kaybot_trade');
             $result = $this->submitTrade($user, $state);
             if ($result['success']) {
-                return ['reply' => "Trade submitted!\n\nRef: `{$result['ref']}`\nStatus: Pending review\n\nCheck **Account -> Trade History** for updates.", 'trade_done' => true, 'trade_ref' => $result['ref']];
+                $ref = $result['ref'];
+                if ($type === 'buy') {
+                    try { $payUrl = route('buy.payment', $result['trade_id']); } catch (\Throwable $e) { $payUrl = url('/buy/payment/' . $result['trade_id']); }
+                    $reply = "✅ Buy trade submitted!\n\nRef: `{$ref}`\nStatus: Pending\n\n**Next step — upload your payment proof:**\n[👉 Click here to upload proof]({$payUrl})\n\n_(Without proof your trade cannot be processed.)_";
+                } else {
+                    try { $payUrl = route('sell.payment', $result['trade_id']); } catch (\Throwable $e) { $payUrl = url('/sell/payment/' . $result['trade_id']); }
+                    $companyWallet = config("wallets.{$state['coin']}", null);
+                    $walletInfo = $companyWallet ? "\nSend **{$state['coin']}** to:\n`{$companyWallet}`\n\n" : "\n\n";
+                    $reply = "✅ Sell trade submitted!\n\nRef: `{$ref}`\nStatus: Pending\n{$walletInfo}**Next step — upload your crypto send proof:**\n[👉 Click here to upload proof]({$payUrl})\n\n_(Upload a screenshot of your crypto transfer.)_";
+                }
+                return ['reply' => $reply, 'trade_done' => true, 'trade_ref' => $ref, 'payment_url' => $payUrl];
             }
             return ['reply' => "Could not submit: {$result['error']}\n\nPlease try via the website {$state['type']} page.", 'trade_done' => true];
         }
@@ -268,7 +278,7 @@ class AiChatController extends Controller
             $type = $state['type'];
             $ref  = strtoupper($type) . '-BOT-' . Str::upper(Str::random(8));
             if ($type === 'buy') {
-                \App\Models\BuyTrade::create([
+                $trade = \App\Models\BuyTrade::create([
                     'user_id'          => $user->id,
                     'name'             => $user->name,
                     'coin'             => $state['coin'],
@@ -283,7 +293,7 @@ class AiChatController extends Controller
                     'transaction_type' => 'buy',
                 ]);
             } else {
-                \App\Models\SellTrade::create([
+                $trade = \App\Models\SellTrade::create([
                     'user_id'         => $user->id,
                     'name'            => $user->name,
                     'coin'            => $state['coin'],
@@ -293,14 +303,14 @@ class AiChatController extends Controller
                     'network'         => $state['coin'],
                     'payment_method'  => 'Bank Transfer',
                     'status'          => 'pending',
-                    'proof'           => 'bot_initiated',
+                    'proof'           => null,
                     'bank_name'       => $state['bank_name'] ?? null,
                     'account_number'  => $state['account_number'] ?? null,
                     'account_name'    => $state['account_name'] ?? null,
                     'transaction_ref' => $ref,
                 ]);
             }
-            return ['success' => true, 'ref' => $ref];
+            return ['success' => true, 'ref' => $ref, 'trade_id' => $trade->id];
         } catch (\Throwable $e) {
             Log::error('KayBot trade submit: ' . $e->getMessage());
             return ['success' => false, 'error' => 'Server error. Please try via the website.'];
@@ -359,52 +369,38 @@ class AiChatController extends Controller
 
     private function isRatesQuery(string $msg): bool
     {
-        return (bool) preg_match('/\b(current\s+rates?|show\s+rates?|what\s+are\s+(the|your)\s+rates?|gift[\s\-]?card\s+rates?|crypto\s+rates?|exchange\s+rates?|rates?\s+today|coin\s+rates?|trading\s+rates?|see\s+rates?|your\s+rates?|ngn\s+rates?|naira\s+rates?)\b/i', $msg);
+        if (str_contains($msg, '💹') || str_contains($msg, '🎁') || str_contains($msg, '📈')) return true;
+        return (bool) preg_match('/\b(current\s+rates?|show\s+rates?|what\s+are\s+(the|your)\s+rates?|gift[\s\-]?card\s+rates?|crypto\s+rates?|exchange\s+rates?|rates?\s+today|coin\s+rates?|trading\s+rates?|see\s+rates?|your\s+rates?|ngn\s+rates?|naira\s+rates?|live\s+prices?|market\s+prices?)\b/i', $msg);
     }
 
     private function handleRatesFlow(Request $request, string $message): ?array
     {
-        $state = $request->session()->get('kaybot_rates', null);
         $lower = strtolower(trim($message));
 
-        // Start the flow — no state yet
-        if (! $state) {
-            $request->session()->put('kaybot_rates', ['step' => 'choose']);
-            return [
-                'reply'         => "What rates would you like to see? 💰\n\nChoose an option:",
-                'quick_replies' => ['💹 Crypto rates', '🎁 Gift card rates', '📈 Live crypto prices'],
-            ];
+        // Crypto rates — direct match (also handles "💹 Crypto rates" quick reply)
+        if (preg_match('/\bcrypto\s*rates?\b/i', $lower) || str_contains($lower, '💹')) {
+            $request->session()->forget('kaybot_rates');
+            return ['reply' => $this->buildCryptoRatesResponse(), 'rates_type' => 'crypto'];
         }
 
-        if ($state['step'] === 'choose') {
-            // Crypto rates
-            if (preg_match('/\b(1|crypto\s*rate|coin\s*rate|btc|eth|usdt|trading\s*rate)\b/i', $lower)
-                || str_contains($lower, 'crypto rate') || str_contains($lower, '💹')) {
-                $request->session()->forget('kaybot_rates');
-                return ['reply' => $this->buildCryptoRatesResponse(), 'rates_type' => 'crypto'];
-            }
-
-            // Gift card rates
-            if (preg_match('/\b(2|gift|card|giftcard)\b/i', $lower) || str_contains($lower, '🎁')) {
-                $request->session()->forget('kaybot_rates');
-                return ['reply' => $this->buildGiftCardRatesResponse(), 'rates_type' => 'giftcard'];
-            }
-
-            // Live prices
-            if (preg_match('/\b(3|live|price|market|current\s*price|usd\s*price)\b/i', $lower)
-                || str_contains($lower, 'live price') || str_contains($lower, 'live crypto') || str_contains($lower, '📈')) {
-                $request->session()->forget('kaybot_rates');
-                return ['reply' => $this->buildLivePricesResponse(), 'rates_type' => 'live'];
-            }
-
-            // Unrecognised
-            return [
-                'reply'         => "Please choose one:",
-                'quick_replies' => ['💹 Crypto rates', '🎁 Gift card rates', '📈 Live crypto prices'],
-            ];
+        // Gift card rates — direct match (also handles "🎁 Gift card rates" quick reply)
+        if (preg_match('/\bgift[\s\-]?card\s*rates?\b/i', $lower) || str_contains($lower, '🎁')) {
+            $request->session()->forget('kaybot_rates');
+            return ['reply' => $this->buildGiftCardRatesResponse(), 'rates_type' => 'giftcard'];
         }
 
-        return null;
+        // Live prices — direct match (also handles "📈 Live crypto prices" quick reply)
+        if (preg_match('/\blive\s*(crypto\s*)?prices?\b/i', $lower) || str_contains($lower, '📈')) {
+            $request->session()->forget('kaybot_rates');
+            return ['reply' => $this->buildLivePricesResponse(), 'rates_type' => 'live'];
+        }
+
+        // General "current rates" / "what are rates" — show choice prompt
+        $request->session()->put('kaybot_rates', ['step' => 'choose']);
+        return [
+            'reply'         => "What rates would you like to see? 💰\n\nChoose an option:",
+            'quick_replies' => ['💹 Crypto rates', '🎁 Gift card rates', '📈 Live crypto prices'],
+        ];
     }
 
     private function buildCryptoRatesResponse(): string

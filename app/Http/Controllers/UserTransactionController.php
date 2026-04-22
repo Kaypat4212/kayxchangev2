@@ -212,41 +212,45 @@ class UserTransactionController extends Controller
             case 'buy':
                 $record = BuyTrade::where('id', $id)->where('user_id', $user->id)->firstOrFail();
                 $data = [
-                    'type'          => 'buy',
-                    'id'            => $record->id,
-                    'coin'          => $record->coin,
-                    'network'       => $record->network,
-                    'usd_amount'    => $record->usd_amount,
-                    'naira_amount'  => $record->naira_amount,
-                    'wallet_address'=> $record->wallet_address,
-                    'payment_method'=> $record->payment_method,
-                    'payment_proof' => $record->payment_proof ? asset('storage/' . $record->payment_proof) : null,
-                    'status'        => $record->status,
-                    'reference'     => $record->transaction_ref,
-                    'created_at'    => $record->created_at->format('d M Y, H:i'),
-                    'updated_at'    => $record->updated_at->format('d M Y, H:i'),
+                    'type'             => 'buy',
+                    'id'               => $record->id,
+                    'coin'             => $record->coin,
+                    'network'          => $record->network,
+                    'usd_amount'       => $record->usd_amount,
+                    'naira_amount'     => $record->naira_amount,
+                    'wallet_address'   => $record->wallet_address,
+                    'payment_method'   => $record->payment_method,
+                    'payment_proof'    => $record->payment_proof ? asset('storage/' . $record->payment_proof) : null,
+                    'status'           => $record->status,
+                    'reference'        => $record->transaction_ref,
+                    'proof_upload_url' => ($record->status === 'pending' && ! $record->payment_proof) ? route('buy.payment', $record->id) : null,
+                    'created_at'       => $record->created_at->format('d M Y, H:i'),
+                    'updated_at'       => $record->updated_at->format('d M Y, H:i'),
                 ];
                 break;
 
             case 'sell':
                 $record = SellTrade::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+                $rawProof  = $record->proof ?? $record->payment_proof;
+                $proofUrl  = ($rawProof && $rawProof !== 'bot_initiated') ? asset('storage/' . $rawProof) : null;
                 $data = [
-                    'type'          => 'sell',
-                    'id'            => $record->id,
-                    'coin'          => $record->coin,
-                    'network'       => $record->network,
-                    'usd_amount'    => $record->usd_amount,
-                    'naira_amount'  => $record->naira_amount,
-                    'wallet_address'=> $record->wallet_address,
-                    'bank_name'     => $record->bank_name,
-                    'account_name'  => $record->account_name,
-                    'account_number'=> $record->account_number,
-                    'payment_method'=> $record->payment_method,
-                    'payment_proof' => $record->payment_proof ? asset('storage/' . $record->payment_proof) : null,
-                    'status'        => $record->status,
-                    'reference'     => $record->transaction_ref,
-                    'created_at'    => $record->created_at->format('d M Y, H:i'),
-                    'updated_at'    => $record->updated_at->format('d M Y, H:i'),
+                    'type'             => 'sell',
+                    'id'               => $record->id,
+                    'coin'             => $record->coin,
+                    'network'          => $record->network,
+                    'usd_amount'       => $record->usd_amount,
+                    'naira_amount'     => $record->naira_amount,
+                    'wallet_address'   => $record->wallet_address,
+                    'bank_name'        => $record->bank_name,
+                    'account_name'     => $record->account_name,
+                    'account_number'   => $record->account_number,
+                    'payment_method'   => $record->payment_method,
+                    'payment_proof'    => $proofUrl,
+                    'status'           => $record->status,
+                    'reference'        => $record->transaction_ref,
+                    'proof_upload_url' => ($record->status === 'pending' && ! $proofUrl) ? route('sell.payment', $record->id) : null,
+                    'created_at'       => $record->created_at->format('d M Y, H:i'),
+                    'updated_at'       => $record->updated_at->format('d M Y, H:i'),
                 ];
                 break;
 
