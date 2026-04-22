@@ -32,6 +32,11 @@ try { $kaybotChatUrl = route('ai.chat'); } catch (\Throwable $e) { $kaybotChatUr
 .kb-quick{display:flex;flex-wrap:wrap;gap:.35rem;padding:.5rem 1rem;border-top:1px solid rgba(255,255,255,.06);}
 .kb-quick button{font-size:.72rem;padding:.25rem .65rem;border-radius:12px;background:rgba(0,204,0,.1);border:1px solid rgba(0,204,0,.2);color:#4ade80;cursor:pointer;}
 .kb-quick button:hover{background:rgba(0,204,0,.2);}
+.kb-inline-qr{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.6rem;}
+.kb-inline-qr button{font-size:.72rem;padding:.28rem .7rem;border-radius:12px;background:rgba(0,204,0,.12);border:1px solid rgba(0,204,0,.25);color:#4ade80;cursor:pointer;transition:background .15s;}
+.kb-inline-qr button:hover{background:rgba(0,204,0,.25);}
+.kb-msg.bot a{color:#4ade80;text-decoration:underline;}
+.kb-msg.bot code{background:rgba(255,255,255,.08);padding:.1rem .35rem;border-radius:4px;font-size:.78rem;}
 #kaybot-input-area{display:flex;padding:.65rem .75rem;gap:.5rem;border-top:1px solid rgba(255,255,255,.07);background:#0a0e17;}
 #kaybot-input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e4e8f0;padding:.5rem .75rem;font-size:.82rem;resize:none;outline:none;height:38px;}
 #kaybot-input:focus{border-color:rgba(0,204,0,.4);}
@@ -55,6 +60,10 @@ body.light-mode .kb-msg.typing{color:#555 !important;}
 body.light-mode .kb-quick{border-top-color:rgba(0,0,0,.08);}
 body.light-mode .kb-quick button{background:rgba(0,150,0,.08);border-color:rgba(0,150,0,.25);color:#007a0c;}
 body.light-mode .kb-quick button:hover{background:rgba(0,150,0,.18);}
+body.light-mode .kb-inline-qr button{background:rgba(0,150,0,.08);border-color:rgba(0,150,0,.25);color:#007a0c;}
+body.light-mode .kb-inline-qr button:hover{background:rgba(0,150,0,.18);}
+body.light-mode .kb-msg.bot a{color:#007a0c;}
+body.light-mode .kb-msg.bot code{background:rgba(0,0,0,.07);}
 body.light-mode #kaybot-input-area{background:#f0f0f0;border-top-color:rgba(0,0,0,.08);}
 body.light-mode #kaybot-input{background:#ffffff;border-color:rgba(0,0,0,.15);color:#111111;}
 body.light-mode #kaybot-input::placeholder{color:#888;}
@@ -77,7 +86,7 @@ body.light-mode #kaybot-input:focus{border-color:rgba(0,150,0,.45);}
         </div>
 
         @if($kaybotReady)
-        <div class="kb-quick">
+        <div class="kb-quick" id="kaybot-static-qr">
             <button onclick="kaybotAsk('How do I buy crypto?')">Buy crypto</button>
             <button onclick="kaybotAsk('What are the current rates?')">Current rates</button>
             <button onclick="kaybotAsk('How long does a trade take?')">Trade time</button>
@@ -122,6 +131,25 @@ function kaybotAsk(text) {
     kaybotSend();
 }
 
+function kaybotRenderText(text) {
+    // Escape HTML entities first (security — only process bot text this way)
+    let s = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    // Bold: **text**
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Inline code: `text`
+    s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    // Markdown link: [label](url)
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Italic: _text_
+    s = s.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em>$1</em>');
+    // Newlines → <br>
+    s = s.replace(/\n/g, '<br>');
+    return s;
+}
+
 async function kaybotSend() {
     if (kaybotBusy) return;
     const input = document.getElementById('kaybot-input');
@@ -129,8 +157,12 @@ async function kaybotSend() {
     if (!msg) return;
 
     @if(!$kaybotReady)
-    return; // AI not configured yet
+    return;
     @endif
+
+    // Hide static quick buttons on first user message
+    const staticQr = document.getElementById('kaybot-static-qr');
+    if (staticQr) staticQr.style.display = 'none';
 
     input.value = '';
     kaybotBusy  = true;
@@ -149,7 +181,7 @@ async function kaybotSend() {
         let data;
         try { data = JSON.parse(text); } catch { typing.remove(); kaybotAppend('bot', 'Sorry, something went wrong. Please try again.'); kaybotBusy = false; return; }
         typing.remove();
-        kaybotAppend('bot', data.reply ?? 'Sorry, something went wrong.');
+        kaybotAppend('bot', data.reply ?? 'Sorry, something went wrong.', false, data.quick_replies ?? []);
     } catch (e) {
         typing.remove();
         kaybotAppend('bot', '⚠️ Could not reach KayBot. Check your connection and try again.');
@@ -157,11 +189,26 @@ async function kaybotSend() {
     kaybotBusy = false;
 }
 
-function kaybotAppend(role, text, isTyping = false) {
+function kaybotAppend(role, text, isTyping = false, quickReplies = []) {
     const msgs = document.getElementById('kaybot-msgs');
     const el   = document.createElement('div');
     el.className = 'kb-msg ' + role + (isTyping ? ' typing' : '');
-    el.textContent = text;
+    if (role === 'bot' && !isTyping) {
+        el.innerHTML = kaybotRenderText(text);
+        if (quickReplies && quickReplies.length) {
+            const qrDiv = document.createElement('div');
+            qrDiv.className = 'kb-inline-qr';
+            quickReplies.forEach(qr => {
+                const btn = document.createElement('button');
+                btn.textContent = qr;
+                btn.onclick = () => { qrDiv.remove(); kaybotAsk(qr); };
+                qrDiv.appendChild(btn);
+            });
+            el.appendChild(qrDiv);
+        }
+    } else {
+        el.textContent = text;
+    }
     msgs.appendChild(el);
     msgs.scrollTop = msgs.scrollHeight;
     return el;

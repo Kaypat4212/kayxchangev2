@@ -6,6 +6,7 @@ use App\Models\AdminSetting;
 use App\Models\AiChatMessage;
 use App\Models\AiSupportTicket;
 use App\Models\CryptoRate;
+use App\Models\GiftCardRate;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -81,7 +82,21 @@ class AiChatController extends Controller
             return response()->json(['reply' => $ticketReply, 'escalated' => true]);
         }
 
-        // 3. Trade flow
+        // 3. Rates flow
+        if ($request->session()->has('kaybot_rates') || $this->isRatesQuery($message)) {
+            if (! $this->isTradeIntent($message) && ! $this->isEscalationRequest($message)) {
+                $this->saveMessage($user?->id, $sessionId, 'user', $message);
+                $ratesResult = $this->handleRatesFlow($request, $message);
+                if ($ratesResult !== null) {
+                    $this->saveMessage($user?->id, $sessionId, 'assistant', $ratesResult['reply']);
+                    return response()->json($ratesResult);
+                }
+            } else {
+                $request->session()->forget('kaybot_rates');
+            }
+        }
+
+        // 4. Trade flow
         $tradeState = $request->session()->get('kaybot_trade', null);
         if ($tradeState || $this->isTradeIntent($message)) {
             $this->saveMessage($user?->id, $sessionId, 'user', $message);
@@ -92,7 +107,7 @@ class AiChatController extends Controller
             }
         }
 
-        // 4. Normal AI response with optional live price injection
+        // 5. Normal AI response with optional live price injection
         $systemPrompt = $this->buildSystemPrompt($message);
         $this->saveMessage($user?->id, $sessionId, 'user', $message);
 
@@ -337,6 +352,170 @@ class AiChatController extends Controller
             ]);
         } catch (\Throwable $e) {
             Log::warning('KayBot Telegram notify: ' . $e->getMessage());
+        }
+    }
+
+    // --- Rates Flow ---
+
+    private function isRatesQuery(string $msg): bool
+    {
+        return (bool) preg_match('/\b(current\s+rates?|show\s+rates?|what\s+are\s+(the|your)\s+rates?|gift[\s\-]?card\s+rates?|crypto\s+rates?|exchange\s+rates?|rates?\s+today|coin\s+rates?|trading\s+rates?|see\s+rates?|your\s+rates?|ngn\s+rates?|naira\s+rates?)\b/i', $msg);
+    }
+
+    private function handleRatesFlow(Request $request, string $message): ?array
+    {
+        $state = $request->session()->get('kaybot_rates', null);
+        $lower = strtolower(trim($message));
+
+        // Start the flow — no state yet
+        if (! $state) {
+            $request->session()->put('kaybot_rates', ['step' => 'choose']);
+            return [
+                'reply'         => "What rates would you like to see? 💰\n\nChoose an option:",
+                'quick_replies' => ['💹 Crypto rates', '🎁 Gift card rates', '📈 Live crypto prices'],
+            ];
+        }
+
+        if ($state['step'] === 'choose') {
+            // Crypto rates
+            if (preg_match('/\b(1|crypto\s*rate|coin\s*rate|btc|eth|usdt|trading\s*rate)\b/i', $lower)
+                || str_contains($lower, 'crypto rate') || str_contains($lower, '💹')) {
+                $request->session()->forget('kaybot_rates');
+                return ['reply' => $this->buildCryptoRatesResponse(), 'rates_type' => 'crypto'];
+            }
+
+            // Gift card rates
+            if (preg_match('/\b(2|gift|card|giftcard)\b/i', $lower) || str_contains($lower, '🎁')) {
+                $request->session()->forget('kaybot_rates');
+                return ['reply' => $this->buildGiftCardRatesResponse(), 'rates_type' => 'giftcard'];
+            }
+
+            // Live prices
+            if (preg_match('/\b(3|live|price|market|current\s*price|usd\s*price)\b/i', $lower)
+                || str_contains($lower, 'live price') || str_contains($lower, 'live crypto') || str_contains($lower, '📈')) {
+                $request->session()->forget('kaybot_rates');
+                return ['reply' => $this->buildLivePricesResponse(), 'rates_type' => 'live'];
+            }
+
+            // Unrecognised
+            return [
+                'reply'         => "Please choose one:",
+                'quick_replies' => ['💹 Crypto rates', '🎁 Gift card rates', '📈 Live crypto prices'],
+            ];
+        }
+
+        return null;
+    }
+
+    private function buildCryptoRatesResponse(): string
+    {
+        $platformRates = CryptoRate::all()->keyBy(fn($r) => strtoupper($r->coin));
+        if ($platformRates->isEmpty()) {
+            return "Sorry, KayXchange crypto rates are not configured yet. Please contact support.";
+        }
+
+        // Fetch live USD prices from CoinGecko
+        $livePrices = [];
+        try {
+            $r = Http::timeout(7)->get('https://api.coingecko.com/api/v3/simple/price', [
+                'ids'           => 'bitcoin,ethereum,tether,usd-coin,solana,binancecoin',
+                'vs_currencies' => 'usd',
+            ]);
+            if ($r->successful()) {
+                $map = ['bitcoin' => 'BTC', 'ethereum' => 'ETH', 'tether' => 'USDT', 'usd-coin' => 'USDC', 'solana' => 'SOL', 'binancecoin' => 'BNB'];
+                foreach ($map as $id => $sym) {
+                    if (isset($r->json()[$id]['usd'])) $livePrices[$sym] = $r->json()[$id]['usd'];
+                }
+            }
+        } catch (\Throwable) {}
+
+        $lines = ["📊 **KayXchange Crypto Rates**\n_Rate = NGN per \\$1 USD_\n"];
+
+        foreach ($platformRates as $coin => $rate) {
+            $buyRate  = number_format($rate->buy_rate);
+            $sellRate = number_format($rate->sell_rate);
+            $line     = "**{$coin}**\n  Buy: ₦{$buyRate}/USD | Sell: ₦{$sellRate}/USD";
+
+            if (isset($livePrices[$coin])) {
+                $usd     = $livePrices[$coin];
+                $ngnBuy  = number_format($usd * $rate->buy_rate, 0);
+                $ngnSell = number_format($usd * $rate->sell_rate, 0);
+                $usdFmt  = $usd >= 1000 ? '$' . number_format($usd, 0) : '$' . number_format($usd, 2);
+                $line   .= "\n  Market: {$usdFmt} → ₦{$ngnBuy} (buy) / ₦{$ngnSell} (sell)";
+            }
+            $lines[] = $line;
+        }
+
+        $lines[] = "\n_Type **buy crypto** or **sell crypto** to start a trade._";
+        return implode("\n\n", $lines);
+    }
+
+    private function buildGiftCardRatesResponse(): string
+    {
+        $url         = url('/gift-card-rates');
+        $activeRates = GiftCardRate::where('is_active', true)
+            ->orderBy('category')->orderBy('name')
+            ->limit(10)->get();
+
+        $msg  = "🎁 **Gift Card Rates**\n\n";
+        $msg .= "View the full, up-to-date rates table:\n[🔗 {$url}]({$url})\n";
+
+        if ($activeRates->isNotEmpty()) {
+            $msg .= "\n**Sample rates:**\n";
+            $currentCategory = null;
+            foreach ($activeRates as $r) {
+                if ($r->category !== $currentCategory) {
+                    $currentCategory = $r->category;
+                    $msg .= "\n_" . ucfirst($r->category ?? 'General') . "_\n";
+                }
+                $rateStr = $r->buy_rate ? '₦' . number_format($r->buy_rate) : '—';
+                $msg    .= "• {$r->name} ({$r->country}/{$r->currency}): {$rateStr}/unit\n";
+            }
+        }
+
+        $msg .= "\n_For the complete list visit the link above, or type **contact support** to speak to an agent._";
+        return $msg;
+    }
+
+    private function buildLivePricesResponse(): string
+    {
+        $platformRates = CryptoRate::all()->keyBy(fn($r) => strtoupper($r->coin));
+
+        try {
+            $r = Http::timeout(8)->get('https://api.coingecko.com/api/v3/simple/price', [
+                'ids'                 => 'bitcoin,ethereum,tether,usd-coin,solana,binancecoin',
+                'vs_currencies'       => 'usd',
+                'include_24hr_change' => 'true',
+            ]);
+            if (! $r->successful()) {
+                return "Sorry, I couldn't fetch live prices right now. Please try again in a moment.";
+            }
+
+            $data  = $r->json();
+            $map   = ['bitcoin' => 'BTC', 'ethereum' => 'ETH', 'tether' => 'USDT', 'usd-coin' => 'USDC', 'solana' => 'SOL', 'binancecoin' => 'BNB'];
+            $lines = ["📈 **Live Crypto Prices**\n_USD from CoinGecko · NGN based on KayXchange rates_\n"];
+
+            foreach ($map as $id => $sym) {
+                if (! isset($data[$id]['usd'])) continue;
+                $usd    = $data[$id]['usd'];
+                $change = $data[$id]['usd_24h_change'] ?? null;
+                $arrow  = $change === null ? '' : ($change >= 0 ? ' ▲' . number_format($change, 1) . '%' : ' ▼' . number_format(abs($change), 1) . '%');
+                $usdFmt = $usd >= 1000 ? '$' . number_format($usd, 0) : '$' . number_format($usd, 2);
+                $line   = "**{$sym}** {$usdFmt}{$arrow}";
+
+                $rate = $platformRates[$sym] ?? null;
+                if ($rate) {
+                    $ngnBuy  = number_format($usd * $rate->buy_rate, 0);
+                    $ngnSell = number_format($usd * $rate->sell_rate, 0);
+                    $line   .= "\n  ₦{$ngnBuy} (buy) / ₦{$ngnSell} (sell)";
+                }
+                $lines[] = $line;
+            }
+
+            $lines[] = "\n_Type **buy crypto** or **sell crypto** to trade._";
+            return implode("\n\n", $lines);
+        } catch (\Throwable) {
+            return "Sorry, I couldn't fetch live prices right now. Please try again in a moment.";
         }
     }
 
