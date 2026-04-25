@@ -313,7 +313,7 @@ class SellController extends Controller
     /**
      * Display step 2 of the sell process (proof upload).
      *
-     * @return \Illuminate\View\View
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
     public function step2()
     {
@@ -372,7 +372,7 @@ class SellController extends Controller
     /**
      * Display step 3 of the sell process (payout method selection).
      *
-     * @return \Illuminate\View\View
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
     public function step3()
     {
@@ -607,7 +607,7 @@ class SellController extends Controller
      * Display the trade summary page.
      *
      * @param int $trade_id
-     * @return \Illuminate\View\View
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
     public function tradeSummary($trade_id)
     {

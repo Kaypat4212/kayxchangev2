@@ -5,6 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $name
+ * @property string $coin
+ * @property string|null $network
+ * @property string|null $wallet_address
+ * @property string|null $proof
+ * @property string|null $payment_method
+ * @property string $status
+ * @property string|null $bank_name
+ * @property string|null $account_number
+ * @property string|null $account_name
+ * @property string|null $transaction_ref
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $cancelled_at
+ * @property string|null $cancelled_by
+ * @property string|null $source
+ * @property string|null $rate_used
+ */
 class SellTrade extends Model
 {
     use HasFactory;

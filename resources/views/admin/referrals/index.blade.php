@@ -610,7 +610,7 @@ document.getElementById('blockModalBackdrop').addEventListener('click', function
                         $totalDeposit = $referred
                             ? \App\Models\Deposit::where('user_id', $referred->id)->where('status', 'approved')->sum('amount')
                             : 0;
-                        $depositPct = min(100, $totalDeposit / 100); {{-- 100% at ₦10,000 --}}
+                        $depositPct = min(100, $totalDeposit / 100); // 100% at ₦10,000
                     @endphp
                     <tr>
                         <td class="ref-muted">{{ $referrals->firstItem() + $loop->index }}</td>

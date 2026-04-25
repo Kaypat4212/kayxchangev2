@@ -19,4 +19,7 @@ return [
     'pending_sla_minutes' => (int) env('TRADE_ALERT_PENDING_SLA_MINUTES', 20),
     'escalate_after_minutes' => (int) env('TRADE_ALERT_ESCALATE_AFTER_MINUTES', 30),
     'escalation_chat_id' => env('TRADE_ALERT_ESCALATION_CHAT_ID', ''),
+
+    // Email address(es) to receive escalation alerts (comma-separated)
+    'escalation_email' => env('TRADE_ALERT_ESCALATION_EMAIL', env('MAIL_FROM_ADDRESS', '')),
 ];

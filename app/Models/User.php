@@ -17,12 +17,23 @@ use Illuminate\Support\Str;
  * @property int $id
  * @property string $name
  * @property string $email
+ * @property string $password
  * @property string|null $telegram_chat_id
  * @property string|null $telegram_username
  * @property bool $telegram_notifications
  * @property bool $telegram_verified
  * @property float $balance
  * @property bool $kyc_verified
+ * @property bool $is_admin
+ * @property string|null $bank_name
+ * @property string|null $bank_code
+ * @property string|null $account_number
+ * @property string|null $account_name
+ * @property string|null $transaction_pin
+ * @property int $pin_attempts
+ * @property \Carbon\Carbon|null $pin_locked_until
+ * @property string|null $referral_code
+ * @property int|null $referred_by
  */
 class User extends Authenticatable
 {

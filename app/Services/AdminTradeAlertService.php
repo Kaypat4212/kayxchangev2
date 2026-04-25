@@ -6,9 +6,11 @@ use App\Models\BuyTrade;
 use App\Models\Notification;
 use App\Models\SellTrade;
 use App\Models\User;
+use App\Mail\PendingTradeEscalationMail;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AdminTradeAlertService
 {
@@ -163,26 +165,69 @@ class AdminTradeAlertService
             return;
         }
 
-        $title = 'PENDING TRADE ESCALATION';
+        $title    = 'PENDING TRADE ESCALATION';
+        $ref      = $data['reference'] ?? 'N/A';
+        $tradeId  = $data['trade_id'] ?? null;
+        $baseUrl  = rtrim((string) config('app.url'), '/');
+
+        // Build direct admin link: prefer specific trade page, fall back to filtered list
+        $tradeUrl = $tradeId
+            ? $baseUrl . '/admin/trades/' . $tradeId
+            : $baseUrl . '/admin/trades?ref=' . urlencode((string) $ref);
+
         $message = "⏰ *" . $this->escapeMarkdown($title) . "*\n\n"
             . $this->escapeMarkdown('Trade Type: ' . strtoupper($tradeType)) . "\n"
-            . $this->escapeMarkdown('Reference: ' . ($data['reference'] ?? 'N/A')) . "\n"
+            . $this->escapeMarkdown('Reference: ' . $ref) . "\n"
             . $this->escapeMarkdown('User: ' . ($data['user_name'] ?? 'N/A')) . "\n"
             . $this->escapeMarkdown('Pending Minutes: ' . ($data['pending_minutes'] ?? 'N/A')) . "\n"
-            . $this->escapeMarkdown('Amount (NGN): ' . ($data['naira_amount'] ?? 'N/A'));
+            . $this->escapeMarkdown('Amount (NGN): ₦' . ($data['naira_amount'] ?? 'N/A')) . "\n"
+            . $this->escapeMarkdown('🔗 Trade Link: ' . $tradeUrl);
 
-        $this->sendTelegram($message, $this->chatId);
+        $buttons = [
+            [
+                ['text' => '🔍 Review Trade', 'url' => $tradeUrl],
+                ['text' => '🔔 Notifications', 'url' => $baseUrl . '/admin/notifications?status=unread'],
+            ],
+        ];
 
-        $escChatId = (string) config('trade_alerts.escalation_chat_id', '');
-        if (!empty($escChatId)) {
-            $this->sendTelegram("🚨 *ESCALATION CHANNEL*\n\n" . $message, $escChatId);
+        // Approve/reject quick actions when trade_id is available
+        if ($tradeId && in_array(strtolower($tradeType), ['sell', 'buy'])) {
+            $type = strtolower($tradeType);
+            $buttons[] = [
+                ['text' => '✅ Approve', 'callback_data' => "approve_{$type}:{$tradeId}"],
+                ['text' => '❌ Reject',  'callback_data' => "reject_{$type}:{$tradeId}"],
+            ];
         }
 
-        Notification::createBroadcast('warning', $title, 'Ref: ' . ($data['reference'] ?? 'N/A') . ' pending too long.', [
-            'badge' => 'SLA_ESCALATED',
-            'trade_type' => strtoupper($tradeType),
-            'reference' => $data['reference'] ?? null,
+        $this->sendTelegram($message, $this->chatId, $buttons);
+
+        $escChatId = (string) config('trade_alerts.escalation_chat_id', '');
+        if (!empty($escChatId) && $escChatId !== $this->chatId) {
+            $this->sendTelegram("🚨 *ESCALATION CHANNEL*\n\n" . $message, $escChatId, $buttons);
+        }
+
+        // ── Send escalation email ─────────────────────────────────────────────
+        $emailList = (string) config('trade_alerts.escalation_email', '');
+        if (!empty($emailList)) {
+            $addresses = array_filter(array_map('trim', explode(',', $emailList)));
+            foreach ($addresses as $address) {
+                try {
+                    Mail::to($address)->send(new PendingTradeEscalationMail($tradeType, $data, $tradeUrl));
+                } catch (\Throwable $e) {
+                    Log::warning('AdminTradeAlertService: escalation email failed', [
+                        'to'    => $address,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        Notification::createBroadcast('warning', $title, 'Ref: ' . $ref . ' pending too long.', [
+            'badge'           => 'SLA_ESCALATED',
+            'trade_type'      => strtoupper($tradeType),
+            'reference'       => $ref,
             'pending_minutes' => $data['pending_minutes'] ?? null,
+            'trade_url'       => $tradeUrl,
         ]);
     }
 

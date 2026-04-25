@@ -1548,7 +1548,7 @@ class TelegramService
     private function handleRatesCommand($chatId)
     {
         try {
-            $rates = \App\Models\CryptoRate::all();
+            $rates = CryptoRate::all();
 
             if ($rates->isEmpty()) {
                 $this->sendMessage($chatId, "⚠️ Rates are currently unavailable. Please try again shortly.");
@@ -2440,8 +2440,8 @@ class TelegramService
             return;
         }
 
-        $buys  = \App\Models\BuyTrade::where('user_id', $user->id)->latest()->take(5)->get();
-        $sells = \App\Models\SellTrade::where('user_id', $user->id)->latest()->take(5)->get();
+        $buys  = BuyTrade::where('user_id', $user->id)->latest()->take(5)->get();
+        $sells = SellTrade::where('user_id', $user->id)->latest()->take(5)->get();
 
         // Merge and sort by created_at, take latest 5
         $trades = $buys->map(fn($t) => ['type' => 'Buy', 'coin' => $t->coin, 'amount' => $t->naira_amount, 'status' => $t->status, 'date' => $t->created_at])
@@ -2559,7 +2559,7 @@ class TelegramService
             if ($trade->payment_method === 'wallet_balance') {
                 $user = User::find($trade->user_id);
                 if ($user) {
-                    $user->increment('balance', $trade->naira_amount);
+                    $user->increment('balance', (float)$trade->naira_amount);
                 }
             }
 
@@ -2568,7 +2568,7 @@ class TelegramService
             if ($messageId) {
                 $this->editMessage($chatId, $messageId,
                     "✅ *APPROVED* — Sell Trade #{$tradeId}\nRef: {$trade->transaction_ref}\n" .
-                    "User: {$trade->name} | ₦" . number_format($trade->naira_amount, 2));
+                    "User: {$trade->name} | ₦" . number_format((float)$trade->naira_amount, 2));
             }
 
             // Notify the user
@@ -2577,10 +2577,10 @@ class TelegramService
                 $this->sendMessage((int)$tradeUser->telegram_chat_id,
                     "🎉 *Your Sell Trade is Approved!*\n\n" .
                     "🔖 Ref: `{$trade->transaction_ref}`\n" .
-                    "💴 Amount: ₦" . number_format($trade->naira_amount, 2) . "\n" .
+                    "💴 Amount: ₦" . number_format((float)$trade->naira_amount, 2) . "\n" .
                     "💳 Method: {$trade->payment_method}\n\n" .
                     ($trade->payment_method === 'wallet_balance'
-                        ? "💰 ₦" . number_format($trade->naira_amount, 2) . " has been credited to your wallet balance."
+                        ? "💰 ₦" . number_format((float)$trade->naira_amount, 2) . " has been credited to your wallet balance."
                         : "💳 Payment is being processed to your bank account."),
                     'Markdown');
             }
@@ -2627,7 +2627,7 @@ class TelegramService
         if ($messageId) {
             $this->editMessage($chatId, $messageId,
                 "❌ *REJECTED* — Sell Trade #{$tradeId}\nRef: {$trade->transaction_ref}\n" .
-                "User: {$trade->name} | ₦" . number_format($trade->naira_amount, 2));
+                "User: {$trade->name} | ₦" . number_format((float)$trade->naira_amount, 2));
         }
 
         $tradeUser = User::find($trade->user_id);
@@ -2635,7 +2635,7 @@ class TelegramService
             $this->sendMessage((int)$tradeUser->telegram_chat_id,
                 "❌ *Your Sell Trade was Rejected*\n\n" .
                 "🔖 Ref: `{$trade->transaction_ref}`\n" .
-                "💴 Amount: ₦" . number_format($trade->naira_amount, 2) . "\n\n" .
+                "💴 Amount: ₦" . number_format((float)$trade->naira_amount, 2) . "\n\n" .
                 "Please contact support for more details.",
                 'Markdown');
         }
@@ -2675,7 +2675,7 @@ class TelegramService
         if ($messageId) {
             $this->editMessage($chatId, $messageId,
                 "✅ *APPROVED* — Buy Trade #{$tradeId}\nRef: {$trade->transaction_ref}\n" .
-                "User: {$trade->name} | ₦" . number_format($trade->naira_amount, 2));
+                "User: {$trade->name} | ₦" . number_format((float)$trade->naira_amount, 2));
         }
 
         $tradeUser = User::find($trade->user_id);
@@ -2724,7 +2724,7 @@ class TelegramService
         if ($messageId) {
             $this->editMessage($chatId, $messageId,
                 "❌ *REJECTED* — Buy Trade #{$tradeId}\nRef: {$trade->transaction_ref}\n" .
-                "User: {$trade->name} | ₦" . number_format($trade->naira_amount, 2));
+                "User: {$trade->name} | ₦" . number_format((float)$trade->naira_amount, 2));
         }
 
         $tradeUser = User::find($trade->user_id);
@@ -2732,7 +2732,7 @@ class TelegramService
             $this->sendMessage((int)$tradeUser->telegram_chat_id,
                 "❌ *Your Buy Order was Rejected*\n\n" .
                 "🔖 Ref: `{$trade->transaction_ref}`\n" .
-                "💴 Amount: ₦" . number_format($trade->naira_amount, 2) . "\n\n" .
+                "💴 Amount: ₦" . number_format((float)$trade->naira_amount, 2) . "\n\n" .
                 "Your payment was not confirmed. Please contact support.",
                 'Markdown');
         }
@@ -2879,11 +2879,11 @@ class TelegramService
         if ($messageId) {
             $bd = is_array($withdrawal->bank_account)
                 ? $withdrawal->bank_account
-                : (json_decode($withdrawal->bank_account, true) ?? []);
+                : (json_decode((string)$withdrawal->bank_account, true) ?? []);
             $this->editMessage($chatId, $messageId,
                 "✅ *APPROVED* — Withdrawal #{$withdrawalId}\n" .
                 "Ref: {$withdrawal->reference}\n" .
-                "User: {$user->name} | ₦" . number_format($withdrawal->amount, 2) . "\n" .
+                "User: {$user->name} | ₦" . number_format((float)$withdrawal->amount, 2) . "\n" .
                 "Bank: " . ($bd['bank_name'] ?? 'N/A') . " · " . ($bd['account_number'] ?? 'N/A'));
         }
 
@@ -2891,7 +2891,7 @@ class TelegramService
             $this->sendMessage((int) $user->telegram_chat_id,
                 "✅ *Withdrawal Approved!*\n\n" .
                 "🔖 Ref: `{$withdrawal->reference}`\n" .
-                "💴 Amount: ₦" . number_format($withdrawal->amount, 2) . "\n\n" .
+                "💴 Amount: ₦" . number_format((float)$withdrawal->amount, 2) . "\n\n" .
                 "Your payment is being processed to your bank account.",
                 'Markdown');
         }
@@ -2934,14 +2934,14 @@ class TelegramService
             $this->editMessage($chatId, $messageId,
                 "❌ *REJECTED* — Withdrawal #{$withdrawalId}\n" .
                 "Ref: {$withdrawal->reference}\n" .
-                "User: " . ($user->name ?? 'N/A') . " | ₦" . number_format($withdrawal->amount, 2));
+                "User: " . ($user->name ?? 'N/A') . " | ₦" . number_format((float)$withdrawal->amount, 2));
         }
 
         if ($user && $user->telegram_chat_id) {
             $this->sendMessage((int) $user->telegram_chat_id,
                 "❌ *Withdrawal Rejected*\n\n" .
                 "🔖 Ref: `{$withdrawal->reference}`\n" .
-                "💴 Amount: ₦" . number_format($withdrawal->amount, 2) . "\n\n" .
+                "💴 Amount: ₦" . number_format((float)$withdrawal->amount, 2) . "\n\n" .
                 "Please contact support for more details.",
                 'Markdown');
         }
@@ -3218,6 +3218,7 @@ class TelegramService
             ->get();
 
         foreach ($usersToLink as $user) {
+            /** @var User $user */
             $user->update([
                 'telegram_chat_id' => $chatId,
                 'telegram_verified' => true,
@@ -3330,7 +3331,7 @@ class TelegramService
 
         DB::beginTransaction();
         try {
-            $ref = 'DEP-TG-' . strtoupper(\Illuminate\Support\Str::random(8));
+            $ref = 'DEP-TG-' . strtoupper(Str::random(8));
             $deposit = \App\Models\Deposit::create([
                 'user_id'           => $user->id,
                 'amount'            => $data['amount'],
@@ -3571,7 +3572,7 @@ class TelegramService
             ]);
             $this->setState($chatId, 'upload_proof');
             $this->sendMessage($chatId,
-                "✅ Found: *Sell {$sellTrade->coin}* — \$" . number_format($sellTrade->usd_amount, 2) . " (₦" . number_format($sellTrade->naira_amount, 2) . ")\n" .
+                "✅ Found: *Sell {$sellTrade->coin}* — \$" . number_format((float)$sellTrade->usd_amount, 2) . " (₦" . number_format((float)$sellTrade->naira_amount, 2) . ")\n" .
                 "Ref: `{$ref}`\n\n" .
                 "📸 Send your *crypto send screenshot as a photo* now.\n_(Not a file — use Telegram's Photo option)_",
                 'Markdown');
@@ -3618,8 +3619,8 @@ class TelegramService
             $adminMsg = "📸 *Buy Proof Uploaded via Telegram*\n\n" .
                 "👤 {$user->name} ({$user->email})\n" .
                 "🔖 Ref: `{$ref}`\n" .
-                "🪙 {$trade->coin}: \$" . number_format($trade->usd_amount, 2) . "\n" .
-                "💴 ₦" . number_format($trade->naira_amount, 2);
+                "🪙 {$trade->coin}: \$" . number_format((float)$trade->usd_amount, 2) . "\n" .
+                "💴 ₦" . number_format((float)$trade->naira_amount, 2);
         } else {
             $trade = SellTrade::where('id', $tradeId)->where('user_id', $user->id)->first();
             if (!$trade) {
@@ -3631,8 +3632,8 @@ class TelegramService
             $adminMsg = "📸 *Sell Proof Uploaded via Telegram*\n\n" .
                 "👤 {$user->name} ({$user->email})\n" .
                 "🔖 Ref: `{$ref}`\n" .
-                "🪙 {$trade->coin}: \$" . number_format($trade->usd_amount, 2) . "\n" .
-                "💴 ₦" . number_format($trade->naira_amount, 2);
+                "🪙 {$trade->coin}: \$" . number_format((float)$trade->usd_amount, 2) . "\n" .
+                "💴 ₦" . number_format((float)$trade->naira_amount, 2);
         }
 
         $this->clearState($chatId);

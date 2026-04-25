@@ -42,9 +42,11 @@ class EscalatePendingTrades extends Command
 
             $count++;
             $alerts->sendEscalationAlert('buy', [
-                'reference' => $trade->transaction_ref ?? ('BUY-' . $trade->id),
-                'user_name' => $trade->user->name ?? $trade->name ?? 'N/A',
-                'naira_amount' => number_format((float) ($trade->naira_amount ?? 0), 2),
+                'trade_id'       => $trade->id,
+                'reference'      => $trade->transaction_ref ?? ('BUY-' . $trade->id),
+                'user_name'      => $trade->user->name ?? $trade->name ?? 'N/A',
+                'coin'           => $trade->coin ?? 'N/A',
+                'naira_amount'   => number_format((float) ($trade->naira_amount ?? 0), 2),
                 'pending_minutes' => now()->diffInMinutes($trade->created_at),
             ]);
         }
@@ -57,9 +59,11 @@ class EscalatePendingTrades extends Command
 
             $count++;
             $alerts->sendEscalationAlert('sell', [
-                'reference' => $trade->transaction_ref ?? ('SELL-' . $trade->id),
-                'user_name' => $trade->user->name ?? $trade->name ?? 'N/A',
-                'naira_amount' => number_format((float) ($trade->naira_amount ?? $trade->amount ?? 0), 2),
+                'trade_id'       => $trade->id,
+                'reference'      => $trade->transaction_ref ?? ('SELL-' . $trade->id),
+                'user_name'      => $trade->user->name ?? $trade->name ?? 'N/A',
+                'coin'           => $trade->coin ?? 'N/A',
+                'naira_amount'   => number_format((float) ($trade->naira_amount ?? $trade->amount ?? 0), 2),
                 'pending_minutes' => now()->diffInMinutes($trade->created_at),
             ]);
         }

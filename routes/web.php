@@ -76,6 +76,7 @@ Route::get('/about', fn() => view('about'))->name('about');
 
 // Secure file serving — serves files from storage/app/public without requiring a symlink
 Route::get('/file/{path}', function (string $path) {
+    /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
     $disk = \Illuminate\Support\Facades\Storage::disk('public');
     // Prevent directory traversal
     $path = ltrim($path, '/');
