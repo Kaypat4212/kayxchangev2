@@ -245,6 +245,78 @@ class TelegramService
     }
 
     /**
+     * Send a photo file to a Telegram chat.
+     *
+     * @param  int|string  $chatId
+     * @param  string      $photoPath  Absolute filesystem path to the image
+     * @param  string      $caption    Optional caption (Markdown supported)
+     * @param  string      $parseMode
+     * @return bool
+     */
+    private function sendPhoto($chatId, string $photoPath, string $caption = '', string $parseMode = 'Markdown'): bool
+    {
+        try {
+            if (!file_exists($photoPath)) {
+                Log::warning('sendPhoto: file not found', ['path' => $photoPath]);
+                return false;
+            }
+
+            $response = Http::attach(
+                'photo',
+                file_get_contents($photoPath),
+                basename($photoPath)
+            )->post("{$this->apiUrl}/sendPhoto", array_filter([
+                'chat_id'    => $chatId,
+                'caption'    => $caption ?: null,
+                'parse_mode' => $caption ? $parseMode : null,
+            ]));
+
+            $result = $response->json();
+            if ($response->successful() && ($result['ok'] ?? false)) {
+                return true;
+            }
+
+            Log::warning('Failed to send Telegram photo', [
+                'chat_id' => $chatId,
+                'error'   => $result['description'] ?? 'Unknown',
+            ]);
+            return false;
+        } catch (\Throwable $e) {
+            Log::error('Exception sending Telegram photo', [
+                'chat_id' => $chatId,
+                'error'   => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Resolve the public barcode image path for a given coin/network.
+     * Returns null when no barcode file is found.
+     */
+    private function getBarcodePathForCoin(string $coin, ?string $network): ?string
+    {
+        $map = [
+            'BTC'          => 'btc-barcode.png',
+            'ETH'          => 'eth-barcode.png',
+            'USDT_TRC20'   => 'usdttron-barcode.png',
+            'USDT_ERC20'   => 'eth-barcode.png',   // fallback to ETH barcode
+            'USDT_BEP20'   => 'eth-barcode.png',   // fallback
+            'USDT'         => 'usdttron-barcode.png',
+        ];
+
+        $key = ($coin === 'USDT' && $network) ? "USDT_{$network}" : $coin;
+        $filename = $map[$key] ?? null;
+
+        if (!$filename) {
+            return null;
+        }
+
+        $path = public_path("barcodes/{$filename}");
+        return file_exists($path) ? $path : null;
+    }
+
+    /**
      * Send a message to a specific chat ID
      */
     public function sendMessage($chatId, $message, $parseMode = 'Markdown', $keyboard = null)
@@ -1620,6 +1692,12 @@ class TelegramService
             "💬 *Enter the USD amount you're selling* (e.g. `50`)\n" .
             "_Minimum: \$1_",
             'Markdown');
+
+        // Send the barcode/QR code for this coin so user can scan the wallet address
+        $barcodePath = $this->getBarcodePathForCoin($coin, null);
+        if ($barcodePath) {
+            $this->sendPhoto($chatId, $barcodePath, "📷 Scan to get the {$coin} wallet address");
+        }
     }
 
     private function handleSellNetworkSelected(int $chatId, string $network): void
@@ -1640,6 +1718,12 @@ class TelegramService
             "💬 *Enter the USD amount you're selling* (e.g. `50`)\n" .
             "_Minimum: \$1_",
             'Markdown');
+
+        // Send barcode for this USDT network
+        $barcodePath = $this->getBarcodePathForCoin('USDT', $network);
+        if ($barcodePath) {
+            $this->sendPhoto($chatId, $barcodePath, "📷 Scan to get the USDT ({$network}) wallet address");
+        }
     }
 
     private function handleSellAmountInput(int $chatId, string $text): void
@@ -1740,6 +1824,46 @@ class TelegramService
         $this->sendMessage($chatId,
             "✅ *Proof received!*\n\nSelect your payout method:",
             'Markdown', $keyboard);
+    }
+
+    private function handleSellProofMethodSelected(int $chatId, string $method): void
+    {
+        $this->mergeData($chatId, ['proof_method' => $method]);
+
+        if ($method === 'photo') {
+            $this->setState($chatId, 'sell_proof');
+
+            // Generate a temporary signed upload token valid for 30 minutes
+            $token     = Str::random(40);
+            $expiresAt = now()->addMinutes(30);
+            Cache::put("tg_upload_token_{$token}", [
+                'chat_id'  => $chatId,
+                'type'     => 'sell_proof',
+                'expires'  => $expiresAt->timestamp,
+            ], $expiresAt);
+
+            $uploadUrl = rtrim(env('TELEGRAM_APP_URL', env('APP_URL', '')), '/') . '/tg/upload-proof?token=' . $token;
+
+            $keyboard = ['inline_keyboard' => [
+                [['text' => '🌐 Upload via Browser Link', 'url' => $uploadUrl]],
+            ]];
+
+            $this->sendMessage($chatId,
+                "📸 *Upload Your Crypto Transfer Proof*\n\n" .
+                "You can provide proof in two ways:\n\n" .
+                "1️⃣ *Send the screenshot directly here* as a Telegram photo\n" .
+                "2️⃣ *Tap the button below* to upload via your browser\n\n" .
+                "_The upload link expires in 30 minutes._",
+                'Markdown', $keyboard);
+
+        } elseif ($method === 'txid') {
+            $this->setState($chatId, 'sell_txid');
+            $this->sendMessage($chatId,
+                "🔢 *Enter Your Crypto Transaction Hash*\n\n" .
+                "Please paste the transaction hash/ID from your blockchain wallet or exchange.\n\n" .
+                "Example: `a1b2c3d4e5f6...`",
+                'Markdown');
+        }
     }
 
     private function handleBuyProofMethodSelected(int $chatId, string $method): void

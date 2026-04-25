@@ -44,8 +44,9 @@ use App\Http\Controllers\BugReportController;
 use App\Http\Controllers\Admin\AdminTerminalController;
 use App\Http\Controllers\UserAiController;
 use App\Http\Controllers\Api\TransactionController;
-use App\Http\Controllers\Api\CryptoRateupdateController;
+use App\Http\Controllers\Api\CryptoRateUpdateController as CryptoRateupdateController;
 use App\Http\Controllers\TelegramLoginController;
+use App\Http\Controllers\TelegramProofUploadController;
 
 use Illuminate\Support\Facades\Http;
 
@@ -93,6 +94,12 @@ Route::get('/terms', fn() => view('terms'))->name('terms');
 
 // ── Telegram Login Widget callback (no auth required) ───────────────────────
 Route::match(['get', 'post'], '/auth/telegram/callback', [TelegramLoginController::class, 'callback'])->name('telegram.login.callback');
+
+// ── Telegram proof upload (no auth — token-gated) ────────────────────────────
+Route::prefix('tg')->name('tg.')->group(function () {
+    Route::get('/upload-proof',  [TelegramProofUploadController::class, 'show'])->name('upload-proof.show');
+    Route::post('/upload-proof', [TelegramProofUploadController::class, 'store'])->name('upload-proof.store');
+});
 
 // ── WhatsApp Bot Webhook (no auth required — called by Meta servers) ─────────
 Route::get('/whatsapp/webhook',  [\App\Http\Controllers\WhatsAppController::class, 'verify'])->name('whatsapp.verify');
@@ -361,6 +368,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/crypto-rates/bulk-update', [AdminCryptoRateController::class, 'bulkUpdate'])->name('admin.crypto-rates.bulk-update');
     Route::delete('/crypto-rates/{id}', [AdminCryptoRateController::class, 'delete'])->name('admin.crypto-rates.delete');
     Route::get('/crypto-rates/current-prices', [AdminCryptoRateController::class, 'getCurrentPrices'])->name('admin.crypto-rates.current-prices');
+    Route::get('/crypto-rates/live-rates', [AdminCryptoRateController::class, 'getLiveRates'])->name('admin.crypto-rates.live-rates');
     
     // Gift Card Rate Management
     Route::get('/gift-card-rates', [AdminGiftCardRateController::class, 'index'])->name('admin.gift-card-rates.index');
