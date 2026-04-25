@@ -424,9 +424,17 @@
             </div>
             <div class="kx-tx-card-bot">
                 <span class="kx-tx-date"><i class="bi bi-calendar3 me-1"></i>{{ $trade->created_at->format('d M Y, H:i') }}</span>
-                <button class="kx-preview-btn" onclick="openPreview('{{ $trade->type }}', {{ $trade->id }})">
-                    <i class="bi bi-eye-fill"></i> Preview
-                </button>
+                <div class="d-flex gap-1">
+                    <button class="kx-preview-btn" onclick="openPreview('{{ $trade->type }}', {{ $trade->id }})">
+                        <i class="bi bi-eye-fill"></i> Preview
+                    </button>
+                    @if(in_array($trade->status, ['completed','approved']) && in_array($trade->type, ['sell','buy']))
+                    <a href="{{ $trade->type === 'sell' ? route('trades.sell.receipt', $trade->id) : route('trades.buy.receipt', $trade->id) }}"
+                       target="_blank" class="kx-preview-btn" title="Download Receipt">
+                        <i class="bi bi-download"></i>
+                    </a>
+                    @endif
+                </div>
             </div>
         </div>
     @empty

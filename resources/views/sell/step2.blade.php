@@ -4,6 +4,7 @@
     $nairaAmount = $nairaAmount ?? session('sell.naira_amount', 0);
     $coin        = $coin        ?? session('sell.coin', '');
     $walletAddress = $walletAddress ?? '';
+    $rateExpiresAt = session('sell.rate_expires_at', 0);
     $barcodeImages = [
         'BTC'  => asset('barcodes/btc-barcode.png'),
         'ETH'  => asset('barcodes/eth-barcode.png'),
@@ -164,9 +165,9 @@
 
             {{-- Countdown --}}
             <div class="kx-timer" id="timerBox">
-                <i class="bi bi-hourglass-split kx-timer-icon"></i>
-                <div class="kx-timer-text">Time to send payment:</div>
-                <div class="kx-timer-count" id="timerDisplay">50:00</div>
+                <i class="bi bi-lock-fill kx-timer-icon"></i>
+                <div class="kx-timer-text">Rate locked — expires in:</div>
+                <div class="kx-timer-count" id="timerDisplay">15:00</div>
             </div>
         </div>
     </div>
@@ -289,22 +290,24 @@ function copyWallet() {
     }).catch(() => showToast('Failed to copy address.','err'));
 }
 
-/* ── Countdown timer ── */
-let timeLeft = 50 * 60;
+/* ── Rate-lock countdown (15 min from step 1) ── */
+const rateExpiresAt = {{ $rateExpiresAt > 0 ? $rateExpiresAt * 1000 : (time() + 900) * 1000 }};
+let timeLeft = Math.max(0, Math.floor((rateExpiresAt - Date.now()) / 1000));
 const timerEl = document.getElementById('timerDisplay');
 const timerBox = document.getElementById('timerBox');
 const submitBtn = document.getElementById('submitBtn');
 function tick() {
+    timeLeft = Math.max(0, Math.floor((rateExpiresAt - Date.now()) / 1000));
     const m = Math.floor(timeLeft / 60);
     const s = timeLeft % 60;
     timerEl.textContent = `${m}:${s.toString().padStart(2,'0')}`;
-    if (timeLeft <= 300) timerBox.classList.add('danger');
+    if (timeLeft <= 120) timerBox.classList.add('danger');
     if (timeLeft <= 0) {
         clearInterval(timerInterval);
         submitBtn.disabled = true;
-        showToast('Time expired! Please restart the transaction.','err');
+        timerEl.textContent = 'EXPIRED';
+        showToast('Rate lock expired! Please restart your trade to get the current rate.','err');
     }
-    timeLeft--;
 }
 tick();
 const timerInterval = setInterval(tick, 1000);

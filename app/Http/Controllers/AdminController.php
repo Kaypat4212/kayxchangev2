@@ -9,7 +9,9 @@ use App\Models\Kyc;
 use App\Models\Referral;
 use App\Models\SellTrade;
 use App\Models\SiteContent;
+use App\Models\AdminSetting;
 use App\Services\AdminTradeAlertService;
+use App\Services\PayoutService;
 use App\Mail\TradeNotification;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
@@ -87,6 +89,13 @@ class AdminController extends Controller
 
         if (Auth::attempt($credentials)) {
             if (Auth::user()->is_admin) {
+                $admin = Auth::user();
+                // If 2FA is enabled, redirect to challenge instead of dashboard
+                if ($admin->two_factor_enabled && $admin->two_factor_secret) {
+                    $request->session()->put('2fa_admin_user_id', $admin->id);
+                    Auth::logout();
+                    return redirect()->route('admin.2fa.challenge');
+                }
                 return redirect()->route('admin.dashboard');
             } else {
                 Auth::logout();
@@ -95,6 +104,46 @@ class AdminController extends Controller
         }
 
         return redirect()->route('admin.login')->withErrors(['email' => 'Invalid credentials.']);
+    }
+
+    public function show2faChallenge(Request $request)
+    {
+        if (!$request->session()->has('2fa_admin_user_id')) {
+            return redirect()->route('admin.login');
+        }
+        return view('admin.2fa-challenge');
+    }
+
+    public function verify2faChallenge(Request $request)
+    {
+        $request->validate(['code' => 'required|digits:6']);
+
+        $userId = $request->session()->get('2fa_admin_user_id');
+        if (!$userId) {
+            return redirect()->route('admin.login');
+        }
+
+        $admin = User::find($userId);
+        if (!$admin || !$admin->is_admin) {
+            $request->session()->forget('2fa_admin_user_id');
+            return redirect()->route('admin.login')->withErrors(['code' => 'Session expired.']);
+        }
+
+        try {
+            $secret = decrypt($admin->two_factor_secret);
+            $google2fa = app(\PragmaRX\Google2FAQRCode\Google2FA::class);
+            $valid = $google2fa->verifyKey($secret, $request->code);
+        } catch (\Throwable $e) {
+            $valid = false;
+        }
+
+        if (!$valid) {
+            return back()->withErrors(['code' => 'Invalid or expired authentication code.']);
+        }
+
+        $request->session()->forget('2fa_admin_user_id');
+        Auth::login($admin);
+        return redirect()->route('admin.dashboard');
     }
 
     public function dashboard()
@@ -246,6 +295,9 @@ class AdminController extends Controller
                     $tradeUser = User::find($trade->user_id);
                     if ($tradeUser) {
                         $isCompleted = $request->status === 'completed';
+                        $buyAdminProofUrl = $trade->admin_payment_proof
+                            ? asset('storage/' . $trade->admin_payment_proof)
+                            : null;
                         Mail::to($tradeUser->email)->send(new TradeNotification(
                             user: $tradeUser,
                             templateKey: $isCompleted ? 'buy_trade_completed' : 'buy_trade_rejected',
@@ -256,33 +308,50 @@ class AdminController extends Controller
                                 'wallet_address' => $trade->wallet_address ?? 'N/A',
                                 'reference'      => $trade->transaction_ref ?? ('BUY-' . $trade->id),
                                 'reason'         => $request->input('rejection_reason', 'Your order did not meet our requirements.'),
+                                'proof_url'      => $buyAdminProofUrl,
                             ],
                             badge: [
                                 'text'  => $isCompleted ? 'Order Completed' : 'Order Rejected',
                                 'color' => $isCompleted ? '#00cc00' : '#dc3545',
                             ],
-                            ctaUrl: url('/dashboard'),
-                            ctaText: 'Go to Dashboard',
+                            ctaUrl: $buyAdminProofUrl ?? url('/dashboard'),
+                            ctaText: $buyAdminProofUrl ? 'View Payment Proof' : 'Go to Dashboard',
                         ));
                     }
                 } catch (\Exception $mailEx) {
                     Log::warning('Buy status email failed: ' . $mailEx->getMessage());
                 }
 
-                // Notify user via Telegram if rejected
-                if (!$isCompleted && $tradeUser && $tradeUser->telegram_chat_id) {
+                // Notify user via Telegram if rejected or completed
+                if ($tradeUser && $tradeUser->telegram_chat_id) {
                     try {
-                        $rejectionReason = $request->input('rejection_reason', '');
-                        $reasonLine = $rejectionReason ? "\n\n📋 *Reason:* " . $rejectionReason : "\n\nPlease contact support for more details.";
-                        app(\App\Services\TelegramService::class)->sendMessage(
-                            (int)$tradeUser->telegram_chat_id,
-                            "❌ *Your Buy Order was Rejected*\n\n" .
-                            "🔖 Ref: `{$trade->transaction_ref}`\n" .
-                            "🪙 {$trade->coin}: \$" . number_format((float)$trade->usd_amount, 2) . "\n" .
-                            "💴 Naira: ₦" . number_format((float)$trade->naira_amount, 2) .
-                            $reasonLine,
-                            'Markdown'
-                        );
+                        if (!$isCompleted) {
+                            $rejectionReason = $request->input('rejection_reason', '');
+                            $reasonLine = $rejectionReason ? "\n\n📋 *Reason:* " . $rejectionReason : "\n\nPlease contact support for more details.";
+                            app(\App\Services\TelegramService::class)->sendMessage(
+                                (int)$tradeUser->telegram_chat_id,
+                                "❌ *Your Buy Order was Rejected*\n\n" .
+                                "🔖 Ref: `{$trade->transaction_ref}`\n" .
+                                "🪙 {$trade->coin}: \$" . number_format((float)$trade->usd_amount, 2) . "\n" .
+                                "💴 Naira: ₦" . number_format((float)$trade->naira_amount, 2) .
+                                $reasonLine,
+                                'Markdown'
+                            );
+                        } else {
+                            $proofLine = isset($buyAdminProofUrl) && $buyAdminProofUrl
+                                ? "\n\n🧾 [View Payment Proof]({$buyAdminProofUrl})"
+                                : '';
+                            app(\App\Services\TelegramService::class)->sendMessage(
+                                (int)$tradeUser->telegram_chat_id,
+                                "✅ *Your Buy Order is Completed*\n\n" .
+                                "🔖 Ref: `{$trade->transaction_ref}`\n" .
+                                "🪙 {$trade->coin}: \$" . number_format((float)$trade->usd_amount, 2) . "\n" .
+                                "💴 Naira: ₦" . number_format((float)$trade->naira_amount, 2) . "\n" .
+                                "🏦 Wallet: " . ($trade->wallet_address ?? 'N/A') .
+                                $proofLine,
+                                'Markdown'
+                            );
+                        }
                     } catch (\Throwable $tgEx) {
                         Log::warning('Buy rejection Telegram notify failed: ' . $tgEx->getMessage());
                     }
@@ -312,7 +381,50 @@ class AdminController extends Controller
         try {
             $trade = SellTrade::findOrFail($id);
             $oldStatus = $trade->status;
-            $trade->update(['status' => $request->status]);
+            $newStatus = $request->input('status');
+
+            $updatePayload = ['status' => $newStatus];
+
+            // Store admin payment proof if provided
+            if ($request->hasFile('admin_payment_proof')) {
+                if ($trade->admin_payment_proof) {
+                    Storage::disk('public')->delete($trade->admin_payment_proof);
+                }
+                $updatePayload['admin_payment_proof'] = $request->file('admin_payment_proof')->store('admin-sell-proofs', 'public');
+            }
+
+            $trade->update($updatePayload);
+
+            // Auto-payout via Paystack when sell is completed with bank transfer
+            if ($newStatus === 'completed' && $oldStatus !== 'completed'
+                && $trade->payment_method !== 'wallet_balance'
+                && AdminSetting::get('auto_sell_payout_enabled', '0') === '1'
+                && (float)($trade->naira_amount ?? 0) > 0
+                && !empty($trade->account_number)
+            ) {
+                try {
+                    $bankDetails = [
+                        'account_name'   => $trade->account_name ?? '',
+                        'account_number' => $trade->account_number,
+                        'bank_code'      => $trade->bank_code ?? '',
+                    ];
+                    $payout = app(PayoutService::class)->payoutViaPaystack(
+                        $bankDetails,
+                        (float)$trade->naira_amount,
+                        'SELL-PAY-' . $trade->id . '-' . time()
+                    );
+                    if ($payout['success']) {
+                        Log::info("[AutoPayout] Sell #{$trade->id} payout initiated: " . ($payout['transfer_code'] ?? ''));
+                    } else {
+                        Log::warning("[AutoPayout] Sell #{$trade->id} payout failed: " . ($payout['error'] ?? 'unknown'));
+                    }
+                } catch (\Throwable $payoutEx) {
+                    Log::error('[AutoPayout] Exception sell #' . $trade->id . ': ' . $payoutEx->getMessage());
+                }
+            }
+
+            // Alias for rest of block
+            $request->merge(['status' => $newStatus]);
 
             if (in_array($request->status, ['completed', 'rejected']) && $oldStatus !== $request->status) {
                 try {
@@ -322,6 +434,9 @@ class AdminController extends Controller
                         $paymentMethod = $trade->payment_method === 'wallet_balance'
                             ? 'Wallet Balance'
                             : ($trade->bank_name ? $trade->bank_name . ' (' . ($trade->account_number ?? '') . ')' : 'Bank Transfer');
+                        $adminProofUrl = $trade->admin_payment_proof
+                            ? asset('storage/' . $trade->admin_payment_proof)
+                            : null;
                         Mail::to($tradeUser->email)->send(new TradeNotification(
                             user: $tradeUser,
                             templateKey: $isCompleted ? 'sell_trade_completed' : 'sell_trade_rejected',
@@ -332,34 +447,50 @@ class AdminController extends Controller
                                 'reference'      => $trade->transaction_ref ?? ('SELL-' . $trade->id),
                                 'payment_method' => $paymentMethod,
                                 'reason'         => $request->input('rejection_reason', 'Your order did not meet our requirements.'),
+                                'proof_url'      => $adminProofUrl,
                             ],
                             badge: [
                                 'text'  => $isCompleted ? 'Payment Sent' : 'Order Rejected',
                                 'color' => $isCompleted ? '#00cc00' : '#dc3545',
                             ],
-                            ctaUrl: url('/dashboard'),
-                            ctaText: 'Go to Dashboard',
+                            ctaUrl: $adminProofUrl ?? url('/dashboard'),
+                            ctaText: $adminProofUrl ? 'View Payment Proof' : 'Go to Dashboard',
                         ));
                     }
                 } catch (\Exception $mailEx) {
                     Log::warning('Sell status email failed: ' . $mailEx->getMessage());
                 }
 
-                // Notify user via Telegram if rejected
-                if (!$isCompleted && $tradeUser && $tradeUser->telegram_chat_id) {
+                // Notify user via Telegram if rejected or completed
+                if ($tradeUser && $tradeUser->telegram_chat_id) {
                     try {
-                        $rejectionReason = $request->input('rejection_reason', '');
-                        $reasonLine = $rejectionReason ? "\n\n📋 *Reason:* " . $rejectionReason : "\n\nPlease contact support for more details.";
-                        app(\App\Services\TelegramService::class)->sendMessage(
-                            (int)$tradeUser->telegram_chat_id,
-                            "❌ *Your Sell Trade was Rejected*\n\n" .
-                            "🔖 Ref: `{$trade->transaction_ref}`\n" .
-                            "💴 Amount: ₦" . number_format((float)($trade->naira_amount ?? 0), 2) .
-                            $reasonLine,
-                            'Markdown'
-                        );
+                        if (!$isCompleted) {
+                            $rejectionReason = $request->input('rejection_reason', '');
+                            $reasonLine = $rejectionReason ? "\n\n📋 *Reason:* " . $rejectionReason : "\n\nPlease contact support for more details.";
+                            app(\App\Services\TelegramService::class)->sendMessage(
+                                (int)$tradeUser->telegram_chat_id,
+                                "❌ *Your Sell Trade was Rejected*\n\n" .
+                                "🔖 Ref: `{$trade->transaction_ref}`\n" .
+                                "💴 Amount: ₦" . number_format((float)($trade->naira_amount ?? 0), 2) .
+                                $reasonLine,
+                                'Markdown'
+                            );
+                        } else {
+                            $proofLine = isset($adminProofUrl) && $adminProofUrl
+                                ? "\n\n🧾 [View Payment Proof]({$adminProofUrl})"
+                                : '';
+                            app(\App\Services\TelegramService::class)->sendMessage(
+                                (int)$tradeUser->telegram_chat_id,
+                                "✅ *Your Sell Trade is Completed*\n\n" .
+                                "🔖 Ref: `{$trade->transaction_ref}`\n" .
+                                "🪙 Coin: {$trade->coin}\n" .
+                                "💴 Naira Paid: ₦" . number_format((float)($trade->naira_amount ?? 0), 2) .
+                                $proofLine,
+                                'Markdown'
+                            );
+                        }
                     } catch (\Throwable $tgEx) {
-                        Log::warning('Sell rejection Telegram notify failed: ' . $tgEx->getMessage());
+                        Log::warning('Sell status Telegram notify failed: ' . $tgEx->getMessage());
                     }
                 }
 

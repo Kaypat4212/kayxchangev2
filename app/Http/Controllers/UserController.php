@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Models\SellTrade;
+use App\Models\BuyTrade;
 
 class UserController extends Controller
 {
@@ -123,7 +125,9 @@ class UserController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password' => 'required|min:6|confirmed',
+            'new_password'     => ['required', 'min:8', 'confirmed', 'regex:/[0-9]/', 'regex:/[A-Z]/'],
+        ], [
+            'new_password.regex' => 'Password must contain at least one uppercase letter and one number.',
         ]);
 
         $user = Auth::user();
@@ -135,6 +139,22 @@ class UserController extends Controller
         $user->password = Hash::make($request->new_password);
         $user->save();
 
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Password changed successfully.']);
+        }
+
         return back()->with('success', 'Password changed successfully.');
+    }
+
+    public function sellReceipt($id)
+    {
+        $trade = SellTrade::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        return view('trades.receipt', ['trade' => $trade, 'type' => 'sell']);
+    }
+
+    public function buyReceipt($id)
+    {
+        $trade = BuyTrade::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        return view('trades.receipt', ['trade' => $trade, 'type' => 'buy']);
     }
 }

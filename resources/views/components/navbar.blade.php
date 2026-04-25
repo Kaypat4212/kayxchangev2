@@ -143,6 +143,60 @@
     .kx-nav-link.kx-active::after { display: none; }
     .kx-nav-actions { flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(0,204,0,0.13); }
 }
+/* ── Notification Bell ── */
+.kx-notif-wrap { position: relative; }
+.kx-notif-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.75);
+    border-radius: 10px;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 1rem; position: relative;
+    transition: all .2s;
+}
+.kx-notif-btn:hover { border-color: #00cc00; color: #00cc00; background: rgba(0,204,0,0.08); }
+.kx-notif-badge {
+    position: absolute; top: -5px; right: -5px;
+    background: #ef4444; color: #fff;
+    font-size: .6rem; font-weight: 700;
+    min-width: 16px; height: 16px; border-radius: 99px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 3px; line-height: 1;
+}
+.kx-notif-dropdown {
+    display: none; position: absolute; right: 0; top: calc(100% + 8px);
+    width: 320px; max-height: 380px;
+    background: #131d1a; border: 1px solid rgba(0,204,0,0.2);
+    border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    z-index: 2000; overflow: hidden;
+}
+.kx-notif-dropdown.open { display: flex; flex-direction: column; }
+.kx-notif-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .7rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.07);
+    font-size: .8rem; font-weight: 600; color: #e4e8f0;
+}
+.kx-notif-markall {
+    background: none; border: none; color: #00cc00; font-size: .72rem; cursor: pointer; padding: 0;
+}
+.kx-notif-list { overflow-y: auto; flex: 1; }
+.kx-notif-item {
+    display: flex; gap: .7rem; padding: .8rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer; transition: background .15s;
+    text-decoration: none; color: inherit;
+}
+.kx-notif-item:hover { background: rgba(255,255,255,0.04); }
+.kx-notif-item.unread { background: rgba(0,204,0,0.05); }
+.kx-notif-icon { font-size: 1.1rem; flex-shrink:0; margin-top:.1rem; }
+.kx-notif-body { flex: 1; min-width: 0; }
+.kx-notif-title { font-size: .8rem; font-weight: 600; color: #e4e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-notif-msg { font-size: .72rem; color: #90a099; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-notif-time { font-size: .65rem; color: #90a099; margin-top: .2rem; }
+.kx-notif-dot { width: 7px; height: 7px; border-radius: 50%; background: #00cc00; flex-shrink:0; margin-top:.35rem; }
+.kx-notif-empty { padding: 2rem 1rem; text-align: center; font-size: .8rem; color: #90a099; line-height: 1.9; }
+@media (max-width: 480px) { .kx-notif-dropdown { width: calc(100vw - 30px); right: -40px; } }
 </style>
 
 <nav class="kx-navbar navbar navbar-expand-lg" id="kxMainNav">
@@ -253,6 +307,22 @@
 
       <div class="d-flex align-items-center kx-nav-actions gap-2">
         @auth
+        {{-- Notification Bell --}}
+        <div class="kx-notif-wrap" id="kxNotifWrap">
+          <button class="kx-notif-btn" id="kxNotifBtn" title="Notifications" aria-label="Notifications">
+            <i class="bi bi-bell-fill"></i>
+            <span class="kx-notif-badge" id="kxNotifBadge" style="display:none">0</span>
+          </button>
+          <div class="kx-notif-dropdown" id="kxNotifDropdown">
+            <div class="kx-notif-header">
+              <span><i class="bi bi-bell me-1"></i>Notifications</span>
+              <button class="kx-notif-markall" id="kxMarkAll" onclick="kxMarkAllRead()">Mark all read</button>
+            </div>
+            <div class="kx-notif-list" id="kxNotifList">
+              <div class="kx-notif-empty" id="kxNotifEmpty"><i class="bi bi-bell-slash"></i><br>No new notifications</div>
+            </div>
+          </div>
+        </div>
         <form method="POST" action="{{ route('logout') }}" class="d-inline m-0">
           @csrf
           <button type="submit" class="kx-btn-logout">
@@ -284,3 +354,97 @@
     }, { passive: true });
 })();
 </script>
+
+@auth
+<script>
+(function() {
+    const btn    = document.getElementById('kxNotifBtn');
+    const drop   = document.getElementById('kxNotifDropdown');
+    const badge  = document.getElementById('kxNotifBadge');
+    const list   = document.getElementById('kxNotifList');
+    const empty  = document.getElementById('kxNotifEmpty');
+    if (!btn) return;
+
+    function timeAgo(dateStr) {
+        const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+        if (diff < 60) return diff + 's ago';
+        if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+        return Math.floor(diff/86400) + 'd ago';
+    }
+    function iconForType(type) {
+        const map = {
+            trade_approved:'bi-check-circle-fill', trade_rejected:'bi-x-circle-fill',
+            trade_pending:'bi-clock-fill', kyc_approved:'bi-shield-check',
+            kyc_rejected:'bi-shield-x', deposit:'bi-wallet2', withdrawal:'bi-cash-stack',
+        };
+        return map[type] || 'bi-bell-fill';
+    }
+    function colorForType(type) {
+        if (type && type.includes('rejected')) return '#ef4444';
+        if (type && type.includes('approved')) return '#00cc00';
+        return '#60a5fa';
+    }
+
+    function renderNotifs(items) {
+        if (!items.length) {
+            list.innerHTML = '<div class="kx-notif-empty" id="kxNotifEmpty"><i class="bi bi-bell-slash"></i><br>No notifications yet</div>';
+            return;
+        }
+        list.innerHTML = items.map(n => `
+            <a href="#" class="kx-notif-item ${n.is_read ? '' : 'unread'}" onclick="kxReadNotif(event,${n.id})">
+                <i class="bi ${iconForType(n.type)} kx-notif-icon" style="color:${colorForType(n.type)}"></i>
+                <div class="kx-notif-body">
+                    <div class="kx-notif-title">${n.title}</div>
+                    <div class="kx-notif-msg">${n.message}</div>
+                    <div class="kx-notif-time">${timeAgo(n.created_at)}</div>
+                </div>
+                ${n.is_read ? '' : '<div class="kx-notif-dot"></div>'}
+            </a>
+        `).join('');
+    }
+
+    function fetchNotifs() {
+        fetch('/api/notifications', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                const unread = data.unread_count || 0;
+                badge.textContent = unread > 99 ? '99+' : unread;
+                badge.style.display = unread > 0 ? 'flex' : 'none';
+                renderNotifs(data.notifications || []);
+            })
+            .catch(() => {});
+    }
+
+    window.kxReadNotif = function(e, id) {
+        e.preventDefault();
+        fetch('/api/notifications/'+id+'/mark-read', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }
+        }).then(() => fetchNotifs());
+    };
+
+    window.kxMarkAllRead = function() {
+        fetch('/api/notifications/mark-all-read', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }
+        }).then(() => fetchNotifs());
+    };
+
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const open = drop.classList.toggle('open');
+        if (open) fetchNotifs();
+    });
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('kxNotifWrap')?.contains(e.target)) {
+            drop.classList.remove('open');
+        }
+    });
+
+    fetchNotifs();
+    setInterval(fetchNotifs, 30000);
+})();
+</script>
+@endauth

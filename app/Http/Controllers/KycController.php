@@ -23,8 +23,10 @@ class KycController extends Controller
     {
         try {
             $validated = $request->validate([
-                'id_document' => 'required|file|mimes:pdf,jpeg,png,jpg|max:2048',
-                'selfie' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'id_document'   => 'required|file|mimes:pdf,jpeg,png,jpg|max:2048',
+                'selfie'        => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'document_type' => 'required|string|max:100',
+                'expiry_date'   => 'nullable|date|after:today|required_if:document_type,drivers_license',
             ]);
 
             $user = auth()->user();
@@ -35,10 +37,12 @@ class KycController extends Controller
 
             // Create KYC record
             $kyc = Kyc::create([
-                'user_id' => $user->id,
+                'user_id'          => $user->id,
                 'id_document_path' => $idPath,
-                'selfie_path' => $selfiePath,
-                'status' => 'pending',
+                'selfie_path'      => $selfiePath,
+                'document_type'    => $request->document_type,
+                'expiry_date'      => $request->expiry_date ?: null,
+                'status'           => 'pending',
             ]);
 
             // Update user KYC status to pending (0)

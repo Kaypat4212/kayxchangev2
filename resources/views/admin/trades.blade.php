@@ -106,9 +106,52 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             <h4><i class="bi bi-arrow-left-right me-2" style="color:var(--kx-green)"></i>Transaction Management</h4>
             <small>Review all trades · Confirm payments before approving</small>
         </div>
-        <button class="btn-kx-green" onclick="aiTradeSummary()" id="btn-ai-summary">
-            <i class="bi bi-robot"></i> AI Summary
-        </button>
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn-kx-green" onclick="toggleExportPanel()" id="btn-export">
+                <i class="bi bi-download"></i> Export CSV
+            </button>
+            <button class="btn-kx-green" onclick="aiTradeSummary()" id="btn-ai-summary">
+                <i class="bi bi-robot"></i> AI Summary
+            </button>
+        </div>
+    </div>
+
+    {{-- Export Panel --}}
+    <div id="exportPanel" style="display:none;background:var(--kx-card);border:1px solid rgba(0,204,0,.2);border-radius:12px;padding:1.2rem;margin-bottom:1.25rem;">
+        <form method="GET" action="{{ route('admin.export.trades') }}" class="row g-2 align-items-end">
+            <div class="col-sm-3">
+                <label class="form-label text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;">Type</label>
+                <select name="type" class="form-select form-select-sm" style="background:#0d1117;border-color:rgba(255,255,255,.1);color:#e4e8f0;">
+                    <option value="all">All Trades</option>
+                    <option value="sell">Sell Only</option>
+                    <option value="buy">Buy Only</option>
+                </select>
+            </div>
+            <div class="col-sm-3">
+                <label class="form-label text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;">From</label>
+                <input type="date" name="from" class="form-control form-control-sm" style="background:#0d1117;border-color:rgba(255,255,255,.1);color:#e4e8f0;"
+                    value="{{ now()->subDays(30)->format('Y-m-d') }}">
+            </div>
+            <div class="col-sm-3">
+                <label class="form-label text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;">To</label>
+                <input type="date" name="to" class="form-control form-control-sm" style="background:#0d1117;border-color:rgba(255,255,255,.1);color:#e4e8f0;"
+                    value="{{ now()->format('Y-m-d') }}">
+            </div>
+            <div class="col-sm-3">
+                <label class="form-label text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;">Status (optional)</label>
+                <select name="status" class="form-select form-select-sm" style="background:#0d1117;border-color:rgba(255,255,255,.1);color:#e4e8f0;">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn-kx-green"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Download CSV</button>
+            </div>
+        </form>
     </div>
 
     {{-- AI Trade Summary result --}}
@@ -450,7 +493,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                                 <i class="bi bi-eye"></i> View
                             </button>
                             {{-- Status form --}}
-                            <form id="sell-form-{{ $t->id }}" action="{{ route('admin.sells.updateStatus', $t->id) }}" method="POST" style="display:flex;gap:.3rem;align-items:center">
+                            <form id="sell-form-{{ $t->id }}" action="{{ route('admin.sells.updateStatus', $t->id) }}" method="POST" enctype="multipart/form-data" style="display:flex;gap:.3rem;align-items:center">
                                 @csrf @method('PATCH')
                                 <select name="status" id="sell-sel-{{ $t->id }}" class="kx-input" style="width:108px;padding:.3rem .5rem!important;font-size:.72rem!important">
                                     @foreach(['pending','completed','rejected'] as $st)
@@ -762,6 +805,17 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <p style="font-size:.78rem;color:var(--kx-yellow);font-weight:600;margin-bottom:.6rem"><i class="bi bi-exclamation-triangle me-1"></i>Completing this trade — please confirm:</p>
                     <label><input type="checkbox" id="sc-chk1" onchange="checkSellReady()"> I have received the <strong id="sc-coin-chk"></strong> from the user's wallet.</label>
                     <label style="margin-top:.4rem"><input type="checkbox" id="sc-chk2" onchange="checkSellReady()"> I have transferred <strong id="sc-naira-chk"></strong> to <strong id="sc-accname-chk"></strong> — <strong id="sc-accnum-chk"></strong>.</label>
+                    {{-- Payment proof upload --}}
+                    <div style="margin-top:.75rem;border-top:1px solid rgba(255,255,255,.07);padding-top:.75rem">
+                        <label style="font-size:.76rem;color:var(--kx-muted);display:block;margin-bottom:.3rem">
+                            <i class="bi bi-image me-1"></i>Payment Proof / Transfer Receipt <span style="font-weight:400;color:var(--kx-muted)">(optional but recommended)</span>
+                        </label>
+                        <input type="file" id="sc-proof-file" accept="image/png,image/jpeg,image/webp,image/gif"
+                            style="width:100%;font-size:.8rem;background:#0d1117;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 10px;color:#e4e8f0;">
+                        <div id="sc-proof-preview" style="display:none;margin-top:8px;">
+                            <img id="sc-proof-img" src="" style="max-height:100px;border-radius:8px;border:1px solid rgba(255,255,255,.1);">
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer" style="justify-content:flex-end;gap:.5rem">
@@ -1136,6 +1190,10 @@ function handleSellApprove(id, user, bank, accNum, accName, wallet, coin, naira,
     // Reset rejection fields
     document.getElementById('sc-rejection-preset').value = '';
     document.getElementById('sc-rejection-reason').value = '';
+    // Reset proof upload
+    document.getElementById('sc-proof-file').value = '';
+    document.getElementById('sc-proof-preview').style.display = 'none';
+    document.getElementById('sc-proof-img').src = '';
     if(isCompleting){
         document.getElementById('sc-chk1').checked = false;
         document.getElementById('sc-chk2').checked = false;
@@ -1170,9 +1228,22 @@ function checkSellReady(){
 }
 // live-validate rejection textarea
 document.getElementById('sc-rejection-reason').addEventListener('input', checkSellReady);
+// proof image preview
+document.getElementById('sc-proof-file').addEventListener('change', function(){
+    const prev = document.getElementById('sc-proof-preview');
+    const img  = document.getElementById('sc-proof-img');
+    if(this.files && this.files[0]){
+        img.src = URL.createObjectURL(this.files[0]);
+        prev.style.display = 'block';
+    } else {
+        prev.style.display = 'none';
+        img.src = '';
+    }
+});
 function submitSellForm(){
     if(_activeSellId !== null){
         const newStatus = document.getElementById('sc-newstatus').textContent.toLowerCase();
+        const form = document.getElementById('sell-form-'+_activeSellId);
         if(newStatus === 'rejected'){
             const reason = (document.getElementById('sc-rejection-reason').value || '').trim();
             if(reason.length < 5){ alert('Please enter a rejection reason before proceeding.'); return; }
@@ -1183,13 +1254,42 @@ function submitSellForm(){
                 hidden.type = 'hidden';
                 hidden.name = 'rejection_reason';
                 hidden.id   = 'sell-rejection-reason-input-'+_activeSellId;
-                document.getElementById('sell-form-'+_activeSellId).appendChild(hidden);
+                form.appendChild(hidden);
             }
             hidden.value = reason;
         }
+        // Transfer proof file from modal to the sell form via a DataTransfer trick
+        const proofInput = document.getElementById('sc-proof-file');
+        if(proofInput && proofInput.files && proofInput.files.length > 0){
+            // Create a real file input and append to form
+            let proofHidden = form.querySelector('input[name="admin_payment_proof"]');
+            if(!proofHidden){
+                proofHidden = document.createElement('input');
+                proofHidden.type = 'file';
+                proofHidden.name = 'admin_payment_proof';
+                proofHidden.style.display = 'none';
+                form.appendChild(proofHidden);
+            }
+            // Use DataTransfer to assign files
+            try {
+                const dt = new DataTransfer();
+                dt.items.add(proofInput.files[0]);
+                proofHidden.files = dt.files;
+            } catch(e) {
+                // fallback: swap the input itself into the form (detach from modal, attach to form)
+                proofInput.name = 'admin_payment_proof';
+                form.appendChild(proofInput);
+            }
+        }
         bootstrap.Modal.getInstance(document.getElementById('sellConfirmModal'))?.hide();
-        document.getElementById('sell-form-'+_activeSellId).submit();
+        form.submit();
     }
+}
+
+// ── Export panel toggle ──────────────────────
+function toggleExportPanel() {
+    const p = document.getElementById('exportPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
 }
 
 // ── AI: Trade Summary ─────────────────────────

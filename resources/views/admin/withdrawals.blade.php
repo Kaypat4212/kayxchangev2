@@ -154,8 +154,24 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     </div>
                 </div>
 
-            </div>
-            <div id="ap-save-notice" style="display:none;margin-top:.75rem;font-size:.78rem;padding:.5rem .875rem;border-radius:7px;background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.2);color:var(--kx-green)">
+                {{-- Sell Trade Auto-Payout --}}
+                <div style="background:var(--kx-card2);border:1px solid rgba(0,204,0,.25);border-radius:10px;padding:1rem 1.1rem">
+                    <div style="font-size:.7rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Sell Trades</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between">
+                        <div>
+                            <div style="font-weight:600;font-size:.88rem;color:#fff">Auto-Pay Sellers</div>
+                            <div style="font-size:.72rem;color:var(--kx-muted);margin-top:.15rem">Pay user bank on sell approval</div>
+                        </div>
+                        <label class="ap-toggle">
+                            <input type="checkbox" id="ap_sell"
+                                {{ \App\Models\AdminSetting::get('auto_sell_payout_enabled','0') === '1' ? 'checked' : '' }}
+                                onchange="apToggle('auto_sell_payout_enabled', this.checked ? '1' : '0')">
+                            <span class="ap-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+            </div> style="display:none;margin-top:.75rem;font-size:.78rem;padding:.5rem .875rem;border-radius:7px;background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.2);color:var(--kx-green)">
                 <i class="bi bi-check-circle me-1"></i> Setting saved.
             </div>
             <div style="margin-top:.85rem;padding:.65rem .9rem;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;font-size:.75rem;color:var(--kx-yellow)">

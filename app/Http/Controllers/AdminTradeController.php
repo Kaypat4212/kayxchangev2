@@ -9,6 +9,7 @@ use App\Services\AdminTradeAlertService;
 use App\Mail\TradeNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class AdminTradeController extends Controller
 {
@@ -27,8 +28,17 @@ class AdminTradeController extends Controller
 
         $trade = SellTrade::findOrFail($trade_id);
         $originalStatus = $trade->status;
-        $trade->status = $request->status;
         $tradeUser = User::find($trade->user_id);
+
+        // Handle admin payment proof upload
+        if ($request->hasFile('admin_payment_proof')) {
+            if ($trade->admin_payment_proof) {
+                Storage::disk('public')->delete($trade->admin_payment_proof);
+            }
+            $trade->admin_payment_proof = $request->file('admin_payment_proof')->store('admin-sell-proofs', 'public');
+        }
+
+        $trade->status = $request->status;
 
         Log::info('Attempting to update trade status', [
             'trade_id' => $trade->id,
@@ -76,6 +86,9 @@ class AdminTradeController extends Controller
                     $paymentMethod = $trade->payment_method === 'wallet_balance'
                         ? 'Wallet Balance'
                         : ($trade->bank_name ? $trade->bank_name . ' (' . $trade->account_number . ')' : 'Bank Transfer');
+                    $adminProofUrl = $trade->admin_payment_proof
+                        ? asset('storage/' . $trade->admin_payment_proof)
+                        : null;
                     Mail::to($tradeUser->email)->send(new TradeNotification(
                         user: $tradeUser,
                         templateKey: $isCompleted ? 'sell_trade_completed' : 'sell_trade_rejected',
@@ -86,17 +99,38 @@ class AdminTradeController extends Controller
                             'reference'      => $trade->transaction_ref ?? ('SELL-' . $trade->id),
                             'payment_method' => $paymentMethod,
                             'reason'         => request('rejection_reason', 'Your trade did not meet our requirements.'),
+                            'proof_url'      => $adminProofUrl,
                         ],
                         badge: [
                             'text'  => $isCompleted ? 'Payment Sent' : 'Order Rejected',
                             'color' => $isCompleted ? '#00cc00' : '#dc3545',
                         ],
-                        ctaUrl: url('/dashboard'),
-                        ctaText: 'Go to Dashboard',
+                        ctaUrl: $adminProofUrl ?? url('/dashboard'),
+                        ctaText: $adminProofUrl ? 'View Payment Proof' : 'Go to Dashboard',
                     ));
                 }
             } catch (\Exception $mailEx) {
                 Log::warning('Sell trade status email failed: ' . $mailEx->getMessage());
+            }
+
+            // Telegram notification on completion
+            if (isset($isCompleted) && $isCompleted && $tradeUser && $tradeUser->telegram_chat_id) {
+                try {
+                    $proofLine = isset($adminProofUrl) && $adminProofUrl
+                        ? "\n\n🧾 [View Payment Proof]({$adminProofUrl})"
+                        : '';
+                    app(\App\Services\TelegramService::class)->sendMessage(
+                        (int)$tradeUser->telegram_chat_id,
+                        "✅ *Your Sell Trade is Completed*\n\n" .
+                        "🔖 Ref: `{$trade->transaction_ref}`\n" .
+                        "🪙 Coin: {$trade->coin}\n" .
+                        "💴 Naira Paid: ₦" . number_format((float)($trade->naira_amount ?? 0), 2) .
+                        $proofLine,
+                        'Markdown'
+                    );
+                } catch (\Throwable $tgEx) {
+                    Log::warning('Sell complete Telegram notify failed: ' . $tgEx->getMessage());
+                }
             }
 
             if ($originalStatus !== $trade->status) {

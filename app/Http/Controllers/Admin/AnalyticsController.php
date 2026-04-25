@@ -27,6 +27,11 @@ class AnalyticsController extends Controller
         });
     }
 
+    public function analyticsPage()
+    {
+        return view('admin.analytics');
+    }
+
     /**
      * Get real-time dashboard analytics
      */

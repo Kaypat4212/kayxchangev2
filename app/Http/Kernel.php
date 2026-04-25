@@ -40,6 +40,8 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             // Visitor logging + Telegram notification
             \App\Http\Middleware\LogVisitor::class,
+            // Blacklist check — block banned IPs and suspended users
+            \App\Http\Middleware\CheckBlacklist::class,
             // Global web rate limit (120 req/min per IP)
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':web-public',
         ],

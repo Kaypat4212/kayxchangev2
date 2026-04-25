@@ -57,6 +57,20 @@ class Kernel extends ConsoleKernel
             ->timezone('UTC')
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Daily trade summary digest — 8:00 AM WAT (07:00 UTC)
+        $schedule->command('digest:daily')
+            ->dailyAt('07:00')
+            ->timezone('UTC')
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Weekly KYC expiry reminders — every Monday 08:00 UTC
+        $schedule->command('kyc:expiry-reminders')
+            ->weeklyOn(1, '08:00')
+            ->timezone('UTC')
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

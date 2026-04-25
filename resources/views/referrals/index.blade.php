@@ -102,6 +102,9 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     <div class="kx-hero-badge"><i class="bi bi-gift-fill"></i>Referral Program</div>
     <h1>Invite Friends &amp; Earn</h1>
     <p>Get <strong style="color:var(--kx-green);">&#8358;500</strong> for every friend who signs up and completes their first trade</p>
+    <a href="{{ route('referrals.leaderboard') }}" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:rgba(0,204,0,.1);border:1px solid rgba(0,204,0,.25);border-radius:99px;color:#00cc00;font-size:.8rem;font-weight:600;padding:6px 16px;text-decoration:none;">
+        <i class="bi bi-trophy-fill"></i> View Leaderboard
+    </a>
 </div>
 
 <div class="container-fluid px-3 pb-5">

@@ -399,6 +399,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     
     // Enhanced Analytics Routes
     Route::get('/analytics/dashboard-data', [AnalyticsController::class, 'getDashboardData'])->name('analytics.dashboard-data');
+    Route::get('/analytics', [AnalyticsController::class, 'analyticsPage'])->name('admin.analytics');
 
     // Dashboard utility endpoints (fetch/save company account + pending counts)
     Route::get('/company-account',  [AdminController::class, 'getCompanyAccount'])->name('admin.company-account');
@@ -429,6 +430,16 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/referrals/settings/codes', [ReferralSettingsController::class, 'storeCode'])->name('admin.referrals.codes.store');
     Route::put('/referrals/settings/codes/{specialReferralCode}', [ReferralSettingsController::class, 'updateCode'])->name('admin.referrals.codes.update');
     Route::delete('/referrals/settings/codes/{specialReferralCode}', [ReferralSettingsController::class, 'destroyCode'])->name('admin.referrals.codes.destroy');
+
+    // ── Blacklist / Suspension ───────────────────────────────────────────────
+    Route::get('/blacklist', [\App\Http\Controllers\Admin\BlacklistController::class, 'index'])->name('admin.blacklist.index');
+    Route::post('/blacklist', [\App\Http\Controllers\Admin\BlacklistController::class, 'store'])->name('admin.blacklist.store');
+    Route::delete('/blacklist/{id}', [\App\Http\Controllers\Admin\BlacklistController::class, 'destroy'])->name('admin.blacklist.destroy');
+    Route::post('/users/{userId}/suspend', [\App\Http\Controllers\Admin\BlacklistController::class, 'suspendUser'])->name('admin.users.suspend');
+    Route::post('/users/{userId}/unsuspend', [\App\Http\Controllers\Admin\BlacklistController::class, 'unsuspendUser'])->name('admin.users.unsuspend');
+
+    // ── CSV Export ──────────────────────────────────────────────────────────
+    Route::get('/export/trades', [\App\Http\Controllers\Admin\ExportController::class, 'trades'])->name('admin.export.trades');
 
     // ── Admin AI Routes ──────────────────────────────────────────────────────
     Route::prefix('ai')->name('ai.')->group(function () {
@@ -468,6 +479,8 @@ Route::get('/admin', [AdminController::class, 'showLoginForm'])->name('admin.log
 Route::post('/admin', [AdminController::class, 'login'])->middleware('throttle:auth-endpoints');
 Route::get('/admin/forgot-password', [AdminController::class, 'showForgotPasswordForm'])->name('admin.password.request');
 Route::post('/admin/forgot-password', [AdminController::class, 'resetPasswordWithSecret'])->name('admin.password.reset.secret');
+Route::get('/admin/2fa-challenge', [AdminController::class, 'show2faChallenge'])->name('admin.2fa.challenge');
+Route::post('/admin/2fa-challenge', [AdminController::class, 'verify2faChallenge'])->name('admin.2fa.verify')->middleware('throttle:10,1');
 
 // Authenticated and Verified Routes
 // User AI Route
@@ -484,6 +497,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Transaction History
     Route::get('/transactions/history', [UserTransactionController::class, 'showTransactions'])->name('transactions.history');
     Route::get('/transactions/detail/{type}/{id}', [UserTransactionController::class, 'show'])->name('transactions.show');
+    Route::get('/trades/sell/{id}/receipt', [UserController::class, 'sellReceipt'])->name('trades.sell.receipt');
+    Route::get('/trades/buy/{id}/receipt', [UserController::class, 'buyReceipt'])->name('trades.buy.receipt');
 
     // Settings
     Route::get('/settings', [UserController::class, 'settings'])->name('settings.index');
@@ -562,6 +577,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals');
+    Route::get('/referrals/leaderboard', [ReferralController::class, 'leaderboard'])->name('referrals.leaderboard');
 });
 
 // Feature Request Routes

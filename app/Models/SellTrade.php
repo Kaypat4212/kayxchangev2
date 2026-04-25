@@ -47,6 +47,7 @@ class SellTrade extends Model
         'rate_used',
         'wallet_address',
         'payment_proof',
+        'admin_payment_proof',
         'transaction_ref',
         'cancelled_at',
         'cancelled_by',

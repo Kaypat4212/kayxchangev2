@@ -12,6 +12,8 @@ class Kyc extends Model
     protected $fillable = [
         'user_id',
         'id_document_path',
+        'document_type',
+        'expiry_date',
         'selfie_path',
         'status',
         'rejection_reason',
@@ -20,6 +22,7 @@ class Kyc extends Model
 
     protected $casts = [
         'reviewed_at' => 'datetime',
+        'expiry_date' => 'date',
     ];
 
     public function user()

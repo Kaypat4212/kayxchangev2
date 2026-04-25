@@ -308,6 +308,8 @@ class SellController extends Controller
             'naira_amount' => $nairaAmount,
             'input_type' => $inputType,
             'rate' => $rate,
+            'rate_locked_at' => now()->timestamp,
+            'rate_expires_at' => now()->addMinutes(15)->timestamp,
         ]);
         Log::info('postStep1 session data set', Session::get('sell'));
 
@@ -326,6 +328,13 @@ class SellController extends Controller
         if (!Session::has('sell.coin') || !Session::has('sell.usd_amount') || !Session::has('sell.naira_amount')) {
             Log::warning('Step 2 accessed without step 1 data');
             return redirect()->route('sell.step1')->with('error', 'Please complete step 1 first.');
+        }
+
+        // Rate lock expiry check
+        $rateExpiresAt = Session::get('sell.rate_expires_at');
+        if ($rateExpiresAt && now()->timestamp > $rateExpiresAt) {
+            Session::forget('sell');
+            return redirect()->route('sell.step1')->with('error', 'Your locked rate has expired (15 minutes). Please start again with the current rate.');
         }
 
         $coin = Session::get('sell.coin');
@@ -385,6 +394,13 @@ class SellController extends Controller
         if (!Session::has('sell.proof') || !Session::has('sell.coin') || !Session::has('sell.usd_amount') || !Session::has('sell.naira_amount')) {
             Log::warning('Step 3 accessed without required session data');
             return redirect()->route('sell.step1')->with('error', 'Please complete previous steps.');
+        }
+
+        // Rate lock expiry check
+        $rateExpiresAt = Session::get('sell.rate_expires_at');
+        if ($rateExpiresAt && now()->timestamp > $rateExpiresAt) {
+            Session::forget('sell');
+            return redirect()->route('sell.step1')->with('error', 'Your locked rate has expired (15 minutes). Please start again with the current rate.');
         }
 
         $user = Auth::user();

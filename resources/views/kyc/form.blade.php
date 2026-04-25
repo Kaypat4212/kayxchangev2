@@ -334,6 +334,42 @@
         <form method="POST" action="{{ route('kyc.submit') }}" enctype="multipart/form-data" id="kycForm">
             @csrf
 
+            {{-- Document Type Selector --}}
+            <div class="kx-kyc-card" style="margin-bottom:16px;">
+                <div class="kx-kyc-card-header">
+                    <div class="hicon"><i class="bi bi-list-check"></i></div>
+                    <div>
+                        <h5>Document Type</h5>
+                        <p>Select the type of ID you are uploading</p>
+                    </div>
+                </div>
+                <div class="kx-kyc-card-body">
+                    <div class="mb-3">
+                        <select name="document_type" id="documentType" required
+                            style="width:100%;padding:12px 14px;background:#0d1117;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e4e8f0;font-size:.9rem;"
+                            onchange="toggleExpiryField(this.value)">
+                            <option value="">— Select document type —</option>
+                            <option value="national_id" {{ old('document_type')==='national_id' ? 'selected' : '' }}>National ID Card</option>
+                            <option value="passport" {{ old('document_type')==='passport' ? 'selected' : '' }}>International Passport</option>
+                            <option value="drivers_license" {{ old('document_type')==='drivers_license' ? 'selected' : '' }}>Driver's License</option>
+                            <option value="voters_card" {{ old('document_type')==='voters_card' ? 'selected' : '' }}>Voter's Card</option>
+                        </select>
+                        @error('document_type') <div style="color:#ef4444;font-size:.78rem;margin-top:6px;">{{ $message }}</div> @enderror
+                    </div>
+
+                    {{-- Expiry Date — shown only for Driver's License --}}
+                    <div id="expiryDateWrap" style="display:none;">
+                        <label style="font-size:.8rem;color:#7a8599;display:block;margin-bottom:6px;">
+                            <i class="bi bi-calendar-event me-1"></i>License Expiry Date <span style="color:#ef4444">*</span>
+                        </label>
+                        <input type="date" name="expiry_date" id="expiry_date"
+                            value="{{ old('expiry_date') }}"
+                            style="width:100%;padding:11px 14px;background:#0d1117;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e4e8f0;font-size:.88rem;">
+                        @error('expiry_date') <div style="color:#ef4444;font-size:.78rem;margin-top:6px;">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+            </div>
+
             {{-- ID Document --}}
             <div class="kx-kyc-card">
                 <div class="kx-kyc-card-header">
@@ -482,6 +518,24 @@
 
 @push('scripts')
 <script>
+function toggleExpiryField(val) {
+    const wrap = document.getElementById('expiryDateWrap');
+    const input = document.getElementById('expiry_date');
+    if (val === 'drivers_license') {
+        wrap.style.display = 'block';
+        input.required = true;
+    } else {
+        wrap.style.display = 'none';
+        input.required = false;
+        input.value = '';
+    }
+}
+// restore state on validation error
+(function() {
+    const sel = document.getElementById('documentType');
+    if (sel && sel.value) toggleExpiryField(sel.value);
+})();
+
 function handleFile(input, previewId, nameId, sizeId, imgId) {
     const file = input.files[0];
     if (!file) return;
