@@ -194,14 +194,22 @@ class AdminController extends Controller
 
             $validationRules = [
                 'status' => ['required', 'in:pending,completed,rejected,approved,successful'],
-                'blockchain_txid' => ['nullable', 'string', 'max:255'],
-                'admin_payment_proof' => [
-                    $isCompleting && !$request->filled('blockchain_txid') ? 'required' : 'nullable',
+            ];
+
+            $hasBlockchainCol = Schema::hasColumn('buy_trades', 'blockchain_txid');
+            $hasProofCol      = Schema::hasColumn('buy_trades', 'admin_payment_proof');
+
+            if ($hasBlockchainCol) {
+                $validationRules['blockchain_txid'] = ['nullable', 'string', 'max:255'];
+            }
+            if ($hasProofCol) {
+                $validationRules['admin_payment_proof'] = [
+                    $isCompleting && !$request->filled('blockchain_txid') && $hasBlockchainCol ? 'required' : 'nullable',
                     'image',
                     'mimes:jpg,jpeg,png,webp',
                     'max:5120',
-                ],
-            ];
+                ];
+            }
 
             $validated = $request->validate($validationRules, [
                 'admin_payment_proof.required' => 'Payment proof is required when no blockchain TXID is provided.',
@@ -209,10 +217,13 @@ class AdminController extends Controller
 
             $updatePayload = [
                 'status' => $validated['status'],
-                'blockchain_txid' => $validated['blockchain_txid'] ?? null,
             ];
 
-            if ($request->hasFile('admin_payment_proof')) {
+            if ($hasBlockchainCol) {
+                $updatePayload['blockchain_txid'] = $validated['blockchain_txid'] ?? null;
+            }
+
+            if ($hasProofCol && $request->hasFile('admin_payment_proof')) {
                 if ($trade->admin_payment_proof) {
                     Storage::disk('public')->delete($trade->admin_payment_proof);
                 }
@@ -220,8 +231,12 @@ class AdminController extends Controller
             }
 
             if ($isCompleting) {
-                $updatePayload['approved_by_admin_id'] = Auth::id();
-                $updatePayload['approved_at'] = now();
+                if (Schema::hasColumn('buy_trades', 'approved_by_admin_id')) {
+                    $updatePayload['approved_by_admin_id'] = Auth::id();
+                }
+                if (Schema::hasColumn('buy_trades', 'approved_at')) {
+                    $updatePayload['approved_at'] = now();
+                }
             }
 
             $trade->update($updatePayload);

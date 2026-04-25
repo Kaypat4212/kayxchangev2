@@ -180,8 +180,10 @@ class TelegramService
      */
     public function isProductionMode()
     {
-        $appUrl = env('APP_URL', '');
-        return !str_contains($appUrl, 'localhost') &&
+        // Prefer TELEGRAM_APP_URL if set, otherwise fall back to APP_URL
+        $appUrl = env('TELEGRAM_APP_URL', env('APP_URL', ''));
+        return str_starts_with($appUrl, 'https://') &&
+               !str_contains($appUrl, 'localhost') &&
                !str_contains($appUrl, '127.0.0.1') &&
                !str_contains($appUrl, '192.168.') &&
                !str_contains($appUrl, ':8000') &&
