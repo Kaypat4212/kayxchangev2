@@ -269,6 +269,25 @@ class AdminController extends Controller
                     Log::warning('Buy status email failed: ' . $mailEx->getMessage());
                 }
 
+                // Notify user via Telegram if rejected
+                if (!$isCompleted && $tradeUser && $tradeUser->telegram_chat_id) {
+                    try {
+                        $rejectionReason = $request->input('rejection_reason', '');
+                        $reasonLine = $rejectionReason ? "\n\n📋 *Reason:* " . $rejectionReason : "\n\nPlease contact support for more details.";
+                        app(\App\Services\TelegramService::class)->sendMessage(
+                            (int)$tradeUser->telegram_chat_id,
+                            "❌ *Your Buy Order was Rejected*\n\n" .
+                            "🔖 Ref: `{$trade->transaction_ref}`\n" .
+                            "🪙 {$trade->coin}: \$" . number_format((float)$trade->usd_amount, 2) . "\n" .
+                            "💴 Naira: ₦" . number_format((float)$trade->naira_amount, 2) .
+                            $reasonLine,
+                            'Markdown'
+                        );
+                    } catch (\Throwable $tgEx) {
+                        Log::warning('Buy rejection Telegram notify failed: ' . $tgEx->getMessage());
+                    }
+                }
+
                 try {
                     app(AdminTradeAlertService::class)->sendStatusChangeAlert('buy', [
                         'reference' => $trade->transaction_ref ?? ('BUY-' . $trade->id),
@@ -324,6 +343,24 @@ class AdminController extends Controller
                     }
                 } catch (\Exception $mailEx) {
                     Log::warning('Sell status email failed: ' . $mailEx->getMessage());
+                }
+
+                // Notify user via Telegram if rejected
+                if (!$isCompleted && $tradeUser && $tradeUser->telegram_chat_id) {
+                    try {
+                        $rejectionReason = $request->input('rejection_reason', '');
+                        $reasonLine = $rejectionReason ? "\n\n📋 *Reason:* " . $rejectionReason : "\n\nPlease contact support for more details.";
+                        app(\App\Services\TelegramService::class)->sendMessage(
+                            (int)$tradeUser->telegram_chat_id,
+                            "❌ *Your Sell Trade was Rejected*\n\n" .
+                            "🔖 Ref: `{$trade->transaction_ref}`\n" .
+                            "💴 Amount: ₦" . number_format((float)($trade->naira_amount ?? 0), 2) .
+                            $reasonLine,
+                            'Markdown'
+                        );
+                    } catch (\Throwable $tgEx) {
+                        Log::warning('Sell rejection Telegram notify failed: ' . $tgEx->getMessage());
+                    }
                 }
 
                 try {

@@ -651,6 +651,27 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     </div>
                 </form>
 
+                {{-- Rejection reason (only shown when rejecting) --}}
+                <div id="bc-rejection-area" class="kx-confirm-box" style="display:none;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05)">
+                    <div style="margin-bottom:.5rem"><span class="kx-badge" style="background:rgba(239,68,68,.15);color:#f87171;font-size:.7rem"><i class="bi bi-x-octagon me-1"></i>Rejection Reason</span></div>
+                    <div style="margin-bottom:.5rem">
+                        <label style="font-size:.76rem;color:var(--kx-muted);display:block;margin-bottom:.3rem">Reason for rejection <span style="color:#f87171">*</span></label>
+                        <select id="bc-rejection-preset" class="kx-input" style="margin-bottom:.45rem" onchange="bcApplyPreset()">
+                            <option value="">— Pick a preset or write below —</option>
+                            <option value="Payment proof is invalid or unclear.">Invalid/unclear payment proof</option>
+                            <option value="Payment was not received for this order.">Payment not received</option>
+                            <option value="Account details provided are incorrect.">Incorrect account details</option>
+                            <option value="Duplicate order detected.">Duplicate order</option>
+                            <option value="Suspicious activity detected on this order.">Suspicious activity</option>
+                            <option value="Order amount does not match the payment received.">Amount mismatch</option>
+                            <option value="custom">Custom reason…</option>
+                        </select>
+                        <textarea id="bc-rejection-reason" name="rejection_reason" class="kx-input" rows="3"
+                            placeholder="Describe clearly why this order is being rejected. This will be sent to the user via email and Telegram."
+                            style="resize:vertical;min-height:70px;font-size:.84rem"></textarea>
+                    </div>
+                </div>
+
                 {{-- Checklist (only shown when completing) --}}
                 <div id="bc-checklist-area" class="kx-checklist" style="display:none">
                     <p style="font-size:.78rem;color:var(--kx-yellow);font-weight:600;margin-bottom:.6rem"><i class="bi bi-exclamation-triangle me-1"></i>Completing this trade — please confirm:</p>
@@ -712,6 +733,27 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <div><div class="lbl">Account No.</div><div class="val" id="sc-accnum" style="font-family:monospace"></div></div>
                         <div><div class="lbl">Account Name</div><div class="val" id="sc-accname"></div></div>
                         <div><div class="lbl">Method</div><div class="val" id="sc-method"></div></div>
+                    </div>
+                </div>
+
+                {{-- Rejection reason (only shown when rejecting) --}}
+                <div id="sc-rejection-area" class="kx-confirm-box" style="display:none;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05)">
+                    <div style="margin-bottom:.5rem"><span class="kx-badge" style="background:rgba(239,68,68,.15);color:#f87171;font-size:.7rem"><i class="bi bi-x-octagon me-1"></i>Rejection Reason</span></div>
+                    <div style="margin-bottom:.5rem">
+                        <label style="font-size:.76rem;color:var(--kx-muted);display:block;margin-bottom:.3rem">Reason for rejection <span style="color:#f87171">*</span></label>
+                        <select id="sc-rejection-preset" class="kx-input" style="margin-bottom:.45rem" onchange="scApplyPreset()">
+                            <option value="">— Pick a preset or write below —</option>
+                            <option value="Payment proof is invalid or unclear.">Invalid/unclear payment proof</option>
+                            <option value="Crypto was not received in our wallet.">Crypto not received</option>
+                            <option value="Account details provided are incorrect.">Incorrect account details</option>
+                            <option value="Duplicate trade detected.">Duplicate trade</option>
+                            <option value="Suspicious activity detected on this trade.">Suspicious activity</option>
+                            <option value="Trade amount does not match the proof submitted.">Amount mismatch</option>
+                            <option value="custom">Custom reason…</option>
+                        </select>
+                        <textarea id="sc-rejection-reason" name="rejection_reason" class="kx-input" rows="3"
+                            placeholder="Describe clearly why this trade is being rejected. This will be sent to the user via email and Telegram."
+                            style="resize:vertical;min-height:70px;font-size:.84rem"></textarea>
                     </div>
                 </div>
 
@@ -965,35 +1007,79 @@ function handleBuyApprove(id, user, bank, accNum, accName, wallet, coin, naira, 
         existingWrap.style.display = 'none';
         existingLink.href = '#';
     }
-    // Show/hide checklist
+    // Show/hide checklist and rejection area
     const isCompleting = ['completed','approved','successful'].includes(newStatus);
-    const cl = document.getElementById('bc-checklist-area');
-    cl.style.display = isCompleting ? 'block' : 'none';
+    const isRejecting  = newStatus === 'rejected';
+    const cl  = document.getElementById('bc-checklist-area');
+    const rej = document.getElementById('bc-rejection-area');
+    cl.style.display  = isCompleting ? 'block' : 'none';
+    rej.style.display = isRejecting  ? 'block' : 'none';
+    // Reset rejection fields
+    document.getElementById('bc-rejection-preset').value = '';
+    document.getElementById('bc-rejection-reason').value = '';
     if(isCompleting){
         document.getElementById('bc-chk1').checked = false;
         document.getElementById('bc-chk2').checked = false;
+        document.getElementById('bc-confirm-btn').disabled = true;
+    } else if(isRejecting){
         document.getElementById('bc-confirm-btn').disabled = true;
     } else {
         document.getElementById('bc-confirm-btn').disabled = false;
     }
     new bootstrap.Modal(document.getElementById('buyConfirmModal')).show();
 }
-function checkBuyReady(){
-    const ok = document.getElementById('bc-chk1').checked && document.getElementById('bc-chk2').checked;
-    document.getElementById('bc-confirm-btn').disabled = !ok;
+function bcApplyPreset(){
+    const preset = document.getElementById('bc-rejection-preset').value;
+    const textarea = document.getElementById('bc-rejection-reason');
+    if(preset && preset !== 'custom') textarea.value = preset;
+    else if(preset === 'custom') textarea.value = '';
+    checkBuyReady();
 }
+function checkBuyReady(){
+    const newStatus = document.getElementById('bc-newstatus').textContent.toLowerCase();
+    const isRejecting = newStatus === 'rejected';
+    const isCompleting = ['completed','approved','successful'].includes(newStatus);
+    if(isRejecting){
+        const reason = (document.getElementById('bc-rejection-reason').value || '').trim();
+        document.getElementById('bc-confirm-btn').disabled = reason.length < 5;
+    } else if(isCompleting){
+        const ok = document.getElementById('bc-chk1').checked && document.getElementById('bc-chk2').checked;
+        document.getElementById('bc-confirm-btn').disabled = !ok;
+    } else {
+        document.getElementById('bc-confirm-btn').disabled = false;
+    }
+}
+document.getElementById('bc-rejection-reason').addEventListener('input', checkBuyReady);
 function submitBuyForm(){
     if(_activeBuyId !== null){
         const status = document.getElementById('bc-status-hidden').value;
-        const txid = (document.getElementById('bc-txid').value || '').trim();
-        const proofInput = document.getElementById('bc-proof');
-        const hasNewProof = proofInput && proofInput.files && proofInput.files.length > 0;
-        const existingProof = document.getElementById('bc-existing-proof').value;
+        const isRejecting  = status === 'rejected';
         const isCompleting = ['completed','approved','successful'].includes(status);
 
-        if (isCompleting && !txid && !hasNewProof && !existingProof) {
-            alert('Upload payment proof image or provide blockchain TXID before completing this trade.');
-            return;
+        if(isRejecting){
+            const reason = (document.getElementById('bc-rejection-reason').value || '').trim();
+            if(reason.length < 5){ alert('Please enter a rejection reason before proceeding.'); return; }
+            // Inject hidden field into modal form
+            let hidden = document.getElementById('buy-modal-rejection-reason');
+            if(!hidden){
+                hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'rejection_reason';
+                hidden.id   = 'buy-modal-rejection-reason';
+                document.getElementById('buy-modal-form').appendChild(hidden);
+            }
+            hidden.value = reason;
+        }
+
+        if (isCompleting) {
+            const txid = (document.getElementById('bc-txid').value || '').trim();
+            const proofInput = document.getElementById('bc-proof');
+            const hasNewProof = proofInput && proofInput.files && proofInput.files.length > 0;
+            const existingProof = document.getElementById('bc-existing-proof').value;
+            if (!txid && !hasNewProof && !existingProof) {
+                alert('Upload payment proof image or provide blockchain TXID before completing this trade.');
+                return;
+            }
         }
 
         document.getElementById('buy-modal-form').submit();
@@ -1042,23 +1128,65 @@ function handleSellApprove(id, user, bank, accNum, accName, wallet, coin, naira,
     document.getElementById('sc-accname-chk').textContent = accName;
     document.getElementById('sc-accnum-chk').textContent  = accNum;
     const isCompleting = ['completed','approved','successful'].includes(newStatus);
-    const cl = document.getElementById('sc-checklist-area');
-    cl.style.display = isCompleting ? 'block' : 'none';
+    const isRejecting  = newStatus === 'rejected';
+    const cl  = document.getElementById('sc-checklist-area');
+    const rej = document.getElementById('sc-rejection-area');
+    cl.style.display  = isCompleting ? 'block' : 'none';
+    rej.style.display = isRejecting  ? 'block' : 'none';
+    // Reset rejection fields
+    document.getElementById('sc-rejection-preset').value = '';
+    document.getElementById('sc-rejection-reason').value = '';
     if(isCompleting){
         document.getElementById('sc-chk1').checked = false;
         document.getElementById('sc-chk2').checked = false;
         document.getElementById('sc-confirm-btn').disabled = true;
+    } else if(isRejecting){
+        document.getElementById('sc-confirm-btn').disabled = true; // require reason
     } else {
         document.getElementById('sc-confirm-btn').disabled = false;
     }
     new bootstrap.Modal(document.getElementById('sellConfirmModal')).show();
 }
-function checkSellReady(){
-    const ok = document.getElementById('sc-chk1').checked && document.getElementById('sc-chk2').checked;
-    document.getElementById('sc-confirm-btn').disabled = !ok;
+function scApplyPreset(){
+    const preset = document.getElementById('sc-rejection-preset').value;
+    const textarea = document.getElementById('sc-rejection-reason');
+    if(preset && preset !== 'custom') textarea.value = preset;
+    else if(preset === 'custom') textarea.value = '';
+    checkSellReady();
 }
+function checkSellReady(){
+    const newStatus = document.getElementById('sc-newstatus').textContent.toLowerCase();
+    const isRejecting = newStatus === 'rejected';
+    const isCompleting = ['completed','approved','successful'].includes(newStatus);
+    if(isRejecting){
+        const reason = (document.getElementById('sc-rejection-reason').value || '').trim();
+        document.getElementById('sc-confirm-btn').disabled = reason.length < 5;
+    } else if(isCompleting){
+        const ok = document.getElementById('sc-chk1').checked && document.getElementById('sc-chk2').checked;
+        document.getElementById('sc-confirm-btn').disabled = !ok;
+    } else {
+        document.getElementById('sc-confirm-btn').disabled = false;
+    }
+}
+// live-validate rejection textarea
+document.getElementById('sc-rejection-reason').addEventListener('input', checkSellReady);
 function submitSellForm(){
     if(_activeSellId !== null){
+        const newStatus = document.getElementById('sc-newstatus').textContent.toLowerCase();
+        if(newStatus === 'rejected'){
+            const reason = (document.getElementById('sc-rejection-reason').value || '').trim();
+            if(reason.length < 5){ alert('Please enter a rejection reason before proceeding.'); return; }
+            // Inject reason into the sell form
+            let hidden = document.getElementById('sell-rejection-reason-input-'+_activeSellId);
+            if(!hidden){
+                hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'rejection_reason';
+                hidden.id   = 'sell-rejection-reason-input-'+_activeSellId;
+                document.getElementById('sell-form-'+_activeSellId).appendChild(hidden);
+            }
+            hidden.value = reason;
+        }
         bootstrap.Modal.getInstance(document.getElementById('sellConfirmModal'))?.hide();
         document.getElementById('sell-form-'+_activeSellId).submit();
     }

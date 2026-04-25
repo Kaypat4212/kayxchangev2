@@ -143,8 +143,10 @@ class SellController extends Controller
         try {
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $key])
                 ->timeout(8)
-                ->get('https://api.paystack.co/bank');
+                ->get('https://api.paystack.co/bank', ['currency' => 'NGN', 'perPage' => 100]);
             $banks = $response->successful() ? $response->json('data', []) : [];
+            // Sort alphabetically for easier selection
+            usort($banks, fn($a, $b) => strcmp($a['name'] ?? '', $b['name'] ?? ''));
         } catch (\Exception $e) {
             Log::error('fetchBanks failed', ['error' => $e->getMessage()]);
             $banks = [];
@@ -155,11 +157,13 @@ class SellController extends Controller
     public function validateBank(Request $request)
     {
         $request->validate([
-            'bank_name' => 'required|string|max:255',   // bank CODE sent from JS
+            'bank_name'     => 'required|string|max:255',   // bank CODE sent from JS
+            'alt_bank_name' => 'nullable|string|max:255',  // human-readable bank name
             'account_number' => 'required|string|regex:/^\d{10}$/',
         ]);
 
-        $bankCode = $request->bank_name; // JS sends the code directly
+        $bankCode = $request->bank_name; // JS sends the code as bank_name
+        $bankDisplayName = $request->input('alt_bank_name') ?: $bankCode; // Human-readable name
         if (!$bankCode) {
             return response()->json(['error' => 'Invalid bank name.'], 400);
         }
@@ -182,14 +186,14 @@ class SellController extends Controller
                 $data = $response->json();
                 if (isset($data['status']) && $data['status'] && isset($data['data']['account_name'])) {
                     Session::put('sell.validated_bank', [
-                        'bank_name' => $request->bank_name,
+                        'bank_name'      => $bankDisplayName,
                         'account_number' => $request->account_number,
-                        'account_name' => $data['data']['account_name'],
+                        'account_name'   => $data['data']['account_name'],
                     ]);
                     Log::info('Bank account validated', [
-                        'bank_name' => $request->bank_name,
+                        'bank_name'      => $bankDisplayName,
                         'account_number' => $request->account_number,
-                        'account_name' => $data['data']['account_name'],
+                        'account_name'   => $data['data']['account_name'],
                     ]);
                     return response()->json([
                         'account_name' => $data['data']['account_name'],

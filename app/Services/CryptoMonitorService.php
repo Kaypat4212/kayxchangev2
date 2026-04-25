@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\SellTrade;
 use App\Models\User;
+use App\Mail\TradeNotification;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * CryptoMonitorService
@@ -286,14 +288,58 @@ class CryptoMonitorService
         $trade->transaction_ref = $txHash;
         $trade->save();
 
+        $user = User::find($trade->user_id);
+
         if ($trade->payment_method === 'wallet_balance') {
-            $user = User::find($trade->user_id);
             if ($user && $trade->naira_amount > 0) {
                 $user->increment('balance', (float) $trade->naira_amount);
+                $user->refresh(); // reload after increment
             }
         }
 
         Log::info("[CryptoMonitor] Auto-approved SellTrade #{$trade->id} ({$trade->coin}/{$trade->network}) tx: {$txHash}");
+
+        // Notify user via email + Telegram
+        if ($user) {
+            try {
+                Mail::to($user->email)->send(new TradeNotification(
+                    user: $user,
+                    templateKey: 'sell_trade_completed',
+                    data: [
+                        'amount'         => number_format((float)($trade->usd_amount ?? 0), 6),
+                        'currency'       => $trade->coin,
+                        'naira_amount'   => number_format((float)$trade->naira_amount, 2),
+                        'reference'      => $trade->transaction_ref,
+                        'payment_method' => $trade->payment_method ?? 'Bank Transfer',
+                        'reason'         => '',
+                    ],
+                    badge: ['text' => 'Payment Sent', 'color' => '#00cc00'],
+                    ctaUrl: url('/dashboard'),
+                    ctaText: 'Go to Dashboard',
+                ));
+            } catch (\Throwable $e) {
+                Log::warning("[CryptoMonitor] Email notify failed trade #{$trade->id}: " . $e->getMessage());
+            }
+
+            if ($user->telegram_chat_id) {
+                try {
+                    app(\App\Services\TelegramService::class)->sendMessage(
+                        (int)$user->telegram_chat_id,
+                        "✅ *Sell Trade Auto-Confirmed!*\n\n" .
+                        "🔖 Ref: `{$trade->transaction_ref}`\n" .
+                        "🪙 {$trade->coin}: \$" . number_format((float)($trade->usd_amount ?? 0), 2) . "\n" .
+                        "💴 Amount: ₦" . number_format((float)$trade->naira_amount, 2) . "\n" .
+                        ($trade->payment_method === 'wallet_balance'
+                            ? "💰 Credited to your wallet balance."
+                            : "💳 Payment is being sent to your bank."),
+                        'Markdown'
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning("[CryptoMonitor] Telegram notify failed trade #{$trade->id}: " . $e->getMessage());
+                }
+            }
+        }
+
         return true;
     }
 }
