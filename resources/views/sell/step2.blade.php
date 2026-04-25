@@ -5,12 +5,10 @@
     $coin        = $coin        ?? session('sell.coin', '');
     $walletAddress = $walletAddress ?? '';
     $rateExpiresAt = session('sell.rate_expires_at', 0);
-    $barcodeImages = [
-        'BTC'  => asset('barcodes/btc-barcode.png'),
-        'ETH'  => asset('barcodes/eth-barcode.png'),
-        'USDT' => asset('barcodes/usdttron-barcode.png'),
-    ];
-    $barcode = $barcodeImages[$coin] ?? null;
+    // Generate QR code dynamically from the actual wallet address (not a static file)
+    $barcode = ($walletAddress && $walletAddress !== 'N/A')
+        ? 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=' . urlencode($walletAddress)
+        : null;
     $coinColors = ['BTC'=>'#f7931a','ETH'=>'#627eea','USDT'=>'#26a17b'];
     $coinColor  = $coinColors[$coin] ?? '#00cc00';
 @endphp

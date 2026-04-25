@@ -328,6 +328,9 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin')->name('admin.')->group(
     Route::get('/sells', [AdminController::class, 'showTrades'])->name('sells');
     Route::patch('/sells/{id}/update-status', [AdminController::class, 'updateSellStatus'])->name('sells.updateStatus');
     Route::get('/trades', [AdminController::class, 'showTrades'])->name('trades');
+    Route::get('/trades/{id}', function ($id) {
+        return redirect()->route('admin.trades', ['highlight' => $id]);
+    })->name('trades.show')->where('id', '[0-9]+');
     Route::get('/set-rates', [AdminController::class, 'setRates'])->name('set-rates');
     Route::get('/edit-rate/{id}', [AdminController::class, 'editRate'])->name('edit-rate');
     Route::get('/rate', [CryptoRateupdateController::class, 'index'])->name('rates');

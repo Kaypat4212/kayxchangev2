@@ -29,6 +29,7 @@ class KycController extends Controller
                 'expiry_date'   => 'nullable|date|after:today|required_if:document_type,drivers_license',
             ]);
 
+            /** @var \App\Models\User $user */
             $user = auth()->user();
 
             // Store files

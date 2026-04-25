@@ -105,6 +105,7 @@ class UserController extends Controller
         }
 
         // Update user's bank details
+        /** @var \App\Models\User $user */
         $user = Auth::user();
         $user->update([
             'bank_code' => $request->bank_code,
@@ -130,6 +131,7 @@ class UserController extends Controller
             'new_password.regex' => 'Password must contain at least one uppercase letter and one number.',
         ]);
 
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
         if (!Hash::check($request->current_password, $user->password)) {

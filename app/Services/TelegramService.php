@@ -291,29 +291,45 @@ class TelegramService
     }
 
     /**
+     * Download a QR code image for the given wallet address and return its temp path.
+     * Returns null on failure. Caller is responsible for deleting the temp file.
+     */
+    private function getBarcodePathForWallet(string $walletAddress): ?string
+    {
+        if (empty($walletAddress) || $walletAddress === 'N/A') {
+            return null;
+        }
+
+        try {
+            $url  = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=' . urlencode($walletAddress);
+            $data = file_get_contents($url, false, stream_context_create([
+                'http' => ['timeout' => 8],
+                'ssl'  => ['verify_peer' => false],
+            ]));
+
+            if (!$data) {
+                return null;
+            }
+
+            $tmpPath = sys_get_temp_dir() . '/kx_qr_' . md5($walletAddress) . '.png';
+            file_put_contents($tmpPath, $data);
+            return $tmpPath;
+        } catch (\Throwable $e) {
+            Log::warning('Failed to generate QR for wallet: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * @deprecated Use getBarcodePathForWallet() with the actual wallet address instead.
      * Resolve the public barcode image path for a given coin/network.
      * Returns null when no barcode file is found.
      */
     private function getBarcodePathForCoin(string $coin, ?string $network): ?string
     {
-        $map = [
-            'BTC'          => 'btc-barcode.png',
-            'ETH'          => 'eth-barcode.png',
-            'USDT_TRC20'   => 'usdttron-barcode.png',
-            'USDT_ERC20'   => 'eth-barcode.png',   // fallback to ETH barcode
-            'USDT_BEP20'   => 'eth-barcode.png',   // fallback
-            'USDT'         => 'usdttron-barcode.png',
-        ];
-
         $key = ($coin === 'USDT' && $network) ? "USDT_{$network}" : $coin;
-        $filename = $map[$key] ?? null;
-
-        if (!$filename) {
-            return null;
-        }
-
-        $path = public_path("barcodes/{$filename}");
-        return file_exists($path) ? $path : null;
+        $walletAddress = config("wallets.{$key}", config("wallets.{$coin}", ''));
+        return $this->getBarcodePathForWallet($walletAddress);
     }
 
     /**
@@ -1693,10 +1709,11 @@ class TelegramService
             "_Minimum: \$1_",
             'Markdown');
 
-        // Send the barcode/QR code for this coin so user can scan the wallet address
-        $barcodePath = $this->getBarcodePathForCoin($coin, null);
+        // Send a QR code generated from the actual wallet address
+        $barcodePath = $this->getBarcodePathForWallet($walletAddr);
         if ($barcodePath) {
             $this->sendPhoto($chatId, $barcodePath, "📷 Scan to get the {$coin} wallet address");
+            @unlink($barcodePath);
         }
     }
 
@@ -1719,10 +1736,11 @@ class TelegramService
             "_Minimum: \$1_",
             'Markdown');
 
-        // Send barcode for this USDT network
-        $barcodePath = $this->getBarcodePathForCoin('USDT', $network);
+        // Send a QR code generated from the actual wallet address
+        $barcodePath = $this->getBarcodePathForWallet($walletAddr);
         if ($barcodePath) {
             $this->sendPhoto($chatId, $barcodePath, "📷 Scan to get the USDT ({$network}) wallet address");
+            @unlink($barcodePath);
         }
     }
 
