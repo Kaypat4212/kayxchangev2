@@ -4,6 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property float $amount
+ * @property float $fee_amount
+ * @property string|null $currency
+ * @property string $status
+ * @property int|null $company_account_id
+ * @property string|null $transaction_ref
+ * @property string|null $proof_of_payment
+ * @property string|null $admin_note
+ * @property string|null $payment_method
+ * @property string|null $proof
+ * @property string|null $gateway
+ * @property string|null $gateway_reference
+ * @property string|null $gateway_response
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class Deposit extends Model
 {
     protected $fillable = [

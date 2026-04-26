@@ -154,10 +154,9 @@ class AdminSettingsController extends Controller
 
         $grouped = [];
         foreach (self::GROUPS as $g) {
-            $grouped[$g] = AdminSetting::where('group', $g)
-                ->orderBy('id')
-                ->get()
-                ->map(function ($row) {
+            /** @var \Illuminate\Database\Eloquent\Builder $q */
+            $q = AdminSetting::where('group', $g)->orderBy('id');
+            $grouped[$g] = $q->get()->map(function ($row) {
                     // Return masked display value for encrypted fields
                     $display = '';
                     if ($row->value && $row->is_encrypted) {

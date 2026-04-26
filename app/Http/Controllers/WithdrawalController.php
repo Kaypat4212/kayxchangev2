@@ -289,9 +289,7 @@ class WithdrawalController extends Controller
             return;
         }
 
-        $bd = is_array($withdrawal->bank_account)
-            ? $withdrawal->bank_account
-            : (json_decode($withdrawal->bank_account, true) ?? []);
+        $bd = (array) ($withdrawal->bank_account ?? []);
 
         if (empty($bd['account_number']) || empty($bd['bank_code'])) {
             Log::warning("[AutoPayout] Missing bank_code for withdrawal #{$withdrawal->id} — skipping auto-payout");
@@ -647,9 +645,7 @@ class WithdrawalController extends Controller
             // Send notification to user if needed
             if ($withdrawal->user && in_array($request->status, ['successful', 'canceled']) && $oldStatus !== $request->status) {
                 $wUser = $withdrawal->user;
-                $bd = is_array($withdrawal->bank_account)
-                    ? $withdrawal->bank_account
-                    : (json_decode($withdrawal->bank_account, true) ?? []);
+                $bd = (array) ($withdrawal->bank_account ?? []);
                 $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — '
                     . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
                 try {
@@ -720,9 +716,7 @@ class WithdrawalController extends Controller
 
         // Notify user by email
         try {
-            $bd = is_array($withdrawal->bank_account)
-                ? $withdrawal->bank_account
-                : (json_decode($withdrawal->bank_account, true) ?? []);
+            $bd = (array) ($withdrawal->bank_account ?? []);
             $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — ' . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
             Mail::to(Auth::user()->email)->send(new TradeNotification(
                 user: Auth::user(),

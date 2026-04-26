@@ -207,12 +207,12 @@ class EnvEditorController extends Controller
             'enabled' => 'required|boolean',
         ]);
 
-        $key   = 'pm_enabled_' . $request->method;
+        $key   = 'pm_enabled_' . $request->input('method');
         $value = $request->boolean('enabled') ? '1' : '0';
 
         \App\Models\SiteContent::where('key', $key)->update(['value' => $value]);
 
-        return response()->json(['success' => true, 'method' => $request->method, 'enabled' => (bool) $request->enabled]);
+        return response()->json(['success' => true, 'method' => $request->input('method'), 'enabled' => (bool) $request->input('enabled')]);
     }
 
     /** Show the diagnostics page */

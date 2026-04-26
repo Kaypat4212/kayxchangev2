@@ -5,6 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property float $amount
+ * @property float $fee_amount
+ * @property array|null $bank_account
+ * @property string $payment_method
+ * @property string $status
+ * @property string|null $currency
+ * @property string $reference
+ * @property string|null $payout_gateway
+ * @property string|null $payout_reference
+ * @property string|null $payout_status
+ * @property string|null $payout_recipient_code
+ * @property string|null $payout_response
+ * @property \Carbon\Carbon|null $processed_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class Withdrawal extends Model
 {
     use HasFactory;
