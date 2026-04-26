@@ -367,6 +367,11 @@ class AdminController extends Controller
                 } catch (\Throwable $alertEx) {
                     Log::warning('Buy status admin alert failed: ' . $alertEx->getMessage());
                 }
+
+                // Check & award trade badges
+                if ($isCompleted && isset($tradeUser)) {
+                    try { app(\App\Services\BadgeService::class)->checkAndAward($tradeUser->fresh(), 'trade_completed'); } catch (\Throwable) {}
+                }
             }
 
             return back()->with('success', 'Buy trade status updated.');
@@ -376,8 +381,7 @@ class AdminController extends Controller
         }
     }
 
-    public function updateSellStatus(Request $request, $id)
-    {
+    public function updateSellStatus(Request $request, $id)    {
         try {
             $trade = SellTrade::findOrFail($id);
             $oldStatus = $trade->status;
@@ -503,6 +507,11 @@ class AdminController extends Controller
                     ]);
                 } catch (\Throwable $alertEx) {
                     Log::warning('Sell status admin alert failed: ' . $alertEx->getMessage());
+                }
+
+                // Check & award trade badges
+                if ($isCompleted && isset($tradeUser)) {
+                    try { app(\App\Services\BadgeService::class)->checkAndAward($tradeUser->fresh(), 'trade_completed'); } catch (\Throwable) {}
                 }
             }
 

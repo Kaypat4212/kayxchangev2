@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Mail\WelcomeEmail;
+use App\Services\BadgeService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -142,6 +143,9 @@ class RegisteredUserController extends Controller
         } catch (\Throwable $e) {
             Log::warning('Failed to send welcome email to ' . $user->email . ': ' . $e->getMessage());
         }
+
+        // Award Genesis Block badge
+        try { app(BadgeService::class)->checkAndAward($user, 'genesis'); } catch (\Throwable) {}
 
         // New users go through the onboarding wizard
         return redirect()->route('onboard');

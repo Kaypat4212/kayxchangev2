@@ -146,6 +146,27 @@ class User extends Authenticatable
         return $this->hasMany(SpecialReferralCode::class, 'owner_user_id');
     }
 
+    public function badges()
+    {
+        return $this->belongsToMany(Badge::class, 'user_badges')
+                    ->withPivot(['awarded_at', 'awarded_by', 'is_pinned', 'pin_position'])
+                    ->withTimestamps()
+                    ->orderBy('user_badges.awarded_at');
+    }
+
+    public function pinnedBadges()
+    {
+        return $this->belongsToMany(Badge::class, 'user_badges')
+                    ->withPivot(['awarded_at', 'pin_position'])
+                    ->wherePivot('is_pinned', true)
+                    ->orderBy('user_badges.pin_position');
+    }
+
+    public function userBadges()
+    {
+        return $this->hasMany(UserBadge::class);
+    }
+
     public static function generateReferralCode()
     {
         do {

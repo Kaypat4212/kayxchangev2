@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Services\BadgeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\TradeNotification;
@@ -103,6 +104,9 @@ class KycController extends Controller
 
             if ($status === 'approved') {
                 $kyc->user->update(['kyc_verified' => 1]);
+
+                // Award KYC Verified badge
+                try { app(BadgeService::class)->checkAndAward($kyc->user->fresh(), 'kyc_verified'); } catch (\Throwable) {}
 
                 // When KYC is approved, re-check if a pending referral can now be completed
                 // (the deposit threshold may already be met but reward was held until KYC)

@@ -43,6 +43,7 @@ use App\Http\Controllers\Admin\NotificationAiController;
 use App\Http\Controllers\BugReportController;
 use App\Http\Controllers\Admin\AdminTerminalController;
 use App\Http\Controllers\UserAiController;
+use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\CryptoRateUpdateController as CryptoRateupdateController;
 use App\Http\Controllers\TelegramLoginController;
@@ -114,6 +115,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboard/complete', [OnboardingController::class, 'complete'])->name('onboard.complete');
     Route::get('/onboard/banks', [OnboardingController::class, 'getBanks'])->name('onboard.banks');
     Route::get('/onboard/resolve-account', [OnboardingController::class, 'resolveAccount'])->name('onboard.resolve');
+});
+
+// ── Badges ───────────────────────────────────────────────────────────────────
+Route::middleware('auth')->group(function () {
+    Route::get('/badges', [BadgeController::class, 'index'])->name('badges.index');
+    Route::post('/badges/{badge}/pin', [BadgeController::class, 'pin'])->name('badges.pin');
+    Route::post('/badges/{badge}/unpin', [BadgeController::class, 'unpin'])->name('badges.unpin');
 });
 
 // ── PIN security ─────────────────────────────────────────────────────────────
@@ -362,6 +370,10 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::patch('/users/{user}/bank', [AdminController::class, 'updateUserBankDetails'])->name('admin.users.bank.update');
     Route::get('/users/{user}/backdoor', [AdminController::class, 'backdoor'])->name('admin.users.backdoor');
     Route::get('/revert', [AdminController::class, 'revertBackdoor'])->name('admin.revert');
+
+    // Admin badge management
+    Route::post('/users/{user}/badges/award', [BadgeController::class, 'adminAward'])->name('admin.badges.award');
+    Route::delete('/users/{user}/badges/{badge}/revoke', [BadgeController::class, 'adminRevoke'])->name('admin.badges.revoke');
     
     // Admin Rate Routes (for dashboard API calls)
     Route::get('/rate', [CryptoRateupdateController::class, 'index'])->name('admin.rates');

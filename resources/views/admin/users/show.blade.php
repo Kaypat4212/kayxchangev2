@@ -140,4 +140,63 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
         </div>
     </div>
 </div>
+
+<!-- ===== Badges Section ===== -->
+@php
+    $allBadges = \App\Models\Badge::orderBy('sort_order')->get();
+    $userBadgeIds = $user->badges()->pluck('badges.id')->toArray();
+@endphp
+<div class="container-fluid" style="max-width:960px;padding:0 1rem 3rem;">
+    <div class="kx-panel">
+        <div class="kx-panel-header">
+            <span class="kx-panel-title"><i class="bi bi-award-fill" style="color:#fbbf24"></i> Badges & Achievements</span>
+            <span style="font-size:.75rem;color:var(--kx-muted)">{{ count($userBadgeIds) }} earned</span>
+        </div>
+        <div style="padding:1.25rem">
+
+            {{-- Current badges --}}
+            @if(count($userBadgeIds))
+            <div style="margin-bottom:1.5rem">
+                <div style="font-size:.7rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">Earned Badges</div>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach($user->badges()->with('pivot')->get() as $badge)
+                    <div class="d-flex align-items-center gap-2" style="background:rgba(0,204,0,.06);border:1px solid rgba(0,204,0,.15);border-radius:10px;padding:.4rem .8rem;">
+                        <span style="font-size:1.2rem">{{ $badge->emoji }}</span>
+                        <div>
+                            <div style="font-size:.75rem;font-weight:600;color:{{ $badge->color ?? '#00cc00' }}">{{ $badge->name }}</div>
+                            <div style="font-size:.62rem;color:var(--kx-muted)">{{ ucfirst($badge->rarity) }}</div>
+                        </div>
+                        {{-- Revoke button --}}
+                        <form method="POST" action="{{ route('admin.badges.revoke', [$user, $badge]) }}" style="margin-left:.5rem" onsubmit="return confirm('Revoke badge {{ addslashes($badge->name) }}?')">
+                            @csrf @method('DELETE')
+                            <button type="submit" style="font-size:.6rem;background:rgba(239,68,68,.15);color:#f87171;border:none;border-radius:6px;padding:.15rem .45rem;cursor:pointer;" title="Revoke badge">✕</button>
+                        </form>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            {{-- Award a badge --}}
+            <form method="POST" action="{{ route('admin.badges.award', $user) }}" class="d-flex align-items-end gap-3 flex-wrap">
+                @csrf
+                <div style="flex:1;min-width:200px">
+                    <label style="font-size:.7rem;color:var(--kx-muted);text-transform:uppercase;display:block;margin-bottom:.4rem">Award Badge</label>
+                    <select name="badge_id" class="form-select form-select-sm" style="background:#1a2e1a;color:#e8f5e8;border-color:rgba(255,255,255,.12)">
+                        <option value="">-- Select a badge --</option>
+                        @foreach($allBadges as $badge)
+                        <option value="{{ $badge->id }}" {{ in_array($badge->id, $userBadgeIds) ? 'disabled' : '' }}>
+                            {{ $badge->emoji }} {{ $badge->name }} ({{ ucfirst($badge->rarity) }}){{ in_array($badge->id, $userBadgeIds) ? ' ✓' : '' }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="submit" class="btn-kx-outline" style="font-size:.78rem;padding:.4rem 1rem">
+                    <i class="bi bi-award me-1"></i> Award
+                </button>
+            </form>
+
+        </div>
+    </div>
+</div>
 @endsection

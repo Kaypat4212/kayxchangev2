@@ -379,6 +379,41 @@
             </div>
         </div>
 
+        <!-- ===== Badges Widget ===== -->
+        @php
+            $pinnedBadges = Auth::user()->pinnedBadges()->with('badge')->get();
+            $totalBadgeCount = Auth::user()->badges()->count();
+        @endphp
+        @if($pinnedBadges->count() > 0 || $totalBadgeCount > 0)
+        <div class="kx-card mb-4" style="padding:1rem 1.4rem;">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="kx-sec-title mb-0" style="font-size:.85rem">
+                    <i class="bi bi-award-fill" style="color:#fbbf24"></i> My Badges
+                    <span class="kx-sec-tag ms-2">{{ $totalBadgeCount }} earned</span>
+                </div>
+                <a href="{{ route('badges.index') }}" style="font-size:.75rem;color:var(--primary-green);text-decoration:none;">View all &rarr;</a>
+            </div>
+            @if($pinnedBadges->count() > 0)
+            <div class="d-flex gap-3 flex-wrap">
+                @foreach($pinnedBadges as $ub)
+                @php $b = $ub->badge; @endphp
+                <div class="d-flex align-items-center gap-2" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.45rem .75rem;">
+                    <span style="font-size:1.4rem;line-height:1">{{ $b->emoji }}</span>
+                    <div>
+                        <div style="font-size:.75rem;font-weight:600;color:{{ $b->color ?? '#00cc00' }}">{{ $b->name }}</div>
+                        <div style="font-size:.65rem;color:var(--text-muted);text-transform:capitalize">{{ $b->rarity }}</div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @else
+            <p style="font-size:.78rem;color:var(--text-muted);margin:0">
+                You haven't pinned any badges yet. <a href="{{ route('badges.index') }}" style="color:var(--primary-green)">Choose your favourites</a>.
+            </p>
+            @endif
+        </div>
+        @endif
+
         <!-- ===== Quick Actions Row ===== -->
         <div class="kx-card p-3 mb-4">
             <div class="kx-quick">

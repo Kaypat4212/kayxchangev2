@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use App\Services\BadgeService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -104,6 +105,9 @@ class OnboardingController extends Controller
         // Mark this session as PIN-verified since they just set it
         session(['pin_verified_at' => now()->timestamp]);
 
+        // Award PIN badge
+        try { app(BadgeService::class)->checkAndAward($user, 'pin_set'); } catch (\Throwable) {}
+
         return response()->json(['success' => true]);
     }
 
@@ -148,6 +152,9 @@ class OnboardingController extends Controller
         $user->account_number = $request->account_number;
         $user->account_name   = $verifiedName;
         $user->save();
+
+        // Award bank badge
+        try { app(BadgeService::class)->checkAndAward($user, 'bank_added'); } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'account_name' => $verifiedName]);
     }
