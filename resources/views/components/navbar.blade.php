@@ -405,7 +405,7 @@
     }
 
     function fetchNotifs() {
-        fetch('/api/notifications', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        fetch('/api/notifications', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (!data) return;
