@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class SellController extends Controller
@@ -136,21 +137,44 @@ class SellController extends Controller
      */
     public function fetchBanks()
     {
-        $key = env('PAYSTACK_SECRET_KEY');
+        $key = config('paystack.secret_key') ?: env('PAYSTACK_SECRET_KEY');
         if (!$key) {
-            return response()->json(['banks' => []]);
+            return response()->json(['banks' => [], 'error' => 'Payment gateway not configured.']);
         }
-        try {
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $key])
-                ->timeout(8)
-                ->get('https://api.paystack.co/bank', ['currency' => 'NGN', 'perPage' => 100]);
-            $banks = $response->successful() ? $response->json('data', []) : [];
-            // Sort alphabetically for easier selection
-            usort($banks, fn($a, $b) => strcmp($a['name'] ?? '', $b['name'] ?? ''));
-        } catch (\Exception $e) {
-            Log::error('fetchBanks failed', ['error' => $e->getMessage()]);
-            $banks = [];
+
+        $banks = Cache::remember('paystack_banks_ng', 21600, function () use ($key) {
+            try {
+                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $key])
+                    ->timeout(10)
+                    ->get('https://api.paystack.co/bank', [
+                        'country' => 'nigeria',
+                        'perPage' => 200,
+                        'use_cursor' => false,
+                    ]);
+
+                if ($response->successful()) {
+                    $data = $response->json('data', []);
+                    usort($data, fn($a, $b) => strcmp($a['name'] ?? '', $b['name'] ?? ''));
+                    return $data;
+                }
+
+                Log::error('fetchBanks: Paystack returned non-200', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+                return null; // null = don't cache failure
+            } catch (\Exception $e) {
+                Log::error('fetchBanks failed', ['error' => $e->getMessage()]);
+                return null;
+            }
+        });
+
+        if ($banks === null) {
+            // Remove null from cache so next request retries
+            Cache::forget('paystack_banks_ng');
+            return response()->json(['banks' => [], 'error' => 'Could not load banks. Please retry.'], 503);
         }
+
         return response()->json(['banks' => $banks]);
     }
 

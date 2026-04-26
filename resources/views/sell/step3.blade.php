@@ -182,7 +182,7 @@
                                     <option value="">— Choose a bank —</option>
                                 </select>
                                 <div id="bankLoadErr" style="font-size:.78rem;color:#ff6b6b;display:none">
-                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Could not load banks. <a href="#" onclick="loadBanks();return false" style="color:#ffb3b3">Retry</a>
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i><span class="err-msg">Could not load banks.</span> <a href="#" onclick="loadBanks();return false" style="color:#ffb3b3">Retry</a>
                                 </div>
                                 <input type="hidden" name="alt_bank_code" id="altBankCode">
                                 <input type="hidden" name="alt_bank_name" id="altBankName">
@@ -256,6 +256,7 @@ function loadBanks() {
         const banks = res.banks || [];
         if (!banks.length) {
             loadMsg.style.display = 'none';
+            loadErr.querySelector('span.err-msg') && (loadErr.querySelector('span.err-msg').textContent = res.error || 'Could not load banks.');
             loadErr.style.display = 'block';
             return;
         }
@@ -270,8 +271,11 @@ function loadBanks() {
         loadMsg.style.display = 'none';
         sel.style.display = 'block';
         banksLoaded = true;
-    }).fail(function() {
+    }).fail(function(xhr) {
         loadMsg.style.display = 'none';
+        const errMsg = xhr.responseJSON?.error || 'Could not load banks.';
+        const msgEl = loadErr.querySelector('span.err-msg');
+        if (msgEl) msgEl.textContent = errMsg;
         loadErr.style.display = 'block';
     });
 }
