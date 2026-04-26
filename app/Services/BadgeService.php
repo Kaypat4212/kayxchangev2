@@ -30,6 +30,7 @@ class BadgeService
                 ->get();
 
             foreach ($candidates as $badge) {
+                /** @var Badge $badge */
                 if ($this->alreadyHas($user, $badge->id)) continue;
                 if ($this->meetsThreshold($user, $badge)) {
                     $this->award($user, $badge);
@@ -45,6 +46,7 @@ class BadgeService
                     ->get();
 
                 foreach ($volBadges as $badge) {
+                    /** @var Badge $badge */
                     if ($this->alreadyHas($user, $badge->id)) continue;
                     if ($this->meetsThreshold($user, $badge)) {
                         $this->award($user, $badge);

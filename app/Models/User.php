@@ -18,13 +18,17 @@ use Illuminate\Support\Str;
  * @property string $name
  * @property string $email
  * @property string $password
+ * @property string|null $phone
+ * @property string|null $role
  * @property string|null $telegram_chat_id
  * @property string|null $telegram_username
  * @property bool $telegram_notifications
+ * @property bool $telegram_ai_enabled
  * @property bool $telegram_verified
  * @property float $balance
  * @property bool $kyc_verified
  * @property bool $is_admin
+ * @property bool $onboarding_completed
  * @property string|null $bank_name
  * @property string|null $bank_code
  * @property string|null $account_number
@@ -34,6 +38,17 @@ use Illuminate\Support\Str;
  * @property \Carbon\Carbon|null $pin_locked_until
  * @property string|null $referral_code
  * @property int|null $referred_by
+ * @property string|null $paystack_auth_code
+ * @property string|null $paystack_auth_email
+ * @property string|null $paystack_auth_card_last4
+ * @property string|null $paystack_auth_card_type
+ * @property string|null $whatsapp_phone
+ * @property bool $whatsapp_verified
+ * @property bool $whatsapp_notifications
+ * @property string|null $registration_ip
+ * @property string|null $two_factor_secret
+ * @property bool $two_factor_enabled
+ * @property \Carbon\Carbon|null $two_factor_confirmed_at
  */
 class User extends Authenticatable
 {

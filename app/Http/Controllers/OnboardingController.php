@@ -120,6 +120,7 @@ class OnboardingController extends Controller
             return response()->json(['errors' => $v->errors()], 422);
         }
 
+        /** @var \App\Models\User $user */
         $user = Auth::user();
         $user->transaction_pin = Hash::make($request->pin);
         $user->pin_attempts = 0;
@@ -170,6 +171,7 @@ class OnboardingController extends Controller
             $verifiedName = $request->account_name;
         }
 
+        /** @var \App\Models\User $user */
         $user = Auth::user();
         $user->bank_name      = $request->bank_name;
         $user->account_number = $request->account_number;
@@ -185,6 +187,7 @@ class OnboardingController extends Controller
     /** AJAX/POST: Mark onboarding complete */
     public function complete(Request $request)
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
         $user->onboarding_completed = true;
         $user->save();

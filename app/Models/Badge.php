@@ -6,6 +6,22 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $slug
+ * @property string $name
+ * @property string $emoji
+ * @property string|null $description
+ * @property string $category
+ * @property string $criteria_type
+ * @property int|null $criteria_value
+ * @property string|null $color
+ * @property string $rarity
+ * @property bool $is_special
+ * @property int $sort_order
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class Badge extends Model
 {
     protected $fillable = [

@@ -25,6 +25,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $cancelled_by
  * @property string|null $source
  * @property string|null $rate_used
+ * @property float|null $usd_amount
+ * @property float|null $naira_amount
+ * @property string|null $payment_proof
+ * @property string|null $admin_payment_proof
  */
 class SellTrade extends Model
 {

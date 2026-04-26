@@ -17,6 +17,7 @@ class BadgeController extends Controller
      */
     public function index()
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
         $allBadges = Badge::orderBy('sort_order')->get();
