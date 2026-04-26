@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Mail\WelcomeEmail;
+use App\Mail\TestEmail;
 use App\Models\EmailSetting;
 use App\Models\EmailTemplate;
 use App\Models\LoginLog;
@@ -120,14 +120,9 @@ class EmailSettingsController extends Controller
                 }
             }
 
-            // Use a dummy user object for the test welcome email
-            $dummyUser = new User([
-                'name'  => 'Test User',
-                'email' => $request->test_email,
-            ]);
-            Mail::to($request->test_email)->send(new WelcomeEmail($dummyUser));
+            Mail::to($request->test_email)->send(new TestEmail($request->test_email));
 
-            return back()->with('success', 'Test email sent to ' . $request->test_email);
+            return back()->with('success', 'Test email sent successfully to ' . $request->test_email);
         } catch (\Throwable $e) {
             Log::error('Test email failed: ' . $e->getMessage());
             return back()->with('error', 'Failed to send test email: ' . $e->getMessage());
