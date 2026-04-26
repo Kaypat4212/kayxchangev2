@@ -239,6 +239,56 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
                 @error('amount')<div class="kx-error"><i class="bi bi-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
             </div>
 
+            @php
+                $depFeeType  = \App\Models\AdminSetting::get('deposit_fee_type', 'none');
+                $depFeeValue = (float) \App\Models\AdminSetting::get('deposit_fee_value', '0');
+            @endphp
+            @if($depFeeType !== 'none' && $depFeeValue > 0)
+            {{-- Live fee breakdown for deposit --}}
+            <div id="depFeeBreakdown" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:.75rem 1rem;margin-top:-.5rem;margin-bottom:1rem;font-size:.82rem;display:none">
+                <div style="display:flex;justify-content:space-between;margin-bottom:.25rem">
+                    <span style="color:rgba(255,255,255,.6)">Deposit amount</span>
+                    <span id="depFeeBase" style="color:#fff;font-weight:600">₦0.00</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:.25rem">
+                    <span style="color:rgba(255,255,255,.6)">
+                        Fee
+                        @if($depFeeType === 'percentage')({{ $depFeeValue }}%)@else(flat)@endif
+                    </span>
+                    <span id="depFeeAmt" style="color:var(--kx-yellow, #f59e0b);font-weight:600">₦0.00</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(245,158,11,.2);padding-top:.4rem;margin-top:.2rem">
+                    <span style="color:rgba(255,255,255,.8);font-weight:700">You'll receive</span>
+                    <span id="depFeeReceive" style="color:#00cc00;font-weight:800">₦0.00</span>
+                </div>
+            </div>
+            <script>
+            (function(){
+                const DEP_FEE_TYPE  = @json($depFeeType);
+                const DEP_FEE_VALUE = {{ $depFeeValue }};
+                const amtEl = document.getElementById('amount');
+                const row   = document.getElementById('depFeeBreakdown');
+                function calcFee(amt) {
+                    if (DEP_FEE_TYPE === 'flat')       return DEP_FEE_VALUE;
+                    if (DEP_FEE_TYPE === 'percentage') return Math.round(amt * DEP_FEE_VALUE / 100 * 100) / 100;
+                    return 0;
+                }
+                function fmt(n) { return '₦' + n.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+                function update() {
+                    const amt = parseFloat(amtEl.value);
+                    if (!amt || amt <= 0) { row.style.display = 'none'; return; }
+                    const fee  = calcFee(amt);
+                    const recv = Math.max(0, amt - fee);
+                    document.getElementById('depFeeBase').textContent    = fmt(amt);
+                    document.getElementById('depFeeAmt').textContent     = fmt(fee);
+                    document.getElementById('depFeeReceive').textContent = fmt(recv);
+                    row.style.display = 'block';
+                }
+                if (amtEl) amtEl.addEventListener('input', update);
+            })();
+            </script>
+            @endif
+
             <div class="mb-0">
                 <div class="kx-label">Payment Method <span style="color:#ef4444;">*</span></div>
 

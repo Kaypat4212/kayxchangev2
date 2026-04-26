@@ -167,6 +167,31 @@
             <label class="wd-label" for="amount">Amount (&#x20A6;)</label>
             <input type="number" name="amount" id="amount" class="wd-input" step="0.01" min="{{ $minimum_withdrawal }}" max="{{ $balance }}" placeholder="Enter amount" required>
 
+            @if($fee_type !== 'none' && $fee_value > 0)
+            {{-- Live fee breakdown row --}}
+            <div id="feeBreakdown" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:.75rem 1rem;margin-top:-.5rem;margin-bottom:1rem;font-size:.82rem;display:none">
+                <div style="display:flex;justify-content:space-between;margin-bottom:.25rem">
+                    <span style="color:rgba(255,255,255,.6)">Withdrawal amount</span>
+                    <span id="feeBaseAmt" style="color:#fff;font-weight:600">₦0.00</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:.25rem">
+                    <span style="color:rgba(255,255,255,.6)">
+                        Fee
+                        @if($fee_type === 'percentage')
+                            ({{ $fee_value }}%)
+                        @else
+                            (flat)
+                        @endif
+                    </span>
+                    <span id="feeAmt" style="color:var(--kx-warning);font-weight:600">₦0.00</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(245,158,11,.2);padding-top:.4rem;margin-top:.2rem">
+                    <span style="color:rgba(255,255,255,.8);font-weight:700">Total deducted</span>
+                    <span id="feeTotalAmt" style="color:var(--kx-warning);font-weight:800">₦0.00</span>
+                </div>
+            </div>
+            @endif
+
             <label class="wd-label" for="password">Password</label>
             <input type="password" name="password" id="password" class="wd-input" placeholder="Your account password" required autocomplete="current-password">
 
@@ -233,6 +258,31 @@
     const pwdEl        = document.getElementById('password');
     const submitBtn    = document.getElementById('submitBtn');
     const extName      = document.getElementById('external_bank_name');      // hidden
+
+    // ── Fee preview ──────────────────────────────────────────────
+    const FEE_TYPE  = @json($fee_type);
+    const FEE_VALUE = {{ (float) $fee_value }};
+    const feeRow    = document.getElementById('feeBreakdown');
+
+    function calcFee(amount) {
+        if (FEE_TYPE === 'flat')       return FEE_VALUE;
+        if (FEE_TYPE === 'percentage') return Math.round(amount * FEE_VALUE / 100 * 100) / 100;
+        return 0;
+    }
+
+    function updateFeePreview() {
+        if (!feeRow) return;
+        const amt = parseFloat(amtEl.value);
+        if (!amt || amt <= 0) { feeRow.style.display = 'none'; return; }
+        const fee   = calcFee(amt);
+        const total = amt + fee;
+        document.getElementById('feeBaseAmt').textContent  = '₦' + amt.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
+        document.getElementById('feeAmt').textContent      = '₦' + fee.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
+        document.getElementById('feeTotalAmt').textContent = '₦' + total.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
+        feeRow.style.display = 'block';
+    }
+
+    if (amtEl) amtEl.addEventListener('input', updateFeePreview);
     const extBankCode  = document.getElementById('external_bank_code');      // hidden
     const bankSearchEl = document.getElementById('bank_search_input');
     const bankDropdown = document.getElementById('bank_dropdown');

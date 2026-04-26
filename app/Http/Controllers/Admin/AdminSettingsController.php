@@ -426,4 +426,28 @@ class AdminSettingsController extends Controller
             return response()->json(['ok' => false, 'error' => $e->getMessage()]);
         }
     }
+
+    // ── Fee Settings (deposit + withdrawal) ───────────────────────────────────
+    public function saveFeeSettings(Request $request)
+    {
+        $request->validate([
+            'key'   => ['required', 'string', 'in:deposit_fee_type,deposit_fee_value,withdrawal_fee_type,withdrawal_fee_value'],
+            'value' => ['required', 'string'],
+        ]);
+
+        $key   = $request->input('key');
+        $value = $request->input('value');
+
+        // Extra validation per key type
+        if (str_ends_with($key, '_type') && ! in_array($value, ['none', 'flat', 'percentage'])) {
+            return response()->json(['success' => false, 'error' => 'Invalid fee type.'], 422);
+        }
+        if (str_ends_with($key, '_value') && (! is_numeric($value) || (float) $value < 0)) {
+            return response()->json(['success' => false, 'error' => 'Fee value must be a non-negative number.'], 422);
+        }
+
+        AdminSetting::set($key, $value);
+
+        return response()->json(['success' => true]);
+    }
 }

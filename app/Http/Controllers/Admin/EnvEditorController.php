@@ -58,6 +58,39 @@ class EnvEditorController extends Controller
         'FLUTTERWAVE_PUBLIC_KEY'   => ['label' => 'Public Key',              'group' => 'flutterwave', 'type' => 'text'],
         'FLUTTERWAVE_WEBHOOK_HASH' => ['label' => 'Webhook Hash / Secret',   'group' => 'flutterwave', 'type' => 'password'],
 
+        // ── OPay
+        'OPAY_PUBLIC_KEY'          => ['label' => 'Public Key',              'group' => 'opay',        'type' => 'text'],
+        'OPAY_PRIVATE_KEY'         => ['label' => 'Private Key',             'group' => 'opay',        'type' => 'password'],
+        'OPAY_MERCHANT_ID'         => ['label' => 'Merchant ID',             'group' => 'opay',        'type' => 'text'],
+        'OPAY_BASE_URL'            => ['label' => 'API Base URL',            'group' => 'opay',        'type' => 'url'],
+
+        // ── AI / Groq
+        'GROQ_API_KEY'             => ['label' => 'API Key',                 'group' => 'ai_groq',     'type' => 'password'],
+        'GROQ_MODEL'               => ['label' => 'Model',                   'group' => 'ai_groq',     'type' => 'text'],
+
+        // ── AI / OpenAI
+        'OPENAI_API_KEY'           => ['label' => 'API Key',                 'group' => 'ai_openai',   'type' => 'password'],
+        'OPENAI_MODEL'             => ['label' => 'Model',                   'group' => 'ai_openai',   'type' => 'text'],
+
+        // ── AI / DeepSeek
+        'DEEPSEEK_API_KEY'         => ['label' => 'API Key',                 'group' => 'ai_deepseek', 'type' => 'password'],
+        'DEEPSEEK_MODEL'           => ['label' => 'Model',                   'group' => 'ai_deepseek', 'type' => 'text'],
+
+        // ── WhatsApp (Meta Business Cloud)
+        'WHATSAPP_ACCESS_TOKEN'          => ['label' => 'Access Token',            'group' => 'whatsapp',    'type' => 'password'],
+        'WHATSAPP_PHONE_NUMBER_ID'       => ['label' => 'Phone Number ID',         'group' => 'whatsapp',    'type' => 'text'],
+        'WHATSAPP_BUSINESS_ACCOUNT_ID'   => ['label' => 'Business Account ID',     'group' => 'whatsapp',    'type' => 'text'],
+        'WHATSAPP_VERIFY_TOKEN'          => ['label' => 'Webhook Verify Token',    'group' => 'whatsapp',    'type' => 'password'],
+
+        // ── Blockchain APIs
+        'ETHERSCAN_API_KEY'        => ['label' => 'Etherscan API Key',       'group' => 'blockchain',  'type' => 'password'],
+        'BLOCKCYPHER_TOKEN'        => ['label' => 'BlockCypher Token',       'group' => 'blockchain',  'type' => 'password'],
+        'TRONGRID_API_KEY'         => ['label' => 'TronGrid API Key',        'group' => 'blockchain',  'type' => 'password'],
+
+        // ── Admin
+        'ADMIN_TERMINAL_PIN'       => ['label' => 'Admin Terminal PIN',      'group' => 'admin',       'type' => 'password'],
+        'TELEGRAM_OWNER_CHAT_ID'   => ['label' => 'Owner Telegram Chat ID',  'group' => 'admin',       'type' => 'text'],
+
         // ── Mail
         'MAIL_MAILER'              => ['label' => 'Mailer Driver',           'group' => 'mail',        'type' => 'text'],
         'MAIL_HOST'                => ['label' => 'SMTP Host',               'group' => 'mail',        'type' => 'text'],
@@ -70,14 +103,21 @@ class EnvEditorController extends Controller
     ];
 
     private const GROUP_META = [
-        'app'          => ['label' => 'Application',   'icon' => 'bi-gear-fill',          'color' => '#60a5fa'],
-        'telegram'     => ['label' => 'Telegram Bot',  'icon' => 'bi-telegram',           'color' => '#38bdf8'],
-        'wallets'      => ['label' => 'Wallet Addresses', 'icon' => 'bi-wallet2',         'color' => '#22c55e'],
-        'trade_alerts' => ['label' => 'Trade Alert Rules', 'icon' => 'bi-bell-fill',      'color' => '#f59e0b'],
-        'paystack'     => ['label' => 'Paystack',      'icon' => 'bi-credit-card-fill',   'color' => '#00cc00'],
-        'korapay'      => ['label' => 'Korapay',       'icon' => 'bi-wallet2',            'color' => '#a78bfa'],
-        'flutterwave'  => ['label' => 'Flutterwave',   'icon' => 'bi-send-fill',          'color' => '#fbbf24'],
-        'mail'         => ['label' => 'Mail / SMTP',   'icon' => 'bi-envelope-fill',      'color' => '#f472b6'],
+        'app'          => ['label' => 'Application',           'icon' => 'bi-gear-fill',          'color' => '#60a5fa'],
+        'telegram'     => ['label' => 'Telegram Bot',          'icon' => 'bi-telegram',           'color' => '#38bdf8'],
+        'wallets'      => ['label' => 'Wallet Addresses',      'icon' => 'bi-wallet2',            'color' => '#22c55e'],
+        'trade_alerts' => ['label' => 'Trade Alert Rules',     'icon' => 'bi-bell-fill',          'color' => '#f59e0b'],
+        'paystack'     => ['label' => 'Paystack',              'icon' => 'bi-credit-card-fill',   'color' => '#00cc00'],
+        'korapay'      => ['label' => 'Korapay',               'icon' => 'bi-wallet2',            'color' => '#a78bfa'],
+        'flutterwave'  => ['label' => 'Flutterwave',           'icon' => 'bi-send-fill',          'color' => '#fbbf24'],
+        'opay'         => ['label' => 'OPay',                  'icon' => 'bi-phone-fill',         'color' => '#ff6b35'],
+        'ai_groq'      => ['label' => 'AI — Groq',             'icon' => 'bi-cpu-fill',           'color' => '#a78bfa'],
+        'ai_openai'    => ['label' => 'AI — OpenAI',           'icon' => 'bi-stars',              'color' => '#22d3ee'],
+        'ai_deepseek'  => ['label' => 'AI — DeepSeek',         'icon' => 'bi-robot',              'color' => '#818cf8'],
+        'whatsapp'     => ['label' => 'WhatsApp Business',     'icon' => 'bi-whatsapp',           'color' => '#25d366'],
+        'blockchain'   => ['label' => 'Blockchain APIs',       'icon' => 'bi-boxes',              'color' => '#f472b6'],
+        'admin'        => ['label' => 'Admin / Security',      'icon' => 'bi-shield-lock-fill',   'color' => '#ef4444'],
+        'mail'         => ['label' => 'Mail / SMTP',           'icon' => 'bi-envelope-fill',      'color' => '#f472b6'],
     ];
 
     public function index()

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use App\Mail\TradeNotification;
+use App\Models\AdminSetting;
 use App\Models\SiteContent;
 use App\Models\User;
 use App\Models\Withdrawal;
@@ -29,17 +30,27 @@ class WithdrawalController extends Controller
         $this->middleware('admin')->only('approveWithdrawal', 'cancelWithdrawal');
     }
 
+    // ── Fee helper ────────────────────────────────────────────────────────────
+    private function calculateFee(float $amount, string $type, float $value): float
+    {
+        if ($type === 'flat') return $value;
+        if ($type === 'percentage') return round($amount * $value / 100, 2);
+        return 0.0;
+    }
+
     public function withdraw()
     {
         $user = Auth::user();
         return view('withdraw.form', [
-            'balance' => $user->balance ?? 0,
+            'balance'            => $user->balance ?? 0,
             'minimum_withdrawal' => config('withdrawal.minimum', 10),
-            'bank_details' => [
-                'bank_name' => $user->bank_name ?? 'N/A',
+            'bank_details'       => [
+                'bank_name'      => $user->bank_name ?? 'N/A',
                 'account_number' => $user->account_number ?? 'N/A',
-                'account_name' => $user->account_name ?? 'N/A',
+                'account_name'   => $user->account_name ?? 'N/A',
             ],
+            'fee_type'  => AdminSetting::get('withdrawal_fee_type', 'none'),
+            'fee_value' => (float) AdminSetting::get('withdrawal_fee_value', '0'),
         ]);
     }
 
@@ -50,12 +61,17 @@ class WithdrawalController extends Controller
         Log::debug('Processing withdrawal request', ['request' => $request->all()]);
 
         // Validation rules with custom messages
+        $feeType  = AdminSetting::get('withdrawal_fee_type', 'none');
+        $feeValue = (float) AdminSetting::get('withdrawal_fee_value', '0');
+        $reqAmount = (float) $request->input('amount', 0);
+        $fee = $this->calculateFee($reqAmount, $feeType, $feeValue);
+
         $validator = Validator::make($request->all(), [
             'amount' => [
                 'required',
                 'numeric',
                 'min:' . config('withdrawal.minimum', 10),
-                'max:' . ($user->balance ?? 0),
+                'max:' . max(0, ($user->balance ?? 0) - $fee),
             ],
             'password' => [
                 'required',
@@ -106,14 +122,19 @@ class WithdrawalController extends Controller
         // Start transaction
         DB::beginTransaction();
         try {
+            // Re-calculate fee inside transaction with validated amount
+            $validatedAmount = (float) $request->amount;
+            $fee = $this->calculateFee($validatedAmount, $feeType, $feeValue);
+
             // Create withdrawal record
             $withdrawal = Withdrawal::create([
-                'user_id' => $user->id,
-                'amount' => $request->amount,
+                'user_id'      => $user->id,
+                'amount'       => $validatedAmount,
+                'fee_amount'   => $fee,
                 'bank_account' => json_encode($bankDetails),
-                'status' => 'pending',
-                'currency' => 'NGN',
-                'reference' => 'WDRW-' . Str::random(8),
+                'status'       => 'pending',
+                'currency'     => 'NGN',
+                'reference'    => 'WDRW-' . Str::random(8),
             ]);
 
             // Send Telegram notification
@@ -162,11 +183,13 @@ class WithdrawalController extends Controller
             }
 
             return response()->json([
-                'success' => true,
-                'withdrawal_id' => $withdrawal->id,
-                'bank_option' => $request->bank_option,
-                'bank_details' => $bankDetails,
-                'redirect' => route('withdraw.success', $withdrawal->id),
+                'success'        => true,
+                'withdrawal_id'  => $withdrawal->id,
+                'bank_option'    => $request->bank_option,
+                'bank_details'   => $bankDetails,
+                'fee_amount'     => $fee,
+                'total_deducted' => $validatedAmount + $fee,
+                'redirect'       => route('withdraw.success', $withdrawal->id),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -191,12 +214,15 @@ class WithdrawalController extends Controller
 
         DB::beginTransaction();
         try {
-            if ($user->balance < $withdrawal->amount) {
+            $feeAmount   = (float) ($withdrawal->fee_amount ?? 0);
+            $totalDeduct = (float) $withdrawal->amount + $feeAmount;
+
+            if ($user->balance < $totalDeduct) {
                 throw new \Exception('Insufficient balance.');
             }
 
-            // Deduct balance
-            $user->balance -= $withdrawal->amount;
+            // Deduct amount + fee from balance
+            $user->balance -= $totalDeduct;
             $user->save();
 
             // Update withdrawal status and processed_at

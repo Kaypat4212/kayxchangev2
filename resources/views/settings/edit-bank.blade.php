@@ -404,7 +404,7 @@ body { background: var(--kx-dark); color: var(--kx-text); }
     <i class="bi bi-chat-dots-fill"></i>
 </button>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
 <script src="{{ asset('js/echo.js') }}"></script>
 <script>

@@ -646,6 +646,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('settings/ai-usage',           [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiUsage'])->name('settings.ai-usage');
     Route::get('settings/ai-test',            [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiTest'])->name('settings.ai-test');
     Route::get('settings/groq-test',          [\App\Http\Controllers\Admin\AdminSettingsController::class, 'groqTest'])->name('settings.groq-test');
+    Route::post('settings/fee-settings',      [\App\Http\Controllers\Admin\AdminSettingsController::class, 'saveFeeSettings'])->name('settings.fee-settings');
 });
 
 // ── AI Chatbot (authenticated users) ─────────────────────────────────────────

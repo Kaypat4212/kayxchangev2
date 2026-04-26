@@ -90,6 +90,41 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             <div><div class="kx-stat-label">Total Volume</div><div class="kx-stat-value" style="font-size:1rem">₦{{ number_format($depTotal,0) }}</div></div></div>
     </div>
 
+    {{-- ── Deposit Fee Settings Panel ───────────────────────────────── --}}
+    <div class="kx-panel" style="margin-bottom:1.25rem">
+        <div class="kx-panel-header">
+            <span class="kx-panel-title"><i class="bi bi-percent me-2" style="color:var(--kx-blue)"></i>Deposit Fee Settings</span>
+            <span style="font-size:.72rem;color:var(--kx-muted)">Fee deducted from user's credited balance on deposit approval</span>
+        </div>
+        <div style="padding:1.1rem 1.25rem">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;align-items:end">
+                <div>
+                    <label class="kx-label">Fee Type</label>
+                    <select id="dep_fee_type" class="kx-input" style="width:100%">
+                        <option value="none"       {{ \App\Models\AdminSetting::get('deposit_fee_type','none') === 'none'       ? 'selected':'' }}>No Fee</option>
+                        <option value="flat"       {{ \App\Models\AdminSetting::get('deposit_fee_type','none') === 'flat'       ? 'selected':'' }}>Flat (₦)</option>
+                        <option value="percentage" {{ \App\Models\AdminSetting::get('deposit_fee_type','none') === 'percentage' ? 'selected':'' }}>Percentage (%)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="kx-label">Fee Value</label>
+                    <input type="number" id="dep_fee_value" class="kx-input" style="width:100%"
+                        min="0" step="0.01"
+                        placeholder="e.g. 100 or 1.5"
+                        value="{{ \App\Models\AdminSetting::get('deposit_fee_value','0') }}">
+                </div>
+                <div>
+                    <button type="button" class="btn-kx-green" style="width:100%;justify-content:center" onclick="saveDepFee()">
+                        <i class="bi bi-floppy me-1"></i> Save
+                    </button>
+                </div>
+            </div>
+            <div id="dep-fee-notice" style="display:none;margin-top:.75rem;font-size:.78rem;padding:.5rem .875rem;border-radius:7px;background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.2);color:var(--kx-green)">
+                <i class="bi bi-check-circle me-1"></i> Deposit fee saved.
+            </div>
+        </div>
+    </div>
+
     <div class="kx-panel">
         <div class="kx-panel-header"><span class="kx-panel-title"><i class="bi bi-list-ul me-2"></i>All Deposits</span></div>
         <div class="kx-table-wrap">
@@ -113,7 +148,9 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <td><span style="color:var(--kx-muted)">#{{ $dep->id }}</span></td>
                     <td><span style="font-weight:600">{{ $dep->user->name ?? 'N/A' }}</span><br>
                         <span style="font-size:.72rem;color:var(--kx-muted)">{{ $dep->user->email ?? '' }}</span></td>
-                    <td><span style="font-weight:700;color:var(--kx-blue)">₦{{ number_format($dep->amount, 2) }}</span></td>
+                    <td><span style="font-weight:700;color:var(--kx-blue)">₦{{ number_format($dep->amount, 2) }}</span>
+                        @if(($dep->fee_amount ?? 0) > 0)<br><span style="font-size:.7rem;color:var(--kx-muted)">-₦{{ number_format($dep->fee_amount, 2) }} fee</span>@endif
+                    </td>
                     <td style="font-size:.78rem">
                         @if($dep->payment_method === 'crypto_transfer')
                             <strong>{{ $gatewayMeta['crypto_wallet_name'] ?? 'Crypto Wallet' }}</strong><br>
@@ -220,6 +257,28 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 
 <script>
 let _depPendingId = null;
+
+// ── Deposit Fee Save ─────────────────────────────────────────────
+function saveDepFee() {
+    const feeUrl = '{{ route('admin.settings.fee-settings') }}';
+    const csrf   = '{{ csrf_token() }}';
+    const typeEl  = document.getElementById('dep_fee_type');
+    const valueEl = document.getElementById('dep_fee_value');
+
+    const saveOne = (key, value) => fetch(feeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        body: JSON.stringify({ key, value })
+    }).then(r => r.json());
+
+    Promise.all([
+        saveOne('deposit_fee_type', typeEl.value),
+        saveOne('deposit_fee_value', valueEl.value)
+    ]).then(() => {
+        const n = document.getElementById('dep-fee-notice');
+        if (n) { n.style.display = 'block'; setTimeout(() => n.style.display = 'none', 2500); }
+    }).catch(e => console.error('Fee save error', e));
+}
 
 function openDepConfirm(id, user, amount, method) {
     _depPendingId = id;

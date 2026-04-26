@@ -190,6 +190,42 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
         $cancelled = collect($withdrawals)->where('status','cancelled')->count();
         $total     = collect($withdrawals)->sum('amount');
     @endphp
+
+    {{-- ── Withdrawal Fee Settings Panel ──────────────────────────── --}}
+    <div class="kx-panel" style="margin-bottom:1.25rem">
+        <div class="kx-panel-header">
+            <span class="kx-panel-title"><i class="bi bi-percent me-2" style="color:var(--kx-blue)"></i>Withdrawal Fee Settings</span>
+            <span style="font-size:.72rem;color:var(--kx-muted)">Fee charged when a user withdraws funds</span>
+        </div>
+        <div style="padding:1.1rem 1.25rem">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;align-items:end">
+                <div>
+                    <label class="kx-label">Fee Type</label>
+                    <select id="wd_fee_type" class="kx-input" style="width:100%">
+                        <option value="none"       {{ \App\Models\AdminSetting::get('withdrawal_fee_type','none') === 'none'       ? 'selected':'' }}>No Fee</option>
+                        <option value="flat"       {{ \App\Models\AdminSetting::get('withdrawal_fee_type','none') === 'flat'       ? 'selected':'' }}>Flat (₦)</option>
+                        <option value="percentage" {{ \App\Models\AdminSetting::get('withdrawal_fee_type','none') === 'percentage' ? 'selected':'' }}>Percentage (%)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="kx-label">Fee Value</label>
+                    <input type="number" id="wd_fee_value" class="kx-input" style="width:100%"
+                        min="0" step="0.01"
+                        placeholder="e.g. 100 or 1.5"
+                        value="{{ \App\Models\AdminSetting::get('withdrawal_fee_value','0') }}">
+                </div>
+                <div>
+                    <button type="button" class="btn-kx-green" style="width:100%;justify-content:center" onclick="saveFee('withdrawal')">
+                        <i class="bi bi-floppy me-1"></i> Save
+                    </button>
+                </div>
+            </div>
+            <div id="wd-fee-notice" style="display:none;margin-top:.75rem;font-size:.78rem;padding:.5rem .875rem;border-radius:7px;background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.2);color:var(--kx-green)">
+                <i class="bi bi-check-circle me-1"></i> Withdrawal fee saved.
+            </div>
+        </div>
+    </div>
+
     <div class="kx-stat-row">
         <div class="kx-stat"><div class="kx-stat-icon icon-yellow"><i class="bi bi-hourglass-split"></i></div>
             <div><div class="kx-stat-label">Pending</div><div class="kx-stat-value">{{ $pending }}</div></div></div>
@@ -217,7 +253,9 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <td><span style="color:var(--kx-muted)">#{{ $w->id }}</span></td>
                     <td><span style="font-weight:600">{{ $w->user->name ?? 'N/A' }}</span><br>
                         <span style="font-size:.72rem;color:var(--kx-muted)">{{ $w->user->email ?? '' }}</span></td>
-                    <td><span style="font-weight:700;color:var(--kx-yellow)">₦{{ number_format($w->amount, 2) }}</span></td>
+                    <td><span style="font-weight:700;color:var(--kx-yellow)">₦{{ number_format($w->amount, 2) }}</span>
+                        @if(($w->fee_amount ?? 0) > 0)<br><span style="font-size:.7rem;color:var(--kx-muted)">+₦{{ number_format($w->fee_amount, 2) }} fee</span>@endif
+                    </td>
                     <td style="font-size:.78rem">{{ $bank['bank_name'] ?? '—' }}</td>
                     <td style="font-size:.78rem;font-family:monospace">{{ $bank['account_number'] ?? '—' }}<br>
                         <span style="color:var(--kx-muted)">{{ $bank['account_name'] ?? '' }}</span></td>
@@ -324,6 +362,38 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 
 <script>
 let _wdPendingFormId = null;
+
+// ── Fee Settings Save ─────────────────────────────────────────────
+function saveFee(context) {
+    const feeUrl = '{{ route('admin.settings.fee-settings') }}';
+    const csrf   = '{{ csrf_token() }}';
+    let typeKey, valueKey, noticeId;
+    if (context === 'withdrawal') {
+        typeKey  = 'withdrawal_fee_type';
+        valueKey = 'withdrawal_fee_value';
+        noticeId = 'wd-fee-notice';
+    } else {
+        typeKey  = 'deposit_fee_type';
+        valueKey = 'deposit_fee_value';
+        noticeId = 'dep-fee-notice';
+    }
+    const typeEl  = document.getElementById(context === 'withdrawal' ? 'wd_fee_type'  : 'dep_fee_type');
+    const valueEl = document.getElementById(context === 'withdrawal' ? 'wd_fee_value' : 'dep_fee_value');
+
+    const saveOne = (key, value) => fetch(feeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        body: JSON.stringify({ key, value })
+    }).then(r => r.json());
+
+    Promise.all([
+        saveOne(typeKey, typeEl.value),
+        saveOne(valueKey, valueEl.value)
+    ]).then(() => {
+        const n = document.getElementById(noticeId);
+        if (n) { n.style.display = 'block'; setTimeout(() => n.style.display = 'none', 2500); }
+    }).catch(e => console.error('Fee save error', e));
+}
 
 function openWdConfirm(action, id, user, amount, bank, accNum, accName) {
     const isApprove = action === 'approve';
