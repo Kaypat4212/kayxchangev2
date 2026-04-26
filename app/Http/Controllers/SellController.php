@@ -169,8 +169,8 @@ class SellController extends Controller
             }
         });
 
-        if ($banks === null) {
-            // Remove null from cache so next request retries
+        if (empty($banks)) {
+            // Remove bad value from cache so next request retries fresh
             Cache::forget('paystack_banks_ng');
             return response()->json(['banks' => [], 'error' => 'Could not load banks. Please retry.'], 503);
         }

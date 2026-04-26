@@ -54,6 +54,30 @@
     .kx-info-icon    { width:32px;height:32px;border-radius:9px;background:rgba(0,204,0,0.1);display:flex;align-items:center;justify-content:center;color:#00cc00;font-size:.85rem;flex-shrink:0; }
     .kx-info-label   { font-size:.72rem;color:rgba(255,255,255,0.35);margin-bottom:2px; }
     .kx-info-val     { font-size:.82rem;color:#e8f5e8;font-weight:500; }
+
+    /* ── Light mode overrides ── */
+    body.light-mode .kx-card              { background:#fff;border-color:rgba(0,0,0,0.08); }
+    body.light-mode .kx-page-title        { color:#1a2e1a; }
+    body.light-mode .kx-page-sub          { color:#4a6a4a; }
+    body.light-mode .kx-chat-header       { border-bottom-color:rgba(0,0,0,0.08); }
+    body.light-mode .kx-chat-name         { color:#1a2e1a; }
+    body.light-mode .kx-chat-status       { color:#4a6a4a; }
+    body.light-mode .kx-chat-body::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); }
+    body.light-mode .kx-msg-user .kx-msg-bubble  { background:rgba(0,180,0,0.12);border-color:rgba(0,180,0,0.25);color:#0d3b0d; }
+    body.light-mode .kx-msg-admin .kx-msg-bubble { background:#f0f4f0;border-color:rgba(0,0,0,0.1);color:#1a2e1a; }
+    body.light-mode .kx-msg-time          { color:rgba(0,0,0,0.4); }
+    body.light-mode .kx-chat-footer       { border-top-color:rgba(0,0,0,0.08); }
+    body.light-mode .kx-chat-input        { background:#f5f8f5;border-color:rgba(0,0,0,0.12);color:#1a2e1a; }
+    body.light-mode .kx-chat-input::placeholder { color:rgba(0,0,0,0.35); }
+    body.light-mode .kx-chat-input:focus  { border-color:rgba(0,160,0,0.5); }
+    body.light-mode .kx-chat-empty        { color:rgba(0,0,0,0.35); }
+    body.light-mode .kx-typing            { color:rgba(0,0,0,0.4); }
+    body.light-mode .kx-info-item         { border-bottom-color:rgba(0,0,0,0.07); }
+    body.light-mode .kx-info-label        { color:rgba(0,0,0,0.45); }
+    body.light-mode .kx-info-val          { color:#1a2e1a; }
+    body.light-mode [style*="color:rgba(255,255,255,0.5)"] { color:rgba(0,0,0,0.5) !important; }
+    body.light-mode .kx-topic-btn         { background:#f5f8f5;border-color:rgba(0,0,0,0.1);color:#2d4a2d; }
+    body.light-mode .kx-topic-btn:hover   { background:rgba(0,204,0,0.08);border-color:rgba(0,204,0,0.3);color:#0d3b0d; }
 </style>
 
 <div class="kx-sup">
@@ -104,7 +128,7 @@
         <!-- Info Sidebar -->
         <div class="col-12 col-lg-4">
             <div class="kx-card kx-sup-info">
-                <div style="font-size:.8rem;font-weight:600;color:rgba(255,255,255,0.5);letter-spacing:.06em;margin-bottom:.5rem">SUPPORT INFO</div>
+                <div class="kx-sidebar-section-label" style="font-size:.8rem;font-weight:600;letter-spacing:.06em;margin-bottom:.5rem">SUPPORT INFO</div>
                 <div class="kx-info-item">
                     <div class="kx-info-icon"><i class="bi bi-clock-fill"></i></div>
                     <div>
@@ -140,7 +164,7 @@
 
             <!-- Quick Topics -->
             <div class="kx-card kx-sup-info mt-3">
-                <div style="font-size:.8rem;font-weight:600;color:rgba(255,255,255,0.5);letter-spacing:.06em;margin-bottom:.75rem">QUICK TOPICS</div>
+                <div class="kx-sidebar-section-label" style="font-size:.8rem;font-weight:600;letter-spacing:.06em;margin-bottom:.75rem">QUICK TOPICS</div>
                 @foreach([
                     ['icon'=>'bi-arrow-repeat','text'=>'Trade status inquiry'],
                     ['icon'=>'bi-bank2','text'=>'Withdrawal not received'],
@@ -161,6 +185,8 @@
 </div>
 
 <style>
+    .kx-sidebar-section-label { color:rgba(255,255,255,0.5); }
+    body.light-mode .kx-sidebar-section-label { color:rgba(0,0,0,0.5); }
     .kx-topic-btn { width:100%;text-align:left;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);color:rgba(255,255,255,0.65);font-size:.78rem;padding:.5rem .75rem;border-radius:9px;margin-bottom:.4rem;cursor:pointer;transition:all .2s;display:block; }
     .kx-topic-btn:hover { background:rgba(0,204,0,0.08);border-color:rgba(0,204,0,0.2);color:#e8f5e8; }
 </style>

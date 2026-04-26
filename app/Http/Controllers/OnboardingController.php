@@ -34,15 +34,38 @@ class OnboardingController extends Controller
     /** GET /onboard/banks — return Paystack bank list (cached 6h) */
     public function getBanks()
     {
-        $banks = Cache::remember('paystack_banks_ng', 21600, function () {
-            $response = Http::withToken(config('paystack.secret_key'))
-                ->get('https://api.paystack.co/bank', ['country' => 'nigeria', 'perPage' => 200]);
+        $key = config('paystack.secret_key') ?: env('PAYSTACK_SECRET_KEY');
 
-            if ($response->successful()) {
-                return $response->json('data');
+        $banks = Cache::remember('paystack_banks_ng', 21600, function () use ($key) {
+            try {
+                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $key])
+                    ->timeout(10)
+                    ->get('https://api.paystack.co/bank', [
+                        'country'    => 'nigeria',
+                        'perPage'    => 200,
+                        'use_cursor' => false,
+                    ]);
+
+                if ($response->successful()) {
+                    $data = $response->json('data', []);
+                    usort($data, fn($a, $b) => strcmp($a['name'] ?? '', $b['name'] ?? ''));
+                    return $data ?: null; // don't cache empty
+                }
+
+                Log::warning('OnboardingController::getBanks Paystack non-200', [
+                    'status' => $response->status(),
+                ]);
+                return null; // don't cache failures
+            } catch (\Throwable $e) {
+                Log::warning('OnboardingController::getBanks failed: ' . $e->getMessage());
+                return null;
             }
-            return [];
         });
+
+        if (empty($banks)) {
+            Cache::forget('paystack_banks_ng');
+            return response()->json([], 503);
+        }
 
         return response()->json($banks);
     }

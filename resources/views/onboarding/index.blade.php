@@ -462,11 +462,24 @@ window.savePinToServer = async function() {
 let bankList = [];
 let resolveTimer = null;
 let verifiedAccountName = '';
+let _bankRetried = false;
 
 async function loadBanks() {
     try {
         const res = await fetch('{{ route("onboard.banks") }}', { headers: { 'Accept': 'application/json' } });
-        bankList = await res.json();
+        const data = await res.json();
+        // data is an array from the endpoint
+        bankList = Array.isArray(data) ? data : [];
+        if (!bankList.length) {
+            if (!_bankRetried) {
+                _bankRetried = true;
+                setTimeout(loadBanks, 1500);
+                return;
+            }
+            document.getElementById('obBankSelect').innerHTML = '<option value="">— Could not load banks. Retry —</option>';
+            return;
+        }
+        _bankRetried = false;
         const sel = document.getElementById('obBankSelect');
         sel.innerHTML = '<option value="" data-code="">— Select your bank —</option>';
         bankList.forEach(b => {

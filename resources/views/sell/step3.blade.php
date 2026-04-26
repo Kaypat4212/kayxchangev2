@@ -244,6 +244,8 @@ let bankValidated  = false;
 let banksLoaded    = false;
 
 /* ── Lazy bank list load ── */
+let bankRetried = false;
+
 function loadBanks() {
     const loadMsg = document.getElementById('bankLoadingMsg');
     const loadErr = document.getElementById('bankLoadErr');
@@ -255,11 +257,20 @@ function loadBanks() {
     $.get('{{ route('sell.fetchBanks') }}', function(res) {
         const banks = res.banks || [];
         if (!banks.length) {
+            // Auto-retry once before showing error
+            if (!bankRetried) {
+                bankRetried = true;
+                loadMsg.style.display = 'none';
+                setTimeout(loadBanks, 1500);
+                return;
+            }
             loadMsg.style.display = 'none';
-            loadErr.querySelector('span.err-msg') && (loadErr.querySelector('span.err-msg').textContent = res.error || 'Could not load banks.');
+            const msgEl = loadErr.querySelector('span.err-msg');
+            if (msgEl) msgEl.textContent = res.error || 'Could not load banks.';
             loadErr.style.display = 'block';
             return;
         }
+        bankRetried = false;
         sel.innerHTML = '<option value="">— Choose a bank —</option>';
         banks.forEach(b => {
             const opt = document.createElement('option');
@@ -273,7 +284,7 @@ function loadBanks() {
         banksLoaded = true;
     }).fail(function(xhr) {
         loadMsg.style.display = 'none';
-        const errMsg = xhr.responseJSON?.error || 'Could not load banks.';
+        const errMsg = xhr.responseJSON?.error || 'Could not load banks. Please check your connection.';
         const msgEl = loadErr.querySelector('span.err-msg');
         if (msgEl) msgEl.textContent = errMsg;
         loadErr.style.display = 'block';
