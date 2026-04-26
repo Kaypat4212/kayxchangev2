@@ -56,6 +56,29 @@
 <!-- Toastr JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function() {
+    function applyTheme(light) {
+        if (light) { document.body.classList.add('light-mode'); var ic=document.getElementById('mode-icon'); if(ic) ic.className='bi bi-sun-fill'; }
+        else        { document.body.classList.remove('light-mode'); var ic=document.getElementById('mode-icon'); if(ic) ic.className='bi bi-moon-stars-fill'; }
+    }
+    function wireToggle() {
+        var btn = document.getElementById('toggle-mode');
+        if (btn && !btn._kxWired) {
+            btn._kxWired = true;
+            btn.addEventListener('click', function() {
+                var nowLight = !document.body.classList.contains('light-mode');
+                applyTheme(nowLight);
+                localStorage.setItem('theme', nowLight ? 'light' : 'dark');
+            });
+        }
+    }
+    applyTheme(localStorage.getItem('theme') === 'light');
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { applyTheme(localStorage.getItem('theme') === 'light'); wireToggle(); });
+    } else { wireToggle(); }
+})();
+</script>
 </body>
 
 </html>

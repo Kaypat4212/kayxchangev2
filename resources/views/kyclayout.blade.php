@@ -13,6 +13,12 @@
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: 'Poppins', sans-serif; background: #070d07; color: #e8f5e8; margin: 0; padding: 0; padding-bottom: 70px; }
     body.light-mode { background: #f4faf4; color: #0a1a0a; }
+    body.light-mode { --kx-card:#ffffff; --kx-card2:#f0f7f0; --kx-border:rgba(0,0,0,0.09); --kx-text:#0a1a0a; --kx-muted:#5a6a5a; }
+    body.light-mode .kx-card { background:#fff; border-color:rgba(0,0,0,0.09); }
+    body.light-mode .kx-input { background:#f0f7f0; border-color:rgba(0,0,0,0.12); color:#0a1a0a; }
+    body.light-mode .kx-bottom-nav { background:rgba(244,250,244,0.97); border-top-color:rgba(0,153,0,0.2); }
+    body.light-mode .kx-bnav-item { color:rgba(0,0,0,0.38); }
+    body.light-mode .kx-bnav-item.kx-bnav-active { color:#007a0c; border-top-color:#007a0c; }
     .kx-navbar .navbar-nav { padding:0!important; margin:0!important; display:flex!important; list-style:none!important; flex-direction:column!important; align-items:flex-start!important; }
     @media(min-width:992px){ .kx-navbar .navbar-nav { flex-direction:row!important; align-items:center!important; } }
     .kx-navbar .nav-item { margin:0!important; }
@@ -56,6 +62,29 @@
     @include('components.kx-footer')
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function() {
+        function applyTheme(light) {
+            if (light) { document.body.classList.add('light-mode'); var ic=document.getElementById('mode-icon'); if(ic) ic.className='bi bi-sun-fill'; }
+            else        { document.body.classList.remove('light-mode'); var ic=document.getElementById('mode-icon'); if(ic) ic.className='bi bi-moon-stars-fill'; }
+        }
+        function wireToggle() {
+            var btn = document.getElementById('toggle-mode');
+            if (btn && !btn._kxWired) {
+                btn._kxWired = true;
+                btn.addEventListener('click', function() {
+                    var nowLight = !document.body.classList.contains('light-mode');
+                    applyTheme(nowLight);
+                    localStorage.setItem('theme', nowLight ? 'light' : 'dark');
+                });
+            }
+        }
+        applyTheme(localStorage.getItem('theme') === 'light');
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() { applyTheme(localStorage.getItem('theme') === 'light'); wireToggle(); });
+        } else { wireToggle(); }
+    })();
+    </script>
     @stack('scripts')
 </body>
 </html>
