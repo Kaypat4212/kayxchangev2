@@ -395,6 +395,13 @@
                         <div class="kx-conv-value green" id="nairaDisplay">₦0.00</div>
                     </div>
                 </div>
+
+                {{-- Crypto equivalent --}}
+                <div id="cryptoEquivRow" style="display:none;margin-top:.65rem;text-align:center;">
+                    <span style="font-size:.78rem;color:var(--kx-muted)">≈&nbsp;</span>
+                    <span id="cryptoEquivDisplay" style="font-size:1rem;font-weight:700;color:var(--kx-green)"></span>
+                    <span id="cryptoEquivLabel" style="font-size:.72rem;color:var(--kx-muted);margin-left:3px">at live price</span>
+                </div>
             </div>
         </div>
 
@@ -417,6 +424,29 @@
 const rates    = {!! json_encode($rates ?? []) !!};
 let isUSD      = {{ $inputType === 'usd' ? 'true' : 'false' }};
 let activeCoin = '{{ $selectedCoin }}';
+
+/* ── Live coin USD prices (from CoinGecko) ── */
+const cgCoinIds = { BTC:'bitcoin', ETH:'ethereum', USDT:'tether', SOL:'solana' };
+const cgDecimals = { BTC:8, ETH:6, USDT:2, SOL:4 };
+let coinUsdPrices = {};
+
+function fetchCoinPrices() {
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,solana&vs_currencies=usd', {
+        cache: 'no-cache'
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+        if (!data) return;
+        coinUsdPrices = {
+            BTC:  data.bitcoin?.usd  || 0,
+            ETH:  data.ethereum?.usd || 0,
+            USDT: data.tether?.usd   || 0,
+            SOL:  data.solana?.usd   || 0,
+        };
+        calculateConversion();
+    })
+    .catch(() => {});
+}
 
 /* ── Coin selection ── */
 function selectCoin(sym) {
@@ -482,6 +512,7 @@ function calculateConversion() {
         document.getElementById('nairaDisplay').textContent = '₦0.00';
         document.getElementById('usdAmountHidden').value    = '';
         document.getElementById('nairaAmountHidden').value  = '';
+        document.getElementById('cryptoEquivRow').style.display = 'none';
         box.style.opacity = '0.4';
         return;
     }
@@ -501,6 +532,21 @@ function calculateConversion() {
     document.getElementById('usdDisplay').textContent   = '$' + usd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
     document.getElementById('nairaDisplay').textContent = '₦' + naira.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
     box.style.opacity = '1';
+
+    // Crypto equivalent
+    const cryptoRow  = document.getElementById('cryptoEquivRow');
+    const cryptoDisp = document.getElementById('cryptoEquivDisplay');
+    const cryptoLbl  = document.getElementById('cryptoEquivLabel');
+    const price = coinUsdPrices[activeCoin];
+    if (price && price > 0 && usd > 0) {
+        const dec = cgDecimals[activeCoin] || 6;
+        const cryptoAmt = usd / price;
+        cryptoDisp.textContent = cryptoAmt.toFixed(dec) + ' ' + activeCoin;
+        cryptoLbl.textContent  = 'at live price ($' + price.toLocaleString('en-US') + '/' + activeCoin + ')';
+        cryptoRow.style.display = 'block';
+    } else {
+        cryptoRow.style.display = 'none';
+    }
 }
 
 /* ── Toast ── */
@@ -563,6 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (activeCoin) updateRatePill();
     calculateConversion();
+    fetchCoinPrices();
     const errs = @json($errors->all());
     if (errs.length) errs.forEach(e => showToast(e));
 });
