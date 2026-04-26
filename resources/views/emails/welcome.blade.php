@@ -83,12 +83,33 @@
 
       <!-- CTA -->
       <div style="text-align:center;margin:0 0 28px;">
-        <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{ url('/dashboard') }}" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="21%" stroke="f" fillcolor="#00cc00"><w:anchorlock/><center style="color:#000;font-family:sans-serif;font-size:15px;font-weight:700;">Get Started &rarr;</center></v:roundrect><![endif]-->
-        <a href="{{ url('/dashboard') }}"
-           style="background:#00cc00;color:#000;display:inline-block;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:48px;text-align:center;text-decoration:none;width:220px;border-radius:10px;mso-hide:all;">
-          Get Started &rarr;
+        <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{ url('/onboard') }}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="21%" stroke="f" fillcolor="#00cc00"><w:anchorlock/><center style="color:#000;font-family:sans-serif;font-size:15px;font-weight:700;">Complete Setup &rarr;</center></v:roundrect><![endif]-->
+        <a href="{{ url('/onboard') }}"
+           style="background:#00cc00;color:#000;display:inline-block;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:48px;text-align:center;text-decoration:none;width:240px;border-radius:10px;mso-hide:all;">
+          Complete Setup &rarr;
         </a>
       </div>
+
+      <!-- Onboarding steps -->
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:24px;">
+        <tr><td style="background:#1a2035;border:1px solid rgba(0,204,0,0.12);border-radius:12px;padding:20px 22px;">
+          <div style="font-size:12px;color:#00cc00;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:14px;">&#x1F4CB; Quick Setup — 3 Easy Steps</div>
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+            <tr>
+              <td style="padding:6px 0;vertical-align:top;width:28px;"><div style="width:22px;height:22px;border-radius:50%;background:rgba(0,204,0,.2);border:1px solid rgba(0,204,0,.4);text-align:center;line-height:22px;font-size:11px;font-weight:700;color:#00cc00;">1</div></td>
+              <td style="padding:6px 0;vertical-align:top;"><div style="font-size:13px;color:#e4e8f0;font-weight:600;">Set your 4-digit security PIN</div><div style="font-size:12px;color:#7a8599;margin-top:2px;">Protects your withdrawals and sensitive actions.</div></td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;vertical-align:top;width:28px;"><div style="width:22px;height:22px;border-radius:50%;background:rgba(0,204,0,.2);border:1px solid rgba(0,204,0,.4);text-align:center;line-height:22px;font-size:11px;font-weight:700;color:#00cc00;">2</div></td>
+              <td style="padding:6px 0;vertical-align:top;"><div style="font-size:13px;color:#e4e8f0;font-weight:600;">Add your bank account</div><div style="font-size:12px;color:#7a8599;margin-top:2px;">Required to receive NGN payouts when you sell crypto.</div></td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;vertical-align:top;width:28px;"><div style="width:22px;height:22px;border-radius:50%;background:rgba(0,204,0,.2);border:1px solid rgba(0,204,0,.4);text-align:center;line-height:22px;font-size:11px;font-weight:700;color:#00cc00;">3</div></td>
+              <td style="padding:6px 0;vertical-align:top;"><div style="font-size:13px;color:#e4e8f0;font-weight:600;">Start trading!</div><div style="font-size:12px;color:#7a8599;margin-top:2px;">Buy &amp; sell Bitcoin, USDT, and more — instantly at great rates.</div></td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
 
       <!-- Support -->
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation">

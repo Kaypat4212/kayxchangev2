@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sell_trades', function (Blueprint $table) {
-            $table->string('admin_payment_proof')->nullable()->after('payment_proof');
+            $table->string('admin_payment_proof')->nullable()->after('proof');
         });
     }
 

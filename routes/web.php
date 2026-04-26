@@ -112,6 +112,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboard/pin', [OnboardingController::class, 'savePin'])->name('onboard.pin');
     Route::post('/onboard/bank', [OnboardingController::class, 'saveBank'])->name('onboard.bank');
     Route::post('/onboard/complete', [OnboardingController::class, 'complete'])->name('onboard.complete');
+    Route::get('/onboard/banks', [OnboardingController::class, 'getBanks'])->name('onboard.banks');
+    Route::get('/onboard/resolve-account', [OnboardingController::class, 'resolveAccount'])->name('onboard.resolve');
 });
 
 // ── PIN security ─────────────────────────────────────────────────────────────

@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class OnboardingController extends Controller
@@ -25,6 +28,57 @@ class OnboardingController extends Controller
         }
 
         return view('onboarding.index', compact('user'));
+    }
+
+    /** GET /onboard/banks — return Paystack bank list (cached 6h) */
+    public function getBanks()
+    {
+        $banks = Cache::remember('paystack_banks_ng', 21600, function () {
+            $response = Http::withToken(config('paystack.secret_key'))
+                ->get('https://api.paystack.co/bank', ['country' => 'nigeria', 'perPage' => 200]);
+
+            if ($response->successful()) {
+                return $response->json('data');
+            }
+            return [];
+        });
+
+        return response()->json($banks);
+    }
+
+    /** GET /onboard/resolve-account?account_number=xxx&bank_code=xxx */
+    public function resolveAccount(Request $request)
+    {
+        $request->validate([
+            'account_number' => ['required', 'string', 'size:10'],
+            'bank_code'      => ['required', 'string'],
+        ]);
+
+        try {
+            $response = Http::withToken(config('paystack.secret_key'))
+                ->get('https://api.paystack.co/bank/resolve', [
+                    'account_number' => $request->account_number,
+                    'bank_code'      => $request->bank_code,
+                ]);
+
+            if ($response->successful() && $response->json('status')) {
+                return response()->json([
+                    'success'      => true,
+                    'account_name' => $response->json('data.account_name'),
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not verify account. Please check the account number and bank.',
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::warning('Paystack account resolve failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Bank verification service unavailable. Try again.',
+            ], 503);
+        }
     }
 
     /** AJAX: Save the PIN during onboarding (step 2) */
@@ -58,6 +112,7 @@ class OnboardingController extends Controller
     {
         $v = Validator::make($request->all(), [
             'bank_name'      => ['required', 'string', 'max:100'],
+            'bank_code'      => ['required', 'string', 'max:20'],
             'account_number' => ['required', 'string', 'size:10'],
             'account_name'   => ['required', 'string', 'max:100'],
         ]);
@@ -66,13 +121,35 @@ class OnboardingController extends Controller
             return response()->json(['errors' => $v->errors()], 422);
         }
 
+        // Re-verify account with Paystack before saving
+        try {
+            $response = Http::withToken(config('paystack.secret_key'))
+                ->get('https://api.paystack.co/bank/resolve', [
+                    'account_number' => $request->account_number,
+                    'bank_code'      => $request->bank_code,
+                ]);
+
+            if (!$response->successful() || !$response->json('status')) {
+                return response()->json([
+                    'errors' => ['account_number' => ['Account verification failed. Please check your details.']]
+                ], 422);
+            }
+
+            // Use the verified account name from Paystack
+            $verifiedName = $response->json('data.account_name');
+        } catch (\Throwable $e) {
+            Log::warning('Paystack verification failed on bank save: ' . $e->getMessage());
+            // Allow save to proceed if Paystack is unreachable (don't block users)
+            $verifiedName = $request->account_name;
+        }
+
         $user = Auth::user();
         $user->bank_name      = $request->bank_name;
         $user->account_number = $request->account_number;
-        $user->account_name   = $request->account_name;
+        $user->account_name   = $verifiedName;
         $user->save();
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'account_name' => $verifiedName]);
     }
 
     /** AJAX/POST: Mark onboarding complete */

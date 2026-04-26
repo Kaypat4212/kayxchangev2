@@ -12,7 +12,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Mail\WelcomeEmail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
@@ -133,6 +135,13 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
+
+        // Send welcome email
+        try {
+            Mail::to($user->email)->send(new WelcomeEmail($user));
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send welcome email to ' . $user->email . ': ' . $e->getMessage());
+        }
 
         // New users go through the onboarding wizard
         return redirect()->route('onboard');

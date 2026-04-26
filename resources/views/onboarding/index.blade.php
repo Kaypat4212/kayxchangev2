@@ -118,6 +118,7 @@ html,body{height:100%;font-family:'Poppins',sans-serif;background:#050c05;color:
 }
 .ob-input:focus{border-color:#00cc00;box-shadow:0 0 0 3px rgba(0,204,0,.1)}
 .ob-input::placeholder{color:rgba(255,255,255,.3)}
+select.ob-input option{background:#161b27;color:#e4e8f0;}
 .ob-label{display:block;font-size:.75rem;font-weight:600;color:rgba(255,255,255,.5);margin-bottom:.3rem;letter-spacing:.04em}
 
 /* ── Step 4 (done) ── */
@@ -259,15 +260,23 @@ html,body{height:100%;font-family:'Poppins',sans-serif;background:#050c05;color:
             <div class="ob-err" id="bankErr"></div>
 
             <label class="ob-label">Bank Name</label>
-            <input class="ob-input" id="obBankName" type="text" placeholder="e.g. Access Bank" autocomplete="off">
+            <select class="ob-input" id="obBankSelect" style="cursor:pointer;">
+                <option value="" data-code="">Loading banks…</option>
+            </select>
 
             <label class="ob-label">Account Number</label>
             <input class="ob-input" id="obAccNum" type="tel" placeholder="10-digit account number" maxlength="10" inputmode="numeric">
 
             <label class="ob-label">Account Name</label>
-            <input class="ob-input" id="obAccName" type="text" placeholder="Account holder name" autocomplete="off">
+            <div style="position:relative;">
+                <input class="ob-input" id="obAccName" type="text" placeholder="Will auto-fill after verification" readonly
+                    style="background:rgba(0,204,0,.04);cursor:default;padding-right:2.5rem;">
+                <span id="obVerifySpinner" style="display:none;position:absolute;right:.75rem;top:50%;transform:translateY(-50%);font-size:.8rem;color:#00cc00;">&#x23F3;</span>
+                <span id="obVerifyTick" style="display:none;position:absolute;right:.75rem;top:50%;transform:translateY(-50%);font-size:.85rem;color:#00cc00;">&#x2714;</span>
+            </div>
+            <p id="obVerifyMsg" style="font-size:.75rem;color:#00cc00;margin-top:-.5rem;margin-bottom:.8rem;min-height:1rem;"></p>
 
-            <button class="ob-btn" id="obBankSaveBtn" onclick="saveBank()">Save &amp; Continue</button>
+            <button class="ob-btn" id="obBankSaveBtn" onclick="saveBank()" disabled>Save &amp; Continue</button>
             <button class="ob-btn-ghost" onclick="skipBank()">Skip for now</button>
         </div>
 
@@ -449,18 +458,88 @@ window.savePinToServer = async function() {
     }
 };
 
+// ── Bank step: load bank list & auto-resolve ──
+let bankList = [];
+let resolveTimer = null;
+let verifiedAccountName = '';
+
+async function loadBanks() {
+    try {
+        const res = await fetch('{{ route("onboard.banks") }}', { headers: { 'Accept': 'application/json' } });
+        bankList = await res.json();
+        const sel = document.getElementById('obBankSelect');
+        sel.innerHTML = '<option value="" data-code="">— Select your bank —</option>';
+        bankList.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.name;
+            opt.dataset.code = b.code;
+            opt.textContent = b.name;
+            sel.appendChild(opt);
+        });
+    } catch(e) {
+        document.getElementById('obBankSelect').innerHTML = '<option value="">— Could not load banks —</option>';
+    }
+}
+loadBanks();
+
+function tryResolveAccount() {
+    clearTimeout(resolveTimer);
+    verifiedAccountName = '';
+    document.getElementById('obAccName').value = '';
+    document.getElementById('obVerifyTick').style.display = 'none';
+    document.getElementById('obVerifyMsg').textContent = '';
+    document.getElementById('obBankSaveBtn').disabled = true;
+
+    const sel = document.getElementById('obBankSelect');
+    const bankCode = sel.selectedOptions[0]?.dataset?.code || '';
+    const accNum = document.getElementById('obAccNum').value.trim();
+
+    if (!bankCode || !/^\d{10}$/.test(accNum)) return;
+
+    document.getElementById('obVerifySpinner').style.display = 'inline';
+    document.getElementById('obVerifyMsg').style.color = '#7a8599';
+    document.getElementById('obVerifyMsg').textContent = 'Verifying with Paystack…';
+
+    resolveTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`{{ route("onboard.resolve") }}?account_number=${accNum}&bank_code=${bankCode}`, {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            const data = await res.json();
+            document.getElementById('obVerifySpinner').style.display = 'none';
+            if (res.ok && data.success) {
+                verifiedAccountName = data.account_name;
+                document.getElementById('obAccName').value = data.account_name;
+                document.getElementById('obVerifyTick').style.display = 'inline';
+                document.getElementById('obVerifyMsg').style.color = '#00cc00';
+                document.getElementById('obVerifyMsg').textContent = '✓ Account verified';
+                document.getElementById('obBankSaveBtn').disabled = false;
+            } else {
+                document.getElementById('obVerifyMsg').style.color = '#f87171';
+                document.getElementById('obVerifyMsg').textContent = data.message || 'Verification failed. Check details.';
+            }
+        } catch(e) {
+            document.getElementById('obVerifySpinner').style.display = 'none';
+            document.getElementById('obVerifyMsg').style.color = '#f87171';
+            document.getElementById('obVerifyMsg').textContent = 'Network error. Try again.';
+        }
+    }, 600);
+}
+
+document.getElementById('obBankSelect').addEventListener('change', tryResolveAccount);
+document.getElementById('obAccNum').addEventListener('input', tryResolveAccount);
+
 // ── Save Bank via AJAX ──
 window.saveBank = async function() {
-    const bname = document.getElementById('obBankName').value.trim();
+    const sel = document.getElementById('obBankSelect');
+    const bname = sel.value;
+    const bcode = sel.selectedOptions[0]?.dataset?.code || '';
     const accnum = document.getElementById('obAccNum').value.trim();
-    const accname = document.getElementById('obAccName').value.trim();
+    const accname = verifiedAccountName || document.getElementById('obAccName').value.trim();
     const errEl = document.getElementById('bankErr');
 
-    if (!bname || !accnum || !accname) {
+    if (!bname || !bcode || !accnum || !accname) {
         errEl.textContent = 'Please fill all fields or skip.'; return;
-    }
-    if (!/^\d{10}$/.test(accnum)) {
-        errEl.textContent = 'Account number must be 10 digits.'; return;
     }
     errEl.textContent = '';
 
@@ -475,13 +554,13 @@ window.saveBank = async function() {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json',
             },
-            body: JSON.stringify({ bank_name: bname, account_number: accnum, account_name: accname }),
+            body: JSON.stringify({ bank_name: bname, bank_code: bcode, account_number: accnum, account_name: accname }),
         });
         const data = await res.json();
         if (res.ok && data.success) {
             goStep(3);
         } else {
-            const msg = data.errors ? Object.values(data.errors).flat().join(' ') : 'Error saving bank.';
+            const msg = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Error saving bank.');
             errEl.textContent = msg;
             btn.disabled = false; btn.textContent = 'Save & Continue';
         }
