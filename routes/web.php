@@ -67,7 +67,7 @@ Route::prefix('install')->name('install.')->group(function () {
     Route::get('/complete', [InstallController::class, 'complete'])->name('complete');
 });
 
-Route::get('/', fn() => view('index'))->name('home');
+Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
 Route::get('/home', function () {
     $blogPosts = \App\Models\BlogPost::published()->limit(8)->get();
     return view('home', compact('blogPosts'));

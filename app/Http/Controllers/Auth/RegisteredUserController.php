@@ -53,6 +53,12 @@ class RegisteredUserController extends Controller
                 'regex:/^(\+?234|0)[7-9][01]\d{8}$/',
                 'unique:'.User::class.',phone',
             ],
+            'date_of_birth' => [
+                'required',
+                'date',
+                'before:' . now()->subYears(18)->format('Y-m-d'),
+                'after:'  . now()->subYears(100)->format('Y-m-d'),
+            ],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'referral_code' => [
                 'nullable',
@@ -82,14 +88,18 @@ class RegisteredUserController extends Controller
             'phone.required' => 'A phone number is required to create an account.',
             'phone.regex'    => 'Please enter a valid Nigerian phone number (e.g. 08012345678 or +2348012345678).',
             'phone.unique'   => 'This phone number is already linked to an account. Each phone number can only be used once.',
+            'date_of_birth.required' => 'Your date of birth is required.',
+            'date_of_birth.before'   => 'You must be at least 18 years old to create an account.',
+            'date_of_birth.after'    => 'Please enter a valid date of birth.',
         ]);
 
         $referralCode = strtoupper(trim((string) $request->input('referral_code', '')));
 
         $user = User::create([
-            'name'        => $request->name,
+            'name'            => $request->name,
             'email'           => $request->email,
             'phone'           => preg_replace('/\D/', '', $request->phone), // store digits only
+            'date_of_birth'   => $request->date_of_birth,
             'password'        => Hash::make($request->password),
             'referred_by'     => $referralCode !== '' ? $referralCode : null,
             'registration_ip' => $request->ip(),

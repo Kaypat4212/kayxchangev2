@@ -222,6 +222,11 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="kx-nav-link @if(request()->is('wallet*')) kx-active @endif" href="{{ url('/wallet/send') }}">
+            <i class="bi bi-send-fill"></i>Send Money
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('rate')) kx-active @endif" href="{{ url('/rate') }}">
             <i class="bi bi-graph-up-arrow"></i>Rates
           </a>

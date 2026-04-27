@@ -157,13 +157,57 @@ class AiChatController extends Controller
     {
         if (! $state) {
             $lower = strtolower($message);
-            if (preg_match('/\b(buy|purchase|get)\b/', $lower)) {
-                $state = ['type' => 'buy', 'step' => 'coin'];
-            } elseif (preg_match('/\b(sell|trade out|swap out)\b/', $lower)) {
-                $state = ['type' => 'sell', 'step' => 'coin'];
+
+            // Determine trade type; "exchange/convert" defaults to sell (most common on NGN exchanges)
+            $isSell = (bool) preg_match('/\b(sell|trade out|swap out)\b/', $lower);
+            $isBuy  = (bool) preg_match('/\b(buy|purchase|get)\b/', $lower);
+            $isExch = (bool) preg_match('/\b(exchange|convert)\b/', $lower);
+
+            if ($isSell || ($isExch && ! $isBuy)) {
+                $detectedType = 'sell';
+            } elseif ($isBuy) {
+                $detectedType = 'buy';
             } else {
                 return null;
             }
+
+            // Try to pre-fill coin and amount from the initial message
+            $initCoin = $this->extractCoin($message);
+            [$initUsd, $initNaira] = $initCoin ? $this->parseAmount($message, $initCoin, $detectedType) : [null, null];
+
+            if ($initCoin && $initUsd) {
+                // Both coin and amount found — jump straight to amount_review, no extra questions
+                $state = [
+                    'type'         => $detectedType,
+                    'coin'         => $initCoin,
+                    'usd_amount'   => $initUsd,
+                    'naira_amount' => $initNaira,
+                    'step'         => 'amount_review',
+                ];
+                $request->session()->put('kaybot_trade', $state);
+                $rate      = $this->getPlatformRate($initCoin, $detectedType);
+                $rateNote  = $rate ? "\n_(KayXchange rate: ₦" . number_format($rate) . " per \$1 USD)_" : '';
+                $summary   = "**{$detectedType} {$initCoin}**\nUSD: \${$initUsd}\nNGN: ₦" . number_format($initNaira, 2) . "{$rateNote}\n\n";
+                if ($detectedType === 'buy') {
+                    return ['reply' => $summary . "Proceed with this buy?\n• Type **yes** to continue\n• Type **change** for a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+                }
+                if ($user && $user->bank_name && $user->account_number) {
+                    return ['reply' => $summary . "Proceed with this sell?\n• Type **yes** to use your saved bank (**{$user->bank_name}** - {$user->account_number})\n• Type **external** for a different bank\n• Type **change** for a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+                }
+                return ['reply' => $summary . "Proceed with this sell?\n• Type **yes** to continue and enter your bank details\n• Type **change** for a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+            }
+
+            if ($initCoin) {
+                // Coin found but no amount — skip coin question, ask for amount
+                $state    = ['type' => $detectedType, 'coin' => $initCoin, 'step' => 'amount'];
+                $request->session()->put('kaybot_trade', $state);
+                $rate     = $this->getPlatformRate($initCoin, $detectedType);
+                $rateText = $rate ? "\nKayXchange rate: **₦" . number_format($rate) . " per \$1 USD**" : '';
+                return ['reply' => "Great! You want to {$detectedType} **{$initCoin}**.{$rateText}\n\nHow much? e.g. *50 USD*, *\$100*, or *₦50,000*\n_(Type **cancel** to stop)_", 'trade_step' => 'amount'];
+            }
+
+            // No coin found — start from coin step
+            $state = ['type' => $detectedType, 'step' => 'coin'];
         }
 
         $type = $state['type'];
@@ -360,7 +404,7 @@ class AiChatController extends Controller
                     'payment_method'  => 'Bank Transfer',
                     'status'          => 'pending',
                     'source'          => 'web_bot',
-                    'proof'           => null,
+                    'proof'           => '',   // uploaded later on the proof page
                     'bank_name'       => $state['bank_name'] ?? null,
                     'account_number'  => $state['account_number'] ?? null,
                     'account_name'    => $state['account_name'] ?? null,
@@ -576,11 +620,21 @@ class AiChatController extends Controller
 
     private function buildSystemPrompt(string $message): string
     {
-        $base = AdminSetting::get('ai_system_prompt') ?: $this->defaultSystemPrompt();
+        $customPrompt = AdminSetting::get('ai_system_prompt');
+        $base         = $customPrompt ?: $this->defaultSystemPrompt();
+
         if ($this->isPricingQuestion($message)) {
             $live     = $this->getLivePrices();
             $platform = $this->getPlatformRatesText();
-            $base    .= "\n\n--- LIVE MARKET DATA ---\nCoinGecko prices (USD): {$live}\nKayXchange rates (NGN per USD): {$platform}\n---";
+            if ($customPrompt) {
+                // Custom prompt — inject both, platform rates take priority for NGN
+                $base .= "\n\n--- EXCHANGE DATA ---\nKayXchange platform rates (NGN per \$1 USD — USE THESE for all NGN conversions): {$platform}\nLive USD market prices (informational only, do NOT use for NGN calculations): {$live}\n---";
+            } else {
+                // Default prompt already embeds platform rates — only append live USD as reference
+                if ($live !== 'unavailable') {
+                    $base .= "\n\n[Live USD market prices for reference only: {$live}]";
+                }
+            }
         }
         return $base;
     }
@@ -650,9 +704,20 @@ class AiChatController extends Controller
 
     private function isTradeIntent(string $msg): bool
     {
-        return (bool) preg_match('/\b(buy|sell|purchase|trade|swap)\s+(some\s+)?(btc|eth|usdt|usdc|sol|bnb|bitcoin|ethereum|crypto)\b/i', $msg)
-            || (bool) preg_match('/\bwant to (buy|sell)\b/i', $msg)
-            || (bool) preg_match('/\b(buy|sell) crypto\b/i', $msg);
+        // Direct buy/sell/swap with a coin name
+        if (preg_match('/\b(buy|sell|purchase|trade|swap)\s+(some\s+)?(btc|eth|usdt|usdc|sol|bnb|bitcoin|ethereum|crypto)\b/i', $msg)) return true;
+        // "want to buy/sell/exchange/swap"
+        if (preg_match('/\bwant to (buy|sell|exchange|trade|swap)\b/i', $msg)) return true;
+        // "buy crypto" / "sell crypto"
+        if (preg_match('/\b(buy|sell) crypto\b/i', $msg)) return true;
+        // "exchange/convert" followed by amount or coin
+        if (preg_match('/\b(exchange|convert)\s+([\$₦]?\d|some\s+)?(btc|eth|usdt|usdc|sol|bnb|bitcoin|ethereum|crypto)\b/i', $msg)) return true;
+        if (preg_match('/\b(exchange|convert)\s+[\$₦]?\d/i', $msg) && $this->extractCoin($msg)) return true;
+        // "$50 worth of bitcoin" / "50 usd BTC" / "50 dollars of USDT"
+        if (preg_match('/[\$₦]?\d+[\s,]*(usd|dollar|worth)?\s*(of\s+)?(btc|eth|usdt|usdc|sol|bnb|bitcoin|ethereum)\b/i', $msg)) return true;
+        // "how much naira/ngn will I get for [coin]" or "how much do I pay for [coin]"
+        if (preg_match('/\bhow much\s+(naira|ngn|will i get|do i (pay|need))/i', $msg) && $this->extractCoin($msg)) return true;
+        return false;
     }
 
     private function isEscalationRequest(string $msg): bool
@@ -689,17 +754,43 @@ class AiChatController extends Controller
 
     private function parseAmount(string $msg, string $coin, string $type): array
     {
-        preg_match('/[\$N]?\s*([0-9,]+(?:\.[0-9]+)?)/i', $msg, $m);
+        preg_match('/[\$₦]?\s*([0-9,]+(?:\.[0-9]+)?)/i', $msg, $m);
         if (! isset($m[1])) return [null, null];
         $amount = (float) str_replace(',', '', $m[1]);
-        $isNgn  = (bool) preg_match('/N|ngn|naira/i', $msg);
-        $rate   = $this->getPlatformRate($coin, $type) ?? 1600;
+        if ($amount <= 0) return [null, null];
+        // Use word boundary for N to avoid matching N inside coin names (USDT, BNB, etc.)
+        $isNgn  = (bool) preg_match('/₦|\bN\b|\bngn\b|\bnaira\b/i', $msg);
+        $rate   = $this->getPlatformRate($coin, $type);
+        if (! $rate) return [null, null]; // no platform rate configured — can't calculate
         return $isNgn ? [round($amount / $rate, 2), $amount] : [$amount, round($amount * $rate, 2)];
     }
 
     private function defaultSystemPrompt(): string
     {
-        return "You are KayBot, a smart and friendly crypto trading assistant for KayXchange - a Nigerian crypto exchange.\n\nCapabilities:\n- Answer general crypto questions (Bitcoin, blockchain, wallets, DeFi, etc.)\n- Provide KayXchange platform info (rates, fees, how to trade, deposit, trade status)\n- Help users place buy/sell trades conversationally\n- Escalate to human support when needed\n\nPlatform:\n- KayXchange lets Nigerians trade NGN <-> BTC/ETH/USDT/USDC/SOL/BNB\n- Buy: Pay NGN via bank transfer -> receive crypto to wallet\n- Sell: Send crypto -> receive NGN to bank account\n- KYC required before trading\n- Support Telegram: @TradewithkayxchangeBOT\n\nRules:\n- Be friendly, concise (2-4 sentences unless explaining a process)\n- NEVER give financial investment advice or price predictions\n- If you can't answer, offer to escalate to support\n- Use English or Nigerian Pidgin based on how the user writes\n- Use live data provided in context for prices - never guess";
+        $ratesBlock = $this->getPlatformRatesText();
+        return "You are KayBot, a smart and friendly crypto trading assistant for KayXchange - a Nigerian crypto exchange.\n\n"
+            . "Capabilities:\n"
+            . "- Answer general crypto questions (Bitcoin, blockchain, wallets, DeFi, etc.)\n"
+            . "- Provide KayXchange platform info (rates, fees, how to trade, deposit, trade status)\n"
+            . "- Help users place buy/sell trades conversationally\n"
+            . "- Escalate to human support when needed\n\n"
+            . "Platform:\n"
+            . "- KayXchange lets Nigerians trade NGN <-> BTC/ETH/USDT/USDC/SOL/BNB\n"
+            . "- Buy: Pay NGN via bank transfer -> receive crypto to wallet\n"
+            . "- Sell: Send crypto -> receive NGN to bank account\n"
+            . "- KYC required before trading\n"
+            . "- Support Telegram: @TradewithkayxchangeBOT\n\n"
+            . "CURRENT KAYXCHANGE PLATFORM RATES (NGN per \$1 USD):\n{$ratesBlock}\n\n"
+            . "CRITICAL CALCULATION RULES:\n"
+            . "- ALWAYS use the KayXchange platform rates above for ALL NGN/naira calculations\n"
+            . "- NEVER use CoinGecko, Binance, or any external market price to calculate naira amounts\n"
+            . "- When user asks how much naira they get for selling X USD of a coin: multiply by that coin's sell_rate\n"
+            . "- When user asks how much naira they need to buy X USD of a coin: multiply by that coin's buy_rate\n\n"
+            . "GENERAL RULES:\n"
+            . "- Be friendly, concise (2-4 sentences unless explaining a process)\n"
+            . "- NEVER give financial investment advice or price predictions\n"
+            . "- If you can't answer, offer to escalate to support\n"
+            . "- Use English or Nigerian Pidgin based on how the user writes";
     }
 
     private function sslVerify(): bool|string

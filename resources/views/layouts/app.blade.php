@@ -38,7 +38,7 @@
     @auth
     <nav class="kx-bottom-nav" aria-label="Mobile navigation">
         <a href="{{ url('/dashboard') }}" class="kx-bnav-item @if(request()->is('dashboard')) kx-bnav-active @endif"><i class="bi bi-grid-1x2-fill"></i><span>Home</span></a>
-        <a href="{{ url('/rate') }}" class="kx-bnav-item @if(request()->is('rate')) kx-bnav-active @endif"><i class="bi bi-graph-up-arrow"></i><span>Rates</span></a>
+        <a href="{{ url('/wallet/send') }}" class="kx-bnav-item @if(request()->is('wallet*')) kx-bnav-active @endif"><i class="bi bi-send-fill"></i><span>Send</span></a>
         <div class="kx-bnav-item kx-bnav-center">
             <a href="{{ Auth::user()->kyc_verified ? url('/buy') : url('/kyc') }}" class="kx-bnav-center-btn" title="Buy Crypto"><i class="bi bi-arrow-down-circle-fill"></i></a>
             <span class="kx-bnav-center-lbl">Buy</span>

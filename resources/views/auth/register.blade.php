@@ -214,6 +214,23 @@
             </div>
           </div>
 
+          <div class="mb-3">
+            <label for="date_of_birth" class="lx-label">Date of birth</label>
+            <input id="date_of_birth" name="date_of_birth" type="date"
+              class="lx-field @error('date_of_birth') is-invalid @enderror"
+              value="{{ old('date_of_birth') }}"
+              max="{{ now()->subYears(18)->format('Y-m-d') }}"
+              min="{{ now()->subYears(100)->format('Y-m-d') }}"
+              required autocomplete="bday">
+            @error('date_of_birth')
+              <div class="lx-error"><i class="bi bi-exclamation-circle"></i>{{ $message }}</div>
+            @enderror
+            <div style="margin-top:.45rem;padding:.55rem .75rem;border-radius:7px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.22);display:flex;align-items:flex-start;gap:.5rem;font-size:.75rem;color:#f59e0b;line-height:1.45">
+              <i class="bi bi-exclamation-triangle-fill" style="margin-top:.1rem;flex-shrink:0"></i>
+              <span><strong>Enter your real date of birth.</strong> This is used to verify your identity during KYC. Providing a false date of birth will result in account suspension and failed verification.</span>
+            </div>
+          </div>
+
           <div class="lx-pw-row">
             <div>
               <label for="password" class="lx-label">Password</label>

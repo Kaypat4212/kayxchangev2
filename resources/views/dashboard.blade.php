@@ -339,6 +339,9 @@
                         <a href="{{ route('withdraw') }}" class="kx-bal-btn kx-bal-wd">
                             <i class="bi bi-arrow-up-circle-fill"></i>Withdraw
                         </a>
+                        <a href="{{ route('wallet.send') }}" class="kx-bal-btn" style="background:rgba(0,204,0,0.12);color:#00cc00;border:1px solid rgba(0,204,0,0.3);">
+                            <i class="bi bi-send-fill"></i>Send
+                        </a>
                     </div>
                 </div>
             </div>
@@ -432,6 +435,14 @@
                 <a href="{{ route('withdraw') }}" class="kx-qbtn kx-qi-wd">
                     <div class="kx-qicon"><i class="bi bi-arrow-up-circle-fill"></i></div>
                     Withdraw
+                </a>
+                <a href="{{ route('wallet.send') }}" class="kx-qbtn" style="background:rgba(0,204,0,0.07);border-color:rgba(0,204,0,0.2);">
+                    <div class="kx-qicon" style="background:rgba(0,204,0,0.15);"><i class="bi bi-send-fill" style="color:#00cc00"></i></div>
+                    Send Money
+                </a>
+                <a href="{{ route('wallet.transfers') }}" class="kx-qbtn" style="background:rgba(0,180,255,0.05);border-color:rgba(0,180,255,0.15);">
+                    <div class="kx-qicon" style="background:rgba(0,180,255,0.12);"><i class="bi bi-arrow-left-right" style="color:#38bdf8"></i></div>
+                    Transfers
                 </a>
                 <a href="{{ route('transactions.history') }}" class="kx-qbtn kx-qi-hist">
                     <div class="kx-qicon"><i class="bi bi-clock-history"></i></div>

@@ -96,6 +96,7 @@ class User extends Authenticatable
         'two_factor_enabled',
         'two_factor_confirmed_at',
         'kx_tag',
+        'date_of_birth',
     ];
 
     /**
@@ -116,6 +117,7 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'date_of_birth'     => 'date',
         'kyc_verified' => 'boolean',
         'onboarding_completed' => 'boolean',
         'pin_locked_until' => 'datetime',
