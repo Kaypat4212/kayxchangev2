@@ -96,11 +96,16 @@
         font-size:.7rem; font-weight:700; cursor:help;
     }
     body.light-mode .kx-usd-equiv { color:#007a0c; background:rgba(0,120,0,.08); border-color:rgba(0,120,0,.2); }
-    .kx-bal-btn { display:inline-flex; align-items:center; gap:7px; font-size:0.82rem; font-weight:600; padding:10px 18px; border-radius:14px; text-decoration:none !important; transition:all 0.25s ease; border:none; cursor:pointer; flex:1; justify-content:center; position:relative; z-index:1; }
+    .kx-bal-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:1rem; position:relative; z-index:1; }
+    @media(max-width:400px){ .kx-bal-actions { grid-template-columns:1fr 1fr; } .kx-bal-actions a:last-child { grid-column:1/-1; } }
+    .kx-bal-btn { display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.82rem; font-weight:600; padding:11px 10px; border-radius:14px; text-decoration:none !important; transition:all 0.22s ease; cursor:pointer; white-space:nowrap; position:relative; z-index:1; }
+    .kx-bal-btn i { font-size:1rem; flex-shrink:0; }
     .kx-bal-dep { background:rgba(0,136,204,0.2); border:1px solid rgba(0,136,204,0.3); color:#3ab5e5 !important; }
     .kx-bal-dep:hover { background:rgba(0,136,204,0.35); color:#fff !important; transform:translateY(-2px); }
     .kx-bal-wd  { background:rgba(251,191,36,0.15); border:1px solid rgba(251,191,36,0.28); color:#fbbf24 !important; }
     .kx-bal-wd:hover  { background:rgba(251,191,36,0.28); color:#fff !important; transform:translateY(-2px); }
+    .kx-bal-send { background:rgba(0,204,0,0.12); border:1px solid rgba(0,204,0,0.3); color:#00cc00 !important; }
+    .kx-bal-send:hover { background:rgba(0,204,0,0.28); color:#fff !important; transform:translateY(-2px); }
 
     /* ===== Stat Mini Cards ===== */
     .kx-stat { padding: 20px 22px; }
@@ -332,14 +337,14 @@
                         </span>
                         @endif
                     </div>
-                    <div class="d-flex gap-2 mt-4" style="position:relative;z-index:1">
+                    <div class="kx-bal-actions">
                         <a href="{{ route('deposits.index') }}" class="kx-bal-btn kx-bal-dep">
                             <i class="bi bi-arrow-down-circle-fill"></i>Deposit
                         </a>
                         <a href="{{ route('withdraw') }}" class="kx-bal-btn kx-bal-wd">
                             <i class="bi bi-arrow-up-circle-fill"></i>Withdraw
                         </a>
-                        <a href="{{ route('wallet.send') }}" class="kx-bal-btn" style="background:rgba(0,204,0,0.12);color:#00cc00;border:1px solid rgba(0,204,0,0.3);">
+                        <a href="{{ route('wallet.send') }}" class="kx-bal-btn kx-bal-send">
                             <i class="bi bi-send-fill"></i>Send
                         </a>
                     </div>
