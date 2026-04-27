@@ -78,8 +78,7 @@ class P2pTransferController extends Controller
             'note'         => 'nullable|string|max:200',
             'pin'          => 'required|digits:4',
         ]);
-
-        $sender = Auth::user();
+        /** @var User $sender */        $sender = Auth::user();
 
         // ── PIN check ────────────────────────────────────────────────────────
         if ($sender->pin_locked_until && Carbon::now()->lt($sender->pin_locked_until)) {
@@ -187,17 +186,81 @@ class P2pTransferController extends Controller
 
     public function history(Request $request)
     {
-        $user = Auth::user();
+        $user   = Auth::user();
+        $userId = $user->id;
 
-        $transfers = P2pTransfer::with(['sender:id,name,kx_tag', 'recipient:id,name,kx_tag'])
-            ->where(function ($q) use ($user) {
-                $q->where('sender_id', $user->id)
-                  ->orWhere('recipient_id', $user->id);
+        // ── Per-person relationship stats ────────────────────────────────────
+        // Amounts sent TO each person (completed only)
+        $sentPerPerson = P2pTransfer::where('sender_id', $userId)
+            ->where('status', 'completed')
+            ->select('recipient_id',
+                DB::raw('SUM(amount) as total_sent'),
+                DB::raw('COUNT(*) as send_count'))
+            ->groupBy('recipient_id')
+            ->get()
+            ->keyBy('recipient_id');
+
+        // Amounts received FROM each person (completed only)
+        $receivedPerPerson = P2pTransfer::where('recipient_id', $userId)
+            ->where('status', 'completed')
+            ->select('sender_id',
+                DB::raw('SUM(recipient_amount) as total_received'),
+                DB::raw('COUNT(*) as receive_count'))
+            ->groupBy('sender_id')
+            ->get()
+            ->keyBy('sender_id');
+
+        // Build a unified contacts list (all people ever transacted with)
+        $allContactIds = $sentPerPerson->keys()
+            ->merge($receivedPerPerson->keys())
+            ->unique();
+
+        $contacts = User::whereIn('id', $allContactIds)
+            ->select('id', 'name', 'kx_tag')
+            ->get()
+            ->map(function ($u) use ($sentPerPerson, $receivedPerPerson) {
+                $s = $sentPerPerson->get($u->id);
+                $r = $receivedPerPerson->get($u->id);
+                $u->total_sent         = $s ? (float) $s->total_sent     : 0;
+                $u->total_received     = $r ? (float) $r->total_received  : 0;
+                $u->send_count         = $s ? (int)   $s->send_count      : 0;
+                $u->receive_count      = $r ? (int)   $r->receive_count   : 0;
+                $u->net                = $u->total_received - $u->total_sent;
+                $u->last_activity      = null; // filled below
+                return $u;
             })
-            ->latest()
-            ->paginate(20);
+            ->sortByDesc('total_sent')
+            ->values();
 
-        return view('wallet.transfers', compact('transfers', 'user'));
+        // ── Paginated transfers (optionally filtered by contact) ─────────────
+        $filterUserId = $request->integer('with', 0);
+
+        $query = P2pTransfer::with(['sender:id,name,kx_tag', 'recipient:id,name,kx_tag'])
+            ->where(function ($q) use ($userId) {
+                $q->where('sender_id', $userId)
+                  ->orWhere('recipient_id', $userId);
+            });
+
+        if ($filterUserId) {
+            $query->where(function ($q) use ($userId, $filterUserId) {
+                $q->where(function ($q2) use ($userId, $filterUserId) {
+                    $q2->where('sender_id', $userId)->where('recipient_id', $filterUserId);
+                })->orWhere(function ($q2) use ($userId, $filterUserId) {
+                    $q2->where('sender_id', $filterUserId)->where('recipient_id', $userId);
+                });
+            });
+        }
+
+        $transfers = $query->latest()->paginate(20)->appends($request->query());
+
+        // Attach the filtered contact's stats for display in the filtered header
+        $filterContact = $filterUserId
+            ? $contacts->firstWhere('id', $filterUserId)
+            : null;
+
+        return view('wallet.transfers', compact(
+            'transfers', 'user', 'contacts', 'filterContact', 'filterUserId'
+        ));
     }
 
     // ── Admin: reverse a transfer ─────────────────────────────────────────────

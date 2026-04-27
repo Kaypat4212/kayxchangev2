@@ -25,7 +25,7 @@ class EmailSettingsController extends Controller
         if ($request->filled('search')) {
             $logsQuery->where('email', 'like', '%' . $request->search . '%');
         }
-        $logs = $logsQuery->paginate(20)->withQueryString();
+        $logs = $logsQuery->paginate(20)->appends($request->query());
 
         $totalAttempts = LoginLog::count();
         $totalSuccess  = LoginLog::where('status', 'success')->count();

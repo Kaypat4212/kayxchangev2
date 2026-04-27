@@ -433,7 +433,7 @@ class AdminTradeAlertService
      * @param  string            $preview       First 200 chars of the message
      * @param  int               $unreadCount   Total unread messages from this user
      */
-    public function sendSupportChatAlert(\App\Models\User $user, string $preview, int $unreadCount = 1): void
+    public function sendSupportChatAlert(User $user, string $preview, int $unreadCount = 1): void
     {
         if (!config('trade_alerts.enabled', true)) {
             return;

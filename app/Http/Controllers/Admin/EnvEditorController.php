@@ -222,7 +222,7 @@ class EnvEditorController extends Controller
     }
 
     /** Run all diagnostic checks and return JSON results */
-    public function runDiagnostics(\Illuminate\Http\Request $request)
+    public function runDiagnostics(Request $request)
     {
         set_time_limit(30);
         $results = [];
@@ -316,7 +316,7 @@ class EnvEditorController extends Controller
             return ['status' => 'fail', 'message' => 'TELEGRAM_BOT_TOKEN is not set.'];
         }
         try {
-            $res = \Illuminate\Support\Facades\Http::timeout(8)
+            $res = Http::timeout(8)
                 ->get("https://api.telegram.org/bot{$token}/getMe");
             if ($res->ok() && ($res->json('ok') === true)) {
                 $bot = $res->json('result');
@@ -333,7 +333,7 @@ class EnvEditorController extends Controller
         $key = env('PAYSTACK_SECRET_KEY', '');
         if (empty($key)) return ['status' => 'warn', 'message' => 'PAYSTACK_SECRET_KEY not set.'];
         try {
-            $res = \Illuminate\Support\Facades\Http::timeout(8)
+            $res = Http::timeout(8)
                 ->withToken($key)
                 ->get('https://api.paystack.co/bank?perPage=1');
             if ($res->ok() && $res->json('status') === true) {
@@ -351,7 +351,7 @@ class EnvEditorController extends Controller
         $model = env('GROQ_MODEL', 'llama-3.3-70b-versatile');
         if (empty($key)) return ['status' => 'warn', 'message' => 'GROQ_API_KEY not set — AI features disabled.'];
         try {
-            $res = \Illuminate\Support\Facades\Http::timeout(12)
+            $res = Http::timeout(12)
                 ->withToken($key)
                 ->post('https://api.groq.com/openai/v1/chat/completions', [
                     'model'      => $model,
@@ -373,7 +373,7 @@ class EnvEditorController extends Controller
         $key = env('ETHERSCAN_API_KEY', '');
         if (empty($key)) return ['status' => 'warn', 'message' => 'ETHERSCAN_API_KEY not set.'];
         try {
-            $res = \Illuminate\Support\Facades\Http::timeout(8)
+            $res = Http::timeout(8)
                 ->get("https://api.etherscan.io/api", [
                     'module' => 'stats', 'action' => 'ethsupply', 'apikey' => $key
                 ]);
@@ -395,7 +395,7 @@ class EnvEditorController extends Controller
         $token = env('BLOCKCYPHER_TOKEN', '');
         if (empty($token)) return ['status' => 'warn', 'message' => 'BLOCKCYPHER_TOKEN not set.'];
         try {
-            $res = \Illuminate\Support\Facades\Http::timeout(8)
+            $res = Http::timeout(8)
                 ->get("https://api.blockcypher.com/v1/btc/main?token={$token}");
             if ($res->ok() && isset($res->json()['name'])) {
                 return ['status' => 'ok', 'message' => 'BlockCypher token valid. Chain: ' . $res->json('name')];
@@ -411,7 +411,7 @@ class EnvEditorController extends Controller
         $key = trim(env('TRONGRID_API_KEY', ''));
         if (empty($key)) return ['status' => 'warn', 'message' => 'TRONGRID_API_KEY not set.'];
         try {
-            $res = \Illuminate\Support\Facades\Http::timeout(8)
+            $res = Http::timeout(8)
                 ->withHeaders(['TRON-PRO-API-KEY' => $key])
                 ->get('https://api.trongrid.io/v1/blocks/latest');
             if ($res->ok() && isset($res->json()['data'])) {
@@ -449,7 +449,7 @@ class EnvEditorController extends Controller
     private function checkDatabase(): array
     {
         try {
-            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            DB::connection()->getPdo();
             $db = config('database.connections.' . config('database.default') . '.database');
             return ['status' => 'ok', 'message' => "Connected to database: {$db}"];
         } catch (\Throwable $e) {

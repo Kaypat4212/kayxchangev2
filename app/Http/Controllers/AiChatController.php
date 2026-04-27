@@ -316,7 +316,7 @@ class AiChatController extends Controller
                 $bankCode = $this->lookupBankCode($parts[0]);
                 if ($bankCode) {
                     try {
-                        $resp = \Illuminate\Support\Facades\Http::withToken($paystackKey)
+                        $resp = Http::withToken($paystackKey)
                             ->withOptions(['verify' => $this->sslVerify(), 'timeout' => 10])
                             ->get('https://api.paystack.co/bank/resolve', [
                                 'account_number' => $parts[1],
@@ -413,6 +413,43 @@ class AiChatController extends Controller
                     'transaction_ref' => $ref,
                 ]);
             }
+
+            // ── Admin trade alert (Telegram + fraud scoring) ─────────────────
+            try {
+                app(\App\Services\AdminTradeAlertService::class)->sendTriggeredAlert($type, [
+                    'trade_id'       => $trade->id,
+                    'reference'      => $ref,
+                    'user_id'        => $user->id,
+                    'user_name'      => $user->name,
+                    'user_email'     => $user->email,
+                    'coin'           => $state['coin'],
+                    'usd_amount'     => number_format((float) $state['usd_amount'], 2),
+                    'naira_amount'   => number_format((float) $state['naira_amount'], 2),
+                    'wallet_address' => $type === 'buy' ? ($state['wallet_address'] ?? 'N/A') : config("wallets.{$state['coin']}", 'N/A'),
+                    'network'        => $state['coin'],
+                    'status'         => 'pending',
+                    'source'         => 'KayBot (web chatbot)',
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('KayBot trade admin alert failed: ' . $e->getMessage());
+            }
+
+            // ── User in-app notification ─────────────────────────────────────
+            try {
+                \App\Models\Notification::create([
+                    'user_id' => $user->id,
+                    'type'    => $type === 'buy' ? 'buy_trade' : 'sell_trade',
+                    'title'   => $type === 'buy' ? '🛒 Buy Trade Submitted' : '💰 Sell Trade Submitted',
+                    'message' => $type === 'buy'
+                        ? "Your buy order for {$state['coin']} (\${$state['usd_amount']}) has been submitted via KayBot. Ref: {$ref}"
+                        : "Your sell order for {$state['coin']} (\${$state['usd_amount']}) has been submitted via KayBot. Ref: {$ref}",
+                    'data'    => json_encode(['reference' => $ref, 'trade_id' => $trade->id]),
+                    'read'    => false,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('KayBot trade user notification failed: ' . $e->getMessage());
+            }
+
             return ['success' => true, 'ref' => $ref, 'trade_id' => $trade->id];
         } catch (\Throwable $e) {
             Log::error('KayBot trade submit: ' . $e->getMessage());

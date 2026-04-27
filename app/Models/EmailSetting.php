@@ -4,6 +4,22 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int         $id
+ * @property string      $mail_mailer
+ * @property string      $mail_host
+ * @property int         $mail_port
+ * @property string      $mail_username
+ * @property string|null $mail_password
+ * @property string|null $mail_encryption
+ * @property string      $mail_from_address
+ * @property string      $mail_from_name
+ * @property string|null $support_email
+ * @property string|null $security_email
+ * @property bool        $welcome_email_enabled
+ * @property bool        $login_success_email_enabled
+ * @property bool        $login_failed_email_enabled
+ */
 class EmailSetting extends Model
 {
     protected $fillable = [

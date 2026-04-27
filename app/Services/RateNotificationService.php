@@ -106,6 +106,7 @@ class RateNotificationService
         $emailSent = 0;
 
         foreach ($users as $user) {
+            /** @var \App\Models\User $user */
             // ── Telegram ─────────────────────────────────────────────────
             if ($user->telegram_chat_id && $user->telegram_notifications && $user->telegram_verified) {
                 try {
