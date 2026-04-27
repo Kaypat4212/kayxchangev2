@@ -229,6 +229,15 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
         <i class="bi bi-chevron-right st-row-arrow"></i>
     </a>
 
+    <a href="{{ route('install.app.public') }}" class="st-row">
+        <div class="st-row-icon" style="background:rgba(0,204,0,0.12);color:#00cc00;"><i class="bi bi-phone-fill"></i></div>
+        <div class="st-row-body">
+            <div class="st-row-title">Install App</div>
+            <div class="st-row-sub">Add KayXchange to your home screen for faster access</div>
+        </div>
+        <i class="bi bi-chevron-right st-row-arrow"></i>
+    </a>
+
     {{-- Danger zone --}}
     <div class="st-divider"></div>
     <div class="st-section-label">Danger Zone</div>

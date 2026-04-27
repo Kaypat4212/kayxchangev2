@@ -74,6 +74,7 @@ Route::get('/home', function () {
 });
 Route::get('/faqs', fn() => view('faqs'))->name('faqs');
 Route::get('/about', fn() => view('about'))->name('about');
+Route::get('/install-app', fn() => view('install-app'))->name('install.app.public');
 
 // Secure file serving — serves files from storage/app/public without requiring a symlink
 Route::get('/file/{path}', function (string $path) {
