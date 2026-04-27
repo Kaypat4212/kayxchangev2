@@ -17,3 +17,9 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# ── Scratch / test scripts (may contain local credentials) ──
+tes.php
+sms.py
+cpanel-setup.php
+write_admin_ai.php
