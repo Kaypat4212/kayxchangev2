@@ -159,8 +159,8 @@ class AiChatController extends Controller
             $lower = strtolower($message);
 
             // Determine trade type; "exchange/convert" defaults to sell (most common on NGN exchanges)
-            $isSell = (bool) preg_match('/\b(sell|trade out|swap out)\b/', $lower);
-            $isBuy  = (bool) preg_match('/\b(buy|purchase|get)\b/', $lower);
+            $isSell = (bool) preg_match('/\b(sell|trade out|swap out)(ing)?\b/', $lower);
+            $isBuy  = (bool) preg_match('/\b(buy|purchase)(ing)?\b/', $lower);
             $isExch = (bool) preg_match('/\b(exchange|convert)\b/', $lower);
 
             if ($isSell || ($isExch && ! $isBuy)) {
@@ -189,12 +189,12 @@ class AiChatController extends Controller
                 $rateNote  = $rate ? "\n_(KayXchange rate: ₦" . number_format($rate) . " per \$1 USD)_" : '';
                 $summary   = "**{$detectedType} {$initCoin}**\nUSD: \${$initUsd}\nNGN: ₦" . number_format($initNaira, 2) . "{$rateNote}\n\n";
                 if ($detectedType === 'buy') {
-                    return ['reply' => $summary . "Proceed with this buy?\n• Type **yes** to continue\n• Type **change** for a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+                    return ['reply' => $summary . "Proceed with this buy?", 'trade_step' => 'amount_review', 'quick_replies' => ['✅ Yes', '✏️ Change amount', '❌ Cancel']];
                 }
                 if ($user && $user->bank_name && $user->account_number) {
-                    return ['reply' => $summary . "Proceed with this sell?\n• Type **yes** to use your saved bank (**{$user->bank_name}** - {$user->account_number})\n• Type **external** for a different bank\n• Type **change** for a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+                    return ['reply' => $summary . "Proceed with this sell? I'll pay out to your saved bank (**{$user->bank_name}** — {$user->account_number}).", 'trade_step' => 'amount_review', 'quick_replies' => ['✅ Yes — use saved bank', '🏦 External bank', '✏️ Change amount', '❌ Cancel']];
                 }
-                return ['reply' => $summary . "Proceed with this sell?\n• Type **yes** to continue and enter your bank details\n• Type **change** for a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+                return ['reply' => $summary . "Proceed with this sell? You'll enter your bank details next.", 'trade_step' => 'amount_review', 'quick_replies' => ['✅ Yes', '✏️ Change amount', '❌ Cancel']];
             }
 
             if ($initCoin) {
@@ -215,7 +215,7 @@ class AiChatController extends Controller
 
         if (preg_match('/\b(cancel|stop|abort|never mind)\b/i', $message)) {
             $request->session()->forget('kaybot_trade');
-            return ['reply' => "No problem! Trade cancelled. Anything else I can help you with? :)", 'trade_done' => true];
+            return ['reply' => "No problem! Trade cancelled. ✋\n\nWhat would you like to do next?", 'trade_done' => true, 'quick_replies' => ['🛒 Buy crypto', '💰 Sell crypto', '📊 Check rates', '🎧 Contact support']];
         }
 
         if ($step === 'coin') {
@@ -228,15 +228,14 @@ class AiChatController extends Controller
                 return ['reply' => "Great! You want to {$type} **{$coin}**.{$rateText}\n\nHow much? e.g. *50 USD*, *\$100*, or *N50,000*\n_(Type **cancel** to stop)_", 'trade_step' => 'amount'];
             }
             $request->session()->put('kaybot_trade', $state);
-            $list = implode(', ', self::SUPPORTED_COINS);
-            return ['reply' => "Which coin do you want to {$type}? We support: **{$list}**\n\nType the coin name e.g. *USDT* or *BTC*.", 'trade_step' => 'coin'];
+            return ['reply' => "Which coin do you want to {$type}? 💎\n\nChoose a coin:", 'trade_step' => 'coin', 'quick_replies' => ['BTC', 'ETH', 'USDT', 'USDC', 'SOL', 'BNB']];
         }
 
         if ($step === 'amount') {
             $coin           = $state['coin'];
             [$usd, $naira]  = $this->parseAmount($message, $coin, $type);
             if (! $usd) {
-                return ['reply' => "I didn't catch that. Please tell me the amount:\n• *50 USD* or *\$50*\n• *N50,000*\n_(Type **cancel** to stop)_", 'trade_step' => 'amount'];
+                return ['reply' => "I didn't catch that. Please tell me the amount, e.g.:\n• *50 USD* or *\$50*\n• *N50,000*", 'trade_step' => 'amount', 'quick_replies' => ['❌ Cancel']];
             }
             $state = array_merge($state, [
                 'usd_amount'   => $usd,
@@ -247,13 +246,13 @@ class AiChatController extends Controller
             $summary = "**{$type} {$coin}**\nUSD: \${$usd}\nNGN: N" . number_format($naira, 2) . "\n\n";
             if ($type === 'buy') {
                 // For buy, just ask to confirm the amount before wallet step
-                return ['reply' => $summary . "Is this amount correct?\n• Type **yes** to continue\n• Type **change** to enter a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+                return ['reply' => $summary . "Is this amount correct?", 'trade_step' => 'amount_review', 'quick_replies' => ['✅ Yes', '✏️ Change amount', '❌ Cancel']];
             }
             // For sell, also show bank option
             if ($user && $user->bank_name && $user->account_number) {
-                return ['reply' => $summary . "Is this amount correct?\n• Type **yes** to use your saved bank (**{$user->bank_name}** - {$user->account_number})\n• Type **external** to use a different bank account\n• Type **change** to enter a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+                return ['reply' => $summary . "Is this amount correct? I'll pay out to your saved bank (**{$user->bank_name}** — {$user->account_number}).", 'trade_step' => 'amount_review', 'quick_replies' => ['✅ Yes — use saved bank', '🏦 External bank', '✏️ Change amount', '❌ Cancel']];
             }
-            return ['reply' => $summary . "Is this amount correct?\n• Type **yes** to continue and enter your bank details\n• Type **change** to enter a different amount\n_(Type **cancel** to stop)_", 'trade_step' => 'amount_review'];
+            return ['reply' => $summary . "Is this amount correct? You'll enter your bank details next.", 'trade_step' => 'amount_review', 'quick_replies' => ['✅ Yes', '✏️ Change amount', '❌ Cancel']];
         }
 
         if ($step === 'amount_review') {
@@ -266,14 +265,17 @@ class AiChatController extends Controller
                 return ['reply' => "No problem! Enter the new amount:{$rateText}\n\ne.g. *50 USD*, *\$100*, or *N50,000*\n_(Type **cancel** to stop)_", 'trade_step' => 'amount'];
             }
             if (! preg_match('/\byes\b|\bexternal\b/i', $lower)) {
-                return ['reply' => "Type **yes** to continue" . ($type === 'sell' && $user && $user->bank_name ? ", **external** for a different bank," : "") . " or **change** to enter a different amount.", 'trade_step' => 'amount_review'];
+                $qr = ($type === 'sell' && $user && $user->bank_name && $user->account_number)
+                    ? ['✅ Yes — use saved bank', '🏦 External bank', '✏️ Change amount', '❌ Cancel']
+                    : ['✅ Yes', '✏️ Change amount', '❌ Cancel'];
+                return ['reply' => "Please choose an option below 👇", 'trade_step' => 'amount_review', 'quick_replies' => $qr];
             }
             // They said "yes" or "external"
             $useSaved = $type === 'sell' && $user && $user->bank_name && $user->account_number && ! str_contains($lower, 'external');
             if ($type === 'buy') {
                 $state = array_merge($state, ['step' => 'wallet']);
                 $request->session()->put('kaybot_trade', $state);
-                return ['reply' => "Provide your **{$state['coin']} wallet address** to receive the crypto.\n_(Type **cancel** to stop)_", 'trade_step' => 'wallet'];
+                return ['reply' => "Provide your **{$state['coin']} wallet address** to receive the crypto.\n_(Paste your full wallet address below)_", 'trade_step' => 'wallet', 'quick_replies' => ['❌ Cancel']];
             }
             if ($useSaved) {
                 $state = array_merge($state, [
@@ -284,7 +286,7 @@ class AiChatController extends Controller
                 ]);
                 $request->session()->put('kaybot_trade', $state);
                 $summary = "**sell {$state['coin']}**\nUSD: \${$state['usd_amount']}\nNGN: N" . number_format($state['naira_amount'], 2) . "\n\n";
-                return ['reply' => $summary . "✅ I'll pay to your saved bank:\n**{$user->bank_name}** - {$user->account_number}\n\nType **confirm** to submit or **cancel** to stop.", 'trade_step' => 'confirm'];
+                return ['reply' => $summary . "✅ I'll pay to your saved bank:\n**{$user->bank_name}** — {$user->account_number}\n\nAll good? Choose below:", 'trade_step' => 'confirm', 'quick_replies' => ['✅ Confirm', '❌ Cancel']];
             }
             // External bank — collect details
             $state = array_merge($state, ['step' => 'bank']);
@@ -300,13 +302,13 @@ class AiChatController extends Controller
             $walletInfo    = $companyWallet ? "\n\nSend payment to:\n`{$companyWallet}`\n_(Upload proof on trade page after confirming)_" : '';
             $state         = array_merge($state, ['wallet_address' => $message, 'step' => 'confirm']);
             $request->session()->put('kaybot_trade', $state);
-            return ['reply' => "**Summary - Buy {$state['coin']}**\nUSD: \${$state['usd_amount']}\nNGN to pay: N" . number_format($state['naira_amount'], 2) . "\nYour wallet: `{$message}`{$walletInfo}\n\nType **confirm** to submit or **cancel** to stop.", 'trade_step' => 'confirm'];
+            return ['reply' => "**Summary - Buy {$state['coin']}**\nUSD: \${$state['usd_amount']}\nNGN to pay: ₦" . number_format($state['naira_amount'], 2) . "\nYour wallet: `{$message}`{$walletInfo}\nReady to submit?", 'trade_step' => 'confirm', 'quick_replies' => ['✅ Confirm', '❌ Cancel']];
         }
 
         if ($step === 'bank') {
             $parts = array_map('trim', explode('|', $message));
             if (count($parts) < 3 || strlen($parts[1]) < 9) {
-                return ['reply' => "Please use this format:\n\n*Bank Name | Account Number | Account Name*\n\nExample: *GTBank | 0123456789 | John Doe*\n_(Type **cancel** to stop)_", 'trade_step' => 'bank'];
+                return ['reply' => "Please use this format:\n\n*Bank Name | Account Number | Account Name*\n\nExample: *GTBank | 0123456789 | John Doe*", 'trade_step' => 'bank', 'quick_replies' => ['❌ Cancel']];
             }
             // Validate account via Paystack if secret key is available
             $paystackKey = config('services.paystack.secret_key');
@@ -339,12 +341,12 @@ class AiChatController extends Controller
                 'step'           => 'confirm',
             ]);
             $request->session()->put('kaybot_trade', $state);
-            return ['reply' => "**Summary - Sell {$state['coin']}**\nUSD: \${$state['usd_amount']}\nNGN payout: N" . number_format($state['naira_amount'], 2) . "\nBank: {$parts[0]} - {$parts[1]} ({$parts[2]})\n\nType **confirm** to submit or **cancel** to stop.", 'trade_step' => 'confirm'];
+            return ['reply' => "**Summary - Sell {$state['coin']}**\nUSD: \${$state['usd_amount']}\nNGN payout: ₦" . number_format($state['naira_amount'], 2) . "\nBank: {$parts[0]} — {$parts[1]} ({$parts[2]})\n\nReady to submit?", 'trade_step' => 'confirm', 'quick_replies' => ['✅ Confirm', '❌ Cancel']];
         }
 
         if ($step === 'confirm') {
             if (! preg_match('/\bconfirm\b/i', $message)) {
-                return ['reply' => "Type **confirm** to submit your trade, or **cancel** to stop.", 'trade_step' => 'confirm'];
+                return ['reply' => "Please confirm or cancel your trade:", 'trade_step' => 'confirm', 'quick_replies' => ['✅ Confirm', '❌ Cancel']];
             }
             if (! $user) {
                 $request->session()->forget('kaybot_trade');
@@ -363,9 +365,9 @@ class AiChatController extends Controller
                     $walletInfo = $companyWallet ? "\nSend **{$state['coin']}** to:\n`{$companyWallet}`\n\n" : "\n\n";
                     $reply = "✅ Sell trade submitted!\n\nRef: `{$ref}`\nStatus: Pending\n{$walletInfo}**Next step — upload your crypto send proof:**\n[👉 Click here to upload proof]({$payUrl})\n\n_(Upload a screenshot of your crypto transfer.)_";
                 }
-                return ['reply' => $reply, 'trade_done' => true, 'trade_ref' => $ref, 'payment_url' => $payUrl];
+                return ['reply' => $reply, 'trade_done' => true, 'trade_ref' => $ref, 'payment_url' => $payUrl, 'quick_replies' => ['� Buy crypto', '💰 Sell crypto', '📊 Check rates', '🎧 Contact support']];
             }
-            return ['reply' => "Could not submit: {$result['error']}\n\nPlease try via the website {$state['type']} page.", 'trade_done' => true];
+            return ['reply' => "Could not submit: {$result['error']}\n\nPlease try via the website {$state['type']} page, or contact support.", 'trade_done' => true, 'quick_replies' => ['🛒 Buy crypto', '💰 Sell crypto', '🎧 Contact support']];
         }
 
         return null;
@@ -471,7 +473,7 @@ class AiChatController extends Controller
     private function isRatesQuery(string $msg): bool
     {
         if (str_contains($msg, '💹') || str_contains($msg, '🎁') || str_contains($msg, '📈')) return true;
-        return (bool) preg_match('/\b(current\s+rates?|show\s+rates?|what\s+are\s+(the|your)\s+rates?|gift[\s\-]?card\s+rates?|crypto\s+rates?|exchange\s+rates?|rates?\s+today|coin\s+rates?|trading\s+rates?|see\s+rates?|your\s+rates?|ngn\s+rates?|naira\s+rates?|live\s+prices?|market\s+prices?)\b/i', $msg);
+        return (bool) preg_match('/\b(current\s+rates?|show\s+rates?|check\s+rates?|what\s+are\s+(the|your)\s+rates?|gift[\s\-]?card\s+rates?|crypto\s+rates?|exchange\s+rates?|rates?\s+today|coin\s+rates?|trading\s+rates?|see\s+rates?|your\s+rates?|ngn\s+rates?|naira\s+rates?|live\s+prices?|market\s+prices?)\b/i', $msg);
     }
 
     private function handleRatesFlow(Request $request, string $message): ?array
@@ -481,26 +483,26 @@ class AiChatController extends Controller
         // Crypto rates — direct match (also handles "💹 Crypto rates" quick reply)
         if (preg_match('/\bcrypto\s*rates?\b/i', $lower) || str_contains($lower, '💹')) {
             $request->session()->forget('kaybot_rates');
-            return ['reply' => $this->buildCryptoRatesResponse(), 'rates_type' => 'crypto'];
+            return ['reply' => $this->buildCryptoRatesResponse(), 'rates_type' => 'crypto', 'quick_replies' => ['🛒 Buy crypto', '💰 Sell crypto', '🎁 Gift card rates', '📈 Live prices']];
         }
 
         // Gift card rates — direct match (also handles "🎁 Gift card rates" quick reply)
         if (preg_match('/\bgift[\s\-]?card\s*rates?\b/i', $lower) || str_contains($lower, '🎁')) {
             $request->session()->forget('kaybot_rates');
-            return ['reply' => $this->buildGiftCardRatesResponse(), 'rates_type' => 'giftcard'];
+            return ['reply' => $this->buildGiftCardRatesResponse(), 'rates_type' => 'giftcard', 'quick_replies' => ['💹 Crypto rates', '📈 Live prices', '🛒 Buy crypto', '🎧 Contact support']];
         }
 
-        // Live prices — direct match (also handles "📈 Live crypto prices" quick reply)
+        // Live prices — direct match (also handles "📈 Live crypto prices" / "📈 Live prices" quick reply)
         if (preg_match('/\blive\s*(crypto\s*)?prices?\b/i', $lower) || str_contains($lower, '📈')) {
             $request->session()->forget('kaybot_rates');
-            return ['reply' => $this->buildLivePricesResponse(), 'rates_type' => 'live'];
+            return ['reply' => $this->buildLivePricesResponse(), 'rates_type' => 'live', 'quick_replies' => ['🛒 Buy crypto', '💰 Sell crypto', '💹 Crypto rates', '🎁 Gift card rates']];
         }
 
         // General "current rates" / "what are rates" — show choice prompt
         $request->session()->put('kaybot_rates', ['step' => 'choose']);
         return [
             'reply'         => "What rates would you like to see? 💰\n\nChoose an option:",
-            'quick_replies' => ['💹 Crypto rates', '🎁 Gift card rates', '📈 Live crypto prices'],
+            'quick_replies' => ['💹 Crypto rates', '🎁 Gift card rates', '📈 Live prices'],
         ];
     }
 

@@ -44,6 +44,9 @@ try { $kaybotChatUrl = route('ai.chat'); } catch (\Throwable $e) { $kaybotChatUr
 #kaybot-send:hover{background:#009900;}
 #kaybot-send svg{width:16px;height:16px;fill:#081108;}
 .kb-badge{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#ef4444;border-radius:50%;font-size:.62rem;color:#fff;display:flex;align-items:center;justify-content:center;display:none;}
+.kb-proof-btn{display:block;margin-top:.6rem;padding:.45rem .9rem;background:linear-gradient(135deg,#00cc00,#009900);color:#fff !important;font-size:.78rem;font-weight:700;border-radius:10px;text-align:center;text-decoration:none !important;transition:opacity .15s;}
+.kb-proof-btn:hover{opacity:.88;}
+body.light-mode .kb-proof-btn{background:linear-gradient(135deg,#009900,#007700);}
 
 /* ── Light mode overrides ─────────────────────────────────────────── */
 body.light-mode #kaybot-box{background:#ffffff;border-color:rgba(0,150,0,.25);box-shadow:0 8px 40px rgba(0,0,0,.18);}
@@ -82,15 +85,16 @@ body.light-mode #kaybot-input:focus{border-color:rgba(0,150,0,.45);}
         </div>
 
         <div id="kaybot-msgs">
-            <div class="kb-msg bot">👋 Hi{{ auth()->check() ? ' ' . auth()->user()->name : '' }}! I'm <strong>KayBot</strong>, your KayXchange trading assistant.<br><br>I can help you with live crypto prices, rates, how to buy/sell crypto, account questions, and more. What would you like to know?</div>
+            <div class="kb-msg bot">👋 Hi{{ auth()->check() ? ' ' . auth()->user()->name : '' }}! I'm <strong>KayBot</strong>, your KayXchange trading assistant.<br><br>What would you like to do today?</div>
         </div>
 
         @if($kaybotReady)
         <div class="kb-quick" id="kaybot-static-qr">
-            <button onclick="kaybotAsk('How do I buy crypto?')">Buy crypto</button>
-            <button onclick="kaybotAsk('What are the current rates?')">Current rates</button>
-            <button onclick="kaybotAsk('How long does a trade take?')">Trade time</button>
-            <button onclick="kaybotAsk('How do I contact support?')">Support</button>
+            <button onclick="kaybotAsk('Buy crypto')">🛒 Buy crypto</button>
+            <button onclick="kaybotAsk('Sell crypto')">💰 Sell crypto</button>
+            <button onclick="kaybotAsk('What are the current rates?')">📊 Rates</button>
+            <button onclick="kaybotAsk('How long does a trade take?')">⏱ Trade time</button>
+            <button onclick="kaybotAsk('Contact support')">🎧 Support</button>
         </div>
         @endif
 
@@ -184,7 +188,7 @@ async function kaybotSend() {
         let data;
         try { data = JSON.parse(text); } catch { typing.remove(); kaybotAppend('bot', 'Sorry, something went wrong. Please try again.'); kaybotBusy = false; return; }
         typing.remove();
-        kaybotAppend('bot', data.reply ?? 'Sorry, something went wrong.', false, data.quick_replies ?? []);
+        kaybotAppend('bot', data.reply ?? 'Sorry, something went wrong.', false, data.quick_replies ?? [], data.payment_url ?? null);
     } catch (e) {
         typing.remove();
         kaybotAppend('bot', '⚠️ Could not reach KayBot. Check your connection and try again.');
@@ -192,12 +196,22 @@ async function kaybotSend() {
     kaybotBusy = false;
 }
 
-function kaybotAppend(role, text, isTyping = false, quickReplies = []) {
+function kaybotAppend(role, text, isTyping = false, quickReplies = [], paymentUrl = null) {
     const msgs = document.getElementById('kaybot-msgs');
     const el   = document.createElement('div');
     el.className = 'kb-msg ' + role + (isTyping ? ' typing' : '');
     if (role === 'bot' && !isTyping) {
         el.innerHTML = kaybotRenderText(text);
+        // Prominent proof upload button (shown above quick replies)
+        if (paymentUrl) {
+            const proofBtn = document.createElement('a');
+            proofBtn.href      = paymentUrl;
+            proofBtn.target    = '_blank';
+            proofBtn.rel       = 'noopener noreferrer';
+            proofBtn.className = 'kb-proof-btn';
+            proofBtn.innerHTML = '📤 Upload Payment Proof';
+            el.appendChild(proofBtn);
+        }
         if (quickReplies && quickReplies.length) {
             const qrDiv = document.createElement('div');
             qrDiv.className = 'kb-inline-qr';

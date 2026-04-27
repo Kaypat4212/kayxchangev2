@@ -42,8 +42,22 @@ class HomeController extends Controller
             // Condense user-agent to a readable label
             $device = $this->parseDevice($userAgent);
 
+            // Geo-lookup via ip-api.com (free, no key needed)
+            $location = 'Unknown';
+            if ($ip && $ip !== '127.0.0.1' && $ip !== '::1') {
+                try {
+                    $geo = Http::timeout(4)->get("http://ip-api.com/json/{$ip}?fields=status,country,city");
+                    if ($geo->successful() && $geo->json('status') === 'success') {
+                        $city    = $geo->json('city', '');
+                        $country = $geo->json('country', '');
+                        $location = trim("{$city}, {$country}", ', ');
+                    }
+                } catch (\Throwable) {}
+            }
+
             $message = "👁 *New Website Visitor*\n\n"
                 . "🌐 IP: `{$ip}`\n"
+                . "📍 Location: {$location}\n"
                 . "📱 Device: {$device}\n"
                 . "🔗 Referrer: {$referer}\n"
                 . "🕒 Time: {$time}\n\n"
