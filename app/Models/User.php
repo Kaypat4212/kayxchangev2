@@ -49,6 +49,7 @@ use Illuminate\Support\Str;
  * @property string|null $two_factor_secret
  * @property bool $two_factor_enabled
  * @property \Carbon\Carbon|null $two_factor_confirmed_at
+ * @property string $kx_tag
  */
 class User extends Authenticatable
 {
@@ -94,6 +95,7 @@ class User extends Authenticatable
         'two_factor_secret',
         'two_factor_enabled',
         'two_factor_confirmed_at',
+        'kx_tag',
     ];
 
     /**
@@ -189,5 +191,25 @@ class User extends Authenticatable
         } while (self::where('referral_code', $code)->exists());
 
         return $code;
+    }
+
+    /** Generate a unique KX tag for this user */
+    public static function generateKxTag(): string
+    {
+        do {
+            $tag = 'KX' . strtoupper(Str::random(6));
+        } while (self::where('kx_tag', $tag)->exists());
+
+        return $tag;
+    }
+
+    public function sentTransfers()
+    {
+        return $this->hasMany(\App\Models\P2pTransfer::class, 'sender_id');
+    }
+
+    public function receivedTransfers()
+    {
+        return $this->hasMany(\App\Models\P2pTransfer::class, 'recipient_id');
     }
 }

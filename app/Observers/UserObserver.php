@@ -16,6 +16,10 @@ class UserObserver
         if (!$user->referral_code) {
             $user->referral_code = User::generateReferralCode();
         }
+
+        if (!$user->kx_tag) {
+            $user->kx_tag = User::generateKxTag();
+        }
     }
 
     public function created(User $user)

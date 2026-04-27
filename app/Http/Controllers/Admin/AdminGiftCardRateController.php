@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\GiftCardRate;
+use App\Services\RateNotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 
 class AdminGiftCardRateController extends Controller
 {
@@ -40,7 +43,23 @@ class AdminGiftCardRateController extends Controller
             ]);
         }
 
+        $this->dispatchRateNotifications();
+
         return back()->with('success', 'Gift card rates updated successfully.');
+    }
+
+    private function dispatchRateNotifications(): void
+    {
+        try {
+            Artisan::queue('rates:notify', ['--context' => 'admin_update']);
+        } catch (\Throwable $e) {
+            Log::warning('Gift card rate notification dispatch failed: ' . $e->getMessage());
+            try {
+                app(RateNotificationService::class)->notifyAllUsers('admin_update');
+            } catch (\Throwable $e2) {
+                Log::warning('Gift card rate notification sync fallback failed: ' . $e2->getMessage());
+            }
+        }
     }
 
     public function store(Request $request)

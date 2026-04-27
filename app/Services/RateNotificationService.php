@@ -148,5 +148,29 @@ class RateNotificationService
         }
 
         Log::info("[RateNotification] Dispatched — context={$context}, tg={$tgSent}, email={$emailSent}");
+
+        // ── Admin Telegram alert ──────────────────────────────────────────────
+        $this->notifyAdmin($context, $rateLines, $time, $tgSent, $emailSent);
+    }
+
+    /**
+     * Send a brief rate-update confirmation to all admin Telegram chats.
+     */
+    private function notifyAdmin(string $context, string $rateLines, string $time, int $tgSent, int $emailSent): void
+    {
+        try {
+            $trigger = $context === 'scheduled' ? '🕐 Scheduled job' : '👤 Manual admin update';
+
+            $msg = "🔔 *Rate Update Dispatched — KayXchange*\n\n"
+                 . "📌 *Trigger:* {$trigger}\n"
+                 . "🕐 *Time:* {$time}\n\n"
+                 . "*Current Rates:*\n\n"
+                 . $rateLines
+                 . "📨 *Notified:* {$tgSent} Telegram, {$emailSent} email";
+
+            $this->telegram->sendToAdminChats($msg, null, 'Markdown');
+        } catch (\Throwable $e) {
+            Log::warning('[RateNotification] Admin Telegram alert failed: ' . $e->getMessage());
+        }
     }
 }

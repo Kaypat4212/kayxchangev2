@@ -164,6 +164,16 @@ Route::post('withdrawals/webhook/{gateway}', [WithdrawalController::class, 'payo
     ->name('withdrawals.payout.webhook')
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
+// ── Wallet / P2P Transfers ───────────────────────────────────────────────────
+Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () {
+    Route::get('/send',      [\App\Http\Controllers\P2pTransferController::class, 'showSend'])->name('send');
+    Route::post('/send',     [\App\Http\Controllers\P2pTransferController::class, 'send'])->name('send.post');
+    Route::get('/transfers', [\App\Http\Controllers\P2pTransferController::class, 'history'])->name('transfers');
+    Route::get('/lookup',    [\App\Http\Controllers\P2pTransferController::class, 'lookupRecipient'])->name('lookup');
+});
+// Admin: reverse a transfer
+Route::middleware(['auth', 'admin'])->post('admin/p2p/{transfer}/reverse', [\App\Http\Controllers\P2pTransferController::class, 'reverse'])->name('admin.p2p.reverse');
+
 use App\Http\Controllers\Admin\SiteContentController;
 use App\Http\Controllers\Admin\EmailSettingsController;
 use App\Http\Controllers\Admin\EnvEditorController;
