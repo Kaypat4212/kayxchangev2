@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use App\Models\User;
 use App\Models\CryptoRate;
 use App\Models\SiteContent;
+use App\Models\AiSupportTicket;
 
 class TelegramAiBotService
 {
@@ -49,6 +50,11 @@ class TelegramAiBotService
         if (empty($this->apiKey)) {
             Log::error('TelegramAiBotService: GROQ_API_KEY is not configured.');
             return "⚙️ AI assistant is not configured yet. Please contact support.";
+        }
+
+        // ── Escalation detection ──────────────────────────────────────────────
+        if ($this->isEscalationRequest($userMessage)) {
+            return $this->createSupportTicket($chatId, $user, $userMessage);
         }
 
         // Load and append the new user message to history
@@ -114,6 +120,60 @@ class TelegramAiBotService
     public function clearHistory(int $chatId): void
     {
         Cache::forget("ai_history_{$chatId}");
+    }
+
+    // ─────────────────────── Escalation / Support Ticket ─────────────────────
+
+    private const ESCALATION_PHRASES = [
+        'talk to human', 'speak to human', 'real person', 'talk to admin',
+        'contact support', 'human agent', 'live agent', 'talk to someone',
+        'escalate', 'not helpful', "can't help", 'cannot help',
+        'speak to agent', 'speak to support',
+    ];
+
+    private function isEscalationRequest(string $msg): bool
+    {
+        $lower = strtolower($msg);
+        foreach (self::ESCALATION_PHRASES as $phrase) {
+            if (str_contains($lower, $phrase)) return true;
+        }
+        return false;
+    }
+
+    private function createSupportTicket(int $chatId, User $user, string $question): string
+    {
+        try {
+            $context = collect($this->getHistory($chatId))
+                ->map(fn($m) => "[{$m['role']}]: {$m['content']}")
+                ->implode("\n");
+
+            AiSupportTicket::create([
+                'user_id'    => $user->id,
+                'session_id' => 'tg_' . $chatId,
+                'question'   => $question,
+                'context'    => $context,
+                'status'     => 'open',
+            ]);
+
+            // Notify admin via Telegram
+            try {
+                $token  = env('KAYXCHANGE_TELEGRAM_BOT_TOKEN', env('TELEGRAM_BOT_TOKEN', ''));
+                $chatIdAdmin = env('TELEGRAM_CHAT_ID', env('TELEGRAM_OWNER_CHAT_ID', ''));
+                if ($token && $chatIdAdmin) {
+                    \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+                        'chat_id'    => $chatIdAdmin,
+                        'text'       => "*KAI Support Ticket (Telegram)*\n\nUser: {$user->name} (#{$user->id})\nEmail: {$user->email}\nQuestion:\n_{$question}_\n\nAdmin reply: " . url('/admin/kaybot/tickets'),
+                        'parse_mode' => 'Markdown',
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('TelegramAiBotService: support ticket admin notify failed: ' . $e->getMessage());
+            }
+        } catch (\Throwable $e) {
+            Log::error('TelegramAiBotService: support ticket creation failed: ' . $e->getMessage());
+        }
+
+        return "👋 I've flagged your request for our support team!\n\nA human agent will follow up with you shortly. You can also reach us directly at:\n📬 @TradewithkayxchangeBOT\n\nType /cancel to exit AI mode.";
     }
 
     /**

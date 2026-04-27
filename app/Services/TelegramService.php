@@ -14,6 +14,7 @@ use App\Models\SellTrade;
 use App\Models\BuyTrade;
 use App\Models\Kyc;
 use App\Models\CryptoRate;
+use App\Models\CryptoRate;
 use App\Models\TelegramBotMessage;
 
 class TelegramService
@@ -1559,7 +1560,7 @@ class TelegramService
     }
 
     /**
-     * Handle /rates command - show live crypto buy/sell rates
+     * Handle /rates command - show KayXchange platform buy/sell rates only
      */
     private function handleRatesCommand($chatId)
     {
@@ -1571,20 +1572,22 @@ class TelegramService
                 return;
             }
 
-            $message = "📊 *Live KayXchange Rates*\n\n";
+            $message = "📊 *KayXchange Rates*\n_NGN per \\$1 USD_\n\n";
+
             foreach ($rates as $rate) {
                 $coin = strtoupper($rate->coin);
-                $buy  = number_format($rate->buy_rate, 2);
-                $sell = number_format($rate->sell_rate, 2);
+                $buy  = number_format($rate->buy_rate);
+                $sell = number_format($rate->sell_rate);
                 $message .= "🪙 *{$coin}*\n";
                 $message .= "  Buy: ₦{$buy} | Sell: ₦{$sell}\n\n";
             }
-            $message .= "_Rates updated: " . now()->format('d M Y, H:i') . "_";
+
+            $message .= "_Updated: " . now()->format('d M Y, H:i') . "_";
 
             $keyboard = [
                 'inline_keyboard' => [[
-                    $this->linkButton('💸 Buy Now', '/buy', 'cmd_buy'),
-                    $this->linkButton('💵 Sell Now', '/sell', 'cmd_sell'),
+                    $this->linkButton('💸 Buy Crypto', '/buy', 'cmd_buy'),
+                    $this->linkButton('💵 Sell Crypto', '/sell', 'cmd_sell'),
                 ]],
             ];
 
@@ -2095,6 +2098,20 @@ class TelegramService
                 "We'll notify you once your trade is approved. Usually within 15–30 minutes.",
                 'Markdown');
 
+            // ── User in-app notification ──────────────────────────────────────
+            try {
+                \App\Models\Notification::create([
+                    'user_id' => $user->id,
+                    'type'    => 'sell_trade',
+                    'title'   => '💰 Sell Trade Submitted',
+                    'message' => "Your sell order for {$coin} (\${$usd}) has been submitted via Telegram. Ref: {$trade->transaction_ref}",
+                    'data'    => json_encode(['reference' => $trade->transaction_ref, 'trade_id' => $trade->id]),
+                    'read'    => false,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning("Sell TG user notification failed: {$e->getMessage()}");
+            }
+
             // Notify admin
             try {
                 app(\App\Services\AdminTradeAlertService::class)->sendTriggeredAlert('sell', [
@@ -2369,6 +2386,20 @@ class TelegramService
                 "We'll send the crypto to your wallet once your payment is confirmed. Usually within 15–30 minutes.",
                 'Markdown');
 
+            // ── User in-app notification ──────────────────────────────────────
+            try {
+                \App\Models\Notification::create([
+                    'user_id' => $user->id,
+                    'type'    => 'buy_trade',
+                    'title'   => '🛒 Buy Trade Submitted',
+                    'message' => "Your buy order for {$coin} (\${$usd}) has been submitted via Telegram. Ref: {$trade->transaction_ref}",
+                    'data'    => json_encode(['reference' => $trade->transaction_ref, 'trade_id' => $trade->id]),
+                    'read'    => false,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning("Buy TG user notification failed: {$e->getMessage()}");
+            }
+
             try {
                 app(\App\Services\AdminTradeAlertService::class)->sendTriggeredAlert('buy', [
                     'user_id'        => $user->id,
@@ -2503,14 +2534,41 @@ class TelegramService
      */
     private function handleUnknownCommand($chatId)
     {
-        $message = "🤔 *I didn't understand that command.*\n\n" .
-                  "Try one of these:\n" .
-                  "• Send me your email address for verification\n" .
-                  "• Type /help for available commands\n" .
-                  "• Type /start to begin setup\n\n" .
-                  "How can I help you today? 😊";
+        $user = User::where('telegram_chat_id', $chatId)->first();
 
-        $this->sendMessage($chatId, $message);
+        if ($user) {
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '🤖 Ask AI', 'callback_data' => 'cmd_ai'],
+                        ['text' => '📊 Rates',  'callback_data' => 'cmd_rates'],
+                    ],
+                    [
+                        $this->linkButton('💸 Buy', '/buy', 'cmd_buy'),
+                        $this->linkButton('💵 Sell', '/sell', 'cmd_sell'),
+                    ],
+                ],
+            ];
+            $this->sendMessage($chatId,
+                "🤔 I didn't catch that.\n\n" .
+                "Want to ask KAI, the AI assistant? Tap *🤖 Ask AI* below, or use one of these commands:\n\n" .
+                "• /buy — Buy cryptocurrency\n" .
+                "• /sell — Sell cryptocurrency\n" .
+                "• /rates — View live rates\n" .
+                "• /balance — Check balance\n" .
+                "• /help — All commands",
+                'Markdown',
+                $keyboard
+            );
+        } else {
+            $message = "🤔 *I didn't understand that command.*\n\n" .
+                      "Try one of these:\n" .
+                      "• Send me your email address to link your account\n" .
+                      "• Type /help for available commands\n" .
+                      "• Type /start to begin setup\n\n" .
+                      "How can I help you today? 😊";
+            $this->sendMessage($chatId, $message);
+        }
     }
 
     /**
