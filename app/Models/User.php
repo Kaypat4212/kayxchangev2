@@ -49,6 +49,7 @@ use Illuminate\Support\Str;
  * @property string|null $two_factor_secret
  * @property bool $two_factor_enabled
  * @property \Carbon\Carbon|null $two_factor_confirmed_at
+ * @property \Carbon\Carbon|null $email_verified_at
  * @property string $kx_tag
  */
 class User extends Authenticatable
