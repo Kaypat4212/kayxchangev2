@@ -519,6 +519,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [CryptoController::class, 'dashboard'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/kx-tag', [ProfileController::class, 'updateKxTag'])->name('profile.kx-tag');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Transaction History

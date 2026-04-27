@@ -45,6 +45,65 @@
                     </div>
                 </div>
 
+                {{-- KX Tag card --}}
+                <div class="rounded-2xl border border-emerald-200/60 bg-white p-5 shadow-sm dark:border-emerald-800/40 dark:bg-gray-800/90 sm:p-8 lg:col-span-2">
+                    <div class="max-w-2xl">
+                        <header class="mb-6">
+                            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">KX Tag</h2>
+                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                Your KX Tag is your unique username on KayXchange — people use it to send you money instantly.
+                                It must be 3–20 characters and may only contain letters, numbers, and underscores.
+                            </p>
+                        </header>
+
+                        @if(session('status') === 'tag-updated')
+                            <div class="mb-4 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                ✅ KX Tag updated successfully!
+                            </div>
+                        @endif
+
+                        {{-- Current tag display --}}
+                        <div class="mb-5 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800/50 dark:bg-emerald-950/20">
+                            <svg class="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a0 0 010-4z"/>
+                            </svg>
+                            <div>
+                                <p class="text-xs text-emerald-600 dark:text-emerald-400">Current KX Tag</p>
+                                <p class="font-mono text-base font-bold text-emerald-700 dark:text-emerald-300">@{{ $user->kx_tag }}</p>
+                            </div>
+                        </div>
+
+                        <form method="post" action="{{ route('profile.kx-tag') }}" class="space-y-4">
+                            @csrf
+                            @method('patch')
+
+                            <div>
+                                <x-input-label for="kx_tag" value="New KX Tag" />
+                                <div class="relative mt-1">
+                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500 select-none">@</span>
+                                    <x-text-input
+                                        id="kx_tag"
+                                        name="kx_tag"
+                                        type="text"
+                                        class="block w-full pl-7"
+                                        :value="old('kx_tag', $user->kx_tag)"
+                                        placeholder="e.g. john_doe123"
+                                        maxlength="20"
+                                        autocomplete="off"
+                                        oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')"
+                                    />
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Letters, numbers and underscores only. 3–20 characters.</p>
+                                <x-input-error class="mt-2" :messages="$errors->get('kx_tag')" />
+                            </div>
+
+                            <div class="flex items-center gap-4">
+                                <x-primary-button>Save Tag</x-primary-button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <div class="rounded-2xl border border-gray-200/70 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800/90 sm:p-8">
                     <div class="max-w-xl">
                         @include('profile.partials.update-password-form')
