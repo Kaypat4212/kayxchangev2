@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -16,8 +17,8 @@ class BlogAiController extends Controller
 
     public function __construct()
     {
-        $this->apiKey = config('services.groq.api_key', '');
-        $this->model  = config('services.groq.model', 'llama-3.3-70b-versatile');
+        $this->apiKey = \App\Models\AdminSetting::get('groq_api_key', '') ?: config('services.groq.api_key', '');
+        $this->model  = \App\Models\AdminSetting::get('groq_model', '') ?: config('services.groq.model', 'llama-3.3-70b-versatile');
     }
 
     // ── POST /admin/blog/ai/generate ─────────────────────────────────────────
