@@ -456,7 +456,6 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 .send-cta:hover { opacity: .88; color: #fff; }
 </style>
-@endpush
 
 @section('content')
 <div class="container py-4 tx-page">

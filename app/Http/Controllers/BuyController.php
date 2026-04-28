@@ -113,14 +113,19 @@ class BuyController extends Controller
                 'transaction_ref' => $transaction_ref
             ]);
 
+            // Calculate crypto equivalent for display
+            $cryptoAmount = $usd_amount / $rate;
+            
             // Send confirmation email
             try {
                 Mail::to(auth()->user()->email)->send(new TradeNotification(
                     user: auth()->user(),
                     templateKey: 'buy_trade_submitted',
                     data: [
-                        'amount'         => number_format($usd_amount, 6),
+                        'usd_amount'     => number_format($usd_amount, 2),
+                        'crypto_amount'  => number_format($cryptoAmount, 8),
                         'currency'       => $validated['coin'],
+                        'rate_used'      => number_format($rate, 2),
                         'naira_amount'   => number_format($naira_amount, 2),
                         'wallet_address' => $validated['wallet_address'],
                         'reference'      => $transaction_ref,

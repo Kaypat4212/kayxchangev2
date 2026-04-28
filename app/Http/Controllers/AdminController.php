@@ -298,12 +298,17 @@ class AdminController extends Controller
                         $buyAdminProofUrl = $trade->admin_payment_proof
                             ? asset('storage/' . $trade->admin_payment_proof)
                             : null;
+                        // Calculate crypto equivalent
+                        $cryptoAmount = $trade->usd_amount / ($trade->rate_used ?: 1);
+                        
                         Mail::to($tradeUser->email)->send(new TradeNotification(
                             user: $tradeUser,
                             templateKey: $isCompleted ? 'buy_trade_completed' : 'buy_trade_rejected',
                             data: [
-                                'amount'         => number_format((float)$trade->usd_amount, 6),
+                                'usd_amount'     => number_format((float)$trade->usd_amount, 2),
+                                'crypto_amount'  => number_format($cryptoAmount, 8),
                                 'currency'       => $trade->coin,
+                                'rate_used'      => number_format((float)$trade->rate_used, 2),
                                 'naira_amount'   => number_format((float)$trade->naira_amount, 2),
                                 'wallet_address' => $trade->wallet_address ?? 'N/A',
                                 'reference'      => $trade->transaction_ref ?? ('BUY-' . $trade->id),
@@ -441,12 +446,19 @@ class AdminController extends Controller
                         $adminProofUrl = $trade->admin_payment_proof
                             ? asset('storage/' . $trade->admin_payment_proof)
                             : null;
+                        
+                        // Calculate crypto equivalent
+                        $usdVal = $trade->usd_amount ?? $trade->amount;
+                        $cryptoAmount = $usdVal / ($trade->rate_used ?: 1);
+                        
                         Mail::to($tradeUser->email)->send(new TradeNotification(
                             user: $tradeUser,
                             templateKey: $isCompleted ? 'sell_trade_completed' : 'sell_trade_rejected',
                             data: [
-                                'amount'         => number_format((float)($trade->usd_amount ?? $trade->amount), 6),
+                                'usd_amount'     => number_format((float)$usdVal, 2),
+                                'crypto_amount'  => number_format($cryptoAmount, 8),
                                 'currency'       => $trade->coin,
+                                'rate_used'      => number_format((float)$trade->rate_used, 2),
                                 'naira_amount'   => number_format((float)$trade->naira_amount, 2),
                                 'reference'      => $trade->transaction_ref ?? ('SELL-' . $trade->id),
                                 'payment_method' => $paymentMethod,

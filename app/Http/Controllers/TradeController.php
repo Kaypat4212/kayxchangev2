@@ -42,17 +42,22 @@ class TradeController extends Controller
             'cancelled_by' => Auth::id(),
         ]);
 
+        // Calculate crypto equivalent
+        $cryptoAmount = $trade->usd_amount / ($trade->rate_used ?: 1);
+        
         // Notify user by email
         try {
             Mail::to(Auth::user()->email)->send(new TradeNotification(
                 user: Auth::user(),
                 templateKey: 'buy_trade_rejected',
                 data: [
-                    'amount'    => number_format((float) $trade->usd_amount, 6),
-                    'currency'  => $trade->coin,
-                    'naira_amount' => number_format((float) $trade->naira_amount, 2),
-                    'reference' => $trade->transaction_ref ?? ('BUY-' . $trade->id),
-                    'reason'    => 'You cancelled this trade.',
+                    'usd_amount'     => number_format((float) $trade->usd_amount, 2),
+                    'crypto_amount'  => number_format($cryptoAmount, 8),
+                    'currency'       => $trade->coin,
+                    'rate_used'      => number_format((float) $trade->rate_used, 2),
+                    'naira_amount'   => number_format((float) $trade->naira_amount, 2),
+                    'reference'      => $trade->transaction_ref ?? ('BUY-' . $trade->id),
+                    'reason'         => 'You cancelled this trade.',
                 ],
                 badge: ['text' => 'Trade Cancelled', 'color' => '#6b7280'],
                 ctaUrl: url('/dashboard'),
@@ -98,17 +103,23 @@ class TradeController extends Controller
             'cancelled_by' => Auth::id(),
         ]);
 
+        // Calculate crypto equivalent
+        $usdVal = $trade->usd_amount ?? $trade->amount;
+        $cryptoAmount = $usdVal / ($trade->rate_used ?: 1);
+        
         // Notify user by email
         try {
             Mail::to(Auth::user()->email)->send(new TradeNotification(
                 user: Auth::user(),
                 templateKey: 'sell_trade_rejected',
                 data: [
-                    'amount'    => number_format((float) ($trade->usd_amount ?? $trade->amount), 6),
-                    'currency'  => $trade->coin,
-                    'naira_amount' => number_format((float) $trade->naira_amount, 2),
-                    'reference' => $trade->transaction_ref ?? ('SELL-' . $trade->id),
-                    'reason'    => 'You cancelled this trade.',
+                    'usd_amount'     => number_format((float) $usdVal, 2),
+                    'crypto_amount'  => number_format($cryptoAmount, 8),
+                    'currency'       => $trade->coin,
+                    'rate_used'      => number_format((float) $trade->rate_used, 2),
+                    'naira_amount'   => number_format((float) $trade->naira_amount, 2),
+                    'reference'      => $trade->transaction_ref ?? ('SELL-' . $trade->id),
+                    'reason'         => 'You cancelled this trade.',
                     'payment_method' => $trade->bank_name ?? 'N/A',
                 ],
                 badge: ['text' => 'Trade Cancelled', 'color' => '#6b7280'],
@@ -144,6 +155,9 @@ class TradeController extends Controller
             'cancelled_by' => Auth::id(),
         ]);
 
+        // Calculate crypto equivalent
+        $cryptoAmount = $trade->usd_amount / ($trade->rate_used ?: 1);
+        
         // Notify user
         try {
             $tradeUser = $trade->user;
@@ -152,11 +166,13 @@ class TradeController extends Controller
                     user: $tradeUser,
                     templateKey: 'buy_trade_rejected',
                     data: [
-                        'amount'    => number_format((float) $trade->usd_amount, 6),
-                        'currency'  => $trade->coin,
-                        'naira_amount' => number_format((float) $trade->naira_amount, 2),
-                        'reference' => $trade->transaction_ref ?? ('BUY-' . $trade->id),
-                        'reason'    => $request->input('reason', 'This trade was cancelled by an administrator.'),
+                        'usd_amount'     => number_format((float) $trade->usd_amount, 2),
+                        'crypto_amount'  => number_format($cryptoAmount, 8),
+                        'currency'       => $trade->coin,
+                        'rate_used'      => number_format((float) $trade->rate_used, 2),
+                        'naira_amount'   => number_format((float) $trade->naira_amount, 2),
+                        'reference'      => $trade->transaction_ref ?? ('BUY-' . $trade->id),
+                        'reason'         => $request->input('reason', 'This trade was cancelled by an administrator.'),
                     ],
                     badge: ['text' => 'Trade Cancelled', 'color' => '#6b7280'],
                     ctaUrl: url('/dashboard'),
@@ -191,6 +207,10 @@ class TradeController extends Controller
             'cancelled_by' => Auth::id(),
         ]);
 
+        // Calculate crypto equivalent
+        $usdVal = $trade->usd_amount ?? $trade->amount;
+        $cryptoAmount = $usdVal / ($trade->rate_used ?: 1);
+        
         // Notify user
         try {
             $tradeUser = $trade->user;
@@ -199,11 +219,13 @@ class TradeController extends Controller
                     user: $tradeUser,
                     templateKey: 'sell_trade_rejected',
                     data: [
-                        'amount'    => number_format((float) ($trade->usd_amount ?? $trade->amount), 6),
-                        'currency'  => $trade->coin,
-                        'naira_amount' => number_format((float) $trade->naira_amount, 2),
-                        'reference' => $trade->transaction_ref ?? ('SELL-' . $trade->id),
-                        'reason'    => $request->input('reason', 'This trade was cancelled by an administrator.'),
+                        'usd_amount'     => number_format((float) $usdVal, 2),
+                        'crypto_amount'  => number_format($cryptoAmount, 8),
+                        'currency'       => $trade->coin,
+                        'rate_used'      => number_format((float) $trade->rate_used, 2),
+                        'naira_amount'   => number_format((float) $trade->naira_amount, 2),
+                        'reference'      => $trade->transaction_ref ?? ('SELL-' . $trade->id),
+                        'reason'         => $request->input('reason', 'This trade was cancelled by an administrator.'),
                         'payment_method' => $trade->bank_name ?? 'N/A',
                     ],
                     badge: ['text' => 'Trade Cancelled', 'color' => '#6b7280'],

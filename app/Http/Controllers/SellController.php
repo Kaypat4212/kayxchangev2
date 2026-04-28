@@ -607,6 +607,9 @@ class SellController extends Controller
             Session::forget('sell');
             Log::info('Session cleared');
 
+            // Calculate crypto equivalent for display
+            $cryptoAmount = $sellTrade->usd_amount / ($sellTrade->rate_used ?: 1);
+            
             // Send sell trade submitted email
             try {
                 $payoutMethodLabel = match ($sellTrade->payment_method) {
@@ -618,8 +621,10 @@ class SellController extends Controller
                     user: $user,
                     templateKey: 'sell_trade_submitted',
                     data: [
-                        'amount'         => number_format((float)$sellTrade->usd_amount, 6),
+                        'usd_amount'     => number_format((float)$sellTrade->usd_amount, 2),
+                        'crypto_amount'  => number_format($cryptoAmount, 8),
                         'currency'       => $sellTrade->coin,
+                        'rate_used'      => number_format((float)$sellTrade->rate_used, 2),
                         'naira_amount'   => number_format((float)$sellTrade->naira_amount, 2),
                         'reference'      => $sellTrade->transaction_ref,
                         'payment_method' => $payoutMethodLabel,

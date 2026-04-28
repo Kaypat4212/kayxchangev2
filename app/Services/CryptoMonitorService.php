@@ -301,13 +301,19 @@ class CryptoMonitorService
 
         // Notify user via email + Telegram
         if ($user) {
+            // Calculate crypto equivalent
+            $usdVal = $trade->usd_amount ?? 0;
+            $cryptoAmount = $usdVal / ($trade->rate_used ?: 1);
+            
             try {
                 Mail::to($user->email)->send(new TradeNotification(
                     user: $user,
                     templateKey: 'sell_trade_completed',
                     data: [
-                        'amount'         => number_format((float)($trade->usd_amount ?? 0), 6),
+                        'usd_amount'     => number_format((float)$usdVal, 2),
+                        'crypto_amount'  => number_format($cryptoAmount, 8),
                         'currency'       => $trade->coin,
+                        'rate_used'      => number_format((float)$trade->rate_used, 2),
                         'naira_amount'   => number_format((float)$trade->naira_amount, 2),
                         'reference'      => $trade->transaction_ref,
                         'payment_method' => $trade->payment_method ?? 'Bank Transfer',
