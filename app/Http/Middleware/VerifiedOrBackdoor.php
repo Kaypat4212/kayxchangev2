@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 
 class VerifiedOrBackdoor
@@ -12,9 +13,9 @@ class VerifiedOrBackdoor
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (Response|\Illuminate\Http\RedirectResponse)  $next
+     * @param  \Closure(\Illuminate\Http\Request): mixed  $next
      */
-    public function handle(Request $request, Closure $next): Response|\Illuminate\Http\RedirectResponse
+    public function handle(Request $request, Closure $next): mixed
     {
         // Allow access if user is verified OR if this is a backdoor session (admin logged in as user)
         if (Auth::check() && (!is_null(Auth::user()->email_verified_at) || $request->session()->has('admin_id'))) {
