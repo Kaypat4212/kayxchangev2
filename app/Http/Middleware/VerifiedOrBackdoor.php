@@ -12,9 +12,9 @@ class VerifiedOrBackdoor
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (Response)  $next
+     * @param  \Closure(\Illuminate\Http\Request): (Response|\Illuminate\Http\RedirectResponse)  $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next): Response|\Illuminate\Http\RedirectResponse
     {
         // Allow access if user is verified OR if this is a backdoor session (admin logged in as user)
         if (Auth::check() && (!is_null(Auth::user()->email_verified_at) || $request->session()->has('admin_id'))) {

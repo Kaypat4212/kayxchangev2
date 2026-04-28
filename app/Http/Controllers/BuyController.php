@@ -499,7 +499,7 @@ class BuyController extends Controller
      *
      * @param Request $request HTTP request with new status
      * @param int $id Trade ID
-     * @return \Illuminate\Http\JsonResponse
+     * @return \Illuminate\Http\RedirectResponse
      */
 
      public function logWalletError(Request $request)
@@ -507,7 +507,7 @@ class BuyController extends Controller
     Log::error('Wallet validation error', $request->all());
     return response()->json(['status' => 'logged']);
 }
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request, $id): \Illuminate\Http\RedirectResponse
     {
         // Fetch trade and check authorization
         $trade = BuyTrade::findOrFail($id);
