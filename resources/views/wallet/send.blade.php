@@ -10,6 +10,26 @@
     --kx-input-bg: rgba(255,255,255,0.05);
     --kx-input-border: rgba(0,204,0,0.22);
     --kx-danger: #ef4444;
+
+    /* Text colors that adapt to light mode */
+    --text-primary: #fff;
+    --text-secondary: rgba(255,255,255,.75);
+    --text-muted: rgba(255,255,255,.55);
+    --text-placeholder: rgba(255,255,255,.3);
+    --text-error: #ef4444;
+}
+
+/* Light mode overrides */
+body.light-mode {
+    --kx-card: rgba(255,255,255,0.95);
+    --kx-card-border: rgba(0,204,0,0.25);
+    --kx-input-bg: rgba(0,0,0,0.03);
+    --kx-input-border: rgba(0,204,0,0.3);
+
+    --text-primary: #0a1a0a;
+    --text-secondary: rgba(10,26,10,.75);
+    --text-muted: rgba(10,26,10,.55);
+    --text-placeholder: rgba(10,26,10,.3);
 }
 
 .send-page { max-width: 540px; margin: 0 auto; }
@@ -30,8 +50,8 @@
     background: radial-gradient(circle, rgba(0,204,0,0.15) 0%, transparent 70%);
     pointer-events: none;
 }
-.send-balance-label { font-size: .72rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.5); margin-bottom: .25rem; }
-.send-balance-val   { font-size: 2.2rem; font-weight: 700; color: #fff; line-height: 1.1; }
+.send-balance-label { font-size: .72rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: .25rem; }
+.send-balance-val   { font-size: 2.2rem; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
 .send-kxtag         { font-size: .8rem; color: var(--kx-green); background: rgba(0,204,0,.1); padding: .2rem .65rem; border-radius: 20px; display: inline-block; margin-top: .4rem; font-weight: 600; }
 
 /* Card */
@@ -42,24 +62,24 @@
     padding: 1.75rem;
     margin-bottom: 1.5rem;
 }
-.send-card-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 1.25rem; display: flex; align-items: center; gap: .5rem; }
+.send-card-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1.25rem; display: flex; align-items: center; gap: .5rem; }
 .send-card-title i { color: var(--kx-green); }
 
 /* Label + input */
-.send-label { font-size: .78rem; font-weight: 600; color: rgba(255,255,255,.55); margin-bottom: .35rem; display: block; }
+.send-label { font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: .35rem; display: block; }
 .send-input {
     width: 100%;
     background: var(--kx-input-bg);
     border: 1px solid var(--kx-input-border);
     border-radius: 10px;
     padding: .7rem 1rem;
-    color: #fff;
+    color: var(--text-primary);
     font-size: .95rem;
     outline: none;
     transition: border-color .2s;
 }
 .send-input:focus { border-color: var(--kx-green); }
-.send-input::placeholder { color: rgba(255,255,255,.3); }
+.send-input::placeholder { color: var(--text-placeholder); }
 
 /* Recipient preview */
 .recipient-card {
@@ -80,15 +100,15 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 1.2rem; font-weight: 700; color: #fff; flex-shrink: 0;
 }
-.recipient-name  { font-size: .95rem; font-weight: 700; color: #fff; }
+.recipient-name  { font-size: .95rem; font-weight: 700; color: var(--text-primary); }
 .recipient-tag   { font-size: .78rem; color: var(--kx-green); }
-.recipient-email { font-size: .75rem; color: rgba(255,255,255,.45); }
-.recipient-error { display: none; font-size: .82rem; color: var(--kx-danger); margin-top: .5rem; }
+.recipient-email { font-size: .75rem; color: var(--text-muted); }
+.recipient-error { display: none; font-size: .82rem; color: var(--text-error); margin-top: .5rem; }
 .recipient-error.visible { display: block; }
 
 /* Amount display */
 .amount-display { font-size: 2rem; font-weight: 700; color: var(--kx-green); text-align: center; margin: .5rem 0; }
-.amount-sub     { font-size: .8rem; color: rgba(255,255,255,.4); text-align: center; }
+.amount-sub     { font-size: .8rem; color: var(--text-muted); text-align: center; }
 
 /* PIN dots */
 .pin-row { display: flex; gap: .6rem; justify-content: center; margin: .5rem 0 1rem; }
@@ -125,7 +145,7 @@
     border: 1px solid var(--kx-card-border);
     border-radius: 14px;
     padding: .9rem 1.25rem;
-    color: rgba(255,255,255,.75);
+    color: var(--text-secondary);
     text-decoration: none;
     font-size: .9rem;
     font-weight: 600;
