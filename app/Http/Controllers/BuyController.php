@@ -28,7 +28,7 @@ class BuyController extends Controller
      * Fetches buy rates from CryptoRate model, merges with default rates,
      * and passes them to the 'buy' view for display.
      *
-     * @return \Illuminate\View\View
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
     public function show()
     {
@@ -63,11 +63,12 @@ class BuyController extends Controller
         // Fetch current rates or use defaults
         $rates = CryptoRate::pluck('buy_rate', 'coin')->toArray();
         $defaultRates = ['BTC' => 1600, 'ETH' => 1500, 'USDT' => 1400];
-        $rate = $rates[$request->coin] ?? $defaultRates[$request->coin] ?? null;
+        $coin = $request->input('coin');
+        $rate = $rates[$coin] ?? $defaultRates[$coin] ?? null;
 
         // Check if rate exists for the selected coin
         if (!$rate) {
-            Log::warning("No buy rate available for coin: {$request->coin}");
+            Log::warning("No buy rate available for coin: {$coin}");
             return redirect()->back()->withErrors(['coin' => 'No buy rate available for the selected coin.'])->withInput();
         }
 
@@ -237,7 +238,7 @@ class BuyController extends Controller
                 Log::info('Payment proof URL included', [
                     'trade_id' => $trade->id,
                     'url' => $proofUrl,
-                    'path' => Storage::disk('public')->path($proofPath)
+                    'path' => storage_path('app/public/' . $proofPath)
                 ]);
             } else {
                 Log::warning('Payment proof file not found', [
@@ -291,42 +292,33 @@ class BuyController extends Controller
             ]);
         }
 
-        // Fallback: cURL
+        // Fallback: HTTP
         try {
-            Log::info('Attempting Telegram notification via cURL', [
+            Log::info('Attempting Telegram notification via HTTP', [
                 'trade_id' => $trade->id,
                 'url' => $url
             ]);
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-            curl_setopt($ch, CURLOPT_CAINFO, 'C:\xampp\php\extras\ssl\cacert.pem');
-            $result = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
-            curl_close($ch);
 
-            if ($httpCode === 200 && json_decode($result, true)['ok']) {
-                Log::info('Telegram notification sent successfully via cURL', [
+            $response = Http::timeout(15)
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post($url, $payload);
+
+            if ($response->successful() && $response->json('ok')) {
+                Log::info('Telegram notification sent successfully via HTTP', [
                     'trade_id' => $trade->id,
                     'chat_id' => $chatId,
-                    'response' => $result
+                    'response' => $response->body()
                 ]);
                 return true;
             } else {
-                Log::error('Telegram notification failed via cURL', [
+                Log::error('Telegram notification failed via HTTP', [
                     'trade_id' => $trade->id,
-                    'http_code' => $httpCode,
-                    'response' => $result,
-                    'curl_error' => $curlError
+                    'http_code' => $response->status(),
+                    'response' => $response->body()
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error('Telegram notification failed via cURL: ' . $e->getMessage(), [
+            Log::error('Telegram notification failed via HTTP: ' . $e->getMessage(), [
                 'trade_id' => $trade->id,
                 'exception' => $e->getTraceAsString()
             ]);
@@ -467,7 +459,7 @@ class BuyController extends Controller
      * Fetches the trade and account details, ensures user ownership, and renders the payment view.
      *
      * @param int $id Trade ID
-     * @return \Illuminate\View\View
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
     public function paymentPage($id)
     {
@@ -507,7 +499,7 @@ class BuyController extends Controller
      *
      * @param Request $request HTTP request with new status
      * @param int $id Trade ID
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\JsonResponse
      */
 
      public function logWalletError(Request $request)

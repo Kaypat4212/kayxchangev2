@@ -1977,8 +1977,7 @@ class TelegramService
             $this->sendMessage($chatId,
                 "🏦 *Enter your bank details for payout:*\n\n" .
                 "Format: `Bank Name | Account Number | Account Name`\n\n" .
-                "Example:\n`GTBank | 0123456789 | John Doe`\n\n" .
-                "_Your account will be verified with Paystack before proceeding._",
+                "Example:\n`GTBank | 0123456789 | John Doe`",
                 'Markdown');
             return;
         }
@@ -3743,7 +3742,6 @@ class TelegramService
         $bankCode    = $this->lookupNgBankCode($bankName);
 
         if ($paystackKey && $bankCode) {
-            $this->sendMessage($chatId, "🔍 Verifying your account with Paystack...");
             try {
                 $resp = Http::withToken($paystackKey)
                     ->withOptions(['verify' => $this->resolveSSL(), 'timeout' => 12])
@@ -3755,7 +3753,7 @@ class TelegramService
                 if ($resp->successful() && $resp->json('status') === true) {
                     // Use Paystack's verified account name
                     $accountName = $resp->json('data.account_name');
-                    $this->sendMessage($chatId, "✅ Account verified: *{$accountName}*", 'Markdown');
+                    // Verification successful - proceed silently
                 } elseif ($resp->json('status') === false || $resp->status() === 422) {
                     $errMsg = $resp->json('message') ?? 'Account not found';
                     $this->sendMessage($chatId,

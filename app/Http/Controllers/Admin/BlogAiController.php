@@ -17,8 +17,8 @@ class BlogAiController extends Controller
 
     public function __construct()
     {
-        $this->apiKey = \App\Models\AdminSetting::get('groq_api_key', '') ?: config('services.groq.api_key', '');
-        $this->model  = \App\Models\AdminSetting::get('groq_model', '') ?: config('services.groq.model', 'llama-3.3-70b-versatile');
+        $this->apiKey = AdminSetting::get('groq_api_key', '') ?: config('services.groq.api_key', '');
+        $this->model  = AdminSetting::get('groq_model', '') ?: config('services.groq.model', 'llama-3.3-70b-versatile');
     }
 
     // ── POST /admin/blog/ai/generate ─────────────────────────────────────────

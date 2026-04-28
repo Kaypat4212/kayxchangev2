@@ -160,7 +160,7 @@ class TelegramAiBotService
                 $token  = env('KAYXCHANGE_TELEGRAM_BOT_TOKEN', env('TELEGRAM_BOT_TOKEN', ''));
                 $chatIdAdmin = env('TELEGRAM_CHAT_ID', env('TELEGRAM_OWNER_CHAT_ID', ''));
                 if ($token && $chatIdAdmin) {
-                    \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+                    Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
                         'chat_id'    => $chatIdAdmin,
                         'text'       => "*KAI Support Ticket (Telegram)*\n\nUser: {$user->name} (#{$user->id})\nEmail: {$user->email}\nQuestion:\n_{$question}_\n\nAdmin reply: " . url('/admin/kaybot/tickets'),
                         'parse_mode' => 'Markdown',
