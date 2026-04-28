@@ -159,7 +159,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             <div style="margin-bottom:1.5rem">
                 <div style="font-size:.7rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">Earned Badges</div>
                 <div class="d-flex flex-wrap gap-2">
-                    @foreach($user->badges()->with('pivot')->get() as $badge)
+                    @foreach($user->badges as $badge)
                     <div class="d-flex align-items-center gap-2" style="background:rgba(0,204,0,.06);border:1px solid rgba(0,204,0,.15);border-radius:10px;padding:.4rem .8rem;">
                         <span style="font-size:1.2rem">{{ $badge->emoji }}</span>
                         <div>

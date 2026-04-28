@@ -615,6 +615,7 @@ class AdminController extends Controller
 
     public function usersShow(User $user)
     {
+        $user->load('badges');
         return view('admin.users.show', compact('user'));
     }
 
