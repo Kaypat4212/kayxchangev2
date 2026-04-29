@@ -566,6 +566,9 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     // Buy Routes
     Route::get('/buy', [CryptoController::class, 'buy'])->name('buy');
     Route::get('/convert', [CryptoController::class, 'convert'])->name('convert');
+    Route::post('/convert', [CryptoController::class, 'convertSubmit'])->name('convert.submit');
+    Route::get('/convert/success/{id}', [CryptoController::class, 'convertSuccess'])->name('convert.success');
+    Route::get('/convert/failed/{id}', [CryptoController::class, 'convertFailed'])->name('convert.failed');
     Route::get('/api/crypto-prices', [BuyController::class, 'cryptoPricesApi'])->name('api.crypto.prices');
     Route::post('/buy/submit', [BuyController::class, 'submit'])->name('buy.submit');
     Route::get('/buy/summary/{id}', [BuyController::class, 'summary'])->name('buy.summary');

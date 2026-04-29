@@ -440,5 +440,43 @@
             }
         });
     }
+
+    // ── Dark Mode Toggle ──────────────────────────────────────────────────────
+    function initDarkMode() {
+        var toggleBtn = document.getElementById('adminModeToggleBtn');
+        var modeIcon = document.getElementById('adminModeIcon');
+
+        if (!toggleBtn || !modeIcon) return;
+
+        // Check for saved theme preference or default to light mode
+        var currentTheme = localStorage.getItem('admin-theme') || 'light';
+        applyTheme(currentTheme === 'dark');
+
+        toggleBtn.addEventListener('click', function() {
+            var isDark = document.body.classList.contains('dark-mode');
+            var newTheme = isDark ? 'light' : 'dark';
+            applyTheme(!isDark);
+            localStorage.setItem('admin-theme', newTheme);
+        });
+
+        function applyTheme(dark) {
+            if (dark) {
+                document.body.classList.add('dark-mode');
+                modeIcon.className = 'bi bi-sun-fill';
+                toggleBtn.title = 'Switch to light mode';
+            } else {
+                document.body.classList.remove('dark-mode');
+                modeIcon.className = 'bi bi-moon-stars-fill';
+                toggleBtn.title = 'Switch to dark mode';
+            }
+        }
+    }
+
+    // Initialize dark mode when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDarkMode);
+    } else {
+        initDarkMode();
+    }
 })();
 </script>

@@ -65,7 +65,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
     {{-- Conversion Form --}}
     <div class="kx-card">
-        <form id="convertForm" action="#" method="post">
+        <form id="convertForm" action="{{ route('convert.submit') }}" method="post">
             @csrf
 
             {{-- From Currency --}}
@@ -249,16 +249,48 @@ document.getElementById('convertForm').addEventListener('submit', function(e) {
     btn.innerHTML = '<i class="bi bi-arrow-repeat spinning me-1"></i>Processing...';
     btn.disabled = true;
 
-    // In real implementation, this would submit to a backend endpoint
-    setTimeout(() => {
-        // Simulate success
-        btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Conversion Successful!';
-        btn.style.background = 'linear-gradient(90deg,#10b981,#059669)';
+    // Get form data
+    const formData = new FormData(this);
 
-        setTimeout(() => {
-            window.location.href = '{{ route('dashboard') }}';
-        }, 2000);
-    }, 2000);
+    // Submit the form via AJAX
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Redirecting to Payment...';
+            btn.style.background = 'linear-gradient(90deg,#10b981,#059669)';
+
+            // Redirect to payment URL if available
+            if (data.payment_url) {
+                setTimeout(() => {
+                    window.location.href = data.payment_url;
+                }, 1000);
+            } else {
+                setTimeout(() => {
+                    window.location.href = '{{ route('dashboard') }}';
+                }, 2000);
+            }
+        } else {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+
+            // Show error message
+            alert(data.message || 'An error occurred during conversion');
+        }
+    })
+    .catch(error => {
+        console.error('Conversion error:', error);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert('Network error. Please try again.');
+    });
 });
 
 // Add spinning animation

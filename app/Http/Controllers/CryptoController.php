@@ -9,6 +9,8 @@ use App\Models\BuyTrade;
 use App\Models\SellTrade;
 use App\Models\CryptoRate;
 use App\Models\Withdrawal;
+use App\Models\Conversion;
+use App\Services\CryptomusService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -122,6 +124,127 @@ class CryptoController extends Controller
     {
         $rates = CryptoRate::all(['coin', 'buy_rate', 'sell_rate'])->keyBy('coin')->toArray();
         return view('convert', compact('rates'));
+    }
+
+    public function convertSubmit(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'from_coin' => ['required', 'string', 'max:10'],
+            'to_coin' => ['required', 'string', 'max:10'],
+            'from_amount' => ['required', 'numeric', 'min:0.00000001'],
+            'to_amount' => ['required', 'numeric', 'min:0.00000001'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $cryptomusService = new CryptomusService();
+
+            // Check if Cryptomus is enabled
+            if (!$cryptomusService->isEnabled()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Crypto conversion service is currently unavailable'
+                ], 503);
+            }
+
+            $user = Auth::user();
+            $fromCoin = strtoupper($request->from_coin);
+            $toCoin = strtoupper($request->to_coin);
+            $fromAmount = $request->from_amount;
+            $toAmount = $request->to_amount;
+
+            // Get current rates
+            $rates = CryptoRate::whereIn('coin', [$fromCoin, $toCoin])
+                ->pluck('buy_rate', 'coin')
+                ->toArray();
+
+            if (!isset($rates[$fromCoin]) || !isset($rates[$toCoin])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid cryptocurrency selected'
+                ], 400);
+            }
+
+            // Calculate conversion with fee
+            $feePercentage = 0.005; // 0.5%
+            $feeAmount = $toAmount * $feePercentage;
+            $finalToAmount = $toAmount - $feeAmount;
+
+            // Create conversion record
+            $conversion = Conversion::create([
+                'user_id' => $user->id,
+                'from_coin' => $fromCoin,
+                'to_coin' => $toCoin,
+                'from_amount' => $fromAmount,
+                'to_amount' => $finalToAmount,
+                'fee_amount' => $feeAmount,
+                'rate_used' => $rates[$fromCoin],
+                'status' => 'pending',
+            ]);
+
+            // Create Cryptomus payment for the conversion
+            $paymentData = [
+                'amount' => $fromAmount,
+                'currency' => $fromCoin,
+                'order_id' => 'conv_' . $conversion->id,
+                'url_callback' => route('cryptomus.webhook'),
+                'url_success' => route('convert.success', $conversion->id),
+                'url_failed' => route('convert.failed', $conversion->id),
+            ];
+
+            $payment = $cryptomusService->createPayment($paymentData);
+
+            // Update conversion with Cryptomus order ID
+            $conversion->update([
+                'cryptomus_order_id' => $payment['order_id'] ?? null,
+                'cryptomus_response' => $payment,
+                'status' => 'processing',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversion initiated successfully',
+                'conversion_id' => $conversion->id,
+                'payment_url' => $payment['url'] ?? null,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Conversion submission failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process conversion. Please try again.'
+            ], 500);
+        }
+    }
+
+    public function convertSuccess($id)
+    {
+        $conversion = Conversion::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        return view('convert.success', compact('conversion'));
+    }
+
+    public function convertFailed($id)
+    {
+        $conversion = Conversion::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        return view('convert.failed', compact('conversion'));
     }
 
     public function sellPostStep1(Request $request)

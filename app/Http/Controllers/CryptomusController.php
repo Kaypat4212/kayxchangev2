@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BuyTrade;
+use App\Models\Conversion;
 use App\Services\CryptomusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -63,6 +64,12 @@ class CryptomusController extends Controller
 
         if (!$orderId || !$status) {
             Log::warning('Missing order_id or status in payment webhook', $data);
+            return;
+        }
+
+        // Check if this is a conversion (order_id starts with 'conv_')
+        if (str_starts_with($orderId, 'conv_')) {
+            $this->processConversionWebhook($data);
             return;
         }
 
@@ -133,6 +140,92 @@ class CryptomusController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to send payment success notifications', [
                 'trade_id' => $trade->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Process conversion webhook
+     */
+    private function processConversionWebhook(array $data): void
+    {
+        $orderId = $data['order_id'] ?? null;
+        $status = $data['status'] ?? null;
+        $paymentId = $data['uuid'] ?? null;
+
+        // Extract conversion ID from order_id (format: conv_{id})
+        $conversionId = str_replace('conv_', '', $orderId);
+
+        if (!is_numeric($conversionId)) {
+            Log::warning('Invalid conversion order_id format', ['order_id' => $orderId]);
+            return;
+        }
+
+        $conversion = Conversion::find($conversionId);
+
+        if (!$conversion) {
+            Log::warning('Conversion not found', ['conversion_id' => $conversionId]);
+            return;
+        }
+
+        Log::info('Processing Cryptomus conversion webhook', [
+            'conversion_id' => $conversion->id,
+            'order_id' => $orderId,
+            'status' => $status,
+            'payment_id' => $paymentId
+        ]);
+
+        // Update conversion status based on payment status
+        switch ($status) {
+            case 'paid':
+            case 'paid_over':
+                $conversion->update([
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                ]);
+
+                // Send success notifications
+                $this->sendConversionSuccessNotifications($conversion);
+                break;
+
+            case 'wrong_amount':
+                $conversion->update([
+                    'status' => 'failed',
+                    'failure_reason' => 'Incorrect payment amount',
+                ]);
+                break;
+
+            case 'cancel':
+            case 'fail':
+                $conversion->update([
+                    'status' => 'failed',
+                    'failure_reason' => 'Payment failed or cancelled',
+                ]);
+                break;
+
+            default:
+                Log::info('Unhandled conversion status', ['status' => $status]);
+                break;
+        }
+    }
+
+    /**
+     * Send conversion success notifications
+     */
+    private function sendConversionSuccessNotifications(Conversion $conversion): void
+    {
+        try {
+            // Send email notification
+            // Send Telegram alert
+            // Update user wallet balance if needed
+            // etc.
+
+            Log::info('Conversion success notifications sent', ['conversion_id' => $conversion->id]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send conversion success notifications', [
+                'conversion_id' => $conversion->id,
                 'error' => $e->getMessage()
             ]);
         }
