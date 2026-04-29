@@ -156,7 +156,7 @@ class CryptoController extends Controller
             if (!$cryptomusService->isEnabled()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Crypto conversion service is currently unavailable'
+                    'message' => 'Crypto conversion service is not configured. Please contact support.'
                 ], 503);
             }
 
@@ -196,13 +196,25 @@ class CryptoController extends Controller
             ]);
 
             // Create Cryptomus payment for the conversion
+            // For crypto-to-crypto conversion, we need to convert the from_amount to USD equivalent first
+            $fromAmountInUsd = $fromAmount * $rates[$fromCoin];
+
             $paymentData = [
-                'amount' => $fromAmount,
-                'currency' => $fromCoin,
+                'amount' => $fromAmountInUsd,
+                'currency' => 'USD', // Pay in USD equivalent
+                'crypto_currency' => $fromCoin, // Receive the from crypto first
                 'order_id' => 'conv_' . $conversion->id,
                 'url_callback' => route('cryptomus.webhook'),
-                'url_success' => route('convert.success', $conversion->id),
+                'url_return' => route('convert.success', $conversion->id),
                 'url_failed' => route('convert.failed', $conversion->id),
+                'lifetime' => 3600, // 1 hour
+                'additional_data' => [
+                    'conversion_id' => $conversion->id,
+                    'user_id' => $user->id,
+                    'from_coin' => $fromCoin,
+                    'to_coin' => $toCoin,
+                    'expected_to_amount' => $finalToAmount
+                ]
             ];
 
             $payment = $cryptomusService->createPayment($paymentData);

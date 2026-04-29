@@ -422,7 +422,7 @@
     }
 
     function fetchNotifs() {
-        fetch('/api/notifications', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        fetch('/notifications/api', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (!data) return;
@@ -436,14 +436,14 @@
 
     window.kxReadNotif = function(e, id) {
         e.preventDefault();
-        fetch('/api/notifications/'+id+'/mark-read', {
+        fetch('/notifications/'+id+'/mark-read', {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }
         }).then(() => fetchNotifs());
     };
 
     window.kxMarkAllRead = function() {
-        fetch('/api/notifications/mark-all-read', {
+        fetch('/notifications/mark-all-read', {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }
         }).then(() => fetchNotifs());
