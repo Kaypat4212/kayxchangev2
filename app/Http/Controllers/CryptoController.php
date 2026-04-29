@@ -118,6 +118,12 @@ class CryptoController extends Controller
         return view('sell', compact('rates'));
     }
 
+    public function convert()
+    {
+        $rates = CryptoRate::all(['coin', 'buy_rate', 'sell_rate'])->keyBy('coin')->toArray();
+        return view('convert', compact('rates'));
+    }
+
     public function sellPostStep1(Request $request)
     {
         $validator = Validator::make($request->all(), [

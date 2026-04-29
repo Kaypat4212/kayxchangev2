@@ -242,6 +242,11 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="kx-nav-link @if(request()->is('convert*')) kx-active @endif" href="{{ url('/convert') }}">
+            <i class="bi bi-arrow-left-right"></i>Convert
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('sell*')) kx-active @endif" href="{{ url('/sell') }}">
             <i class="bi bi-arrow-up-circle-fill"></i>Sell
           </a>

@@ -86,6 +86,11 @@ class AdminSetting extends Model
             ['key' => 'paystack_public_key',  'group' => 'payment', 'is_encrypted' => false, 'label' => 'Paystack Public Key',  'description' => ''],
             ['key' => 'paystack_secret_key',  'group' => 'payment', 'is_encrypted' => true,  'label' => 'Paystack Secret Key',  'description' => ''],
 
+            // ── Cryptomus ──────────────────────────────────────────────────
+            ['key' => 'cryptomus_api_key',     'group' => 'payment', 'is_encrypted' => true,  'label' => 'Cryptomus API Key',     'description' => 'From cryptomus.com → Settings → API Keys'],
+            ['key' => 'cryptomus_merchant_id', 'group' => 'payment', 'is_encrypted' => true,  'label' => 'Cryptomus Merchant ID', 'description' => 'Your Cryptomus Merchant ID'],
+            ['key' => 'cryptomus_enabled',     'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable Cryptomus',      'description' => '1 = enable crypto payments, 0 = disable'],
+
             // ── Telegram ───────────────────────────────────────────────────
             ['key' => 'telegram_token',        'group' => 'telegram', 'is_encrypted' => true,  'label' => 'Bot Token',          'description' => 'From @BotFather'],
             ['key' => 'telegram_owner_chat_id','group' => 'telegram', 'is_encrypted' => false, 'label' => 'Owner Chat ID',      'description' => 'Your personal Telegram chat ID for admin alerts'],

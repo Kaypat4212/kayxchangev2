@@ -30,6 +30,7 @@ use App\Http\Controllers\{
     TelegramSettingsController,
     InstallController,
     TradeController,
+    CryptomusController,
 };
 use App\Http\Controllers\Admin\AdminCryptoRateController;
 use App\Http\Controllers\RateCalculatorController;
@@ -564,13 +565,23 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
 
     // Buy Routes
     Route::get('/buy', [CryptoController::class, 'buy'])->name('buy');
+    Route::get('/convert', [CryptoController::class, 'convert'])->name('convert');
     Route::get('/api/crypto-prices', [BuyController::class, 'cryptoPricesApi'])->name('api.crypto.prices');
     Route::post('/buy/submit', [BuyController::class, 'submit'])->name('buy.submit');
     Route::get('/buy/summary/{id}', [BuyController::class, 'summary'])->name('buy.summary');
     Route::get('/buy/payment/{id}', [BuyController::class, 'paymentPage'])->name('buy.payment');
+    Route::get('/buy/crypto-payment/{id}', [BuyController::class, 'cryptoPaymentPage'])->name('buy.crypto-payment');
     Route::post('/buy/payment/upload/{id}', [BuyController::class, 'uploadPayment'])->name('buy.uploadPayment');
     Route::patch('/buy/update-status/{id}', [BuyController::class, 'updateStatus'])->name('buy.updateStatus');
     Route::get('/buy/success/{id}', [BuyController::class, 'success'])->name('buy.success');
+
+    // Cryptomus Routes
+    Route::prefix('cryptomus')->group(function () {
+        Route::post('/webhook', [CryptomusController::class, 'webhook'])->name('cryptomus.webhook');
+        Route::get('/success/{orderId}', [CryptomusController::class, 'paymentSuccess'])->name('cryptomus.success');
+        Route::get('/failed/{orderId}', [CryptomusController::class, 'paymentFailed'])->name('cryptomus.failed');
+        Route::get('/currencies', [CryptomusController::class, 'getCurrencies'])->name('cryptomus.currencies');
+    });
 
     // Sell Routes
     Route::prefix('sell')->group(function () {
