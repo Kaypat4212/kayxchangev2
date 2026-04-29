@@ -122,6 +122,12 @@ class CryptoController extends Controller
 
     public function convert()
     {
+        // Check if convert feature is enabled
+        $convertEnabled = \App\Models\AdminSetting::getSetting('cryptomus_convert_enabled', '1');
+        if ($convertEnabled !== '1') {
+            abort(404, 'Convert feature is currently disabled.');
+        }
+
         $rates = CryptoRate::all(['coin', 'buy_rate', 'sell_rate'])->keyBy('coin')->toArray();
         return view('convert', compact('rates'));
     }

@@ -95,6 +95,7 @@ class AdminSetting extends Model
             ['key' => 'cryptomus_api_key',     'group' => 'payment', 'is_encrypted' => true,  'label' => 'Cryptomus API Key',     'description' => 'From cryptomus.com → Settings → API Keys'],
             ['key' => 'cryptomus_merchant_id', 'group' => 'payment', 'is_encrypted' => true,  'label' => 'Cryptomus Merchant ID', 'description' => 'Your Cryptomus Merchant ID'],
             ['key' => 'cryptomus_enabled',     'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable Cryptomus',      'description' => '1 = enable crypto payments, 0 = disable'],
+            ['key' => 'cryptomus_convert_enabled', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable Convert Feature', 'description' => '1 = show convert page to users, 0 = hide convert feature'],
 
             // ── Telegram ───────────────────────────────────────────────────
             ['key' => 'telegram_token',        'group' => 'telegram', 'is_encrypted' => true,  'label' => 'Bot Token',          'description' => 'From @BotFather'],
