@@ -101,9 +101,9 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                 <div>
                     <label class="kx-label">Fee Type</label>
                     <select id="dep_fee_type" class="kx-input" style="width:100%">
-                        <option value="none"       {{ \App\Models\AdminSetting::get('deposit_fee_type','none') === 'none'       ? 'selected':'' }}>No Fee</option>
-                        <option value="flat"       {{ \App\Models\AdminSetting::get('deposit_fee_type','none') === 'flat'       ? 'selected':'' }}>Flat (₦)</option>
-                        <option value="percentage" {{ \App\Models\AdminSetting::get('deposit_fee_type','none') === 'percentage' ? 'selected':'' }}>Percentage (%)</option>
+                        <option value="none"       {{ \App\Models\AdminSetting::getSetting('deposit_fee_type','none') === 'none'       ? 'selected':'' }}>No Fee</option>
+                        <option value="flat"       {{ \App\Models\AdminSetting::getSetting('deposit_fee_type','none') === 'flat'       ? 'selected':'' }}>Flat (₦)</option>
+                        <option value="percentage" {{ \App\Models\AdminSetting::getSetting('deposit_fee_type','none') === 'percentage' ? 'selected':'' }}>Percentage (%)</option>
                     </select>
                 </div>
                 <div>
@@ -111,7 +111,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <input type="number" id="dep_fee_value" class="kx-input" style="width:100%"
                         min="0" step="0.01"
                         placeholder="e.g. 100 or 1.5"
-                        value="{{ \App\Models\AdminSetting::get('deposit_fee_value','0') }}">
+                        value="{{ \App\Models\AdminSetting::getSetting('deposit_fee_value','0') }}">
                 </div>
                 <div>
                     <button type="button" class="btn-kx-green" style="width:100%;justify-content:center" onclick="saveDepFee()">

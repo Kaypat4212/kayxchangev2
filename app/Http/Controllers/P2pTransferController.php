@@ -109,8 +109,8 @@ class P2pTransferController extends Controller
         $recipient = User::findOrFail($request->recipient_id);
 
         // ── Fee calculation (configurable via AdminSetting) ──────────────────
-        $feeType  = \App\Models\AdminSetting::get('p2p_fee_type', 'none');
-        $feeValue = (float) \App\Models\AdminSetting::get('p2p_fee_value', '0');
+        $feeType  = \App\Models\AdminSetting::getSetting('p2p_fee_type', 'none');
+        $feeValue = (float) \App\Models\AdminSetting::getSetting('p2p_fee_value', '0');
         $amount   = (float) $request->amount;
 
         $fee = match ($feeType) {

@@ -14,8 +14,8 @@ class CryptomusService
 
     public function __construct()
     {
-        $this->apiKey = AdminSetting::get('cryptomus_api_key', '');
-        $this->merchantId = AdminSetting::get('cryptomus_merchant_id', '');
+        $this->apiKey = AdminSetting::getSetting('cryptomus_api_key', '');
+        $this->merchantId = AdminSetting::getSetting('cryptomus_merchant_id', '');
     }
 
     /**
@@ -23,7 +23,7 @@ class CryptomusService
      */
     public function isEnabled(): bool
     {
-        return AdminSetting::get('cryptomus_enabled', '0') === '1' &&
+        return AdminSetting::getSetting('cryptomus_enabled', '0') === '1' &&
                !empty($this->apiKey) &&
                !empty($this->merchantId);
     }

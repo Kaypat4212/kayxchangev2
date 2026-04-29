@@ -28,8 +28,8 @@ class HomeController extends Controller
         Cache::put($cacheKey, true, now()->addHours(6));
 
         try {
-            $token  = AdminSetting::get('telegram_token') ?: env('KAYXCHANGE_TELEGRAM_BOT_TOKEN');
-            $chatId = AdminSetting::get('telegram_owner_chat_id') ?: env('TELEGRAM_CHAT_ID') ?: env('KAYXCHANGE_TELEGRAM_CHAT_ID');
+            $token  = AdminSetting::getSetting('telegram_token') ?: env('KAYXCHANGE_TELEGRAM_BOT_TOKEN');
+            $chatId = AdminSetting::getSetting('telegram_owner_chat_id') ?: env('TELEGRAM_CHAT_ID') ?: env('KAYXCHANGE_TELEGRAM_CHAT_ID');
 
             if (! $token || ! $chatId) {
                 return;

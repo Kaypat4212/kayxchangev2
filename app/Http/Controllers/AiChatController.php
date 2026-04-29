@@ -40,7 +40,7 @@ class AiChatController extends Controller
 
     public function chat(Request $request)
     {
-        if (AdminSetting::get('ai_chatbot_enabled', '1') == '0') {
+        if (AdminSetting::getSetting('ai_chatbot_enabled', '1') == '0') {
             return response()->json(['reply' => 'The AI assistant is currently offline. Please contact support via Telegram.']);
         }
 
@@ -116,7 +116,7 @@ class AiChatController extends Controller
             ->map(fn($m) => ['role' => $m->role, 'content' => $m->content])
             ->values()->all();
 
-        $model    = AdminSetting::get($provConfig['model_setting']) ?: $provConfig['default_model'];
+        $model    = AdminSetting::getSetting($provConfig['model_setting']) ?: $provConfig['default_model'];
         $messages = array_merge([['role' => 'system', 'content' => $systemPrompt]], $history);
 
         try {
@@ -492,8 +492,8 @@ class AiChatController extends Controller
     private function notifyAdminTelegram(User $user, string $question): void
     {
         try {
-            $token  = AdminSetting::get('telegram_token') ?: env('KAYXCHANGE_TELEGRAM_BOT_TOKEN');
-            $chatId = AdminSetting::get('telegram_owner_chat_id') ?: env('TELEGRAM_CHAT_ID') ?: env('KAYXCHANGE_TELEGRAM_CHAT_ID');
+            $token  = AdminSetting::getSetting('telegram_token') ?: env('KAYXCHANGE_TELEGRAM_BOT_TOKEN');
+            $chatId = AdminSetting::getSetting('telegram_owner_chat_id') ?: env('TELEGRAM_CHAT_ID') ?: env('KAYXCHANGE_TELEGRAM_CHAT_ID');
             if (! $token || ! $chatId) return;
             Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
                 'chat_id'    => $chatId,
@@ -659,7 +659,7 @@ class AiChatController extends Controller
 
     private function buildSystemPrompt(string $message): string
     {
-        $customPrompt = AdminSetting::get('ai_system_prompt');
+        $customPrompt = AdminSetting::getSetting('ai_system_prompt');
         $base         = $customPrompt ?: $this->defaultSystemPrompt();
 
         if ($this->isPricingQuestion($message)) {
@@ -717,13 +717,13 @@ class AiChatController extends Controller
 
     private function resolveProvider(): array
     {
-        $provider   = AdminSetting::get('ai_provider', 'groq');
+        $provider   = AdminSetting::getSetting('ai_provider', 'groq');
         $provConfig = self::PROVIDERS[$provider] ?? self::PROVIDERS['groq'];
-        $apiKey     = AdminSetting::get($provConfig['key_setting']) ?: env(strtoupper($provConfig['key_setting']));
+        $apiKey     = AdminSetting::getSetting($provConfig['key_setting']) ?: env(strtoupper($provConfig['key_setting']));
         if (! $apiKey) {
             $other = $provider === 'openai' ? 'groq' : 'openai';
             $fb    = self::PROVIDERS[$other];
-            $fbKey = AdminSetting::get($fb['key_setting']) ?: env(strtoupper($fb['key_setting']));
+            $fbKey = AdminSetting::getSetting($fb['key_setting']) ?: env(strtoupper($fb['key_setting']));
             if ($fbKey) return [$fbKey, $fb, $other];
             return [null, $provConfig, $provider];
         }

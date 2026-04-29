@@ -164,7 +164,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         </div>
                         <label class="ap-toggle">
                             <input type="checkbox" id="ap_sell"
-                                {{ \App\Models\AdminSetting::get('auto_sell_payout_enabled','0') === '1' ? 'checked' : '' }}
+                                {{ \App\Models\AdminSetting::getSetting('auto_sell_payout_enabled','0') === '1' ? 'checked' : '' }}
                                 onchange="apToggle('auto_sell_payout_enabled', this.checked ? '1' : '0')">
                             <span class="ap-slider"></span>
                         </label>
@@ -202,9 +202,9 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                 <div>
                     <label class="kx-label">Fee Type</label>
                     <select id="wd_fee_type" class="kx-input" style="width:100%">
-                        <option value="none"       {{ \App\Models\AdminSetting::get('withdrawal_fee_type','none') === 'none'       ? 'selected':'' }}>No Fee</option>
-                        <option value="flat"       {{ \App\Models\AdminSetting::get('withdrawal_fee_type','none') === 'flat'       ? 'selected':'' }}>Flat (₦)</option>
-                        <option value="percentage" {{ \App\Models\AdminSetting::get('withdrawal_fee_type','none') === 'percentage' ? 'selected':'' }}>Percentage (%)</option>
+                        <option value="none"       {{ \App\Models\AdminSetting::getSetting('withdrawal_fee_type','none') === 'none'       ? 'selected':'' }}>No Fee</option>
+                        <option value="flat"       {{ \App\Models\AdminSetting::getSetting('withdrawal_fee_type','none') === 'flat'       ? 'selected':'' }}>Flat (₦)</option>
+                        <option value="percentage" {{ \App\Models\AdminSetting::getSetting('withdrawal_fee_type','none') === 'percentage' ? 'selected':'' }}>Percentage (%)</option>
                     </select>
                 </div>
                 <div>
@@ -212,7 +212,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <input type="number" id="wd_fee_value" class="kx-input" style="width:100%"
                         min="0" step="0.01"
                         placeholder="e.g. 100 or 1.5"
-                        value="{{ \App\Models\AdminSetting::get('withdrawal_fee_value','0') }}">
+                        value="{{ \App\Models\AdminSetting::getSetting('withdrawal_fee_value','0') }}">
                 </div>
                 <div>
                     <button type="button" class="btn-kx-green" style="width:100%;justify-content:center" onclick="saveFee('withdrawal')">

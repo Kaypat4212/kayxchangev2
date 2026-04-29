@@ -175,7 +175,7 @@ class AdminSettingsController extends Controller
         }
 
         $cfStatus = null;
-        if (AdminSetting::get('cf_enabled') == '1') {
+        if (AdminSetting::getSetting('cf_enabled') == '1') {
             try {
                 $cfStatus = app(CloudflareService::class)->getZoneDetails();
             } catch (\Exception $e) {
@@ -235,8 +235,8 @@ class AdminSettingsController extends Controller
 
     public function aiUsage()
     {
-        $apiKey       = AdminSetting::get('openai_api_key');
-        $currentModel = AdminSetting::get('openai_model', 'gpt-4o-mini');
+        $apiKey       = AdminSetting::getSetting('openai_api_key');
+        $currentModel = AdminSetting::getSetting('openai_model', 'gpt-4o-mini');
 
         // Local chat usage stats from our DB
         $localStats = [
@@ -300,8 +300,8 @@ class AdminSettingsController extends Controller
         }
 
         // Groq live check
-        $groqApiKey       = AdminSetting::get('groq_api_key');
-        $groqModel        = AdminSetting::get('groq_model', 'llama-3.3-70b-versatile');
+        $groqApiKey       = AdminSetting::getSetting('groq_api_key');
+        $groqModel        = AdminSetting::getSetting('groq_model', 'llama-3.3-70b-versatile');
         $groqHeaders      = null;
         $groqConnectionOk = false;
 
@@ -343,15 +343,15 @@ class AdminSettingsController extends Controller
             'groqApiKey'       => $groqApiKey,
             'groqHeaders'      => $groqHeaders,
             'groqConnectionOk' => $groqConnectionOk,
-            'activeProvider'   => AdminSetting::get('ai_provider', 'openai'),
+            'activeProvider'   => AdminSetting::getSetting('ai_provider', 'openai'),
         ]);
     }
 
     /** AJAX: test OpenAI connection */
     public function aiTest()
     {
-        $apiKey       = AdminSetting::get('openai_api_key');
-        $currentModel = AdminSetting::get('openai_model', 'gpt-4o-mini');
+        $apiKey       = AdminSetting::getSetting('openai_api_key');
+        $currentModel = AdminSetting::getSetting('openai_model', 'gpt-4o-mini');
 
         if (! $apiKey) {
             return response()->json(['ok' => false, 'error' => 'No OpenAI API key configured.']);
@@ -389,8 +389,8 @@ class AdminSettingsController extends Controller
     /** AJAX: test Groq connection */
     public function groqTest()
     {
-        $apiKey    = AdminSetting::get('groq_api_key');
-        $model     = AdminSetting::get('groq_model', 'llama-3.3-70b-versatile');
+        $apiKey    = AdminSetting::getSetting('groq_api_key');
+        $model     = AdminSetting::getSetting('groq_model', 'llama-3.3-70b-versatile');
 
         if (! $apiKey) {
             return response()->json(['ok' => false, 'error' => 'No Groq API key configured.']);

@@ -49,8 +49,8 @@ class WithdrawalController extends Controller
                 'account_number' => $user->account_number ?? 'N/A',
                 'account_name'   => $user->account_name ?? 'N/A',
             ],
-            'fee_type'  => AdminSetting::get('withdrawal_fee_type', 'none'),
-            'fee_value' => (float) AdminSetting::get('withdrawal_fee_value', '0'),
+            'fee_type'  => AdminSetting::getSetting('withdrawal_fee_type', 'none'),
+            'fee_value' => (float) AdminSetting::getSetting('withdrawal_fee_value', '0'),
         ]);
     }
 
@@ -61,8 +61,8 @@ class WithdrawalController extends Controller
         Log::debug('Processing withdrawal request', ['request' => $request->all()]);
 
         // Validation rules with custom messages
-        $feeType  = AdminSetting::get('withdrawal_fee_type', 'none');
-        $feeValue = (float) AdminSetting::get('withdrawal_fee_value', '0');
+        $feeType  = AdminSetting::getSetting('withdrawal_fee_type', 'none');
+        $feeValue = (float) AdminSetting::getSetting('withdrawal_fee_value', '0');
         $reqAmount = (float) $request->input('amount', 0);
         $fee = $this->calculateFee($reqAmount, $feeType, $feeValue);
 

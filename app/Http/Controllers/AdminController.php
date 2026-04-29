@@ -155,7 +155,7 @@ class AdminController extends Controller
         $siteMode = SiteContent::get('site_mode', 'production');
 
         // Cryptomus statistics
-        $cryptomusEnabled = AdminSetting::get('cryptomus_enabled', '0') === '1';
+        $cryptomusEnabled = AdminSetting::getSetting('cryptomus_enabled', '0') === '1';
         $totalConversions = Schema::hasTable('conversions') ? Conversion::count() : 0;
         $pendingConversions = Schema::hasTable('conversions') ? Conversion::where('status', 'pending')->count() : 0;
         $completedConversions = Schema::hasTable('conversions') ? Conversion::where('status', 'completed')->count() : 0;
@@ -424,7 +424,7 @@ class AdminController extends Controller
             // Auto-payout via Paystack when sell is completed with bank transfer
             if ($newStatus === 'completed' && $oldStatus !== 'completed'
                 && $trade->payment_method !== 'wallet_balance'
-                && AdminSetting::get('auto_sell_payout_enabled', '0') === '1'
+                && AdminSetting::getSetting('auto_sell_payout_enabled', '0') === '1'
                 && (float)($trade->naira_amount ?? 0) > 0
                 && !empty($trade->account_number)
             ) {

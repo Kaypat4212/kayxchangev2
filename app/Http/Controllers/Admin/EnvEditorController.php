@@ -463,14 +463,14 @@ class EnvEditorController extends Controller
     private function checkCryptomus(): array
     {
         // Check if Cryptomus is enabled in admin settings
-        $enabled = \App\Models\AdminSetting::get('cryptomus_enabled', '0');
+        $enabled = \App\Models\AdminSetting::getSetting('cryptomus_enabled', '0');
         if ($enabled !== '1') {
             return ['status' => 'warn', 'message' => 'Cryptomus is disabled in admin settings. Set cryptomus_enabled to 1 to enable crypto payments.'];
         }
 
         // Check API key and merchant ID
-        $apiKey = \App\Models\AdminSetting::get('cryptomus_api_key', '');
-        $merchantId = \App\Models\AdminSetting::get('cryptomus_merchant_id', '');
+        $apiKey = \App\Models\AdminSetting::getSetting('cryptomus_api_key', '');
+        $merchantId = \App\Models\AdminSetting::getSetting('cryptomus_merchant_id', '');
 
         if (empty($apiKey)) {
             return ['status' => 'fail', 'message' => 'Cryptomus API key is not set in admin settings.'];

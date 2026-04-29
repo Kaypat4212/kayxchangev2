@@ -15,9 +15,9 @@ class CloudflareService
     public function __construct()
     {
         // Settings DB takes precedence over .env
-        $this->token     = AdminSetting::get('cf_api_token')    ?: config('services.cloudflare.token');
-        $this->zoneId    = AdminSetting::get('cf_zone_id')      ?: config('services.cloudflare.zone_id');
-        $this->accountId = AdminSetting::get('cf_account_id')   ?: config('services.cloudflare.account_id');
+        $this->token     = AdminSetting::getSetting('cf_api_token')    ?: config('services.cloudflare.token');
+        $this->zoneId    = AdminSetting::getSetting('cf_zone_id')      ?: config('services.cloudflare.zone_id');
+        $this->accountId = AdminSetting::getSetting('cf_account_id')   ?: config('services.cloudflare.account_id');
     }
 
     // ─── Zone ─────────────────────────────────────────────────────────

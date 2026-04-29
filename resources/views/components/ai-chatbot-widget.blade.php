@@ -2,7 +2,7 @@
 {{-- Always rendered so kaybotToggle() is always defined for the mobile FAB --}}
 @php
     // Use !== '0' so null (DB key missing / APP_KEY mismatch) still defaults to enabled
-    $kaybotEnabled = \App\Models\AdminSetting::get('ai_chatbot_enabled', '1') !== '0';
+    $kaybotEnabled = \App\Models\AdminSetting::getSetting('ai_chatbot_enabled', '1') !== '0';
     // Don't gate on key at widget level — the controller returns a friendly message if key is missing
     $kaybotReady   = $kaybotEnabled;
 @endphp

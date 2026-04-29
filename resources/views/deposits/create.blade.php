@@ -240,8 +240,8 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
             </div>
 
             @php
-                $depFeeType  = \App\Models\AdminSetting::get('deposit_fee_type', 'none');
-                $depFeeValue = (float) \App\Models\AdminSetting::get('deposit_fee_value', '0');
+                $depFeeType  = \App\Models\AdminSetting::getSetting('deposit_fee_type', 'none');
+                $depFeeValue = (float) \App\Models\AdminSetting::getSetting('deposit_fee_value', '0');
             @endphp
             @if($depFeeType !== 'none' && $depFeeValue > 0)
             {{-- Live fee breakdown for deposit --}}

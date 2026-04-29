@@ -36,8 +36,8 @@ class AdminDepositController extends Controller
             // Calculate fee (use stored fee_amount if already set, else recalculate)
             $feeAmount = (float) ($deposit->fee_amount ?? 0);
             if ($feeAmount === 0.0) {
-                $feeType  = AdminSetting::get('deposit_fee_type', 'none');
-                $feeValue = (float) AdminSetting::get('deposit_fee_value', '0');
+                $feeType  = AdminSetting::getSetting('deposit_fee_type', 'none');
+                $feeValue = (float) AdminSetting::getSetting('deposit_fee_value', '0');
                 if ($feeType === 'flat') $feeAmount = $feeValue;
                 elseif ($feeType === 'percentage') $feeAmount = round((float)$deposit->amount * $feeValue / 100, 2);
             }

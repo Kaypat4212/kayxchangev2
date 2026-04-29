@@ -14,18 +14,23 @@ class AdminSetting extends Model
     // ─── Static helpers ───────────────────────────────────────────────
 
     /** Get a setting value (auto-decrypts encrypted ones). */
-    public static function get(string $key, mixed $default = null): mixed
+    public static function getSetting(string $key, mixed $default = null): mixed
     {
-        $row = static::where('key', $key)->first();
-        if (! $row) return $default;
-        if ($row->is_encrypted) {
-            try {
-                return Crypt::decryptString($row->value ?? '');
-            } catch (\Exception $e) {
-                return $default;
+        try {
+            $row = static::where('key', $key)->first();
+            if (! $row) return $default;
+            if ($row->is_encrypted) {
+                try {
+                    return Crypt::decryptString($row->value ?? '');
+                } catch (\Exception $e) {
+                    return $default;
+                }
             }
+            return $row->value;
+        } catch (\Exception $e) {
+            // Table might not exist yet during initial setup
+            return $default;
         }
-        return $row->value;
     }
 
     /** Set / upsert a setting value (auto-encrypts if is_encrypted flag already set). */
