@@ -10,6 +10,7 @@ use App\Models\Referral;
 use App\Models\SellTrade;
 use App\Models\SiteContent;
 use App\Models\AdminSetting;
+use App\Models\Conversion;
 use App\Services\AdminTradeAlertService;
 use App\Services\PayoutService;
 use App\Mail\TradeNotification;
@@ -153,11 +154,27 @@ class AdminController extends Controller
         $totalReferralRewards = Referral::where('status', 'completed')->sum('reward_amount');
         $siteMode = SiteContent::get('site_mode', 'production');
 
+        // Cryptomus statistics
+        $cryptomusEnabled = AdminSetting::get('cryptomus_enabled', '0') === '1';
+        $totalConversions = Schema::hasTable('conversions') ? Conversion::count() : 0;
+        $pendingConversions = Schema::hasTable('conversions') ? Conversion::where('status', 'pending')->count() : 0;
+        $completedConversions = Schema::hasTable('conversions') ? Conversion::where('status', 'completed')->count() : 0;
+
         $cryptoRates = Schema::hasTable('crypto_rates')
             ? CryptoRate::all()->map(fn($r) => ['coin' => $r->coin, 'buy_rate' => $r->buy_rate, 'sell_rate' => $r->sell_rate])->values()
             : collect();
 
-        return view('admin.dashboard', compact('totalUsers', 'totalReferrals', 'totalReferralRewards', 'siteMode', 'cryptoRates'));
+        return view('admin.dashboard', compact(
+            'totalUsers',
+            'totalReferrals',
+            'totalReferralRewards',
+            'siteMode',
+            'cryptoRates',
+            'cryptomusEnabled',
+            'totalConversions',
+            'pendingConversions',
+            'completedConversions'
+        ));
     }
 
     public function toggleSiteMode(Request $request)

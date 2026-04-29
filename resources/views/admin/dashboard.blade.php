@@ -421,6 +421,17 @@
             </div>
         </a>
     </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="kx-stat" style="cursor: default;">
+            <div class="kx-stat-icon {{ $cryptomusEnabled ? 'green' : 'purple' }}">
+                <i class="bi bi-currency-bitcoin"></i>
+            </div>
+            <div>
+                <div class="kx-stat-val">{{ $totalConversions }}</div>
+                <div class="kx-stat-label">Conversions</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- QUICK NAV -->
@@ -528,6 +539,50 @@
             </div>
         </div>
 
+        {{-- Cryptomus Status Panel --}}
+        <div class="kx-panel">
+            <div class="kx-panel-header">
+                <h5><i class="bi bi-currency-bitcoin me-2" style="color:{{ $cryptomusEnabled ? 'var(--kx-green)' : 'var(--kx-muted)' }}"></i>Cryptomus Status</h5>
+                <span class="badge {{ $cryptomusEnabled ? 'bg-success' : 'bg-secondary' }}" style="font-size:0.7rem;">
+                    {{ $cryptomusEnabled ? 'Enabled' : 'Disabled' }}
+                </span>
+            </div>
+            <div class="kx-panel-body">
+                @if($cryptomusEnabled)
+                    <div class="row g-3">
+                        <div class="col-4 text-center">
+                            <div style="font-size:1.5rem;font-weight:700;color:var(--kx-green);">{{ $totalConversions }}</div>
+                            <div style="font-size:0.75rem;color:var(--kx-muted);">Total</div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div style="font-size:1.5rem;font-weight:700;color:var(--kx-amber);">{{ $pendingConversions }}</div>
+                            <div style="font-size:0.75rem;color:var(--kx-muted);">Pending</div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div style="font-size:1.5rem;font-weight:700;color:var(--kx-info);">{{ $completedConversions }}</div>
+                            <div style="font-size:0.75rem;color:var(--kx-muted);">Completed</div>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-top border-dark">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="font-size:0.85rem;color:var(--kx-text);">Crypto Payments</span>
+                            <span class="badge bg-success" style="font-size:0.7rem;">Active</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span style="font-size:0.85rem;color:var(--kx-text);">Conversions</span>
+                            <span class="badge bg-success" style="font-size:0.7rem;">Active</span>
+                        </div>
+                    </div>
+                @else
+                    <div class="text-center py-3">
+                        <i class="bi bi-currency-bitcoin" style="font-size:2rem;color:var(--kx-muted);margin-bottom:0.5rem;"></i>
+                        <div style="color:var(--kx-muted);font-size:0.9rem;">Cryptomus is disabled</div>
+                        <div style="color:var(--kx-muted);font-size:0.8rem;margin-top:0.25rem;">Enable in Settings → Payment</div>
+                    </div>
+                @endif
+            </div>
+        </div>
+
     </div><!-- /LEFT -->
 
     <!-- RIGHT: notifications + quick actions -->
@@ -602,6 +657,16 @@
                     </div>
                     <i class="bi bi-chevron-right ms-auto" style="color:var(--kx-muted)"></i>
                 </a>
+                @if($cryptomusEnabled)
+                <a href="#" class="kx-nav-card" style="padding:14px;height:auto" onclick="alert('Conversion management coming soon!')">
+                    <div class="kx-stat-icon green" style="width:38px;height:38px;font-size:1rem"><i class="bi bi-arrow-left-right"></i></div>
+                    <div>
+                        <div class="kx-nav-card-title">Crypto Conversions</div>
+                        <div class="kx-nav-card-sub">Manage user conversions</div>
+                    </div>
+                    <i class="bi bi-chevron-right ms-auto" style="color:var(--kx-muted)"></i>
+                </a>
+                @endif
             </div>
         </div>
 
@@ -619,6 +684,9 @@
                     <div class="col-6"><a href="{{ url('/admin/notifications') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-bell me-1"></i>Notifications</a></div>
                     <div class="col-6"><a href="{{ url('/admin/crypto-rates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-currency-bitcoin me-1"></i>Crypto Rates</a></div>
                     <div class="col-6"><a href="{{ url('/admin/gift-card-rates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-gift me-1"></i>Gift Card Rates</a></div>
+                    @if($cryptomusEnabled)
+                    <div class="col-6"><a href="#" class="btn-kx-outline w-100 justify-content-center" onclick="alert('Conversion management coming soon!')"><i class="bi bi-arrow-left-right me-1"></i>Conversions</a></div>
+                    @endif
                     <div class="col-6"><a href="{{ url('/admin/blog') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-journal-richtext me-1"></i>Blog</a></div>
                     <div class="col-6"><a href="{{ url('/admin/site-content') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-pencil-square me-1"></i>Site Content</a></div>
                     <div class="col-6"><a href="{{ url('/admin/chat') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-chat-dots me-1"></i>Admin Chat</a></div>

@@ -257,6 +257,9 @@ class EnvEditorController extends Controller
         // ── 10. Database ─────────────────────────────────────────────────────
         $results['database'] = $this->checkDatabase();
 
+        // ── 11. Cryptomus ────────────────────────────────────────────────────
+        $results['cryptomus'] = $this->checkCryptomus();
+
         return response()->json($results);
     }
 
@@ -454,6 +457,48 @@ class EnvEditorController extends Controller
             return ['status' => 'ok', 'message' => "Connected to database: {$db}"];
         } catch (\Throwable $e) {
             return ['status' => 'fail', 'message' => 'DB connection failed: ' . $e->getMessage()];
+        }
+    }
+
+    private function checkCryptomus(): array
+    {
+        // Check if Cryptomus is enabled in admin settings
+        $enabled = \App\Models\AdminSetting::get('cryptomus_enabled', '0');
+        if ($enabled !== '1') {
+            return ['status' => 'warn', 'message' => 'Cryptomus is disabled in admin settings. Set cryptomus_enabled to 1 to enable crypto payments.'];
+        }
+
+        // Check API key and merchant ID
+        $apiKey = \App\Models\AdminSetting::get('cryptomus_api_key', '');
+        $merchantId = \App\Models\AdminSetting::get('cryptomus_merchant_id', '');
+
+        if (empty($apiKey)) {
+            return ['status' => 'fail', 'message' => 'Cryptomus API key is not set in admin settings.'];
+        }
+
+        if (empty($merchantId)) {
+            return ['status' => 'fail', 'message' => 'Cryptomus Merchant ID is not set in admin settings.'];
+        }
+
+        // Test API connectivity
+        try {
+            $res = Http::timeout(10)
+                ->withHeaders([
+                    'merchant' => $merchantId,
+                    'sign' => hash('sha256', $merchantId . 'balance' . $apiKey),
+                ])
+                ->post('https://api.cryptomus.com/v1/balance');
+
+            if ($res->ok() && isset($res->json()['result'])) {
+                $balances = $res->json()['result'];
+                $cryptoCount = count($balances);
+                return ['status' => 'ok', 'message' => "Cryptomus API valid. Merchant: {$merchantId}. Balances available for {$cryptoCount} cryptocurrencies."];
+            }
+
+            $error = $res->json('message') ?? $res->json('error') ?? 'Unknown error';
+            return ['status' => 'fail', 'message' => "Cryptomus API error: {$error}"];
+        } catch (\Throwable $e) {
+            return ['status' => 'fail', 'message' => 'Cryptomus API request failed: ' . $e->getMessage()];
         }
     }
 

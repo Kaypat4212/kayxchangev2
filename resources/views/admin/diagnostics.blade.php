@@ -130,6 +130,7 @@ const CHECK_META = {
     smtp:        { name: 'SMTP / Email',       icon: 'bi-envelope-fill',      keys: ['MAIL_HOST','MAIL_USERNAME','MAIL_PASSWORD','MAIL_PORT'] },
     telegram:    { name: 'Telegram Bot',        icon: 'bi-telegram',           keys: ['TELEGRAM_BOT_TOKEN'] },
     paystack:    { name: 'Paystack',            icon: 'bi-credit-card-fill',   keys: ['PAYSTACK_SECRET_KEY'] },
+    cryptomus:   { name: 'Cryptomus',           icon: 'bi-currency-bitcoin',   keys: ['CRYPTOMUS_API_KEY','CRYPTOMUS_MERCHANT_ID'] },
     groq:        { name: 'Groq AI',             icon: 'bi-robot',              keys: ['GROQ_API_KEY'] },
     etherscan:   { name: 'Etherscan',           icon: 'bi-currency-ethereum',  keys: ['ETHERSCAN_API_KEY'] },
     blockcypher: { name: 'BlockCypher (BTC)',   icon: 'bi-currency-bitcoin',   keys: ['BLOCKCYPHER_TOKEN'] },
