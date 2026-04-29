@@ -6,6 +6,24 @@
     --kx-green: #00cc00;
     --kx-card: rgba(14,22,14,0.88);
     --kx-card-border: rgba(0,204,0,0.18);
+
+    /* Text colors that adapt to light mode */
+    --text-primary: #fff;
+    --text-secondary: rgba(255,255,255,.75);
+    --text-muted: rgba(255,255,255,.55);
+    --text-placeholder: rgba(255,255,255,.3);
+    --text-error: #ef4444;
+}
+
+/* Light mode overrides */
+body.light-mode {
+    --kx-card: rgba(255,255,255,0.95);
+    --kx-card-border: rgba(0,204,0,0.25);
+
+    --text-primary: #0a1a0a;
+    --text-secondary: rgba(10,26,10,.75);
+    --text-muted: rgba(10,26,10,.55);
+    --text-placeholder: rgba(10,26,10,.3);
 }
 .tx-page { max-width: 780px; margin: 0 auto; }
 
@@ -23,8 +41,8 @@
     padding: .9rem 1rem;
     text-align: center;
 }
-.tx-sum-label { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.45); margin-bottom: .2rem; }
-.tx-sum-val   { font-size: 1.15rem; font-weight: 700; color: #fff; }
+.tx-sum-label { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: .2rem; }
+.tx-sum-val   { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); }
 .tx-sum-val.green { color: var(--kx-green); }
 .tx-sum-val.red   { color: #ef4444; }
 
@@ -32,7 +50,7 @@
 .tx-tabs { display: flex; gap: .5rem; margin-bottom: 1.1rem; }
 .tx-tab  {
     flex: 1; padding: .55rem .5rem; border-radius: 10px; border: 1px solid var(--kx-card-border);
-    background: var(--kx-card); color: rgba(255,255,255,.55); font-size: .8rem; font-weight: 600;
+    background: var(--kx-card); color: var(--text-muted); font-size: .8rem; font-weight: 600;
     cursor: pointer; text-align: center; transition: all .2s;
 }
 .tx-tab.active { background: rgba(0,204,0,.18); border-color: var(--kx-green); color: var(--kx-green); }
@@ -51,19 +69,19 @@
     display: block;
 }
 .people-card:hover { border-color: rgba(0,204,0,.4); text-decoration: none; }
-.people-name  { font-size: .9rem; font-weight: 700; color: #fff; }
+.people-name  { font-size: .9rem; font-weight: 700; color: var(--text-primary); }
 .people-tag   { font-size: .75rem; color: var(--kx-green); margin-bottom: .6rem; }
 .people-stats { display: flex; justify-content: space-between; gap: .5rem; }
 .ps-col       { flex: 1; }
-.ps-label     { font-size: .63rem; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.4); }
+.ps-label     { font-size: .63rem; text-transform: uppercase; letter-spacing: .07em; color: var(--text-placeholder); }
 .ps-val       { font-size: .85rem; font-weight: 700; }
 .ps-val.red   { color: #ef4444; }
 .ps-val.green { color: var(--kx-green); }
-.ps-val.neutral { color: rgba(255,255,255,.7); }
-.ps-txns      { font-size: .68rem; color: rgba(255,255,255,.3); margin-top: .2rem; }
+.ps-val.neutral { color: var(--text-secondary); }
+.ps-txns      { font-size: .68rem; color: var(--text-placeholder); margin-top: .2rem; }
 .people-net {
     margin-top: .65rem; padding-top: .6rem; border-top: 1px solid rgba(255,255,255,.07);
-    font-size: .75rem; color: rgba(255,255,255,.45);
+    font-size: .75rem; color: var(--text-muted);
 }
 .people-net span { font-weight: 700; }
 .people-net span.pos { color: var(--kx-green); }
@@ -78,12 +96,12 @@
     margin-bottom: 1rem;
     display: flex; align-items: center; justify-content: space-between; gap: .75rem;
 }
-.filter-banner-info { font-size: .82rem; color: rgba(255,255,255,.8); }
-.filter-banner-name { font-weight: 700; color: #fff; }
+.filter-banner-info { font-size: .82rem; color: var(--text-secondary); }
+.filter-banner-name { font-weight: 700; color: var(--text-primary); }
 .filter-banner-stats { display: flex; gap: 1.25rem; font-size: .78rem; }
-.fbs-item label { display: block; font-size: .63rem; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.4); }
+.fbs-item label { display: block; font-size: .63rem; text-transform: uppercase; letter-spacing: .07em; color: var(--text-placeholder); }
 .fbs-item .val  { font-weight: 700; }
-.filter-clear   { color: rgba(255,255,255,.4); font-size: .8rem; text-decoration: none; flex-shrink: 0; }
+.filter-clear   { color: var(--text-placeholder); font-size: .8rem; text-decoration: none; flex-shrink: 0; }
 .filter-clear:hover { color: #fff; }
 
 /* ── Transfer item ─────────────────────────────────────────── */
@@ -111,17 +129,17 @@
 .tx-icon.reversed { background: rgba(251,191,36,.12); color: #fbbf24; }
 
 .tx-body  { flex: 1; min-width: 0; }
-.tx-party { font-size: .88rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-party { font-size: .88rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tx-tag   { font-size: .73rem; color: var(--kx-green); }
-.tx-ref   { font-size: .7rem; color: rgba(255,255,255,.3); margin-top: .1rem; }
-.tx-note  { font-size: .76rem; color: rgba(255,255,255,.5); font-style: italic; margin-top: .1rem; }
+.tx-ref   { font-size: .7rem; color: var(--text-placeholder); margin-top: .1rem; }
+.tx-note  { font-size: .76rem; color: var(--text-muted); font-style: italic; margin-top: .1rem; }
 
 .tx-right  { text-align: right; flex-shrink: 0; }
 .tx-amount { font-size: 1rem; font-weight: 700; }
 .tx-amount.sent     { color: #ef4444; }
 .tx-amount.received { color: var(--kx-green); }
 .tx-amount.reversed { color: #fbbf24; }
-.tx-time   { font-size: .7rem; color: rgba(255,255,255,.3); margin-top: .15rem; }
+.tx-time   { font-size: .7rem; color: var(--text-placeholder); margin-top: .15rem; }
 .tx-badge  {
     display: inline-block;
     font-size: .63rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
@@ -140,7 +158,7 @@
     border-radius: 14px;
     padding: 2.5rem 1.5rem;
     text-align: center;
-    color: rgba(255,255,255,.4);
+    color: var(--text-muted);
 }
 .tx-empty i { font-size: 2.2rem; margin-bottom: .6rem; color: rgba(0,204,0,.25); }
 
@@ -164,8 +182,8 @@
 <div class="container py-4 tx-page">
 
     <div class="d-flex align-items-center justify-content-between mb-3">
-        <h5 class="mb-0 text-white fw-bold"><i class="bi bi-clock-history me-2" style="color:var(--kx-green)"></i>Transfer History</h5>
-        <span class="text-muted" style="font-size:.8rem;">{{ Auth::user()->kx_tag }}</span>
+        <h5 class="mb-0 fw-bold" style="color: var(--text-primary);"><i class="bi bi-clock-history me-2" style="color:var(--kx-green)"></i>Transfer History</h5>
+        <span style="font-size:.8rem; color: var(--text-muted);">{{ Auth::user()->kx_tag }}</span>
     </div>
 
     @if(session('success'))
@@ -323,7 +341,7 @@
                     <div class="tx-time">{{ $t->created_at->setTimezone('Africa/Lagos')->format('d M Y, g:i A') }}</div>
                     <div><span class="tx-badge {{ $t->status }}">{{ $t->status }}</span></div>
                     @if($isSent && $t->fee > 0)
-                        <div style="font-size:.68rem;color:rgba(255,255,255,.3);">Fee: ₦{{ number_format($t->fee, 2) }}</div>
+                        <div style="font-size:.68rem;color:var(--text-placeholder);">Fee: ₦{{ number_format($t->fee, 2) }}</div>
                     @endif
                 </div>
             </div>
