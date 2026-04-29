@@ -1,4 +1,4 @@
-﻿<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+﻿<link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.css" rel="stylesheet">
 <style>
 /* ── Editor Layout ─────────────────────────────────────── */
 .editor-card {

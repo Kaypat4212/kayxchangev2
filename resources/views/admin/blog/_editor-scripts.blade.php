@@ -1,4 +1,4 @@
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
 <script>
 (function () {
     var quill = new Quill('#quill-editor', {
