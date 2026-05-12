@@ -241,6 +241,16 @@
             <i class="bi bi-arrow-down-circle-fill"></i>Buy
           </a>
         </li>
+        @php
+        try {
+            $kaybotVisible = \App\Models\AdminSetting::getSetting('ai_chatbot_enabled','1') == '1' &&
+                           (\App\Models\AdminSetting::getSetting('openai_api_key') ?: env('OPENAI_API_KEY') ?: \App\Models\AdminSetting::getSetting('groq_api_key') ?: env('GROQ_API_KEY'));
+            $convertVisible = \App\Models\AdminSetting::getSetting('cryptomus_convert_enabled','1') == '1';
+        } catch (\Exception $e) {
+            $kaybotVisible = env('OPENAI_API_KEY') ?: env('GROQ_API_KEY');
+            $convertVisible = true;
+        }
+        @endphp
         @if($convertVisible)
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('convert*')) kx-active @endif" href="{{ url('/convert') }}">
@@ -263,16 +273,6 @@
             <i class="bi bi-headset"></i>Support
           </a>
         </li>
-        @php
-        try {
-            $kaybotVisible = \App\Models\AdminSetting::getSetting('ai_chatbot_enabled','1') == '1' &&
-                           (\App\Models\AdminSetting::getSetting('openai_api_key') ?: env('OPENAI_API_KEY') ?: \App\Models\AdminSetting::getSetting('groq_api_key') ?: env('GROQ_API_KEY'));
-            $convertVisible = \App\Models\AdminSetting::getSetting('cryptomus_convert_enabled','1') == '1';
-        } catch (\Exception $e) {
-            $kaybotVisible = env('OPENAI_API_KEY') ?: env('GROQ_API_KEY');
-            $convertVisible = true;
-        }
-        @endphp
         @if($kaybotVisible)
         <li class="nav-item">
           <button type="button" onclick="kaybotToggle()" class="kx-nav-link" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:.4rem;" title="Chat with KayBot AI">
