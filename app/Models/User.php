@@ -23,6 +23,7 @@ use Illuminate\Support\Str;
  * @property string|null $telegram_chat_id
  * @property string|null $telegram_username
  * @property bool $telegram_notifications
+ * @property bool $rate_notifications
  * @property bool $telegram_ai_enabled
  * @property bool $telegram_verified
  * @property float $balance
@@ -76,6 +77,7 @@ class User extends Authenticatable
         'role',
         'telegram_username',
         'telegram_notifications',
+        'rate_notifications',
         'telegram_ai_enabled',
         'telegram_chat_id',
         'telegram_verified',
@@ -125,6 +127,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'is_admin' => 'boolean',
         'telegram_notifications' => 'boolean',
+        'rate_notifications' => 'boolean',
         'telegram_verified' => 'boolean',
         'two_factor_enabled' => 'boolean',
         'two_factor_confirmed_at' => 'datetime',
@@ -158,7 +161,12 @@ class User extends Authenticatable
 
     public function wallet()
     {
-        return $this->hasOne(Wallet::class);
+        return $this->hasOne(Wallet::class)->where('currency', 'NGN');
+    }
+
+    public function wallets()
+    {
+        return $this->hasMany(Wallet::class);
     }
 
     public function specialReferralCodes()

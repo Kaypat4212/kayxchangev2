@@ -168,6 +168,15 @@ Route::post('withdrawals/webhook/{gateway}', [WithdrawalController::class, 'payo
 
 // ── Wallet / P2P Transfers ───────────────────────────────────────────────────
 Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () {
+    Route::get('/',          [\App\Http\Controllers\WalletController::class, 'index'])->name('index');
+    Route::get('/deposit',   [\App\Http\Controllers\WalletController::class, 'deposit'])->name('deposit');
+    Route::post('/deposit',  [\App\Http\Controllers\WalletController::class, 'createDeposit'])->name('deposit.create');
+    Route::get('/deposit/{id}/success', [\App\Http\Controllers\WalletController::class, 'depositSuccess'])->name('deposit.success');
+    Route::get('/deposit/{id}/failed',  [\App\Http\Controllers\WalletController::class, 'depositFailed'])->name('deposit.failed');
+    Route::get('/withdraw',  [\App\Http\Controllers\WalletController::class, 'withdraw'])->name('withdraw');
+    Route::post('/withdraw', [\App\Http\Controllers\WalletController::class, 'createWithdrawal'])->name('withdraw.create');
+    Route::get('/history',   [\App\Http\Controllers\WalletController::class, 'history'])->name('history');
+
     Route::get('/send',      [\App\Http\Controllers\P2pTransferController::class, 'showSend'])->name('send');
     Route::post('/send',     [\App\Http\Controllers\P2pTransferController::class, 'send'])->name('send.post');
     Route::get('/transfers', [\App\Http\Controllers\P2pTransferController::class, 'history'])->name('transfers');

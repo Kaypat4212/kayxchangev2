@@ -386,9 +386,11 @@ class AdminCryptoRateController extends Controller
     private function notifyRateChanges($rateIds)
     {
         try {
-            // Get users who have telegram notifications enabled
+            // Get users who have opted in to rate alerts and can receive Telegram messages
             $users = \App\Models\User::where('telegram_notifications', true)
-                ->whereNotNull('telegram_username')
+                ->where('rate_notifications', true)
+                ->whereNotNull('telegram_chat_id')
+                ->where('telegram_verified', true)
                 ->get();
 
             $updatedCoins = CryptoRate::whereIn('id', $rateIds)->pluck('coin')->toArray();

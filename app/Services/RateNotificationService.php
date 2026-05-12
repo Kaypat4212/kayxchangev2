@@ -86,8 +86,9 @@ class RateNotificationService
         $contextLabel = $context === 'scheduled' ? '🕐 Scheduled Rate Update' : '⚡ Rate Update Alert';
         $time = now()->setTimezone('Africa/Lagos')->format('d M Y, g:i A') . ' (WAT)';
 
-        // ── Get all subscribed users ────────────────────────────────────────
+        // ── Get all subscribed users who opted in to rate alerts ───────────
         $users = User::where('is_admin', false)
+            ->where('rate_notifications', true)
             ->where(function ($q) {
                 $q->where(function ($q2) {
                     // Telegram-eligible
@@ -95,7 +96,7 @@ class RateNotificationService
                        ->whereNotNull('telegram_chat_id')
                        ->where('telegram_verified', true);
                 })->orWhere(function ($q2) {
-                    // Email-eligible (all active users get email)
+                    // Email-eligible
                     $q2->whereNotNull('email')
                        ->where('email_verified_at', '!=', null);
                 });

@@ -24,13 +24,17 @@ class UserObserver
 
     public function created(User $user)
     {
-        // Create wallet for new user
+        // Create NGN wallet for new user
         Wallet::create([
             'user_id' => $user->id,
             'balance' => 0.00,
             'currency' => 'NGN',
         ]);
         $user->update(['balance' => 0]); // Sync with users.balance
+
+        // Create crypto wallets for new user
+        $cryptoWalletService = app(\App\Services\CryptoWalletService::class);
+        $cryptoWalletService->createUserCryptoWallets($user);
 
         // Process referral — create as PENDING; reward credited after referred user deposits ₦10,000
         if ($user->referred_by) {

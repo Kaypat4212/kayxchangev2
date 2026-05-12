@@ -33,6 +33,7 @@ class TelegramSettingsController extends Controller
         $validator = Validator::make($request->all(), [
             'telegram_username' => 'nullable|string|max:255|regex:/^[a-zA-Z0-9_]+$/',
             'telegram_notifications' => 'nullable|boolean',
+            'rate_notifications' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -56,6 +57,7 @@ class TelegramSettingsController extends Controller
         $updateData = [
             'telegram_username' => $telegramUsername,
             'telegram_notifications' => $request->has('telegram_notifications'),
+            'rate_notifications' => $request->has('rate_notifications'),
         ];
 
         // If username changed, reset verification status and chat_id

@@ -269,6 +269,24 @@ body { background: var(--kx-dark); color: var(--kx-text); }
                         </div>
                     </div>
 
+                    <div style="margin-bottom:1.5rem;">
+                        <label class="tg-label">Rate Alerts</label>
+                        <div class="tg-switch-row">
+                            <div class="tg-switch-info">
+                                <strong>Receive Rate Alerts</strong>
+                                <span>Get email and Telegram updates when crypto rates change</span>
+                            </div>
+                            <label class="tg-switch">
+                                <input type="checkbox" name="rate_notifications" value="1"
+                                       {{ Auth::user()->rate_notifications ? 'checked' : '' }}>
+                                <span class="tg-switch-slider"></span>
+                            </label>
+                        </div>
+                        @error('rate_notifications')
+                            <p class="tg-hint error-text"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div class="tg-action-row">
                         <button type="submit" class="tg-btn-primary">
                             <i class="fas fa-save"></i> Save Settings
@@ -362,6 +380,19 @@ body { background: var(--kx-dark); color: var(--kx-text); }
                 <div class="tg-status-label">Notifications</div>
                 <div class="tg-status-val {{ Auth::user()->telegram_notifications ? 'ok' : 'warn' }}">
                     {{ Auth::user()->telegram_notifications ? 'Enabled' : 'Disabled' }}
+                </div>
+            </div>
+            <div class="tg-status-item">
+                <div class="tg-status-icon">
+                    @if(Auth::user()->rate_notifications)
+                        <i class="fas fa-chart-line" style="color:#4ade80;"></i>
+                    @else
+                        <i class="fas fa-chart-area" style="color:#fbbf24;"></i>
+                    @endif
+                </div>
+                <div class="tg-status-label">Rate Alerts</div>
+                <div class="tg-status-val {{ Auth::user()->rate_notifications ? 'ok' : 'warn' }}">
+                    {{ Auth::user()->rate_notifications ? 'Enabled' : 'Disabled' }}
                 </div>
             </div>
             <div class="tg-status-item">

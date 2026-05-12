@@ -261,7 +261,12 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     @if($row->description)<div class="field-desc">{{ $row->description }}</div>@endif
                 </div>
                 <div class="field-input">
-                    @if($row->is_encrypted)
+                    @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled']))
+                        <select name="{{ $row->key }}">
+                            <option value="1" {{ ($row->value ?? '1') === '1' ? 'selected' : '' }}>✅ Enabled</option>
+                            <option value="0" {{ ($row->value ?? '') === '0' ? 'selected' : '' }}>❌ Disabled</option>
+                        </select>
+                    @elseif($row->is_encrypted)
                         <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password">
                     @else
                         <input type="text" name="{{ $row->key }}" value="{{ $row->value ?? '' }}" placeholder="{{ $row->label }}">
