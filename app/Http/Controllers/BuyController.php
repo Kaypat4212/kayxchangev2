@@ -167,12 +167,7 @@ class BuyController extends Controller
                 Log::warning('Buy trade Telegram alert on submit failed: ' . $tgEx->getMessage());
             }
 
-            // Handle different payment methods
-            if ($paymentMethod === 'crypto') {
-                return $this->handleCryptoPayment($buyTrade);
-            }
-
-            // Redirect to trade summary for bank transfers
+            // Redirect to trade summary
             return redirect()->route('buy.summary', ['id' => $buyTrade->id])
                 ->with('success', 'Please review your trade details.');
         } catch (\Exception $e) {
@@ -187,90 +182,6 @@ class BuyController extends Controller
             ]);
             return redirect()->back()->withErrors(['error' => 'An error occurred while processing your trade.'])->withInput();
         }
-    }
-
-    /**
-     * Handle crypto payment creation with Cryptomus
-     */
-    private function handleCryptoPayment(BuyTrade $trade)
-    {
-        try {
-            $cryptomus = app(\App\Services\CryptomusService::class);
-
-            if (!$cryptomus->isEnabled()) {
-                // Fallback to bank transfer if crypto payment is not available
-                return redirect()->route('buy.summary', ['id' => $trade->id])
-                    ->with('warning', 'Crypto payment is currently unavailable. Please use bank transfer instead.');
-            }
-
-            // Create Cryptomus payment
-            $paymentData = [
-                'amount' => $trade->naira_amount,
-                'currency' => 'NGN',
-                'crypto_currency' => $trade->coin,
-                'order_id' => $trade->transaction_ref,
-                'url_callback' => route('cryptomus.webhook'),
-                'url_return' => route('cryptomus.success', $trade->transaction_ref),
-                'lifetime' => 3600, // 1 hour
-                'additional_data' => [
-                    'trade_id' => $trade->id,
-                    'user_id' => $trade->user_id,
-                    'coin' => $trade->coin
-                ]
-            ];
-
-            $payment = $cryptomus->createPayment($paymentData);
-
-            if (isset($payment['result'])) {
-                // Update trade with payment info
-                $trade->update([
-                    'payment_id' => $payment['result']['uuid'],
-                    'payment_data' => json_encode($payment['result'])
-                ]);
-
-                // Redirect to crypto payment page
-                return redirect()->route('buy.crypto-payment', ['id' => $trade->id])
-                    ->with('success', 'Crypto payment created successfully.');
-            }
-
-            // If payment creation failed, fallback to bank transfer
-            Log::error('Cryptomus payment creation failed', ['trade_id' => $trade->id, 'response' => $payment]);
-            return redirect()->route('buy.summary', ['id' => $trade->id])
-                ->with('warning', 'Crypto payment setup failed. Please use bank transfer instead.');
-
-        } catch (\Exception $e) {
-            Log::error('Crypto payment setup failed', [
-                'trade_id' => $trade->id,
-                'error' => $e->getMessage()
-            ]);
-
-            // Fallback to bank transfer
-            return redirect()->route('buy.summary', ['id' => $trade->id])
-                ->with('warning', 'Crypto payment is currently unavailable. Please use bank transfer instead.');
-        }
-    }
-
-    /**
-     * Display crypto payment page
-     */
-    public function cryptoPaymentPage($id)
-    {
-        $trade = BuyTrade::findOrFail($id);
-
-        // Ensure user owns this trade
-        if ($trade->user_id !== auth()->id()) {
-            abort(403);
-        }
-
-        // Ensure this is a crypto payment trade
-        if ($trade->payment_method !== 'crypto') {
-            return redirect()->route('buy.summary', $id);
-        }
-
-        // Get payment data from Cryptomus
-        $paymentData = json_decode($trade->payment_data ?? '{}', true);
-
-        return view('buy.crypto-payment', compact('trade', 'paymentData'));
     }
 
     /**

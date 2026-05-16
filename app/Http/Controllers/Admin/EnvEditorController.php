@@ -20,8 +20,8 @@ class EnvEditorController extends Controller
         'APP_URL'                  => ['label' => 'App URL',                 'group' => 'app',         'type' => 'url'],
 
         // ── Telegram
-        'TELEGRAM_BOT_TOKEN'       => ['label' => 'Bot Token',               'group' => 'telegram',    'type' => 'password'],
-        'TELEGRAM_CHAT_ID'         => ['label' => 'Chat ID',                 'group' => 'telegram',    'type' => 'text'],
+        'KAYXCHANGE_TELEGRAM_BOT_TOKEN' => ['label' => 'Bot Token',           'group' => 'telegram',    'type' => 'password'],
+        'TELEGRAM_CHAT_ID'               => ['label' => 'Chat ID',             'group' => 'telegram',    'type' => 'text'],
 
         // ── Wallet Addresses
         'WALLET_BTC_ADDRESS'       => ['label' => 'BTC Wallet Address',      'group' => 'wallets',     'type' => 'text'],
@@ -136,6 +136,11 @@ class EnvEditorController extends Controller
             }
         }
 
+        // Mirror legacy Telegram token aliases so the admin UI shows the active value.
+        if (! isset($current['KAYXCHANGE_TELEGRAM_BOT_TOKEN']) && isset($current['TELEGRAM_BOT_TOKEN'])) {
+            $current['KAYXCHANGE_TELEGRAM_BOT_TOKEN'] = $current['TELEGRAM_BOT_TOKEN'];
+        }
+
         // Build grouped display, only for allowed keys
         $groups = [];
         foreach (self::ALLOWED as $key => $meta) {
@@ -189,6 +194,11 @@ class EnvEditorController extends Controller
             $key = strtoupper($key);
             if (!array_key_exists($key, self::ALLOWED)) continue;
             $toWrite[$key] = $value ?? '';
+        }
+
+        // Keep legacy token alias in sync so any code paths reading TELEGRAM_BOT_TOKEN continue working.
+        if (isset($toWrite['KAYXCHANGE_TELEGRAM_BOT_TOKEN'])) {
+            $toWrite['TELEGRAM_BOT_TOKEN'] = $toWrite['KAYXCHANGE_TELEGRAM_BOT_TOKEN'];
         }
 
         $this->writeEnvValues($toWrite);
