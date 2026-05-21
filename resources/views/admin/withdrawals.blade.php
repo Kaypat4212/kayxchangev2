@@ -170,8 +170,8 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         </label>
                     </div>
                 </div>
-
-            </div> style="display:none;margin-top:.75rem;font-size:.78rem;padding:.5rem .875rem;border-radius:7px;background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.2);color:var(--kx-green)">
+            </div>
+            <div id="ap-save-notice" style="display:none;margin-top:.75rem;font-size:.78rem;padding:.5rem .875rem;border-radius:7px;background:rgba(0,204,0,.08);border:1px solid rgba(0,204,0,.2);color:var(--kx-green)">
                 <i class="bi bi-check-circle me-1"></i> Setting saved.
             </div>
             <div style="margin-top:.85rem;padding:.65rem .9rem;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;font-size:.75rem;color:var(--kx-yellow)">
