@@ -119,10 +119,35 @@ body{background:var(--kx-dark);color:var(--kx-text);font-family:'Poppins',sans-s
     {{-- ── Terminal Panel ── --}}
     <div class="trm-topbar">
         <p class="trm-timer">Session active · auto-locks in <span id="countdown">30:00</span></p>
+
+        @php $siteMode = $siteMode ?? 'production'; @endphp
+        <button id="kx-mode-toggle-btn-terminal"
+            class="kx-mode-badge {{ $siteMode === 'developer' ? 'mode-developer' : 'mode-production' }}"
+            data-mode="{{ $siteMode }}"
+            title="Toggle site mode">
+            <span class="kx-mode-dot"></span>
+            <span>{{ $siteMode === 'developer' ? 'Developer Mode' : 'Production Mode' }}</span>
+            <i class="bi bi-arrow-repeat" style="font-size:0.7rem;opacity:0.7"></i>
+        </button>
+
         <form method="POST" action="{{ route('admin.terminal.lock') }}" style="margin:0;">
             @csrf
             <button type="submit" class="trm-lock-btn"><i class="bi bi-lock"></i> Lock Terminal</button>
         </form>
+    </div>
+
+    <!-- MODE CONFIRM OVERLAY (Terminal) -->
+    <div id="kx-mode-overlay-terminal" class="kx-mode-confirm-overlay">
+        <div class="kx-mode-confirm-box">
+            <div id="kx-mode-confirm-icon-terminal" class="kx-mode-confirm-icon">🔄</div>
+            <div id="kx-mode-confirm-title-terminal" class="kx-mode-confirm-title">Switch Site Mode?</div>
+            <div id="kx-mode-confirm-text-terminal" class="kx-mode-confirm-text"></div>
+            <div class="kx-mode-confirm-btns">
+                <button class="btn-kx-cancel" onclick="document.getElementById('kx-mode-overlay-terminal').classList.remove('active')">Cancel</button>
+                <button id="kx-mode-confirm-btn-terminal" class="btn-kx-amber">Yes, Switch Mode</button>
+            </div>
+            <div id="kx-mode-post-msg-terminal" class="mt-3" style="display:none;font-size:0.82rem"></div>
+        </div>
     </div>
 
     {{-- Quick commands --}}

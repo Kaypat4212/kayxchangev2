@@ -141,8 +141,44 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 <div class="env-wrap">
 <div class="container-xl">
 
-    <h1 class="env-page-title"><i class="bi bi-sliders me-2" style="color:#00cc00"></i>API Keys & Environment</h1>
-    <p class="env-page-sub">Set payment gateway credentials, Telegram bot, and mail settings. Sensitive fields are masked.</p>
+    @php $siteMode = $siteMode ?? 'production'; @endphp
+
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <div>
+            <h1 class="env-page-title"><i class="bi bi-sliders me-2" style="color:#00cc00"></i>API Keys & Environment</h1>
+            <p class="env-page-sub">Set payment gateway credentials, Telegram bot, and mail settings. Sensitive fields are masked.</p>
+        </div>
+
+        {{-- MODE TOGGLE (Production <-> Developer) --}}
+        <div>
+            <button id="kx-mode-toggle-btn-env"
+                class="kx-mode-badge {{ $siteMode === 'developer' ? 'mode-developer' : 'mode-production' }}"
+                data-mode="{{ $siteMode }}"
+                title="Toggle site mode">
+                <span class="kx-mode-dot"></span>
+                <span>{{ $siteMode === 'developer' ? 'Developer Mode' : 'Production Mode' }}</span>
+                <i class="bi bi-arrow-repeat" style="font-size:0.7rem;opacity:0.7"></i>
+            </button>
+            <div style="height:10px"></div>
+            <div style="font-size:.78rem;color:var(--kx-muted);">
+                Warning: Developer Mode may expose extra debug info.
+            </div>
+        </div>
+    </div>
+
+    <!-- MODE CONFIRM OVERLAY (Env Editor) -->
+    <div id="kx-mode-overlay-env" class="kx-mode-confirm-overlay">
+        <div class="kx-mode-confirm-box">
+            <div id="kx-mode-confirm-icon-env" class="kx-mode-confirm-icon">🔄</div>
+            <div id="kx-mode-confirm-title-env" class="kx-mode-confirm-title">Switch Site Mode?</div>
+            <div id="kx-mode-confirm-text-env" class="kx-mode-confirm-text"></div>
+            <div class="kx-mode-confirm-btns">
+                <button class="btn-kx-cancel" onclick="document.getElementById('kx-mode-overlay-env').classList.remove('active')">Cancel</button>
+                <button id="kx-mode-confirm-btn-env" class="btn-kx-amber">Yes, Switch Mode</button>
+            </div>
+            <div id="kx-mode-post-msg-env" class="mt-3" style="display:none;font-size:0.82rem"></div>
+        </div>
+    </div>
 
     {{-- Security note --}}
     <div class="env-security-note">
