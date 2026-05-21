@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+ 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -623,7 +623,8 @@ class WithdrawalController extends Controller
             $withdrawal = Withdrawal::findOrFail($id);
             
             $validator = Validator::make($request->all(), [
-                'status' => 'required|in:pending,successful,canceled'
+                // Support both legacy UI/API values and current ones
+                'status' => 'required|in:pending,approved,cancelled,successful,canceled'
             ]);
 
             if ($validator->fails()) {
@@ -643,15 +644,25 @@ class WithdrawalController extends Controller
             ]);
 
             // Send notification to user if needed
-            if ($withdrawal->user && in_array($request->status, ['successful', 'canceled']) && $oldStatus !== $request->status) {
+            $isApprovedNow = in_array($request->status, ['approved', 'successful'], true);
+            $isCancelledNow = in_array($request->status, ['cancelled', 'canceled'], true);
+
+            if (
+                $withdrawal->user &&
+                ($isApprovedNow || $isCancelledNow) &&
+                $oldStatus !== $request->status
+            ) {
                 $wUser = $withdrawal->user;
                 $bd = (array) ($withdrawal->bank_account ?? []);
                 $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — '
                     . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
+
+                $templateKey = $isApprovedNow ? 'withdrawal_approved' : 'withdrawal_cancelled';
+
                 try {
                     Mail::to($wUser->email)->send(new TradeNotification(
                         user: $wUser,
-                        templateKey: $request->status === 'successful' ? 'withdrawal_approved' : 'withdrawal_cancelled',
+                        templateKey: $templateKey,
                         data: [
                             'amount'          => number_format((float)$withdrawal->amount, 2),
                             'payment_method'  => 'Bank Transfer',
@@ -659,8 +670,8 @@ class WithdrawalController extends Controller
                             'reason'          => 'Please contact support for more details.',
                         ],
                         badge: [
-                            'text'  => $request->status === 'successful' ? 'Payment Sent' : 'Withdrawal Cancelled',
-                            'color' => $request->status === 'successful' ? '#00cc00' : '#dc3545',
+                            'text'  => $isApprovedNow ? 'Payment Sent' : 'Withdrawal Cancelled',
+                            'color' => $isApprovedNow ? '#00cc00' : '#dc3545',
                         ],
                         ctaUrl: url('/dashboard'),
                         ctaText: 'Go to Dashboard',
@@ -668,9 +679,10 @@ class WithdrawalController extends Controller
                 } catch (\Exception $mailEx) {
                     Log::warning('Withdrawal updateStatus email failed: ' . $mailEx->getMessage());
                 }
+
                 // Also send Telegram if chat ID set
                 if ($wUser->telegram_chat_id) {
-                    $this->sendTelegramNotification($wUser, $withdrawal, $bd, $request->status === 'successful');
+                    $this->sendTelegramNotification($wUser, $withdrawal, $bd, $isApprovedNow);
                 }
 
                 // Standardized admin status-change alert
