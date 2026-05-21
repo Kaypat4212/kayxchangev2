@@ -7,6 +7,7 @@ use App\Models\CryptoRate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use App\Services\RateNotificationService;
 
 class CryptoRateUpdateController extends Controller
 {
@@ -74,6 +75,9 @@ class CryptoRateUpdateController extends Controller
                     'sell_rate' => $rateData['sell_rate'],
                 ]);
             }
+
+            // Notify users (email + Telegram) that rates were updated by admin
+            app(RateNotificationService::class)->notifyAllUsers('admin_update');
 
             return response()->json(['message' => 'Rates updated successfully']);
         } catch (\Exception $e) {
