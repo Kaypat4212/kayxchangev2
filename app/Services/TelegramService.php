@@ -1992,10 +1992,21 @@ class TelegramService
         $usd     = $data['usd_amount'] ?? 0;
         $naira   = $data['naira_amount'] ?? 0;
 
+        $maskAccountNumber = function (?string $accNo): string {
+            $accNo = (string) ($accNo ?? '');
+            $digits = preg_replace('/\D/', '', $accNo);
+            if ($digits === '' || strlen($digits) < 4) return '********';
+            return '********' . substr($digits, -4);
+        };
+
+        $extBankName   = (string) ($data['ext_bank_name'] ?? '?');
+        $extAccountNo  = (string) ($data['ext_account_number'] ?? '?');
+        $extAccountName= (string) ($data['ext_account_name'] ?? '?');
+
         $payoutLabel = match($method) {
-            'default_bank'   => "🏦 Bank: {$user->bank_name} — {$user->account_number} ({$user->account_name})",
+            'default_bank'   => "🏦 Bank: {$user->bank_name} — " . $maskAccountNumber($user->account_number) . " ({$user->account_name})",
             'wallet_balance' => '💰 Add to Wallet Balance',
-            'external_bank'  => '🏦 ' . ($data['ext_bank_name'] ?? '?') . ' — ' . ($data['ext_account_number'] ?? '?') . ' (' . ($data['ext_account_name'] ?? '?') . ')',
+            'external_bank'  => '🏦 ' . $extBankName . ' — ' . $maskAccountNumber($extAccountNo) . ' (' . $extAccountName . ')',
             default          => $method,
         };
 
@@ -3741,6 +3752,8 @@ class TelegramService
         $paystackKey = config('services.paystack.secret_key');
         $bankCode    = $this->lookupNgBankCode($bankName);
 
+        $shouldBlock = false;
+
         if ($paystackKey && $bankCode) {
             try {
                 $resp = Http::withToken($paystackKey)
@@ -3750,28 +3763,53 @@ class TelegramService
                         'bank_code'      => $bankCode,
                     ]);
 
-                if ($resp->successful() && $resp->json('status') === true) {
+                $status = $resp->json('status');
+                if ($resp->successful() && $status === true) {
                     // Use Paystack's verified account name
                     $accountName = $resp->json('data.account_name');
-                    // Verification successful - proceed silently
-                } elseif ($resp->json('status') === false || $resp->status() === 422) {
-                    $errMsg = $resp->json('message') ?? 'Account not found';
-                    $this->sendMessage($chatId,
-                        "❌ *Could not verify account:* {$errMsg}\n\n" .
-                        "Please double-check your bank name and account number, then try again:\n\n" .
-                        "`Bank Name | Account Number | Account Name`",
-                        'Markdown');
-                    return;
+                } else {
+                    // 422 / false status means account could not be resolved
+                    if ($status === false || $resp->status() === 422) {
+                        $errMsg = $resp->json('message') ?? 'Account not found';
+                        $this->sendMessage($chatId,
+                            "❌ *Could not verify account:* {$errMsg}\n\n" .
+                            "Please double-check your bank name and account number, then try again:\n\n" .
+                            "`Bank Name | Account Number | Account Name`",
+                            'Markdown');
+                        return;
+                    }
+
+                    // Any other unexpected API response — treat as temporary failure
+                    $shouldBlock = true;
                 }
-                // On other errors (500, timeout etc.) — proceed without blocking the user
             } catch (\Throwable $e) {
                 Log::warning("Paystack bank verify failed in Telegram sell: " . $e->getMessage());
+                $shouldBlock = true;
             }
+        } elseif ($paystackKey && !$bankCode) {
+            $this->sendMessage($chatId,
+                "⚠️ We couldn't match that bank name.\n\n" .
+                "Please use the exact bank name (e.g. GTBank, Zenith Bank, Access Bank) and try again:\n\n" .
+                "`Bank Name | Account Number | Account Name`",
+                'Markdown'
+            );
+            return;
+        }
+
+        if ($shouldBlock) {
+            $this->sendMessage($chatId,
+                "⚠️ Bank verification is temporarily unavailable.\n\n" .
+                "Please try again in a moment (or keep the same details and resend them).\n\n" .
+                "`Bank Name | Account Number | Account Name`",
+                'Markdown'
+            );
+            return;
         }
 
         // Store external bank details and jump to confirm
         $this->mergeData($chatId, [
-            'ext_bank_name'      => $bankName,
+            'ext_bank_name'       => $bankName,
+            'ext_bank_code'       => $bankCode,
             'ext_account_number' => $accountNumber,
             'ext_account_name'   => $accountName,
         ]);

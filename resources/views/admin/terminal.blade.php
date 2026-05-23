@@ -1,4 +1,4 @@
-@extends('adminnavlayout')
+tiona@extends('adminnavlayout')
 
 @section('content')
 <style>
@@ -8,6 +8,55 @@
     --kx-green:#00cc00;--kx-green-dim:rgba(0,204,0,0.12);
     --kx-orange:#f97316;--kx-red:#ef4444;
 }
+
+/* Site mode toggle styling (matches admin dashboard) */
+.kx-mode-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 14px;
+    border-radius:999px;
+    font-size:0.78rem;
+    font-weight:700;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    cursor:pointer;
+    border:none;
+    transition:background 0.25s, box-shadow 0.25s, transform 0.15s;
+    white-space:nowrap;
+}
+.kx-mode-badge.mode-production{
+    background:rgba(0,204,0,0.15);
+    color:var(--kx-green);
+    border:1px solid rgba(0,204,0,0.35);
+}
+.kx-mode-badge.mode-production:hover{
+    background:rgba(0,204,0,0.28);
+    box-shadow:0 0 0 3px rgba(0,204,0,0.25);
+    transform:translateY(-1px);
+}
+.kx-mode-badge.mode-developer{
+    background:rgba(251,191,36,0.15);
+    color:#fbbf24;
+    border:1px solid rgba(251,191,36,0.35);
+}
+.kx-mode-badge.mode-developer:hover{
+    background:rgba(251,191,36,0.28);
+    box-shadow:0 0 0 3px rgba(251,191,36,0.2);
+    transform:translateY(-1px);
+}
+.kx-mode-dot{
+    width:7px;height:7px;border-radius:50%;
+    flex-shrink:0;
+    background:#999;
+}
+.mode-production .kx-mode-dot{ background:var(--kx-green); animation:pulse-dot 1.6s ease infinite; }
+.mode-developer  .kx-mode-dot{ background:var(--kx-amber, #fbbf24); }
+@keyframes pulse-dot{
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,204,0,0.25); }
+    50%      { box-shadow: 0 0 0 6px transparent; }
+}
+
 body{background:var(--kx-dark);color:var(--kx-text);font-family:'Poppins',sans-serif;}
 .trm-wrap{padding:28px 20px 60px;max-width:920px;margin:0 auto;}
 .trm-hdr{display:flex;align-items:center;gap:14px;margin-bottom:28px;}
@@ -197,6 +246,117 @@ body{background:var(--kx-dark);color:var(--kx-text);font-family:'Poppins',sans-s
 <script>
 const CSRF = '{{ csrf_token() }}';
 const RUN_URL = '{{ route("admin.terminal.artisan") }}';
+
+const SITE_MODE_TOGGLE_URL = '{{ route("admin.site-mode.toggle") }}';
+
+function kxSetSiteModeUI(mode) {
+    const btn = document.getElementById('kx-mode-toggle-btn-terminal');
+    if (!btn) return;
+
+    const nextMode = mode === 'developer' ? 'developer' : 'production';
+    btn.dataset.mode = nextMode;
+    btn.classList.remove('mode-production', 'mode-developer');
+    btn.classList.add(nextMode === 'developer' ? 'mode-developer' : 'mode-production');
+
+    const labelEl = btn.querySelector('span.kx-mode-label');
+    // If label span doesn't exist, update by matching the second span
+    if (labelEl) {
+        labelEl.textContent = nextMode === 'developer' ? 'Developer Mode' : 'Production Mode';
+    } else {
+        const spans = btn.querySelectorAll('span');
+        if (spans && spans.length >= 2) {
+            spans[1].textContent = nextMode === 'developer' ? 'Developer Mode' : 'Production Mode';
+        }
+    }
+}
+
+function kxShowModeOverlay() {
+    const overlay = document.getElementById('kx-mode-overlay-terminal');
+    if (!overlay) return;
+    overlay.classList.add('active');
+
+    const title = document.getElementById('kx-mode-confirm-title-terminal');
+    const postMsg = document.getElementById('kx-mode-post-msg-terminal');
+
+    if (title) title.textContent = 'Switch Site Mode?';
+
+    if (postMsg) {
+        postMsg.style.display = 'none';
+        postMsg.textContent = '';
+        postMsg.className = 'mt-3';
+    }
+}
+
+function kxHideModeOverlay() {
+    const overlay = document.getElementById('kx-mode-overlay-terminal');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+}
+
+// Wire toggle button + confirmation
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('kx-mode-toggle-btn-terminal');
+    const confirmBtn = document.getElementById('kx-mode-confirm-btn-terminal');
+
+    if (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            kxShowModeOverlay();
+        });
+    }
+
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async function () {
+            try {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Switching…';
+
+                const res = await fetch(SITE_MODE_TOGGLE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || !data || !data.mode) {
+                    throw new Error(data && data.message ? data.message : 'Toggle failed');
+                }
+
+                kxSetSiteModeUI(data.mode);
+
+                const postMsg = document.getElementById('kx-mode-post-msg-terminal');
+                if (postMsg) {
+                    postMsg.style.display = 'block';
+                    postMsg.style.color = '#00cc00';
+                    postMsg.textContent = 'Mode updated to ' + (data.mode === 'developer' ? 'Developer' : 'Production') + '.';
+                }
+
+                setTimeout(function () {
+                    kxHideModeOverlay();
+                    if (postMsg) {
+                        postMsg.style.display = 'none';
+                        postMsg.textContent = '';
+                    }
+                }, 600);
+            } catch (e) {
+                const postMsg = document.getElementById('kx-mode-post-msg-terminal');
+                if (postMsg) {
+                    postMsg.style.display = 'block';
+                    postMsg.style.color = '#ef4444';
+                    postMsg.textContent = 'Failed to switch mode. Please try again.';
+                }
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Yes, Switch Mode';
+            }
+        });
+    }
+});
 
 function setCmd(cmd) {
     document.getElementById('cmdInput').value = cmd;

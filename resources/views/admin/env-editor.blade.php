@@ -6,6 +6,55 @@
     --kx-green:#00cc00;--kx-dark:#0d1117;--kx-card:#161b27;--kx-card2:#1e2535;
     --kx-border:rgba(255,255,255,0.07);--kx-text:#e4e8f0;--kx-muted:#7a8599;
 }
+
+/* Site mode toggle styling (matches admin dashboard) */
+.kx-mode-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 14px;
+    border-radius:999px;
+    font-size:0.78rem;
+    font-weight:700;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    cursor:pointer;
+    border:none;
+    transition:background 0.25s, box-shadow 0.25s, transform 0.15s;
+    white-space:nowrap;
+}
+.kx-mode-badge.mode-production{
+    background:rgba(0,204,0,0.15);
+    color:var(--kx-green);
+    border:1px solid rgba(0,204,0,0.35);
+}
+.kx-mode-badge.mode-production:hover{
+    background:rgba(0,204,0,0.28);
+    box-shadow:0 0 0 3px rgba(0,204,0,0.25);
+    transform:translateY(-1px);
+}
+.kx-mode-badge.mode-developer{
+    background:rgba(251,191,36,0.15);
+    color:#fbbf24;
+    border:1px solid rgba(251,191,36,0.35);
+}
+.kx-mode-badge.mode-developer:hover{
+    background:rgba(251,191,36,0.28);
+    box-shadow:0 0 0 3px rgba(251,191,36,0.2);
+    transform:translateY(-1px);
+}
+.kx-mode-dot{
+    width:7px;height:7px;border-radius:50%;
+    flex-shrink:0;
+    background:#999;
+}
+.mode-production .kx-mode-dot{ background:var(--kx-green); animation:pulse-dot 1.6s ease infinite; }
+.mode-developer  .kx-mode-dot{ background:var(--kx-amber, #fbbf24); }
+@keyframes pulse-dot{
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,204,0,0.25); }
+    50%      { box-shadow: 0 0 0 6px transparent; }
+}
+
 body{background:var(--kx-dark);color:var(--kx-text);}
 
 .env-wrap{padding:28px 0 60px;}
