@@ -117,6 +117,12 @@ class AiChatController extends Controller
             ->values()->all();
 
         $model    = AdminSetting::getSetting($provConfig['model_setting']) ?: $provConfig['default_model'];
+        // Groq retired this model on 2026-08-16. The database setting can
+        // outlive deployments, so keep legacy production values from reaching
+        // the API even when the configured default has already been updated.
+        if ($provider === 'groq' && $model === 'llama-3.3-70b-versatile') {
+            $model = 'openai/gpt-oss-120b';
+        }
         $messages = array_merge([['role' => 'system', 'content' => $systemPrompt]], $history);
 
         try {
