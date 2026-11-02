@@ -16,6 +16,10 @@ class Conversion extends Model
         'fee_amount',
         'rate_used',
         'status',
+        'mode',
+        'wallet_address',
+        'admin_note',
+        'processed_by',
         'cryptomus_order_id',
         'cryptomus_response',
         'completed_at',
@@ -34,6 +38,16 @@ class Conversion extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function processor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'processed_by');
+    }
+
+    public function isManual(): bool
+    {
+        return $this->mode === 'manual';
     }
 
     public function isCompleted(): bool

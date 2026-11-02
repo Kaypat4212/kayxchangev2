@@ -80,70 +80,46 @@ class AdminSettingsController extends Controller
 
     // ── Groq model info ────────────────────────────────────────────────────────
     public const GROQ_MODEL_INFO = [
-        'llama-3.3-70b-versatile' => [
-            'name'        => 'Llama 3.3 70B',
-            'context'     => 128000,
-            'max_output'  => 32768,
-            'input_cost'  => 0.59,    // USD per 1M tokens
-            'output_cost' => 0.79,
+        'openai/gpt-oss-120b' => [
+            'name'        => 'GPT-OSS 120B',
+            'context'     => 131072,
+            'max_output'  => 65536,
+            'input_cost'  => 0.15,    // USD per 1M tokens
+            'output_cost' => 0.75,
             'tier'        => 'Flagship',
             'color'       => '#f97316',
             'desc'        => 'Best Groq model. High quality, very fast.',
-            'speed'       => '~275 tokens/s',
+            'speed'       => '~500 tokens/s',
         ],
-        'llama-3.1-8b-instant' => [
-            'name'        => 'Llama 3.1 8B',
+        'openai/gpt-oss-20b' => [
+            'name'        => 'GPT-OSS 20B',
             'context'     => 131072,
-            'max_output'  => 8192,
-            'input_cost'  => 0.05,
-            'output_cost' => 0.08,
+            'max_output'  => 65536,
+            'input_cost'  => 0.075,
+            'output_cost' => 0.30,
             'tier'        => 'Fastest',
             'color'       => '#4ade80',
             'desc'        => 'Extremely fast & cheap. Best for simple queries.',
-            'speed'       => '~750 tokens/s',
+            'speed'       => '~1000 tokens/s',
         ],
-        'mixtral-8x7b-32768' => [
-            'name'        => 'Mixtral 8x7B',
-            'context'     => 32768,
+        'qwen/qwen3.8-27b' => [
+            'name'        => 'Qwen 3.8 27B',
+            'context'     => 131072,
             'max_output'  => 32768,
-            'input_cost'  => 0.24,
-            'output_cost' => 0.24,
-            'tier'        => 'Balanced',
-            'color'       => '#a78bfa',
-            'desc'        => 'Mixture-of-experts. Good balance of speed and quality.',
-            'speed'       => '~480 tokens/s',
-        ],
-        'llama-3.3-70b-specdec' => [
-            'name'        => 'Llama 3.3 70B (SpecDec)',
-            'context'     => 8192,
-            'max_output'  => 8192,
-            'input_cost'  => 0.59,
-            'output_cost' => 0.99,
-            'tier'        => 'Speed+',
-            'color'       => '#38bdf8',
-            'desc'        => 'Speculative decoding — fastest 70B variant.',
-            'speed'       => '~1600 tokens/s',
-        ],
-        'gemma2-9b-it' => [
-            'name'        => 'Gemma 2 9B',
-            'context'     => 8192,
-            'max_output'  => 8192,
             'input_cost'  => 0.20,
             'output_cost' => 0.20,
-            'tier'        => 'Compact',
-            'color'       => '#fb923c',
-            'desc'        => 'Google Gemma 2 — efficient and capable.',
-            'speed'       => '~520 tokens/s',
+            'tier'        => 'Balanced',
+            'color'       => '#a78bfa',
+            'desc'        => 'Multimodal 27B with thinking/instruct modes and tool use.',
+            'speed'       => '~400 tokens/s',
         ],
     ];
 
     // Groq free-tier rate limits (per model, per minute)
     public const GROQ_RATE_LIMITS = [
-        'llama-3.3-70b-versatile'   => ['rpm' => 30,  'rpd' => 1000, 'tpm' => 131072,  'tpd' => 131072],
-        'llama-3.1-8b-instant'      => ['rpm' => 30,  'rpd' => 14400,'tpm' => 131072,  'tpd' => 500000],
-        'mixtral-8x7b-32768'        => ['rpm' => 30,  'rpd' => 14400,'tpm' => 5000,    'tpd' => 500000],
-        'llama-3.3-70b-specdec'     => ['rpm' => 30,  'rpd' => 1000, 'tpm' => 131072,  'tpd' => 131072],
-        'gemma2-9b-it'              => ['rpm' => 30,  'rpd' => 14400,'tpm' => 15000,   'tpd' => 500000],
+        'openai/gpt-oss-120b'       => ['rpm' => 30,  'rpd' => 1000, 'tpm' => 8000,    'tpd' => 200000],
+        'openai/gpt-oss-20b'        => ['rpm' => 30,  'rpd' => 14400,'tpm' => 8000,    'tpd' => 500000],
+        'qwen/qwen3.8-27b'          => ['rpm' => 30,  'rpd' => 14400,'tpm' => 8000,    'tpd' => 500000],
     ];
 
     // ── Index ──────────────────────────────────────────────────────────────────
@@ -301,7 +277,7 @@ class AdminSettingsController extends Controller
 
         // Groq live check
         $groqApiKey       = AdminSetting::getSetting('groq_api_key');
-        $groqModel        = AdminSetting::getSetting('groq_model', 'llama-3.3-70b-versatile');
+        $groqModel        = AdminSetting::getSetting('groq_model', 'openai/gpt-oss-120b');
         $groqHeaders      = null;
         $groqConnectionOk = false;
 
@@ -390,7 +366,7 @@ class AdminSettingsController extends Controller
     public function groqTest()
     {
         $apiKey    = AdminSetting::getSetting('groq_api_key');
-        $model     = AdminSetting::getSetting('groq_model', 'llama-3.3-70b-versatile');
+        $model     = AdminSetting::getSetting('groq_model', 'openai/gpt-oss-120b');
 
         if (! $apiKey) {
             return response()->json(['ok' => false, 'error' => 'No Groq API key configured.']);

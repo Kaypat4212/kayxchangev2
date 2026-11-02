@@ -570,8 +570,8 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         </div>
         <div class="mt-3 p-3" style="background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.12);border-radius:10px;font-size:.78rem;color:var(--kx-muted);">
             ⚡ <strong style="color:var(--kx-text)">Groq advantage:</strong>
-            At 30 RPM free tier, <code>llama-3.1-8b-instant</code> handles ~0.5 concurrent users but at
-            <strong style="color:#fb923c">750 t/s</strong> — responses feel near-instant.
+            At 30 RPM free tier, <code>openai/gpt-oss-20b</code> handles ~0.5 concurrent users but at
+            <strong style="color:#fb923c">1000 t/s</strong> — responses feel near-instant.
             For production, upgrade at <a href="https://console.groq.com/settings/billing" target="_blank" style="color:#fb923c">console.groq.com</a> for 600+ RPM.
         </div>
     </div>
@@ -602,12 +602,12 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     <tr>
                         <td style="color:var(--kx-muted)">Cheapest model cost</td>
                         <td>gpt-4o-mini: $0.15/1M</td>
-                        <td style="color:#fb923c;font-weight:600">llama-3.1-8b: $0.05/1M</td>
+                        <td style="color:#fb923c;font-weight:600">gpt-oss-20b: $0.075/1M</td>
                     </tr>
                     <tr>
                         <td style="color:var(--kx-muted)">Models</td>
                         <td>GPT-4o, o1, o3 (proprietary)</td>
-                        <td>Llama 3.3, Mixtral, Gemma (open source)</td>
+                        <td>GPT-OSS 120B/20B, Qwen 3.8 (open source)</td>
                     </tr>
                     <tr>
                         <td style="color:var(--kx-muted)">API format</td>

@@ -34,6 +34,15 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 .stat-mini{background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:10px;padding:.8rem 1rem;text-align:center;}
 .stat-mini .v{font-size:1.4rem;font-weight:800;color:var(--kx-green);}
 .stat-mini .l{font-size:.72rem;color:var(--kx-muted);}
+.kx-switch-row{display:flex;align-items:center;gap:.75rem;padding-top:.25rem;}
+.kx-switch{position:relative;display:inline-block;width:52px;height:28px;flex-shrink:0;margin:0;}
+.kx-switch input{opacity:0;width:0;height:0;position:absolute;}
+.kx-slider{position:absolute;inset:0;cursor:pointer;background:#2a3348;border:1px solid var(--kx-border);border-radius:999px;transition:.2s;}
+.kx-slider::before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#7a8599;border-radius:50%;transition:.2s;}
+.kx-switch input:checked + .kx-slider{background:rgba(0,204,0,.25);border-color:var(--kx-green);}
+.kx-switch input:checked + .kx-slider::before{transform:translateX(24px);background:var(--kx-green);}
+.kx-switch-state{font-size:.78rem;font-weight:700;color:var(--kx-muted);letter-spacing:.04em;}
+.kx-switch-state.on{color:var(--kx-green);}
 </style>
 @endpush
 
@@ -164,7 +173,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 <div class="col-md-6">
                     <div style="background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.15);border-radius:10px;padding:.9rem 1rem;font-size:.78rem;">
                         <div style="font-weight:700;color:#fb923c;margin-bottom:.3rem;">⚡ Groq (Free & Fast)</div>
-                        <div style="color:var(--kx-muted);">Llama 3.3 70B: $0.59/1M tokens — free tier available</div>
+                        <div style="color:var(--kx-muted);">GPT-OSS 120B: $0.15/1M tokens — free tier available</div>
                         <div style="color:var(--kx-muted);">Free tier: 30 RPM, ~1,000 requests/day, ultra fast</div>
                     </div>
                 </div>
@@ -183,7 +192,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     @if($row->key === 'ai_provider')
                         <select name="{{ $row->key }}" id="aiProviderSelect">
                             <option value="openai" {{ ($row->value ?? 'openai') === 'openai' ? 'selected' : '' }}>🌐 OpenAI (GPT models)</option>
-                            <option value="groq"   {{ ($row->value ?? '') === 'groq' ? 'selected' : '' }}>⚡ Groq (Llama / Mixtral — Free & Fast)</option>
+                            <option value="groq"   {{ ($row->value ?? '') === 'groq' ? 'selected' : '' }}>⚡ Groq (GPT-OSS / Qwen — Free & Fast)</option>
                         </select>
                     @elseif($row->key === 'ai_chatbot_enabled')
                         <select name="{{ $row->key }}">
@@ -198,8 +207,8 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         </select>
                     @elseif($row->key === 'groq_model')
                         <select name="{{ $row->key }}">
-                            @foreach(['llama-3.3-70b-versatile','llama-3.1-8b-instant','mixtral-8x7b-32768','llama-3.3-70b-specdec','gemma2-9b-it'] as $m)
-                                <option value="{{ $m }}" {{ ($row->value ?? 'llama-3.3-70b-versatile') === $m ? 'selected' : '' }}>{{ $m }}</option>
+                            @foreach(['openai/gpt-oss-120b','openai/gpt-oss-20b','qwen/qwen3.8-27b'] as $m)
+                                <option value="{{ $m }}" {{ ($row->value ?? 'openai/gpt-oss-120b') === $m ? 'selected' : '' }}>{{ $m }}</option>
                             @endforeach
                         </select>
                     @elseif($row->key === 'ai_system_prompt')
@@ -251,7 +260,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
         {{-- ─── PAYMENT ─────────────────────────────────────────────────── --}}
         <div id="group-payment" class="kx-card group-section" style="display:none;">
-            <h5 class="mb-3 fw-bold" style="color:#4ade80">💳 Payment (Paystack)</h5>
+            <h5 class="mb-3 fw-bold" style="color:#4ade80">💳 Payments & Convert</h5>
             @foreach($grouped['payment'] ?? [] as $row)
             <div class="field-row">
                 <div>
@@ -262,10 +271,30 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 </div>
                 <div class="field-input">
                     @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled']))
+                        @php
+                            $toggleVal = $row->value ?? ($row->key === 'cryptomus_convert_enabled' ? '1' : '0');
+                            $toggleOn  = $toggleVal === '1';
+                        @endphp
+                        <div class="kx-switch-row">
+                            <input type="hidden" name="{{ $row->key }}" id="hid_{{ $row->key }}" value="{{ $toggleOn ? '1' : '0' }}">
+                            <label class="kx-switch">
+                                <input type="checkbox" {{ $toggleOn ? 'checked' : '' }}
+                                    onchange="document.getElementById('hid_{{ $row->key }}').value=this.checked?'1':'0';var s=document.getElementById('state_{{ $row->key }}');s.textContent=this.checked?'ON':'OFF';s.classList.toggle('on',this.checked);">
+                                <span class="kx-slider"></span>
+                            </label>
+                            <span class="kx-switch-state {{ $toggleOn ? 'on' : '' }}" id="state_{{ $row->key }}">{{ $toggleOn ? 'ON' : 'OFF' }}</span>
+                        </div>
+                    @elseif($row->key === 'convert_mode')
+                        @php $cm = $row->value ?? 'cryptomus'; @endphp
                         <select name="{{ $row->key }}">
-                            <option value="1" {{ ($row->value ?? '1') === '1' ? 'selected' : '' }}>✅ Enabled</option>
-                            <option value="0" {{ ($row->value ?? '') === '0' ? 'selected' : '' }}>❌ Disabled</option>
+                            <option value="compare"   {{ $cm === 'compare'   ? 'selected' : '' }}>📊 Compare — price comparison only, no conversions</option>
+                            <option value="cryptomus" {{ $cm === 'cryptomus' ? 'selected' : '' }}>⚡ Cryptomus — automated via Cryptomus API</option>
+                            <option value="manual"    {{ $cm === 'manual'    ? 'selected' : '' }}>🖐 Manual — user submits wallet, admin processes</option>
                         </select>
+                    @elseif($row->key === 'convert_fee_percent')
+                        <input type="number" name="{{ $row->key }}" value="{{ $row->value ?? '0.5' }}" min="0" max="20" step="0.1">
+                    @elseif($row->key === 'convert_instructions')
+                        <textarea name="{{ $row->key }}" rows="3" style="font-size:.82rem;">{{ $row->value ?? '' }}</textarea>
                     @elseif($row->is_encrypted)
                         <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password">
                     @else

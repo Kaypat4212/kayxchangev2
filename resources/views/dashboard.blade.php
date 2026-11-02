@@ -297,26 +297,7 @@
                         <span style="font-size:0.72rem;color:rgba(255,255,255,0.26)">{{ now()->format('l, d M Y') }}</span>
                     </div>
                 </div>
-                <div class="d-flex align-items-center gap-2" style="padding-top:4px">
-                    <!-- Notifications -->
-                    <div class="dropdown" id="notif-dropdown">
-                        <button class="kx-hbtn" type="button" id="notif-bell-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="position:relative">
-                            <i class="bi bi-bell-fill"></i>
-                            <span class="kx-notif-dot" id="notif-dot"></span>
-                            <span id="notif-count-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:0.6rem;font-weight:700;min-width:17px;height:17px;border-radius:50%;display:none;align-items:center;justify-content:center;line-height:1;padding:0 3px;border:2px solid var(--kx-bg,#0f131e)"></span>
-                        </button>
-                        <ul class="dropdown-menu kx-dropdown" id="notifications-container">
-                            <li class="kx-notif-item">
-                                <div class="spinner-border spinner-border-sm me-2" style="color:#00cc00;margin-top:2px;flex-shrink:0" role="status"></div>
-                                Loading notifications...
-                            </li>
-                        </ul>
-                    </div>
-                    <!-- Mode Toggle -->
-                    <button class="kx-hbtn" id="modeToggleBtn" title="Toggle light/dark mode">
-                        <i class="bi bi-moon-stars-fill" id="modeIcon"></i>
-                    </button>
-                </div>
+                {{-- Notification bell & theme toggle live in the top navbar (components/navbar) --}}
             </div>
         </div>
 
@@ -655,22 +636,6 @@
     let allTransactions = @json($transactions);
 
     document.addEventListener('DOMContentLoaded', () => {
-        // ---- Mode Toggle ----
-        const modeBtn  = document.getElementById('modeToggleBtn');
-        const modeIcon = document.getElementById('modeIcon');
-        const body     = document.body;
-
-        function applyTheme(light) {
-            if (light) { body.classList.add('light-mode'); modeIcon.className = 'bi bi-sun-fill'; }
-            else        { body.classList.remove('light-mode'); modeIcon.className = 'bi bi-moon-stars-fill'; }
-        }
-        applyTheme(localStorage.getItem('theme') === 'light');
-        modeBtn.addEventListener('click', () => {
-            const nowLight = !body.classList.contains('light-mode');
-            applyTheme(nowLight);
-            localStorage.setItem('theme', nowLight ? 'light' : 'dark');
-        });
-
         // ---- Pending count ----
         if (allTransactions) {
             const pend = allTransactions.filter(t => t.status && t.status.toLowerCase() === 'pending').length;
@@ -681,167 +646,7 @@
         fetchRates();
         fetchPrices();
         renderTransactions(allTransactions);
-        loadNotifications();
-
-        // Smart polling: 10s when dropdown open, 30s when closed, paused when tab hidden
-        let notifDropdownOpen = false;
-        let notifPollTimer = null;
-
-        function scheduleNotifPoll() {
-            clearTimeout(notifPollTimer);
-            if (document.hidden) return;
-            notifPollTimer = setTimeout(() => {
-                loadNotifications();
-                scheduleNotifPoll();
-            }, notifDropdownOpen ? 10000 : 30000);
-        }
-
-        // Reload immediately when dropdown opens
-        const notifDropEl = document.getElementById('notif-dropdown');
-        if (notifDropEl) {
-            notifDropEl.addEventListener('show.bs.dropdown', () => {
-                notifDropdownOpen = true;
-                loadNotifications();
-                scheduleNotifPoll();
-            });
-            notifDropEl.addEventListener('hide.bs.dropdown', () => {
-                notifDropdownOpen = false;
-                scheduleNotifPoll();
-            });
-        }
-
-        // Pause when tab hidden, resume on focus
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                clearTimeout(notifPollTimer);
-            } else {
-                loadNotifications();
-                scheduleNotifPoll();
-            }
-        });
-
-        scheduleNotifPoll();
     });
-
-    // ---- Notifications ----
-    const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const notifApiUrl = @json(route('notifications.api'));
-    const notifIndexUrl = @json(route('notifications.index'));
-    const notifMarkAllUrl = @json(route('notifications.mark-all-read'));
-    const notifBaseUrl = @json(url('/notifications'));
-
-    function loadNotifications() {
-        fetch(`${notifApiUrl}?limit=10`, {
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(r => { if (!r.ok) throw r.status; return r.json(); })
-        .then(data => renderNotifications(data))
-        .catch(() => {
-            document.getElementById('notifications-container').innerHTML =
-                '<li class="kx-notif-item" style="color:rgba(255,255,255,0.35)"><i class="bi bi-wifi-off me-2"></i>Could not load notifications</li>';
-        });
-    }
-
-    function renderNotifications(data) {
-        const container = document.getElementById('notifications-container');
-        const dot = document.getElementById('notif-dot');
-        const badge = document.getElementById('notif-count-badge');
-        const count = data.unread_count || 0;
-        const notes = data.notifications || [];
-
-        // Badge dot + numeric count
-        dot.style.display = count > 0 ? 'block' : 'none';
-        if (badge) {
-            if (count > 0) {
-                badge.textContent = count > 99 ? '99+' : count;
-                badge.style.display = 'flex';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-
-        if (!notes.length) {
-            container.innerHTML = `
-                <li class="px-3 py-2" style="font-size:0.8rem;color:rgba(255,255,255,0.3);text-align:center">
-                    <i class="bi bi-bell-slash me-2"></i>No notifications yet
-                </li>`;
-            return;
-        }
-
-        const typeColors = {
-            success: '#00cc00', error: '#ef4444', warning: '#f59e0b',
-            info: '#3b82f6', trade_update: '#8b5cf6', system: '#6b7280'
-        };
-        const typeIcons = {
-            success: 'bi-check-circle-fill', error: 'bi-exclamation-triangle-fill',
-            warning: 'bi-exclamation-circle-fill', info: 'bi-info-circle-fill',
-            trade_update: 'bi-arrow-repeat', system: 'bi-gear-fill'
-        };
-
-        const items = notes.map(n => {
-            const color = typeColors[n.type] || '#3b82f6';
-            const icon  = typeIcons[n.type]  || 'bi-bell-fill';
-            const unread = !n.is_read;
-            const time = n.time_ago || timeAgo(n.created_at);
-            return `<li class="kx-notif-item${unread ? ' kx-notif-unread' : ''}"
-                        data-id="${n.id}" data-read="${n.is_read ? '1' : '0'}"
-                        style="cursor:pointer;${unread ? 'background:rgba(0,204,0,0.05);border-radius:10px;' : ''}">
-                <i class="bi ${icon}" style="color:${color};font-size:1rem;flex-shrink:0;margin-top:1px"></i>
-                <div style="min-width:0;flex:1">
-                    <div style="font-weight:${unread ? '600' : '500'};color:${unread ? '#e8f5e8' : 'rgba(255,255,255,0.65)'};font-size:0.81rem;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.title}</div>
-                    <div style="color:rgba(255,255,255,0.45);font-size:0.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.message}</div>
-                    <div style="color:rgba(255,255,255,0.25);font-size:0.68rem;margin-top:3px">${time}</div>
-                </div>
-                ${unread ? '<span style="width:7px;height:7px;background:#00cc00;border-radius:50%;flex-shrink:0;margin-top:5px"></span>' : ''}
-            </li>`;
-        }).join('<li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,0.06);margin:3px 8px"></li>');
-
-        const footer = `
-            <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,0.06);margin:4px 8px"></li>
-            <li class="d-flex justify-content-between px-2 pb-1" style="gap:6px">
-                <button onclick="markAllRead()" class="btn btn-sm w-50" style="font-size:0.73rem;background:rgba(0,204,0,0.1);color:#00cc00;border:1px solid rgba(0,204,0,0.25);border-radius:8px">
-                    <i class="bi bi-check2-all me-1"></i>Mark all read
-                </button>
-                <a href="${notifIndexUrl}" class="btn btn-sm w-50" style="font-size:0.73rem;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.1);border-radius:8px">
-                    View all
-                </a>
-            </li>`;
-
-        container.innerHTML = `
-            <li class="px-3 pt-2 pb-1 d-flex justify-content-between align-items-center">
-                <span style="font-size:0.8rem;font-weight:600;color:#e8f5e8">Notifications${count > 0 ? ` <span style="background:#00cc00;color:#000;font-size:0.65rem;padding:1px 6px;border-radius:20px;font-weight:700;margin-left:4px">${count}</span>` : ''}</span>
-            </li>
-            ${items}${footer}`;
-
-        // Click to mark individual as read
-        container.querySelectorAll('.kx-notif-item[data-id]').forEach(el => {
-            el.addEventListener('click', function () {
-                const id = this.dataset.id;
-                if (this.dataset.read === '0') {
-                    fetch(`${notifBaseUrl}/${id}/mark-read`, {
-                        method: 'POST',
-                        headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
-                    }).then(() => loadNotifications());
-                }
-            });
-        });
-    }
-
-    function markAllRead() {
-        fetch(notifMarkAllUrl, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
-        }).then(() => loadNotifications());
-    }
-
-    function timeAgo(dateStr) {
-        if (!dateStr) return '';
-        const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-        if (diff < 60)   return diff + 's ago';
-        if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
-        return Math.floor(diff/86400) + 'd ago';
-    }
 
     // ---- Rates ----
     function fetchRates() {

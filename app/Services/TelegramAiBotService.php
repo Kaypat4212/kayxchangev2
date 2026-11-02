@@ -24,7 +24,7 @@ class TelegramAiBotService
     {
         $this->apiKey = config('services.groq.api_key', env('GROQ_API_KEY', ''));
         $this->apiUrl = config('services.groq.api_url', 'https://api.groq.com/openai/v1/chat/completions');
-        $this->model  = $this->getSetting('ai_bot_model', config('services.groq.model', 'llama-3.3-70b-versatile'));
+        $this->model  = $this->getSetting('ai_bot_model', config('services.groq.model', 'openai/gpt-oss-120b'));
     }
 
     // ─────────────────────────────── Public API ──────────────────────────────

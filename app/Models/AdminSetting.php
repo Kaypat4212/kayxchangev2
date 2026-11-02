@@ -80,7 +80,7 @@ class AdminSetting extends Model
 
             // ── AI / Groq ──────────────────────────────────────────────────
             ['key' => 'groq_api_key',    'group' => 'ai', 'is_encrypted' => true,  'label' => 'Groq API Key',      'description' => 'From console.groq.com → API Keys (free tier available)'],
-            ['key' => 'groq_model',      'group' => 'ai', 'is_encrypted' => false, 'label' => 'Groq Model',        'description' => 'e.g. llama-3.3-70b-versatile, llama-3.1-8b-instant, mixtral-8x7b-32768'],
+            ['key' => 'groq_model',      'group' => 'ai', 'is_encrypted' => false, 'label' => 'Groq Model',        'description' => 'e.g. openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3.8-27b'],
 
             // ── AI General ────────────────────────────────────────────────
             ['key' => 'ai_provider',     'group' => 'ai', 'is_encrypted' => false, 'label' => 'Active AI Provider','description' => 'openai or groq — which provider the chatbot uses'],
@@ -96,6 +96,9 @@ class AdminSetting extends Model
             ['key' => 'cryptomus_merchant_id', 'group' => 'payment', 'is_encrypted' => true,  'label' => 'Cryptomus Merchant ID', 'description' => 'Your Cryptomus Merchant ID'],
             ['key' => 'cryptomus_enabled',     'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable Cryptomus',      'description' => '1 = enable crypto payments, 0 = disable'],
             ['key' => 'cryptomus_convert_enabled', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable Convert Feature', 'description' => '1 = show convert page to users, 0 = hide convert feature'],
+            ['key' => 'convert_mode', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Convert Mode', 'description' => 'compare = price comparison only · cryptomus = automated via Cryptomus API · manual = user submits wallet, admin processes'],
+            ['key' => 'convert_fee_percent', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Convert Fee (%)', 'description' => 'Fee charged on crypto conversions, e.g. 0.5 = 0.5%'],
+            ['key' => 'convert_instructions', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Manual Convert Instructions', 'description' => 'Shown to users in manual mode — e.g. where/how to send the source crypto'],
 
             // ── Telegram ───────────────────────────────────────────────────
             ['key' => 'telegram_token',        'group' => 'telegram', 'is_encrypted' => true,  'label' => 'Bot Token',          'description' => 'From @BotFather'],

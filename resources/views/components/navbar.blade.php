@@ -197,6 +197,43 @@
 .kx-notif-dot { width: 7px; height: 7px; border-radius: 50%; background: #00cc00; flex-shrink:0; margin-top:.35rem; }
 .kx-notif-empty { padding: 2rem 1rem; text-align: center; font-size: .8rem; color: #90a099; line-height: 1.9; }
 @media (max-width: 480px) { .kx-notif-dropdown { width: calc(100vw - 30px); right: -40px; } }
+
+/* ── Layout: brand | links (priority+) | actions — one row, never overlapping ── */
+#kxMainNav .container { max-width: 1600px; }
+#kxMainNav .kx-brand { flex-shrink: 0; }
+#kxMainNav .kx-brand span { white-space: nowrap; }
+#kxMainNav .kx-nav-link { white-space: nowrap; }
+#kxMainNav .kx-more { display: none; position: relative; }
+#kxMainNav .kx-more-btn { background: none; border: none; cursor: pointer; }
+#kxMainNav .kx-more-caret { font-size: .65rem; transition: transform .2s; }
+#kxMainNav .kx-more.open .kx-more-caret { transform: rotate(180deg); }
+#kxMainNav .kx-more-menu {
+    display: none; position: absolute; right: 0; top: calc(100% + 10px);
+    min-width: 210px; margin: 0; padding: 6px; list-style: none;
+    background: #131d1a; border: 1px solid rgba(0,204,0,.2); border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5); z-index: 2000; flex-direction: column; gap: 2px;
+}
+#kxMainNav .kx-more.open .kx-more-menu { display: flex; }
+#kxMainNav .kx-more-menu .nav-item { width: 100%; }
+#kxMainNav .kx-more-menu .kx-nav-link { width: 100%; padding: 9px 12px !important; }
+#kxMainNav .kx-more-menu .kx-nav-link.kx-active::after { display: none; }
+body.light-mode #kxMainNav .kx-more-menu { background: #fff; border-color: rgba(0,153,0,.2); box-shadow: 0 12px 40px rgba(0,0,0,.15); }
+body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8) !important; }
+
+@media (min-width: 992px) {
+    #kxMainNav .container { display: flex; flex-wrap: nowrap; align-items: center; gap: 16px; }
+    #kxMainNav .navbar-collapse { display: flex !important; flex: 1 1 0; min-width: 0; align-items: center; gap: 12px; }
+    #kxMainNav .kx-links { flex: 1 1 0; min-width: 0; flex-wrap: nowrap; margin: 0 !important; align-items: center; }
+    #kxMainNav .kx-links > .nav-item { flex-shrink: 0; }
+    #kxMainNav .kx-nav-actions { flex: 0 0 auto; flex-wrap: nowrap; margin-left: auto; }
+    #kxMainNav .kx-nav-link { padding: 6px 10px !important; font-size: .84rem; }
+    #kxMainNav .kx-more.has-items { display: block; }
+}
+/* Mobile / collapsed: stack inside the hamburger menu */
+@media (max-width: 991.98px) {
+    #kxMainNav .kx-nav-link { font-size: .9rem; padding: 9px 12px !important; }
+    #kxMainNav .kx-nav-actions { flex-wrap: wrap; }
+}
 </style>
 
 <nav class="kx-navbar navbar navbar-expand-lg" id="kxMainNav">
@@ -209,20 +246,20 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="kxNav">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1">
+      <ul class="navbar-nav kx-links me-auto mb-2 mb-lg-0 gap-1">
         @auth
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('dashboard')) kx-active @endif" href="{{ url('/dashboard') }}">
+          <a class="kx-nav-link @if(request()->is('dashboard')) kx-active @endif" href="{{ url('/dashboard') }}" title="Dashboard">
             <i class="bi bi-grid-1x2-fill"></i>Dashboard
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('deposits*')) kx-active @endif" href="{{ url('/deposits/create') }}">
+          <a class="kx-nav-link @if(request()->is('deposits*')) kx-active @endif" href="{{ url('/deposits/create') }}" title="Deposit">
             <i class="bi bi-plus-circle-fill"></i>Deposit
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('wallet*')) kx-active @endif" href="{{ url('/wallet/send') }}">
+          <a class="kx-nav-link @if(request()->is('wallet*')) kx-active @endif" href="{{ url('/wallet/send') }}" title="Send Money">
             <i class="bi bi-send-fill"></i>Send Money
           </a>
         </li>
@@ -237,7 +274,7 @@
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('buy*')) kx-active @endif" href="{{ url('/buy') }}">
+          <a class="kx-nav-link @if(request()->is('buy*')) kx-active @endif" href="{{ url('/buy') }}" title="Buy">
             <i class="bi bi-arrow-down-circle-fill"></i>Buy
           </a>
         </li>
@@ -253,23 +290,23 @@
         @endphp
         @if($convertVisible)
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('convert*')) kx-active @endif" href="{{ url('/convert') }}">
+          <a class="kx-nav-link @if(request()->is('convert*')) kx-active @endif" href="{{ url('/convert') }}" title="Convert">
             <i class="bi bi-arrow-left-right"></i>Convert
           </a>
         </li>
         @endif
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('sell*')) kx-active @endif" href="{{ url('/sell') }}">
+          <a class="kx-nav-link @if(request()->is('sell*')) kx-active @endif" href="{{ url('/sell') }}" title="Sell">
             <i class="bi bi-arrow-up-circle-fill"></i>Sell
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('settings*')) kx-active @endif" href="{{ url('/settings') }}">
+          <a class="kx-nav-link @if(request()->is('settings*')) kx-active @endif" href="{{ url('/settings') }}" title="Settings">
             <i class="bi bi-gear-fill"></i>Settings
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('support/chat')) kx-active @endif" href="{{ route('support.chat') }}">
+          <a class="kx-nav-link @if(request()->is('support/chat')) kx-active @endif" href="{{ route('support.chat') }}" title="Support">
             <i class="bi bi-headset"></i>Support
           </a>
         </li>
@@ -281,49 +318,55 @@
         </li>
         @endif
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('referrals')) kx-active @endif" href="{{ url('/referrals') }}">
+          <a class="kx-nav-link @if(request()->is('referrals')) kx-active @endif" href="{{ url('/referrals') }}" title="Referrals">
             <i class="bi bi-people-fill"></i>Referrals
           </a>
         </li>
         @if(session('admin_id'))
         <li class="nav-item">
-          <a class="kx-nav-link" href="{{ route('admin.revert') }}">
+          <a class="kx-nav-link" href="{{ route('admin.revert') }}" title="Back to Admin">
             <i class="bi bi-arrow-return-left"></i>Back to Admin
           </a>
         </li>
         @endif
         @else
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('/')) kx-active @endif" href="{{ url('/') }}">
+          <a class="kx-nav-link @if(request()->is('/')) kx-active @endif" href="{{ url('/') }}" title="Home">
             <i class="bi bi-house-fill"></i>Home
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('rate')) kx-active @endif" href="{{ url('/rate') }}">
+          <a class="kx-nav-link @if(request()->is('rate')) kx-active @endif" href="{{ url('/rate') }}" title="Rates">
             <i class="bi bi-graph-up-arrow"></i>Rates
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('rate-calculator')) kx-active @endif" href="{{ url('/rate-calculator') }}">
+          <a class="kx-nav-link @if(request()->is('rate-calculator')) kx-active @endif" href="{{ url('/rate-calculator') }}" title="Calculator">
             <i class="bi bi-calculator-fill"></i>Calculator
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('blog*')) kx-active @endif" href="{{ url('/blog') }}">
+          <a class="kx-nav-link @if(request()->is('blog*')) kx-active @endif" href="{{ url('/blog') }}" title="Blog">
             <i class="bi bi-newspaper"></i>Blog
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('faqs*')) kx-active @endif" href="{{ url('/faqs') }}">
+          <a class="kx-nav-link @if(request()->is('faqs*')) kx-active @endif" href="{{ url('/faqs') }}" title="FAQs">
             <i class="bi bi-question-circle-fill"></i>FAQs
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('about*')) kx-active @endif" href="{{ url('/about') }}">
+          <a class="kx-nav-link @if(request()->is('about*')) kx-active @endif" href="{{ url('/about') }}" title="About">
             <i class="bi bi-info-circle-fill"></i>About
           </a>
         </li>
         @endauth
+        <li class="nav-item kx-more" id="kxMore">
+          <button type="button" class="kx-nav-link kx-more-btn" aria-haspopup="true" aria-expanded="false" title="More">
+            <i class="bi bi-three-dots"></i>More<i class="bi bi-chevron-down kx-more-caret"></i>
+          </button>
+          <ul class="kx-more-menu"></ul>
+        </li>
       </ul>
 
       <div class="d-flex align-items-center kx-nav-actions gap-2">
@@ -373,6 +416,53 @@
     window.addEventListener('scroll', function () {
         nav.classList.toggle('kx-scrolled', window.scrollY > 20);
     }, { passive: true });
+
+    // Priority+ navigation: links that don't fit move into the "More" menu.
+    var ul   = nav.querySelector('.kx-links');
+    var more = document.getElementById('kxMore');
+    if (!ul || !more) return;
+    var menu  = more.querySelector('.kx-more-menu');
+    var btn   = more.querySelector('.kx-more-btn');
+    var items = Array.prototype.filter.call(ul.children, function (li) { return li !== more; });
+    var desktop = window.matchMedia('(min-width: 992px)');
+
+    function overflowing() { return ul.scrollWidth > ul.clientWidth + 1; }
+
+    function layout() {
+        items.forEach(function (li) { ul.insertBefore(li, more); });
+        more.classList.remove('has-items', 'open', 'kx-active');
+        btn.setAttribute('aria-expanded', 'false');
+        if (!desktop.matches || !overflowing()) return;
+
+        more.classList.add('has-items');
+        var i = items.length - 1;
+        while (i >= 0 && overflowing()) {
+            menu.insertBefore(items[i], menu.firstChild);
+            i--;
+        }
+        if (menu.querySelector('.kx-active')) more.classList.add('kx-active');
+    }
+
+    function schedule() { layout(); }
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = more.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', function (e) {
+        if (!more.contains(e.target)) { more.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { more.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+    });
+
+    layout();
+    window.addEventListener('resize', schedule);
+    window.addEventListener('load', schedule);
+    if (desktop.addEventListener) desktop.addEventListener('change', schedule);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+    if (window.ResizeObserver) new ResizeObserver(schedule).observe(nav.querySelector('.container'));
 })();
 </script>
 

@@ -8,9 +8,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use App\Services\ExpoPushNotificationService;
 
 class NotificationController extends Controller
 {
+    public function __construct(private ExpoPushNotificationService $expoPush) {}
+
     // User notification methods
     public function index(Request $request)
     {
@@ -178,9 +181,24 @@ class NotificationController extends Controller
             $data['user_id'] = $request->user_id;
             $data['is_broadcast'] = false;
             $notification = Notification::create($data);
+
+            $user = User::find($request->user_id);
+            if ($user) {
+                $this->expoPush->sendToUser($user, $notification->title, $notification->message, [
+                    'url' => route('notifications.show', $notification->id),
+                    'notification_id' => $notification->id,
+                    'type' => $notification->type,
+                ]);
+            }
         } else {
             $data['is_broadcast'] = true;
             $notification = Notification::create($data);
+
+            $this->expoPush->sendBroadcast($notification->title, $notification->message, [
+                'url' => route('notifications.index'),
+                'notification_id' => $notification->id,
+                'type' => $notification->type,
+            ]);
         }
 
         return response()->json([

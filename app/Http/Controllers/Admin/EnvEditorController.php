@@ -361,7 +361,7 @@ class EnvEditorController extends Controller
     private function checkGroq(): array
     {
         $key   = env('GROQ_API_KEY', '');
-        $model = env('GROQ_MODEL', 'llama-3.3-70b-versatile');
+        $model = env('GROQ_MODEL', 'openai/gpt-oss-120b');
         if (empty($key)) return ['status' => 'warn', 'message' => 'GROQ_API_KEY not set — AI features disabled.'];
         try {
             $res = Http::timeout(12)

@@ -58,9 +58,20 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             </div>
         </div>
 
+        @if($conversion->isManual())
+        <p style="color:var(--kx-muted);font-size:.9rem;margin-bottom:1rem;">
+            Your conversion request has been submitted. Our team will process it and send
+            <strong style="color:var(--kx-text);">{{ rtrim(rtrim(number_format((float) $conversion->to_amount, 8), '0'), '.') }} {{ $conversion->to_coin }}</strong>
+            to your wallet address:
+        </p>
+        <div style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:8px;padding:.75rem;font-family:monospace;font-size:.75rem;word-break:break-all;color:var(--kx-green);margin-bottom:1.5rem;">
+            {{ $conversion->wallet_address }}
+        </div>
+        @else
         <p style="color:var(--kx-muted);font-size:.9rem;margin-bottom:1.5rem;">
             Your converted {{ $conversion->to_coin }} has been credited to your wallet.
         </p>
+        @endif
 
         <a href="{{ route('dashboard') }}" class="btn-kx-primary" style="text-decoration:none;display:inline-block;">
             <i class="bi bi-house me-1"></i>Back to Dashboard

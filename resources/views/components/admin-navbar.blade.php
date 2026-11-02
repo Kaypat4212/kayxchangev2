@@ -1,5 +1,5 @@
 <!-- ======= Admin KayXchange Header ======= -->
-<nav class="navbar navbar-expand-lg bg-dark navbar-dark sticky-top">
+<nav class="navbar navbar-expand-lg bg-dark navbar-dark sticky-top" id="adminNavbar">
   <div class="container-fluid">
     <a class="navbar-brand" href="{{ url('/admin/dashboard') }}">
         <img width="40px" src="{{ asset('Assests/favicon.png') }}" alt="KayXchange Admin" class="me-2">
@@ -13,14 +13,14 @@
 
         {{-- Dashboard --}}
         <a class="nav-link @if(request()->is('admin/dashboard') || request()->is('admin/enhanced-dashboard')) active @endif"
-           href="{{ url('/admin/dashboard') }}">
+           href="{{ url('/admin/dashboard') }}" title="Dashboard">
           <i class="bi bi-speedometer2 me-1"></i>Dashboard
         </a>
 
         {{-- Trades dropdown --}}
         <div class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle @if(request()->is('admin/trades*') || request()->is('admin/sells*') || request()->is('admin/deposits*') || request()->is('admin/withdrawals*')) active @endif"
-             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/trades*') || request()->is('admin/sells*') || request()->is('admin/deposits*') || request()->is('admin/withdrawals*') || request()->is('admin/conversions*')) active @endif"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Trades">
             <i class="bi bi-arrow-left-right me-1"></i>Trades
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
@@ -45,13 +45,18 @@
                 <i class="bi bi-bank me-2"></i>Withdrawals
               </a>
             </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/conversions*')) active @endif" href="{{ route('admin.conversions.index') }}">
+                <i class="bi bi-arrow-repeat me-2"></i>Conversions
+              </a>
+            </li>
           </ul>
         </div>
 
         {{-- Users & KYC dropdown --}}
         <div class="nav-item dropdown">
           <a class="nav-link dropdown-toggle @if(request()->is('admin/users*') || request()->is('admin/kyc*') || request()->is('admin/referrals*')) active @endif"
-             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Users">
             <i class="bi bi-people me-1"></i>Users
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
@@ -81,7 +86,7 @@
         {{-- Rates dropdown --}}
         <div class="nav-item dropdown">
           <a class="nav-link dropdown-toggle @if(request()->is('admin/crypto-rates*') || request()->is('admin/gift-card-rates*')) active @endif"
-             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Rates">
             <i class="bi bi-currency-bitcoin me-1"></i>Rates
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
@@ -101,7 +106,7 @@
         {{-- Support dropdown --}}
         <div class="nav-item dropdown">
           <a class="nav-link dropdown-toggle @if(request()->is('admin/chat*') || request()->is('admin/notifications*') || request()->is('admin/telegram*') || request()->is('admin/blog*')) active @endif"
-             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Support">
             <i class="bi bi-headset me-1"></i>Support
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
@@ -137,14 +142,14 @@
 
         {{-- Finance / Company Account --}}
         <a class="nav-link @if(request()->is('admin/company-account*')) active @endif"
-           href="{{ route('admin.company-account') }}">
+           href="{{ route('admin.company-account') }}" title="Company Account">
           <i class="bi bi-building me-1"></i>Company Account
         </a>
 
         {{-- Tools dropdown (Terminal, Bug Reports, Feature Requests) --}}
         <div class="nav-item dropdown">
           <a class="nav-link dropdown-toggle @if(request()->is('admin/terminal*') || request()->is('admin/bug-reports*') || request()->is('admin/feature-requests*')) active @endif"
-             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Tools">
             <i class="bi bi-tools me-1"></i>Tools
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
@@ -175,7 +180,7 @@
         {{-- Settings dropdown --}}
         <div class="nav-item dropdown">
           <a class="nav-link dropdown-toggle @if(request()->is('admin/settings*') || request()->is('admin/site-content*') || request()->is('admin/email-settings*') || request()->is('admin/email-templates*') || request()->is('admin/env-editor*') || request()->is('admin/diagnostics*')) active @endif"
-             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Settings">
             <i class="bi bi-gear-fill me-1"></i>Settings
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
@@ -222,10 +227,10 @@
       </div>
 
       <!-- Right side navigation -->
-      <div class="d-flex align-items-center gap-1">
+      <div class="d-flex align-items-center gap-1 navbar-actions">
         @if (session('admin_id'))
         <a class="btn btn-outline-warning btn-sm" href="{{ route('admin.revert') }}" title="Revert to User">
-          <i class="bi bi-arrow-left me-1"></i>Revert to User
+          <i class="bi bi-arrow-left me-1"></i><span class="btn-label">Revert to User</span>
         </a>
         @endif
 
@@ -234,7 +239,7 @@
         </button>
 
         <a class="btn btn-outline-info btn-sm" href="{{ url('/') }}" title="View Site" target="_blank">
-          <i class="bi bi-eye me-1"></i>View Site
+          <i class="bi bi-eye me-1"></i><span class="btn-label">View Site</span>
         </a>
 
         {{-- Profile dropdown --}}
@@ -242,7 +247,7 @@
           <a class="btn btn-outline-secondary btn-sm dropdown-toggle @if(request()->is('admin/profile*')) active @endif"
              href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="My Profile">
             <i class="bi bi-person-circle me-1"></i>
-            {{ Str::limit(auth()->user()->name ?? 'Admin', 12) }}
+            <span class="admin-name">{{ Str::limit(auth()->user()->name ?? 'Admin', 12) }}</span>
           </a>
           <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
             <li>

@@ -46,6 +46,44 @@
     body.kx-light footer { background: #e4eaf2 !important; color: rgba(0,0,0,0.5) !important; border-top: 1px solid rgba(0,0,0,0.1) !important; }
     /* Badges / pills */
     body.kx-light .badge.bg-secondary { background: #d0d7e2 !important; color: #1a2332; }
+
+    /* ── Admin navbar: responsive, no overflow ─────────────────────────── */
+    #adminNavbar .navbar > .container-fluid { flex-wrap: nowrap; min-width: 0; }
+    #adminNavbar .navbar-brand { flex-shrink: 0; margin-right: .5rem; }
+    #adminNavbar .navbar-brand span { white-space: nowrap; }
+    #adminNavbar .navbar-collapse { min-width: 0; }
+    #adminNavbar .navbar-nav { flex-wrap: nowrap; min-width: 0; }
+    #adminNavbar .navbar-nav .nav-link {
+        padding: .4rem .5rem; font-size: .82rem; white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis;
+    }
+    #adminNavbar .navbar-nav .nav-link i { margin-right: .15rem; }
+    #adminNavbar .navbar-actions { flex-shrink: 0; flex-wrap: nowrap; }
+    #adminNavbar .navbar-actions .btn {
+        padding: .25rem .5rem; font-size: .78rem; white-space: nowrap;
+    }
+    /* Large-but-tight screens: icon-only top-level links + compact brand */
+    @media (min-width: 992px) and (max-width: 1399.98px) {
+        #adminNavbar .navbar-brand span { display: none; }
+        #adminNavbar .navbar-brand img { margin-right: 0 !important; }
+        #adminNavbar .navbar-nav .nav-link { font-size: 0; padding: .4rem .45rem; }
+        #adminNavbar .navbar-nav .nav-link i { font-size: 1rem; margin-right: 0; }
+        #adminNavbar .navbar-nav .dropdown-toggle::after { font-size: .6rem; margin-left: .15rem; vertical-align: middle; }
+        #adminNavbar .navbar-actions .btn { padding: .25rem .4rem; font-size: .72rem; }
+        #adminNavbar .navbar-actions .btn i { margin-right: 0 !important; }
+        #adminNavbar .navbar-actions .btn .btn-label { display: none; }
+        #adminNavbar .navbar-actions .admin-name { display: none; }
+    }
+    /* Extra-wide screens get a bit more breathing room */
+    @media (min-width: 1400px) {
+        #adminNavbar .navbar-nav .nav-link { padding: .4rem .65rem; font-size: .85rem; }
+    }
+    /* Mobile / collapsed: allow vertical stacking inside the hamburger menu */
+    @media (max-width: 991.98px) {
+        #adminNavbar .navbar-nav { flex-wrap: wrap; }
+        #adminNavbar .navbar-nav .nav-link { font-size: .9rem; padding: .5rem .75rem; }
+        #adminNavbar .navbar-actions { flex-wrap: wrap; padding: .5rem 0; }
+    }
     </style>
     @stack('styles')
 </head>

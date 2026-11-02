@@ -23,3 +23,14 @@ tes.php
 sms.py
 cpanel-setup.php
 write_admin_ai.php
+
+# ── App dependencies & build artifacts (never commit) ──
+mobile-app/node_modules/
+desktop-app/node_modules/
+desktop-app/dist/
+desktop-app/out/
+**/node_modules/
+/storage/framework/cache/
+/storage/framework/views/
+debug.log
+*.log

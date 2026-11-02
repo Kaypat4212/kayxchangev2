@@ -691,7 +691,11 @@ class TelegramService
                             $this->handleSellAmountInput($chatId, $text);
                             return true;
                         case 'sell_ext_bank':
+                            // Legacy free-text flow (Bank Name | Account Number | Account Name)
                             $this->handleSellExtBankInput($chatId, $text);
+                            return true;
+                        case 'sell_ext_bank_account':
+                            $this->handleSellExtBankAccountInput($chatId, $text);
                             return true;
                         case 'buy_amount':
                             $this->handleBuyAmountInput($chatId, $text);
@@ -781,6 +785,20 @@ class TelegramService
                 }
                 if (str_starts_with($data, 'sell_payout:')) {
                     $this->handleSellPayoutSelected($chatId, substr($data, 12));
+                    return true;
+                }
+
+                // External bank selection via Paystack bank list
+                if (str_starts_with($data, 'sell_ext_bank_select:')) {
+                    $payload = substr($data, strlen('sell_ext_bank_select:'));
+                    // expected: {bank_code}|{bank_name}
+                    $parts = explode('|', $payload, 2);
+                    if (count($parts) === 2) {
+                        $this->handleSellExternalBankSelected($chatId, $parts[0], $parts[1]);
+                        return true;
+                    }
+
+                    $this->sendMessage($chatId, "⚠️ Invalid bank selection. Please try again with /sell.");
                     return true;
                 }
                 if (str_starts_with($data, 'sell_proof_method:')) {
@@ -1970,15 +1988,68 @@ class TelegramService
 
     private function handleSellPayoutSelected(int $chatId, string $method): void
     {
-        // External bank — collect details first
+        // External bank — collect details first (use Paystack bank list)
         if ($method === 'external_bank') {
             $this->mergeData($chatId, ['payout_method' => 'external_bank']);
-            $this->setState($chatId, 'sell_ext_bank');
+
+            // If user already selected bank + stored verified account, go straight to confirm
+            if (!empty($this->getData($chatId)['ext_account_number'])) {
+                $this->setState($chatId, 'sell_confirm');
+                // call confirm renderer
+                $this->handleSellPayoutSelected($chatId, 'external_bank');
+                return;
+            }
+
+            // Load Paystack banks and show selection list
+            $banks = $this->fetchPaystackBanks();
+            if (empty($banks)) {
+                // Fallback to legacy free text if Paystack banks are not available
+                $this->setState($chatId, 'sell_ext_bank');
+                $this->sendMessage($chatId,
+                    "🏦 *Enter your bank details for payout (fallback):*\n\n" .
+                    "Format: `Bank Name | Account Number | Account Name`\n\n" .
+                    "Example:\n`GTBank | 0123456789 | John Doe`",
+                    'Markdown');
+                return;
+            }
+
+            $this->setState($chatId, null);
+            $this->setState($chatId, 'sell_ext_bank_pick');
+
+            $rows = [];
+            foreach (array_slice($banks, 0, 30) as $bank) {
+                $bankCode = (string)($bank['code'] ?? '');
+                $bankName = (string)($bank['name'] ?? '');
+                if ($bankCode === '' || $bankName === '') continue;
+
+                // callback_data max length matters; keep it short
+                $cbName = str_replace(['|', ':'], ['/', ' - '], $bankName);
+                $rows[] = [[
+                    'text' => $bankName,
+                    'callback_data' => 'sell_ext_bank_select:' . $bankCode . '|' . $cbName,
+                ]];
+            }
+
+            // Arrange into rows of 2
+            $keyboardRows = [];
+            $tmp = [];
+            foreach ($rows as $row) {
+                $tmp[] = $row[0];
+                if (count($tmp) === 2) {
+                    $keyboardRows[] = $tmp;
+                    $tmp = [];
+                }
+            }
+            if (!empty($tmp)) $keyboardRows[] = $tmp;
+
+            $keyboardRows[] = [[['text' => '❌ Cancel', 'callback_data' => 'cancel']][0]];
+
             $this->sendMessage($chatId,
-                "🏦 *Enter your bank details for payout:*\n\n" .
-                "Format: `Bank Name | Account Number | Account Name`\n\n" .
-                "Example:\n`GTBank | 0123456789 | John Doe`",
-                'Markdown');
+                "🏦 *Select your bank for payout*\n\n" .
+                "_We use Paystack to validate the account._",
+                'Markdown',
+                ['inline_keyboard' => $keyboardRows]
+            );
             return;
         }
 
@@ -3735,6 +3806,8 @@ class TelegramService
 
     private function handleSellExtBankInput(int $chatId, string $text): void
     {
+        // Legacy free-text flow retained for backward compatibility.
+        // Prefer the bank-list flow via the Paystack-backed selection UI.
         $parts = array_map('trim', explode('|', $text));
         if (count($parts) < 3 || strlen($parts[1]) < 9) {
             $this->sendMessage($chatId,
@@ -3765,10 +3838,8 @@ class TelegramService
 
                 $status = $resp->json('status');
                 if ($resp->successful() && $status === true) {
-                    // Use Paystack's verified account name
                     $accountName = $resp->json('data.account_name');
                 } else {
-                    // 422 / false status means account could not be resolved
                     if ($status === false || $resp->status() === 422) {
                         $errMsg = $resp->json('message') ?? 'Account not found';
                         $this->sendMessage($chatId,
@@ -3778,8 +3849,6 @@ class TelegramService
                             'Markdown');
                         return;
                     }
-
-                    // Any other unexpected API response — treat as temporary failure
                     $shouldBlock = true;
                 }
             } catch (\Throwable $e) {
@@ -3814,8 +3883,138 @@ class TelegramService
             'ext_account_name'   => $accountName,
         ]);
 
-        // Now show confirm screen
         $this->handleSellPayoutSelected($chatId, 'external_bank');
+    }
+
+    private function handleSellExternalBankSelected(int $chatId, string $bankCode, string $bankName): void
+    {
+        $bankCode = trim($bankCode);
+        $bankName = trim($bankName);
+
+        if ($bankCode === '' || $bankName === '') {
+            $this->sendMessage($chatId, "⚠️ Invalid bank selection. Please try again.");
+            return;
+        }
+
+        $this->mergeData($chatId, [
+            'ext_bank_code' => $bankCode,
+            'ext_bank_name' => $bankName,
+        ]);
+
+        $this->setState($chatId, 'sell_ext_bank_account');
+        $this->sendMessage($chatId,
+            "🏦 *{$bankName}* selected.\n\n" .
+            "Enter the *account number* to receive payout (digits only).\n\n" .
+            "_Example: 0123456789_\n\n" .
+            "_Type /cancel to abort._",
+            'Markdown'
+        );
+    }
+
+    private function handleSellExtBankAccountInput(int $chatId, string $accountNumber): void
+    {
+        $accountNumber = trim($accountNumber);
+
+        if ($accountNumber === '' || strlen(preg_replace('/\D/', '', $accountNumber)) < 9) {
+            $this->sendMessage($chatId,
+                "⚠️ Invalid account number. Please enter digits only.\n\n" .
+                "_Example: 0123456789_",
+                'Markdown'
+            );
+            return;
+        }
+
+        $data = $this->getData($chatId);
+        $bankCode = (string)($data['ext_bank_code'] ?? '');
+        $bankName = (string)($data['ext_bank_name'] ?? '');
+
+        if ($bankCode === '') {
+            $this->sendMessage($chatId, "⚠️ Bank not selected. Please choose your bank again.");
+            $this->handleSellPayoutSelected($chatId, 'external_bank');
+            return;
+        }
+
+        $paystackKey = config('services.paystack.secret_key');
+        if (!$paystackKey) {
+            $this->sendMessage($chatId,
+                "⚠️ Paystack validation is not configured. Please try again later.",
+                'Markdown'
+            );
+            return;
+        }
+
+        try {
+            $resp = Http::withToken($paystackKey)
+                ->withOptions(['verify' => $this->resolveSSL(), 'timeout' => 12])
+                ->get('https://api.paystack.co/bank/resolve', [
+                    'account_number' => $accountNumber,
+                    'bank_code'      => $bankCode,
+                ]);
+
+            if ($resp->successful() && $resp->json('status') === true) {
+                $verifiedAccountName = $resp->json('data.account_name');
+            } else {
+                $errMsg = $resp->json('message') ?? 'Account not found';
+                $this->sendMessage($chatId,
+                    "❌ *Could not verify account:* {$errMsg}\n\n" .
+                    "Please re-enter the account number (or go back and pick another bank).",
+                    'Markdown'
+                );
+                return;
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Paystack bank resolve failed in Telegram sell: " . $e->getMessage());
+            $this->sendMessage($chatId,
+                "⚠️ Bank verification is temporarily unavailable.\n\nPlease try again in a moment.",
+                'Markdown'
+            );
+            return;
+        }
+
+        $this->mergeData($chatId, [
+            'ext_account_number' => $accountNumber,
+            'ext_account_name'   => $verifiedAccountName,
+            'ext_bank_name'       => $bankName,
+        ]);
+
+        // Now show confirm screen (external_bank masking handled there)
+        $this->setState($chatId, 'sell_confirm');
+        $this->handleSellPayoutSelected($chatId, 'external_bank');
+    }
+
+    private function fetchPaystackBanks(): array
+    {
+        $paystackKey = config('services.paystack.secret_key');
+        if (!$paystackKey) return [];
+
+        try {
+            $cacheKey = 'paystack_banks';
+            return Cache::remember($cacheKey, now()->addMinutes(60), function () use ($paystackKey) {
+                $resp = Http::withToken($paystackKey)
+                    ->withOptions(['verify' => $this->resolveSSL(), 'timeout' => 12])
+                    ->get('https://api.paystack.co/bank', [
+                        'perPage' => 50,
+                    ]);
+
+                if (!$resp->successful()) {
+                    return [];
+                }
+
+                $data = $resp->json('data') ?? [];
+                if (!is_array($data)) return [];
+
+                // normalize to [{code,name},...]
+                return array_values(array_map(function ($b) {
+                    return [
+                        'code' => (string)($b['code'] ?? ''),
+                        'name' => (string)($b['name'] ?? ''),
+                    ];
+                }, $data));
+            });
+        } catch (\Throwable $e) {
+            Log::warning("fetchPaystackBanks failed: " . $e->getMessage());
+            return [];
+        }
     }
 
     private function lookupNgBankCode(string $bankName): ?string

@@ -159,6 +159,12 @@
            class="kx-bnav-item @if(request()->is('dashboard')) kx-bnav-active @endif">
             <i class="bi bi-grid-1x2-fill"></i><span>Home</span>
         </a>
+        @if(\App\Models\AdminSetting::getSetting('cryptomus_convert_enabled', '1') === '1')
+        <a href="{{ url('/convert') }}"
+           class="kx-bnav-item @if(request()->is('convert*')) kx-bnav-active @endif">
+            <i class="bi bi-arrow-left-right"></i><span>Convert</span>
+        </a>
+        @endif
         <a href="{{ url('/sell') }}"
            class="kx-bnav-item @if(request()->is('sell*')) kx-bnav-active @endif">
             <i class="bi bi-arrow-up-circle-fill"></i><span>Sell</span>

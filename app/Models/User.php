@@ -220,4 +220,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\P2pTransfer::class, 'recipient_id');
     }
+
+    public function mobilePushTokens()
+    {
+        return $this->hasMany(MobilePushToken::class);
+    }
 }

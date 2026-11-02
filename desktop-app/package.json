@@ -1,0 +1,33 @@
+{
+  "name": "tradewithkay-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Trade With Kay desktop website wrapper",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis portable"
+  },
+  "dependencies": {
+    "electron": "^33.4.11"
+  },
+  "devDependencies": {
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.tradewithkay.desktop",
+    "productName": "Trade With Kay",
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.png"
+    ],
+    "win": {
+      "icon": "icon.png",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    }
+  }
+}

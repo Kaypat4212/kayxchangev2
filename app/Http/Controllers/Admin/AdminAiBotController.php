@@ -23,7 +23,7 @@ class AdminAiBotController extends Controller
         $settings = [
             'ai_bot_enabled'          => SiteContent::where('key', 'ai_bot_enabled')->value('value') ?? '1',
             'ai_bot_system_prompt'    => SiteContent::where('key', 'ai_bot_system_prompt')->value('value') ?? '',
-            'ai_bot_model'            => SiteContent::where('key', 'ai_bot_model')->value('value') ?? 'llama-3.3-70b-versatile',
+            'ai_bot_model'            => SiteContent::where('key', 'ai_bot_model')->value('value') ?? 'openai/gpt-oss-120b',
             'ai_bot_max_tokens'       => SiteContent::where('key', 'ai_bot_max_tokens')->value('value') ?? '600',
             'ai_bot_temperature'      => SiteContent::where('key', 'ai_bot_temperature')->value('value') ?? '0.6',
             'ai_bot_trade_suggestions'=> SiteContent::where('key', 'ai_bot_trade_suggestions')->value('value') ?? '1',

@@ -175,7 +175,7 @@ class ChatController extends Controller
 
         $apiKey = config('services.groq.api_key');
         $apiUrl = config('services.groq.api_url', 'https://api.groq.com/openai/v1/chat/completions');
-        $model  = config('services.groq.model', 'llama-3.3-70b-versatile');
+        $model  = config('services.groq.model', 'openai/gpt-oss-120b');
 
         if (empty($apiKey)) {
             return response()->json(['error' => 'AI is not configured (GROQ_API_KEY missing).'], 503);

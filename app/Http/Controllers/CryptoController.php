@@ -128,8 +128,84 @@ class CryptoController extends Controller
             abort(404, 'Convert feature is currently disabled.');
         }
 
-        $rates = CryptoRate::all(['coin', 'buy_rate', 'sell_rate'])->keyBy('coin')->toArray();
-        return view('convert', compact('rates'));
+        $rateService = new \App\Services\ExchangeRateService();
+        $usdRates    = $rateService->getUsdRates();
+
+        $rateSource  = $usdRates['_source'] ?? 'fallback';
+        $ratesUpdated = $usdRates['_updated_at'] ?? null;
+        unset($usdRates['_source'], $usdRates['_updated_at']);
+
+        $coins = [];
+        foreach (\App\Services\ExchangeRateService::SUPPORTED_COINS as $symbol => $meta) {
+            $coins[$symbol] = [
+                'name' => $meta['name'],
+                'usd'  => $usdRates[$symbol] ?? $meta['fallback'],
+            ];
+        }
+
+        $feePercent = (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5');
+        $convertMode = \App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus'); // compare | cryptomus | manual
+        if (!in_array($convertMode, ['compare', 'cryptomus', 'manual'], true)) {
+            $convertMode = 'cryptomus';
+        }
+        $cryptomusReady = (new CryptomusService())->isEnabled();
+        $convertInstructions = \App\Models\AdminSetting::getSetting('convert_instructions', '');
+
+        $recentConversions = Conversion::where('user_id', Auth::id())
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        return view('convert', compact('coins', 'feePercent', 'convertMode', 'cryptomusReady', 'convertInstructions', 'recentConversions', 'rateSource', 'ratesUpdated'));
+    }
+
+    /**
+     * AJAX: live conversion quote.
+     */
+    public function convertQuote(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'from_coin'   => ['required', 'string', 'max:10'],
+            'to_coin'     => ['required', 'string', 'max:10'],
+            'from_amount' => ['required', 'numeric', 'min:0.00000001'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Invalid input', 'errors' => $validator->errors()], 422);
+        }
+
+        $fromCoin = strtoupper($request->from_coin);
+        $toCoin   = strtoupper($request->to_coin);
+
+        $rateService = new \App\Services\ExchangeRateService();
+
+        if (!$rateService->isSupported($fromCoin) || !$rateService->isSupported($toCoin)) {
+            return response()->json(['success' => false, 'message' => 'Unsupported coin selected'], 400);
+        }
+
+        if ($fromCoin === $toCoin) {
+            return response()->json(['success' => false, 'message' => 'Choose two different coins'], 400);
+        }
+
+        try {
+            $feePercent = (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5');
+            $quote = $rateService->quote($fromCoin, $toCoin, (float) $request->from_amount, $feePercent);
+
+            return response()->json([
+                'success' => true,
+                'quote'   => [
+                    'rate'           => round($quote['rate'], 8),
+                    'to_amount'      => round($quote['to_amount'], 8),
+                    'fee_amount'     => round($quote['fee_amount'], 8),
+                    'fee_percent'    => $quote['fee_percent'],
+                    'receive_amount' => round($quote['receive_amount'], 8),
+                    'usd_value'      => round($quote['usd_value'], 2),
+                    'source'         => $quote['source'],
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Unable to fetch a quote right now.'], 502);
+        }
     }
 
     public function convertSubmit(Request $request)
@@ -138,7 +214,6 @@ class CryptoController extends Controller
             'from_coin' => ['required', 'string', 'max:10'],
             'to_coin' => ['required', 'string', 'max:10'],
             'from_amount' => ['required', 'numeric', 'min:0.00000001'],
-            'to_amount' => ['required', 'numeric', 'min:0.00000001'],
         ]);
 
         if ($validator->fails()) {
@@ -150,6 +225,29 @@ class CryptoController extends Controller
         }
 
         try {
+            // Feature toggle
+            if (\App\Models\AdminSetting::getSetting('cryptomus_convert_enabled', '1') !== '1') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The convert feature is currently disabled.'
+                ], 403);
+            }
+
+            // Mode gate — manual mode uses its own endpoint, compare mode has no submission
+            $convertMode = \App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus');
+            if ($convertMode === 'manual') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Manual conversion mode is active. Please use the manual conversion form.'
+                ], 400);
+            }
+            if ($convertMode !== 'cryptomus') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Conversions are currently in compare-only mode.'
+                ], 400);
+            }
+
             $cryptomusService = new CryptomusService();
 
             // Check if Cryptomus is enabled
@@ -163,25 +261,31 @@ class CryptoController extends Controller
             $user = Auth::user();
             $fromCoin = strtoupper($request->from_coin);
             $toCoin = strtoupper($request->to_coin);
-            $fromAmount = $request->from_amount;
-            $toAmount = $request->to_amount;
+            $fromAmount = (float) $request->from_amount;
 
-            // Get current rates
-            $rates = CryptoRate::whereIn('coin', [$fromCoin, $toCoin])
-                ->pluck('buy_rate', 'coin')
-                ->toArray();
+            $rateService = new \App\Services\ExchangeRateService();
 
-            if (!isset($rates[$fromCoin]) || !isset($rates[$toCoin])) {
+            if (!$rateService->isSupported($fromCoin) || !$rateService->isSupported($toCoin) || $fromCoin === $toCoin) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid cryptocurrency selected'
+                    'message' => 'Invalid cryptocurrency pair selected'
                 ], 400);
             }
 
-            // Calculate conversion with fee
-            $feePercentage = 0.005; // 0.5%
-            $feeAmount = $toAmount * $feePercentage;
-            $finalToAmount = $toAmount - $feeAmount;
+            // Server-side quote — never trust client-supplied amounts
+            $feePercent = (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5');
+            $quote = $rateService->quote($fromCoin, $toCoin, $fromAmount, $feePercent);
+
+            $feeAmount = $quote['fee_amount'];
+            $finalToAmount = $quote['receive_amount'];
+            $fromAmountInUsd = $quote['usd_value'];
+
+            if ($fromAmountInUsd < 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Minimum conversion is $1.00 worth of crypto.'
+                ], 400);
+            }
 
             // Create conversion record
             $conversion = Conversion::create([
@@ -191,37 +295,47 @@ class CryptoController extends Controller
                 'from_amount' => $fromAmount,
                 'to_amount' => $finalToAmount,
                 'fee_amount' => $feeAmount,
-                'rate_used' => $rates[$fromCoin],
+                'rate_used' => $quote['rate'],
                 'status' => 'pending',
+                'mode' => 'cryptomus',
             ]);
 
-            // Create Cryptomus payment for the conversion
-            // For crypto-to-crypto conversion, we need to convert the from_amount to USD equivalent first
-            $fromAmountInUsd = $fromAmount * $rates[$fromCoin];
+            // Create Cryptomus payment: user pays the USD-equivalent in the source coin
 
             $paymentData = [
-                'amount' => $fromAmountInUsd,
+                'amount' => number_format($fromAmountInUsd, 2, '.', ''),
                 'currency' => 'USD', // Pay in USD equivalent
-                'crypto_currency' => $fromCoin, // Receive the from crypto first
+                'crypto_currency' => $fromCoin, // User pays in the source coin
                 'order_id' => 'conv_' . $conversion->id,
                 'url_callback' => route('cryptomus.webhook'),
                 'url_return' => route('convert.success', $conversion->id),
-                'url_failed' => route('convert.failed', $conversion->id),
                 'lifetime' => 3600, // 1 hour
-                'additional_data' => [
+                'additional_data' => json_encode([
                     'conversion_id' => $conversion->id,
                     'user_id' => $user->id,
                     'from_coin' => $fromCoin,
                     'to_coin' => $toCoin,
                     'expected_to_amount' => $finalToAmount
-                ]
+                ]),
             ];
 
-            $payment = $cryptomusService->createPayment($paymentData);
+            try {
+                $payment = $cryptomusService->createPayment($paymentData);
+            } catch (\Exception $e) {
+                // Don't leave a dangling pending record when the payment API fails
+                $conversion->update([
+                    'status' => 'failed',
+                    'failure_reason' => 'Payment gateway error: ' . $e->getMessage(),
+                ]);
+                throw $e;
+            }
+
+            // Cryptomus wraps the payload in a "result" key
+            $paymentResult = $payment['result'] ?? [];
 
             // Update conversion with Cryptomus order ID
             $conversion->update([
-                'cryptomus_order_id' => $payment['order_id'] ?? null,
+                'cryptomus_order_id' => $paymentResult['uuid'] ?? null,
                 'cryptomus_response' => $payment,
                 'status' => 'processing',
             ]);
@@ -230,7 +344,7 @@ class CryptoController extends Controller
                 'success' => true,
                 'message' => 'Conversion initiated successfully',
                 'conversion_id' => $conversion->id,
-                'payment_url' => $payment['url'] ?? null,
+                'payment_url' => $paymentResult['url'] ?? null,
             ]);
 
         } catch (\Exception $e) {
@@ -244,6 +358,89 @@ class CryptoController extends Controller
                 'success' => false,
                 'message' => 'Failed to process conversion. Please try again.'
             ], 500);
+        }
+    }
+
+    /**
+     * Manual conversion: user submits wallet address + amount, admin processes it.
+     */
+    public function convertManualSubmit(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'from_coin'      => ['required', 'string', 'max:10'],
+            'to_coin'        => ['required', 'string', 'max:10'],
+            'from_amount'    => ['required', 'numeric', 'min:0.00000001'],
+            'wallet_address' => ['required', 'string', 'min:10', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            if (\App\Models\AdminSetting::getSetting('cryptomus_convert_enabled', '1') !== '1') {
+                return response()->json(['success' => false, 'message' => 'The convert feature is currently disabled.'], 403);
+            }
+
+            if (\App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus') !== 'manual') {
+                return response()->json(['success' => false, 'message' => 'Manual conversion mode is not active.'], 400);
+            }
+
+            $user = Auth::user();
+            $fromCoin = strtoupper($request->from_coin);
+            $toCoin   = strtoupper($request->to_coin);
+            $fromAmount = (float) $request->from_amount;
+
+            $rateService = new \App\Services\ExchangeRateService();
+
+            if (!$rateService->isSupported($fromCoin) || !$rateService->isSupported($toCoin) || $fromCoin === $toCoin) {
+                return response()->json(['success' => false, 'message' => 'Invalid cryptocurrency pair selected'], 400);
+            }
+
+            $feePercent = (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5');
+            $quote = $rateService->quote($fromCoin, $toCoin, $fromAmount, $feePercent);
+
+            if ($quote['usd_value'] < 1) {
+                return response()->json(['success' => false, 'message' => 'Minimum conversion is $1.00 worth of crypto.'], 400);
+            }
+
+            $conversion = Conversion::create([
+                'user_id'        => $user->id,
+                'from_coin'      => $fromCoin,
+                'to_coin'        => $toCoin,
+                'from_amount'    => $fromAmount,
+                'to_amount'      => $quote['receive_amount'],
+                'fee_amount'     => $quote['fee_amount'],
+                'rate_used'      => $quote['rate'],
+                'status'         => 'pending',
+                'mode'           => 'manual',
+                'wallet_address' => trim($request->wallet_address),
+            ]);
+
+            Log::info('Manual conversion requested', [
+                'conversion_id' => $conversion->id,
+                'user_id'       => $user->id,
+                'pair'          => "{$fromCoin}->{$toCoin}",
+                'amount'        => $fromAmount,
+            ]);
+
+            return response()->json([
+                'success'       => true,
+                'message'       => 'Conversion request submitted. Our team will process it shortly.',
+                'conversion_id' => $conversion->id,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Manual conversion submission failed', [
+                'user_id' => Auth::id(),
+                'error'   => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'message' => 'Failed to submit conversion. Please try again.'], 500);
         }
     }
 

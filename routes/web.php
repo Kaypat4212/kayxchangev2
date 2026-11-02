@@ -49,6 +49,7 @@ use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\CryptoRateUpdateController as CryptoRateupdateController;
 use App\Http\Controllers\TelegramLoginController;
 use App\Http\Controllers\TelegramProofUploadController;
+use App\Http\Controllers\MobilePushTokenController;
 
 use Illuminate\Support\Facades\Http;
 
@@ -117,6 +118,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboard/complete', [OnboardingController::class, 'complete'])->name('onboard.complete');
     Route::get('/onboard/banks', [OnboardingController::class, 'getBanks'])->name('onboard.banks');
     Route::get('/onboard/resolve-account', [OnboardingController::class, 'resolveAccount'])->name('onboard.resolve');
+});
+
+Route::middleware('auth')->prefix('mobile')->name('mobile.')->group(function () {
+    Route::post('/push-token', [MobilePushTokenController::class, 'store'])->name('push-token.store');
+    Route::delete('/push-token', [MobilePushTokenController::class, 'destroy'])->name('push-token.destroy');
 });
 
 // ── Badges ───────────────────────────────────────────────────────────────────
@@ -576,6 +582,8 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     Route::get('/buy', [CryptoController::class, 'buy'])->name('buy');
     Route::get('/convert', [CryptoController::class, 'convert'])->name('convert');
     Route::post('/convert', [CryptoController::class, 'convertSubmit'])->name('convert.submit');
+    Route::post('/convert/quote', [CryptoController::class, 'convertQuote'])->name('convert.quote');
+    Route::post('/convert/manual', [CryptoController::class, 'convertManualSubmit'])->name('convert.manual');
     Route::get('/convert/success/{id}', [CryptoController::class, 'convertSuccess'])->name('convert.success');
     Route::get('/convert/failed/{id}', [CryptoController::class, 'convertFailed'])->name('convert.failed');
     Route::get('/api/crypto-prices', [BuyController::class, 'cryptoPricesApi'])->name('api.crypto.prices');
@@ -682,6 +690,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('settings/ai-test',            [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiTest'])->name('settings.ai-test');
     Route::get('settings/groq-test',          [\App\Http\Controllers\Admin\AdminSettingsController::class, 'groqTest'])->name('settings.groq-test');
     Route::post('settings/fee-settings',      [\App\Http\Controllers\Admin\AdminSettingsController::class, 'saveFeeSettings'])->name('settings.fee-settings');
+
+    // Conversions (manual processing)
+    Route::get('conversions',                 [\App\Http\Controllers\Admin\AdminConversionController::class, 'index'])->name('conversions.index');
+    Route::get('conversions/{id}',            [\App\Http\Controllers\Admin\AdminConversionController::class, 'show'])->name('conversions.show')->where('id', '[0-9]+');
+    Route::post('conversions/{id}/complete',  [\App\Http\Controllers\Admin\AdminConversionController::class, 'complete'])->name('conversions.complete')->where('id', '[0-9]+');
+    Route::post('conversions/{id}/fail',      [\App\Http\Controllers\Admin\AdminConversionController::class, 'fail'])->name('conversions.fail')->where('id', '[0-9]+');
 });
 
 // ── AI Chatbot (authenticated users) ─────────────────────────────────────────

@@ -17,7 +17,7 @@ class NotificationAiController extends Controller
     public function __construct()
     {
         $this->apiKey = config('services.groq.api_key', '');
-        $this->model  = config('services.groq.model', 'llama-3.3-70b-versatile');
+        $this->model  = config('services.groq.model', 'openai/gpt-oss-120b');
         $this->apiUrl = config('services.groq.api_url', 'https://api.groq.com/openai/v1/chat/completions');
     }
 

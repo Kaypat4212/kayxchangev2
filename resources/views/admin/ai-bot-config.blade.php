@@ -193,11 +193,9 @@
                                     <label class="kx-form-label">Groq Model</label>
                                     <select name="ai_bot_model" class="kx-form-control">
                                         @foreach([
-                                            'llama-3.3-70b-versatile' => 'Llama 3.3 70B Versatile (default)',
-                                            'llama-3.1-8b-instant'    => 'Llama 3.1 8B Instant (fast)',
-                                            'llama3-70b-8192'         => 'Llama3 70B 8192',
-                                            'mixtral-8x7b-32768'      => 'Mixtral 8×7B 32768',
-                                            'gemma2-9b-it'            => 'Gemma2 9B IT',
+                                            'openai/gpt-oss-120b' => 'GPT-OSS 120B (default)',
+                                            'openai/gpt-oss-20b'  => 'GPT-OSS 20B (fast)',
+                                            'qwen/qwen3.8-27b'    => 'Qwen 3.8 27B',
                                         ] as $value => $label)
                                             <option value="{{ $value }}" {{ $settings['ai_bot_model'] === $value ? 'selected' : '' }}>
                                                 {{ $label }}

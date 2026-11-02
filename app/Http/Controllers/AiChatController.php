@@ -26,7 +26,7 @@ class AiChatController extends Controller
             'url'           => 'https://api.groq.com/openai/v1/chat/completions',
             'key_setting'   => 'groq_api_key',
             'model_setting' => 'groq_model',
-            'default_model' => 'llama-3.3-70b-versatile',
+            'default_model' => 'openai/gpt-oss-120b',
         ],
     ];
 
