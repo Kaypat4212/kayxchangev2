@@ -30,6 +30,11 @@ class UserObserver
             'balance' => 0.00,
             'currency' => 'NGN',
         ]);
+        Wallet::create([
+            'user_id' => $user->id,
+            'balance' => 0.00,
+            'currency' => 'USD',
+        ]);
         $user->update(['balance' => 0]); // Sync with users.balance
 
         // Create crypto wallets for new user

@@ -55,7 +55,7 @@
 
         {{-- Users & KYC dropdown --}}
         <div class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle @if(request()->is('admin/users*') || request()->is('admin/kyc*') || request()->is('admin/referrals*')) active @endif"
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/users*') || request()->is('admin/kyc*') || request()->is('admin/referrals*') || request()->is('admin/campaigns*')) active @endif"
              href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Users">
             <i class="bi bi-people me-1"></i>Users
           </a>
@@ -63,6 +63,11 @@
             <li>
               <a class="dropdown-item @if(request()->is('admin/users*')) active @endif" href="{{ url('/admin/users') }}">
                 <i class="bi bi-people-fill me-2"></i>All Users
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/campaigns*')) active @endif" href="{{ route('admin.campaigns.index') }}">
+                <i class="bi bi-megaphone-fill me-2"></i>Campaigns
               </a>
             </li>
             <li>

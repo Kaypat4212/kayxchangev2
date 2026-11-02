@@ -13,6 +13,8 @@ class CryptoDeposit extends Model
         'currency',
         'expected_amount',
         'received_amount',
+        'ngn_credited_amount',
+        'ngn_rate_used',
         'status',
         'cryptomus_payment_id',
         'payment_url',
@@ -26,6 +28,8 @@ class CryptoDeposit extends Model
     protected $casts = [
         'expected_amount' => 'decimal:8',
         'received_amount' => 'decimal:8',
+        'ngn_credited_amount' => 'decimal:2',
+        'ngn_rate_used' => 'decimal:8',
         'payment_data' => 'array',
         'expires_at' => 'datetime',
         'completed_at' => 'datetime',

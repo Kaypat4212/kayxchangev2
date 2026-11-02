@@ -178,6 +178,7 @@ Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () 
     Route::get('/deposit',   [\App\Http\Controllers\WalletController::class, 'deposit'])->name('deposit');
     Route::post('/deposit',  [\App\Http\Controllers\WalletController::class, 'createDeposit'])->name('deposit.create');
     Route::get('/deposit/{id}/success', [\App\Http\Controllers\WalletController::class, 'depositSuccess'])->name('deposit.success');
+    Route::get('/deposit/{id}/status', [\App\Http\Controllers\WalletController::class, 'depositStatus'])->name('deposit.status');
     Route::get('/deposit/{id}/failed',  [\App\Http\Controllers\WalletController::class, 'depositFailed'])->name('deposit.failed');
     Route::get('/withdraw',  [\App\Http\Controllers\WalletController::class, 'withdraw'])->name('withdraw');
     Route::post('/withdraw', [\App\Http\Controllers\WalletController::class, 'createWithdrawal'])->name('withdraw.create');
@@ -199,6 +200,8 @@ use App\Http\Controllers\Admin\AdminBackupController;
 use App\Http\Controllers\Admin\AdminProfileController;
 
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('campaigns', [\App\Http\Controllers\Admin\AdminCampaignController::class, 'index'])->name('admin.campaigns.index');
+    Route::post('campaigns', [\App\Http\Controllers\Admin\AdminCampaignController::class, 'send'])->name('admin.campaigns.send');
     // ── Telegram Bot Management ─────────────────────────────────────────────
     Route::get('telegram',               [AdminTelegramController::class, 'index'])->name('admin.telegram.index');
     Route::post('telegram/broadcast',    [AdminTelegramController::class, 'broadcast'])->name('admin.telegram.broadcast');

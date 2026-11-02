@@ -755,19 +755,26 @@
 <script>
 // Auto-load personalised AI insight
 (function(){
+    const el = document.getElementById('ai-insight-text');
+    const greetingName = @json(explode(' ', trim(Auth::user()->name ?? 'there'))[0]);
+    const greeting = 'Hi ' + greetingName + '! Welcome to KayXchange. Explore the latest crypto rates, and contact support if you need a hand getting started.';
+    if (el) el.textContent = greeting;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     fetch('{{ route("ai.dashboard-insight") }}', {
         method: 'POST',
         headers: {'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
-        body: JSON.stringify({})
+        body: JSON.stringify({}),
+        signal: controller.signal
     })
-    .then(r => r.json())
+    .then(r => { if (!r.ok) throw new Error('Insight request unavailable'); return r.json(); })
     .then(data => {
-        const el = document.getElementById('ai-insight-text');
-        if (el) el.innerHTML = data.insight || '<span style="color:#ef4444">'+(data.error||'Could not load insight.')+'</span>';
+        clearTimeout(timeout);
+        if (el && typeof data.insight === 'string' && data.insight.trim()) el.textContent = data.insight;
     })
     .catch(() => {
-        const el = document.getElementById('ai-insight-text');
-        if (el) el.innerHTML = '<span class="ai-insight-unavailable">AI insight unavailable.</span>';
+        clearTimeout(timeout);
+        if (el) el.textContent = greeting;
     });
 })();
 </script>

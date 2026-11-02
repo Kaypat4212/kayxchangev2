@@ -75,10 +75,17 @@
                                 </div>
                             </div>
                             <div class="text-right">
-                                <div class="font-medium text-gray-900">{{ number_format($deposit->amount, 8) }} {{ $deposit->currency }}</div>
+                                <div class="font-medium text-gray-900">
+                                    @if($deposit->currency === 'BTC' && $deposit->ngn_credited_amount)
+                                        +₦{{ number_format((float) $deposit->ngn_credited_amount, 2) }}
+                                    @else
+                                        ${{ number_format((float) $deposit->expected_amount, 2) }} USD invoice
+                                    @endif
+                                </div>
                                 <div class="text-sm {{ $deposit->status === 'completed' ? 'text-green-600' : ($deposit->status === 'pending' ? 'text-yellow-600' : 'text-red-600') }}">
                                     {{ ucfirst($deposit->status) }}
                                 </div>
+                                <a class="text-sm text-blue-600 hover:underline" href="{{ route('wallet.deposit.success', $deposit->id) }}">View deposit</a>
                             </div>
                         </div>
                     @endforeach

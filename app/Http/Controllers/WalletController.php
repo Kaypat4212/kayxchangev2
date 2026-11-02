@@ -99,6 +99,31 @@ class WalletController extends Controller
         return view('wallet.deposit-failed', compact('deposit'));
     }
 
+    /** Return current provider state and on-chain BTC confirmation progress. */
+    public function depositStatus($id)
+    {
+        $deposit = CryptoDeposit::where('user_id', Auth::id())->findOrFail($id);
+        $deposit = $this->cryptoWalletService->refreshDepositStatus($deposit);
+        $paymentData = $deposit->payment_data ?? [];
+        $required = (int) ($paymentData['bitcoin_required_confirmations'] ?? 3);
+        $confirmations = (int) ($paymentData['bitcoin_confirmations'] ?? 0);
+
+        return response()->json([
+            'status' => $deposit->status,
+            'provider_status' => $paymentData['provider_status'] ?? 'waiting',
+            'transaction_hash' => $deposit->transaction_hash,
+            'explorer_url' => $deposit->transaction_hash && strtoupper($deposit->currency) === 'BTC'
+                ? 'https://blockstream.info/tx/' . rawurlencode($deposit->transaction_hash)
+                : null,
+            'confirmations' => $confirmations,
+            'required_confirmations' => $required,
+            'remaining_confirmations' => $deposit->status === 'completed' ? 0 : max(0, $required - $confirmations),
+            'ngn_credited_amount' => $deposit->ngn_credited_amount,
+            'ngn_rate_used' => $deposit->ngn_rate_used,
+            'currency' => $deposit->currency,
+        ]);
+    }
+
     /**
      * Show withdrawal page
      */

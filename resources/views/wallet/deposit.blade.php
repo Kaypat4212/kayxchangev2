@@ -18,7 +18,7 @@
                         <option value="">Choose cryptocurrency...</option>
                         @foreach($supportedCryptos as $symbol => $name)
                             <option value="{{ $symbol }}" {{ old('currency') === $symbol ? 'selected' : '' }}>
-                                {{ $name }} ({{ $symbol }})
+                                {{ $name['name'] }} ({{ $symbol }})
                             </option>
                         @endforeach
                     </select>
@@ -29,11 +29,11 @@
 
                 <!-- Amount -->
                 <div class="mb-6">
-                    <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                    <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Deposit value (USD)</label>
                     <input type="number" name="amount" id="amount" step="0.00000001" min="0.00000001"
                            value="{{ old('amount') }}"
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="Enter amount" required>
+                           placeholder="Enter USD value" required>
                     @error('amount')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -59,7 +59,7 @@
                 @foreach($supportedCryptos as $symbol => $name)
                     <div class="text-center">
                         <div class="font-medium text-gray-900">{{ $symbol }}</div>
-                        <div class="text-sm text-gray-600">{{ $name }}</div>
+                        <div class="text-sm text-gray-600">{{ $name['name'] }}</div>
                     </div>
                 @endforeach
             </div>
@@ -76,8 +76,8 @@ document.getElementById('currency').addEventListener('change', function() {
     if (currency) {
         // You can add dynamic info here based on currency
         detailsDiv.innerHTML = `
-            <p>You will be redirected to Cryptomus to complete your ${currency} deposit.</p>
-            <p>Make sure to send the exact amount to avoid delays.</p>
+            <p>You will be redirected to Cryptomus to pay ${currency} equivalent.</p>
+            <p>For Bitcoin deposits, your credited NGN amount is calculated from the actual paid USD value and the KayXchange BTC sell rate when payment is confirmed.</p>
         `;
         infoDiv.classList.remove('hidden');
     } else {

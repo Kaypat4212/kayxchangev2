@@ -496,6 +496,16 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
         if (type && type.includes('approved')) return '#00cc00';
         return '#60a5fa';
     }
+    function safeInternalUrl(value) {
+        if (!value || value === '#') return '#';
+        try {
+            const url = new URL(value, window.location.origin);
+            return url.origin === window.location.origin ? url.pathname + url.search + url.hash : '#';
+        } catch (_) { return '#'; }
+    }
+    function escapeNotificationText(value) {
+        return String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[character]));
+    }
 
     function renderNotifs(items) {
         if (!items.length) {
@@ -503,11 +513,11 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
             return;
         }
         list.innerHTML = items.map(n => `
-            <a href="#" class="kx-notif-item ${n.is_read ? '' : 'unread'}" onclick="kxReadNotif(event,${n.id})">
+            <a href="${safeInternalUrl(n.data && n.data.url)}" class="kx-notif-item ${n.is_read ? '' : 'unread'}" onclick="kxReadNotif(event,${n.id})">
                 <i class="bi ${iconForType(n.type)} kx-notif-icon" style="color:${colorForType(n.type)}"></i>
                 <div class="kx-notif-body">
-                    <div class="kx-notif-title">${n.title}</div>
-                    <div class="kx-notif-msg">${n.message}</div>
+                    <div class="kx-notif-title">${escapeNotificationText(n.title)}</div>
+                    <div class="kx-notif-msg">${escapeNotificationText(n.message)}</div>
                     <div class="kx-notif-time">${timeAgo(n.created_at)}</div>
                 </div>
                 ${n.is_read ? '' : '<div class="kx-notif-dot"></div>'}
@@ -530,10 +540,14 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
 
     window.kxReadNotif = function(e, id) {
         e.preventDefault();
+        const target = safeInternalUrl(e.currentTarget?.getAttribute('href'));
         fetch('/notifications/'+id+'/mark-read', {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }
-        }).then(() => fetchNotifs());
+        }).catch(() => {}).finally(() => {
+            if (target !== '#') window.location.assign(target);
+            else fetchNotifs();
+        });
     };
 
     window.kxMarkAllRead = function() {

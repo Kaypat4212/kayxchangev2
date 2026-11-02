@@ -26,12 +26,12 @@ class CryptomusWebhookController extends Controller
     {
         try {
             $data = $request->all();
-            $sign = $request->header('sign');
+            $sign = (string) ($request->header('sign') ?: ($data['sign'] ?? ''));
+            unset($data['sign']);
 
             Log::info('Cryptomus webhook received', [
-                'data' => $data,
-                'sign' => $sign,
-                'headers' => $request->headers->all()
+                'order_id' => $data['order_id'] ?? null,
+                'status' => $data['status'] ?? $data['payment_status'] ?? null,
             ]);
 
             // Verify webhook signature
@@ -44,7 +44,7 @@ class CryptomusWebhookController extends Controller
             $type = $data['type'] ?? null;
             $orderId = $data['order_id'] ?? null;
 
-            if ($type === 'payment' && str_starts_with($orderId, 'dep_')) {
+            if ($type === 'payment' && is_string($orderId) && str_starts_with($orderId, 'dep_')) {
                 $this->cryptoWalletService->processDepositSuccess($data);
             }
 
@@ -53,7 +53,7 @@ class CryptomusWebhookController extends Controller
         } catch (\Exception $e) {
             Log::error('Cryptomus webhook processing error', [
                 'error' => $e->getMessage(),
-                'data' => $request->all()
+                'order_id' => $request->input('order_id'),
             ]);
 
             return response()->json(['error' => 'Processing failed'], 500);
