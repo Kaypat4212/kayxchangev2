@@ -1,4 +1,4 @@
-tiona@extends('adminnavlayout')
+@extends('adminnavlayout')
 
 @section('content')
 <style>
