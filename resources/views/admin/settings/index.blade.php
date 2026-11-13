@@ -305,6 +305,14 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         <input type="number" name="{{ $row->key }}" value="{{ $row->value ?? '0.5' }}" min="0" max="19.5" step="0.1">
                     @elseif($row->key === 'convert_instructions')
                         <textarea name="{{ $row->key }}" rows="3" style="font-size:.82rem;">{{ $row->value ?? '' }}</textarea>
+                    @elseif($row->key === 'nowpayments_api_key')
+                        <div class="input-group">
+                            <input type="password" name="{{ $row->key }}" id="nowpayments-api-key-field" placeholder="{{ $row->display_value ?: 'Enter API key' }}" autocomplete="new-password" spellcheck="false">
+                            <button type="button" class="btn btn-outline-secondary" id="nowpayments-api-key-preview" onclick="previewNowPaymentsApiKey()" aria-label="Preview saved NOWPayments API key" aria-pressed="false">
+                                <i class="bi bi-eye me-1" aria-hidden="true"></i>Preview
+                            </button>
+                        </div>
+                        <div id="nowpayments-api-key-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved key stays masked until you preview it.</div>
                     @elseif($row->is_encrypted)
                         <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password">
                     @else
@@ -442,6 +450,60 @@ async function cfAction(action) {
                 result.textContent = 'Could not reach the server. Save settings and try again.';
                 result.className = 'small text-warning';
             } finally { button.disabled = false; }
+        }
+
+        async function previewNowPaymentsApiKey() {
+            const field = document.getElementById('nowpayments-api-key-field');
+            const button = document.getElementById('nowpayments-api-key-preview');
+            const status = document.getElementById('nowpayments-api-key-preview-status');
+            if (!field || !button || !status) return;
+
+            if (field.type === 'text') {
+                field.type = 'password';
+                button.innerHTML = '<i class="bi bi-eye me-1" aria-hidden="true"></i>Preview';
+                button.setAttribute('aria-pressed', 'false');
+                status.textContent = 'The key is hidden again.';
+                return;
+            }
+
+            // If the admin typed a replacement key, preview it locally. Only
+            // request the server-side saved value when the input is empty.
+            if (field.value && field.dataset.loadedSavedKey !== 'true') {
+                field.type = 'text';
+                button.innerHTML = '<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>Hide';
+                button.setAttribute('aria-pressed', 'true');
+                status.textContent = 'Previewing the unsaved key. Hide it when finished.';
+                return;
+            }
+
+            button.disabled = true;
+            status.textContent = 'Loading the saved key securely…';
+            try {
+                const response = await fetch(@json(route('admin.settings.nowpayments-api-key-preview')), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({})
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok || !data.api_key) throw new Error(data.message || 'The saved API key could not be loaded.');
+                field.value = data.api_key;
+                field.dataset.loadedSavedKey = 'true';
+                field.type = 'text';
+                field.focus();
+                field.select();
+                button.innerHTML = '<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>Hide';
+                button.setAttribute('aria-pressed', 'true');
+                status.textContent = 'Saved API key revealed. Hide it when you are finished.';
+            } catch (error) {
+                status.textContent = error.message || 'Could not preview the saved key. Try again.';
+            } finally {
+                button.disabled = false;
+            }
         }
 
         async function testNowPaymentsCustody() {

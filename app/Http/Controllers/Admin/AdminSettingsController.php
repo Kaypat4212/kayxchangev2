@@ -218,6 +218,21 @@ class AdminSettingsController extends Controller
         }
     }
 
+    /** Reveal the encrypted NOWPayments API key only after an explicit admin request. */
+    public function previewNowPaymentsApiKey()
+    {
+        $apiKey = (string) AdminSetting::getSetting('nowpayments_api_key', '');
+        if ($apiKey === '') {
+            return response()->json(['ok' => false, 'message' => 'No saved NOWPayments API key is available to preview.'], 404)
+                ->header('Cache-Control', 'private, no-store, max-age=0')
+                ->header('Pragma', 'no-cache');
+        }
+
+        return response()->json(['ok' => true, 'api_key' => $apiKey])
+            ->header('Cache-Control', 'private, no-store, max-age=0')
+            ->header('Pragma', 'no-cache');
+    }
+
     public function cloudflareAction(Request $request)
     {
         $action = $request->input('action');
