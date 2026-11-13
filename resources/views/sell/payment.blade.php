@@ -18,6 +18,9 @@
 
 /* Wallet card */
 .wallet-card{background:var(--kx-card2);border:1px solid rgba(0,204,0,.2);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+.wallet-qr{display:grid;place-items:center;width:172px;height:172px;margin:1rem auto .75rem;padding:8px;background:#fff;border-radius:12px;}
+.wallet-qr img{width:156px;height:156px;object-fit:contain;}
+.wallet-qr-note{font-size:.74rem;color:var(--kx-muted);text-align:center;margin:0 auto;max-width:360px;}
 .wallet-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--kx-border);}
 .wallet-row:last-child{border-bottom:none;}
 .wallet-label{font-size:.78rem;color:var(--kx-muted);}
@@ -67,6 +70,10 @@
                 <div class="ri-value">{{ strtoupper($trade->coin) }}</div>
             </div>
             <div class="recap-item">
+                <div class="ri-label">Network</div>
+                <div class="ri-value">{{ $networkValid ? $network : 'Needs support confirmation' }}</div>
+            </div>
+            <div class="recap-item">
                 <div class="ri-label">Amount (USD)</div>
                 <div class="ri-value">${{ number_format($trade->usd_amount, 2) }}</div>
             </div>
@@ -82,7 +89,11 @@
     </div>
 
     {{-- Send-to wallet --}}
-    @if($walletAddress)
+    @if(!$networkValid)
+    <div class="kx-card" style="border-color:rgba(245,158,11,.35);color:#fbbf24">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>This older USDT order has no verified network recorded. Contact support before sending crypto so we can confirm the correct network and wallet.
+    </div>
+    @elseif($walletAddress)
     <div class="kx-card">
         <h6 style="font-size:.85rem;font-weight:700;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.9rem;">Send Crypto To This Wallet</h6>
         <div class="kx-info-banner">
@@ -92,16 +103,25 @@
         <div class="wallet-card">
             <div class="wallet-row">
                 <span class="wallet-label">Network</span>
-                <span class="wallet-value">{{ strtoupper($trade->coin) }}</span>
+                <span class="wallet-value">{{ $network }}</span>
             </div>
             <div class="wallet-row">
                 <span class="wallet-label">Wallet Address</span>
                 <div style="display:flex;align-items:center;justify-content:flex-end;flex:1;padding-left:1rem;">
                     <span class="wallet-value" id="walletAddr">{{ $walletAddress }}</span>
-                    <button class="copy-btn" onclick="copyWallet()"><i class="bi bi-copy"></i> Copy</button>
+                    <button class="copy-btn" onclick="copyWallet(event)" type="button"><i class="bi bi-copy"></i> Copy</button>
                 </div>
             </div>
+            <div class="wallet-qr">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&amp;margin=4&amp;data={{ urlencode($walletAddress) }}" width="156" height="156" alt="QR code for {{ strtoupper($trade->coin) }} {{ $network }} receiving address" loading="eager" referrerpolicy="no-referrer" onerror="this.hidden=true;this.parentElement.insertAdjacentHTML('beforeend','<span style=&quot;color:#725b1c;font-size:.75rem;text-align:center&quot;>QR preview unavailable. Copy the address above.</span>')">
+            </div>
+            <p class="wallet-qr-note">Scan this code with a wallet that supports <strong>{{ strtoupper($trade->coin) }} on {{ $network }}</strong>. Always verify the asset and network before sending.</p>
         </div>
+    </div>
+    @endif
+    @if($networkValid && !$walletAddress)
+    <div class="kx-card" style="border-color:rgba(245,158,11,.35);color:#fbbf24">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>The receiving wallet for this asset and network is not configured. Contact support before sending any crypto.
     </div>
     @endif
 
@@ -179,11 +199,11 @@ document.getElementById('proofForm').addEventListener('submit', () => {
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading…';
 });
 
-function copyWallet() {
+function copyWallet(event) {
     const addr = document.getElementById('walletAddr')?.textContent?.trim();
     if (!addr) return;
     navigator.clipboard.writeText(addr).then(() => {
-        const btn = event.target.closest('.copy-btn');
+        const btn = event?.target?.closest('.copy-btn');
         const orig = btn.innerHTML;
         btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
         setTimeout(() => btn.innerHTML = orig, 2000);

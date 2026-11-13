@@ -182,7 +182,7 @@ class AiChatController extends Controller
             [$initUsd, $initNaira] = $initCoin ? $this->parseAmount($message, $initCoin, $detectedType) : [null, null];
 
             if ($initCoin && $initUsd) {
-                if ($detectedType === 'sell' && $initCoin === 'USDT') {
+                if ($detectedType === 'buy' || count($this->networksForCoin($initCoin)) > 1) {
                     $state = [
                         'type' => $detectedType,
                         'coin' => $initCoin,
@@ -191,12 +191,13 @@ class AiChatController extends Controller
                         'step' => 'network',
                     ];
                     $request->session()->put('kaybot_trade', $state);
-                    return ['reply' => "Which USDT network will you use to send the crypto? Select the exact network for your wallet. Transfers on the wrong network may be lost.", 'trade_step' => 'network', 'quick_replies' => ['TRC20', 'ERC20', 'BEP20', '❌ Cancel']];
+                    return $this->networkPrompt($initCoin, $detectedType);
                 }
                 // Both coin and amount found — jump straight to amount_review, no extra questions
                 $state = [
                     'type'         => $detectedType,
                     'coin'         => $initCoin,
+                    'network'      => $this->defaultNetwork($initCoin),
                     'usd_amount'   => $initUsd,
                     'naira_amount' => $initNaira,
                     'step'         => 'amount_review',
@@ -216,11 +217,11 @@ class AiChatController extends Controller
 
             if ($initCoin) {
                 // Coin found but no amount — skip coin question, ask for amount
-                $nextStep = $detectedType === 'sell' && $initCoin === 'USDT' ? 'network' : 'amount';
-                $state    = ['type' => $detectedType, 'coin' => $initCoin, 'step' => $nextStep];
+                $nextStep = $detectedType === 'buy' || count($this->networksForCoin($initCoin)) > 1 ? 'network' : 'amount';
+                $state    = ['type' => $detectedType, 'coin' => $initCoin, 'network' => $this->defaultNetwork($initCoin), 'step' => $nextStep];
                 $request->session()->put('kaybot_trade', $state);
                 if ($nextStep === 'network') {
-                    return ['reply' => "Which USDT network will you use to send the crypto? Select the exact network for your wallet. Transfers on the wrong network may be lost.", 'trade_step' => 'network', 'quick_replies' => ['TRC20', 'ERC20', 'BEP20', '❌ Cancel']];
+                    return $this->networkPrompt($initCoin, $detectedType);
                 }
                 $rate     = $this->getPlatformRate($initCoin, $detectedType);
                 $rateText = $rate ? "\nKayXchange rate: **₦" . number_format($rate) . " per \$1 USD**" : '';
@@ -242,11 +243,11 @@ class AiChatController extends Controller
         if ($step === 'coin') {
             $coin = $this->extractCoin($message);
             if ($coin) {
-                $nextStep = $type === 'sell' && $coin === 'USDT' ? 'network' : 'amount';
-                $state = array_merge($state, ['coin' => $coin, 'step' => $nextStep]);
+                $nextStep = $type === 'buy' || count($this->networksForCoin($coin)) > 1 ? 'network' : 'amount';
+                $state = array_merge($state, ['coin' => $coin, 'network' => $this->defaultNetwork($coin), 'step' => $nextStep]);
                 $request->session()->put('kaybot_trade', $state);
                 if ($nextStep === 'network') {
-                    return ['reply' => "Which USDT network will you use to send the crypto? Select the exact network for your wallet. Transfers on the wrong network may be lost.", 'trade_step' => 'network', 'quick_replies' => ['TRC20', 'ERC20', 'BEP20', '❌ Cancel']];
+                    return $this->networkPrompt($coin, $type);
                 }
                 $rate     = $this->getPlatformRate($coin, $type);
                 $rateText = $rate ? "\nCurrent rate: **N" . number_format($rate) . " per \$1 USD**" : '';
@@ -257,17 +258,26 @@ class AiChatController extends Controller
         }
 
         if ($step === 'network') {
-            $network = strtoupper(trim($message));
-            if (! in_array($network, ['TRC20', 'ERC20', 'BEP20'], true)) {
-                return ['reply' => 'Please select a supported USDT network:', 'trade_step' => 'network', 'quick_replies' => ['TRC20', 'ERC20', 'BEP20', '❌ Cancel']];
+            $networkInput = strtoupper((string) preg_replace('/[^A-Z0-9]/', '', trim($message)));
+            $network = match ($networkInput) {
+                'TRON' => 'TRC20', 'TRC20' => 'TRC20',
+                'ETHEREUM' => 'ERC20', 'ERC20' => 'ERC20',
+                'BSC', 'BINANCESMARTCHAIN', 'BEP20' => 'BEP20',
+                'BITCOIN', 'BTC' => 'BTC',
+                'SOLANA', 'SOL' => 'SOL',
+                default => $networkInput,
+            };
+            $networks = $this->networksForCoin((string) ($state['coin'] ?? ''));
+            if (! in_array($network, $networks, true)) {
+                return $this->networkPrompt((string) ($state['coin'] ?? ''), $type);
             }
             $state = array_merge($state, ['network' => $network, 'step' => ! empty($state['usd_amount']) ? 'amount_review' : 'amount']);
             $request->session()->put('kaybot_trade', $state);
             if ($state['step'] === 'amount_review') {
-                $summary = "**sell USDT ({$network})**\nUSD: \${$state['usd_amount']}\nNGN: ₦" . number_format((float) $state['naira_amount'], 2) . "\n\n";
-                return ['reply' => $summary . 'Proceed with this sell? Confirm your payout details next.', 'trade_step' => 'amount_review', 'quick_replies' => ['✅ Yes', '🏦 External bank', '✏️ Change amount', '❌ Cancel']];
+                $summary = "**{$type} {$state['coin']} ({$network})**\nUSD: \${$state['usd_amount']}\nNGN: ₦" . number_format((float) $state['naira_amount'], 2) . "\n\n";
+                return ['reply' => $summary . ($type === 'buy' ? 'Proceed with this buy? You will enter the receiving wallet next.' : 'Proceed with this sell? Confirm your payout details next.'), 'trade_step' => 'amount_review', 'quick_replies' => ['✅ Yes', '🏦 External bank', '✏️ Change amount', '❌ Cancel']];
             }
-            return ['reply' => "USDT network: **{$network}**. Now enter the amount to sell, for example *50 USD* or *₦50,000*.", 'trade_step' => 'amount', 'quick_replies' => ['❌ Cancel']];
+            return ['reply' => "Network selected: **{$network}**. Now enter the amount to {$type}, for example *50 USD* or *₦50,000*.", 'trade_step' => 'amount', 'quick_replies' => ['❌ Cancel']];
         }
 
         if ($step === 'amount') {
@@ -315,7 +325,7 @@ class AiChatController extends Controller
             if ($type === 'buy') {
                 $state = array_merge($state, ['step' => 'wallet']);
                 $request->session()->put('kaybot_trade', $state);
-                return ['reply' => "Provide your **{$state['coin']} wallet address** to receive the crypto.\n_(Paste your full wallet address below)_", 'trade_step' => 'wallet', 'quick_replies' => ['❌ Cancel']];
+                return ['reply' => "Provide the **{$state['coin']} wallet address** where you want to receive the crypto. After the order is submitted, KayBot will show you the naira bank transfer details.\n_(Paste your full receiving wallet address below)_", 'trade_step' => 'wallet', 'quick_replies' => ['❌ Cancel']];
             }
             if ($useSaved) {
                 $state = array_merge($state, [
@@ -339,11 +349,10 @@ class AiChatController extends Controller
             if (strlen($message) < 10) {
                 return ['reply' => "That wallet address looks too short. Please provide your full **{$state['coin']} wallet address**.", 'trade_step' => 'wallet'];
             }
-            $companyWallet = config("wallets.{$state['coin']}", null);
-            $walletInfo    = $companyWallet ? "\n\nSend payment to:\n`{$companyWallet}`\n_(Upload proof on trade page after confirming)_" : '';
             $state         = array_merge($state, ['wallet_address' => $message, 'step' => 'confirm']);
             $request->session()->put('kaybot_trade', $state);
-            return ['reply' => "**Summary - Buy {$state['coin']}**\nUSD: \${$state['usd_amount']}\nNGN to pay: ₦" . number_format($state['naira_amount'], 2) . "\nYour wallet: `{$message}`{$walletInfo}\nReady to submit?", 'trade_step' => 'confirm', 'quick_replies' => ['✅ Confirm', '❌ Cancel']];
+            $network = strtoupper((string) ($state['network'] ?? $this->defaultNetwork((string) $state['coin'])));
+            return ['reply' => "**Summary - Buy {$state['coin']} ({$network})**\nUSD: \${$state['usd_amount']}\nNGN to pay: ₦" . number_format($state['naira_amount'], 2) . "\nYour receiving wallet: `{$message}`\n\nAfter you confirm, KayBot will open the platform's naira bank transfer instructions. Do not send crypto for this buy order.\n\nReady to submit?", 'trade_step' => 'confirm', 'quick_replies' => ['✅ Confirm', '❌ Cancel']];
         }
 
         if ($step === 'bank') {
@@ -399,21 +408,58 @@ class AiChatController extends Controller
                 $ref = $result['ref'];
                 if ($type === 'buy') {
                     try { $payUrl = route('buy.payment', $result['trade_id']); } catch (\Throwable $e) { $payUrl = url('/buy/payment/' . $result['trade_id']); }
-                    $reply = "✅ Buy trade submitted!\n\nRef: `{$ref}`\nStatus: Pending\n\n**Next step — upload your payment proof:**\n[👉 Click here to upload proof]({$payUrl})\n\n_(Without proof your trade cannot be processed.)_";
+                    $reply = "✅ Buy trade submitted!\n\nRef: `{$ref}`\nStatus: Pending\n\n**Next step — transfer the exact naira amount to KayXchange's bank account, use your trade reference as narration, then upload your receipt.**\n[👉 Open bank payment details]({$payUrl})\n\nWe'll process the crypto to your receiving wallet after verifying payment.";
+                    $paymentDetails = null;
+                    $paymentAction = '🏦 Open bank payment details';
                 } else {
                     try { $payUrl = route('sell.payment', $result['trade_id']); } catch (\Throwable $e) { $payUrl = url('/sell/payment/' . $result['trade_id']); }
-                    $walletKey = $state['coin'] === 'USDT' && ! empty($state['network']) ? 'USDT_' . $state['network'] : $state['coin'];
+                    $walletKey = in_array($state['coin'], ['USDT', 'USDC'], true) && ! empty($state['network']) ? $state['coin'] . '_' . $state['network'] : $state['coin'];
                     $companyWallet = config("wallets.{$walletKey}", null);
                     $networkLabel = ! empty($state['network']) ? " ({$state['network']})" : '';
                     $walletInfo = $companyWallet ? "\nSend **{$state['coin']}{$networkLabel}** to:\n`{$companyWallet}`\n\n" : "\n\n";
-                    $reply = "✅ Sell trade submitted!\n\nRef: `{$ref}`\nStatus: Pending\n{$walletInfo}**Next step — upload your crypto send proof:**\n[👉 Click here to upload proof]({$payUrl})\n\n_(Upload a screenshot of your crypto transfer.)_";
+                    $reply = "✅ Sell trade submitted!\n\nRef: `{$ref}`\nStatus: Pending\n{$walletInfo}**Next step — send the crypto on the exact network shown, then upload your transfer proof.**\n[👉 Open send instructions & upload proof]({$payUrl})";
+                    $paymentDetails = $companyWallet ? ['asset' => $state['coin'], 'network' => $state['network'] ?? $state['coin'], 'address' => $companyWallet] : null;
+                    $paymentAction = '📤 Open send instructions & upload proof';
                 }
-                return ['reply' => $reply, 'trade_done' => true, 'trade_ref' => $ref, 'payment_url' => $payUrl, 'quick_replies' => ['� Buy crypto', '💰 Sell crypto', '📊 Check rates', '🎧 Contact support']];
+                return ['reply' => $reply, 'trade_done' => true, 'trade_ref' => $ref, 'payment_url' => $payUrl, 'payment_action' => $paymentAction, 'payment_details' => $paymentDetails, 'quick_replies' => ['🛒 Buy crypto', '💰 Sell crypto', '📊 Check rates', '🎧 Contact support']];
             }
             return ['reply' => "Could not submit: {$result['error']}\n\nPlease try via the website {$state['type']} page, or contact support.", 'trade_done' => true, 'quick_replies' => ['🛒 Buy crypto', '💰 Sell crypto', '🎧 Contact support']];
         }
 
         return null;
+    }
+
+    private function networksForCoin(string $coin): array
+    {
+        return match (strtoupper($coin)) {
+            'BTC' => ['BTC'],
+            'ETH' => ['ERC20'],
+            'USDT' => ['TRC20', 'ERC20', 'BEP20'],
+            'USDC' => ['ERC20', 'BEP20'],
+            'SOL' => ['SOL'],
+            'BNB' => ['BEP20'],
+            default => [],
+        };
+    }
+
+    private function defaultNetwork(string $coin): string
+    {
+        $networks = $this->networksForCoin($coin);
+        return count($networks) === 1 ? $networks[0] : '';
+    }
+
+    private function networkPrompt(string $coin, string $type): array
+    {
+        $networks = $this->networksForCoin($coin);
+        $purpose = $type === 'buy'
+            ? 'Choose the exact network supported by the wallet where you want to receive your crypto.'
+            : 'Choose the exact network you will use to send your crypto to KayXchange.';
+        $warning = ' Crypto transfers on the wrong network may be permanently lost.';
+        return [
+            'reply' => "{$purpose}{$warning}",
+            'trade_step' => 'network',
+            'quick_replies' => array_merge($networks, ['❌ Cancel']),
+        ];
     }
 
     private function submitTrade(User $user, array $state): array
@@ -422,6 +468,10 @@ class AiChatController extends Controller
             $type = $state['type'];
             $ref  = strtoupper($type) . '-BOT-' . Str::upper(Str::random(8));
             if ($type === 'buy') {
+                $network = strtoupper((string) ($state['network'] ?? $this->defaultNetwork((string) $state['coin'])));
+                if (! in_array($network, $this->networksForCoin((string) $state['coin']), true)) {
+                    return ['success' => false, 'error' => 'Select a supported receiving network before submitting your buy order.'];
+                }
                 $trade = \App\Models\BuyTrade::create([
                     'user_id'          => $user->id,
                     'name'             => $user->name,
@@ -429,7 +479,7 @@ class AiChatController extends Controller
                     'usd_amount'       => $state['usd_amount'],
                     'naira_amount'     => $state['naira_amount'],
                     'wallet_address'   => $state['wallet_address'],
-                    'network'          => $state['coin'],
+                    'network'          => $network,
                     'payment_method'   => 'Bank Transfer',
                     'status'           => 'pending',
                     'source'           => 'web_bot',
@@ -440,13 +490,13 @@ class AiChatController extends Controller
             } else {
                 $coin = strtoupper((string) ($state['coin'] ?? ''));
                 $network = strtoupper((string) ($state['network'] ?? ''));
-                if ($coin === 'USDT' && ! in_array($network, ['TRC20', 'ERC20', 'BEP20'], true)) {
-                    return ['success' => false, 'error' => 'USDT network selection is missing. Restart the sell flow and select TRC20, ERC20, or BEP20.'];
+                if (! in_array($network, $this->networksForCoin($coin), true)) {
+                    return ['success' => false, 'error' => 'The crypto network selection is missing or invalid. Restart the sell flow and choose a supported network.'];
                 }
-                $walletKey = $coin === 'USDT' ? 'USDT_' . $network : $coin;
+                $walletKey = in_array($coin, ['USDT', 'USDC'], true) ? $coin . '_' . $network : $coin;
                 $walletAddress = config("wallets.{$walletKey}", '');
                 if ($walletAddress === '') {
-                    return ['success' => false, 'error' => "The platform's {$coin}" . ($coin === 'USDT' ? " {$network}" : '') . ' receiving wallet is not configured. Please contact support.'];
+                    return ['success' => false, 'error' => "The platform's {$coin} {$network} receiving wallet is not configured. Please contact support."];
                 }
                 $trade = \App\Models\SellTrade::create([
                     'user_id'         => $user->id,
@@ -455,7 +505,7 @@ class AiChatController extends Controller
                     'usd_amount'      => $state['usd_amount'],
                     'naira_amount'    => $state['naira_amount'],
                     'wallet_address'  => $walletAddress,
-                    'network'         => $coin === 'USDT' ? $network : $coin,
+                    'network'         => $network,
                     'payment_method'  => 'Bank Transfer',
                     'status'          => 'pending',
                     'source'          => 'web_bot',

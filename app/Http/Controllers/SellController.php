@@ -680,8 +680,19 @@ class SellController extends Controller
     public function paymentPage(int $id)
     {
         $trade = SellTrade::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
-        $walletAddress = config("wallets.{$trade->coin}", null);
-        return view('sell.payment', compact('trade', 'walletAddress'));
+        $coin = strtoupper((string) $trade->coin);
+        $network = strtoupper((string) ($trade->network ?: $coin));
+        $supportedNetworks = match ($coin) {
+            'BTC' => ['BTC'], 'ETH' => ['ERC20'], 'USDT' => ['TRC20', 'ERC20', 'BEP20'],
+            'USDC' => ['ERC20', 'BEP20'], 'SOL' => ['SOL'], 'BNB' => ['BEP20'], default => [],
+        };
+        $networkValid = in_array($network, $supportedNetworks, true);
+        $walletKey = in_array($coin, ['USDT', 'USDC'], true) && $networkValid ? $coin . '_' . $network : $coin;
+        $storedAddress = trim((string) $trade->wallet_address);
+        $walletAddress = !$networkValid
+            ? null
+            : ($storedAddress !== '' && strtoupper($storedAddress) !== 'N/A' ? $storedAddress : config("wallets.{$walletKey}", null));
+        return view('sell.payment', compact('trade', 'walletAddress', 'network', 'networkValid'));
     }
 
     /**

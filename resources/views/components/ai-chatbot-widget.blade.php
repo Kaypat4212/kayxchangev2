@@ -46,6 +46,12 @@ try { $kaybotChatUrl = route('ai.chat'); } catch (\Throwable $e) { $kaybotChatUr
 .kb-badge{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#ef4444;border-radius:50%;font-size:.62rem;color:#fff;display:flex;align-items:center;justify-content:center;display:none;}
 .kb-proof-btn{display:block;margin-top:.6rem;padding:.45rem .9rem;background:linear-gradient(135deg,#00cc00,#009900);color:#fff !important;font-size:.78rem;font-weight:700;border-radius:10px;text-align:center;text-decoration:none !important;transition:opacity .15s;}
 .kb-proof-btn:hover{opacity:.88;}
+.kb-payment-card{width:min(100%,245px);margin-top:.65rem;padding:.65rem;background:rgba(0,0,0,.18);border:1px solid rgba(74,222,128,.2);border-radius:12px;}
+.kb-payment-card .kb-payment-label{font-size:.68rem;color:#9ca3af;margin-bottom:.3rem;}
+.kb-payment-qr{display:grid;place-items:center;width:150px;height:150px;margin:.4rem auto;background:#fff;border-radius:9px;padding:6px;}
+.kb-payment-qr img{width:138px;height:138px;object-fit:contain;}
+.kb-payment-address{font-family:monospace;font-size:.68rem;line-height:1.4;word-break:break-all;color:#e4e8f0;margin:.45rem 0;}
+.kb-copy-address{width:100%;border:1px solid rgba(74,222,128,.3);border-radius:8px;padding:.4rem;background:rgba(0,204,0,.1);color:#4ade80;font-size:.72rem;cursor:pointer;}
 body.light-mode .kb-proof-btn{background:linear-gradient(135deg,#009900,#007700);}
 
 /* ── Light mode overrides ─────────────────────────────────────────── */
@@ -188,7 +194,7 @@ async function kaybotSend() {
         let data;
         try { data = JSON.parse(text); } catch { typing.remove(); kaybotAppend('bot', 'Sorry, something went wrong. Please try again.'); kaybotBusy = false; return; }
         typing.remove();
-        kaybotAppend('bot', data.reply ?? 'Sorry, something went wrong.', false, data.quick_replies ?? [], data.payment_url ?? null);
+        kaybotAppend('bot', data.reply ?? 'Sorry, something went wrong.', false, data.quick_replies ?? [], data.payment_url ?? null, data.payment_action ?? null, data.payment_details ?? null);
     } catch (e) {
         typing.remove();
         kaybotAppend('bot', '⚠️ Could not reach KayBot. Check your connection and try again.');
@@ -196,7 +202,7 @@ async function kaybotSend() {
     kaybotBusy = false;
 }
 
-function kaybotAppend(role, text, isTyping = false, quickReplies = [], paymentUrl = null) {
+function kaybotAppend(role, text, isTyping = false, quickReplies = [], paymentUrl = null, paymentAction = null, paymentDetails = null) {
     const msgs = document.getElementById('kaybot-msgs');
     const el   = document.createElement('div');
     el.className = 'kb-msg ' + role + (isTyping ? ' typing' : '');
@@ -209,8 +215,42 @@ function kaybotAppend(role, text, isTyping = false, quickReplies = [], paymentUr
             proofBtn.target    = '_blank';
             proofBtn.rel       = 'noopener noreferrer';
             proofBtn.className = 'kb-proof-btn';
-            proofBtn.innerHTML = '📤 Upload Payment Proof';
+            proofBtn.textContent = paymentAction || '📤 Continue payment & upload proof';
             el.appendChild(proofBtn);
+        }
+        if (paymentDetails && paymentDetails.address) {
+            const card = document.createElement('div');
+            card.className = 'kb-payment-card';
+            const label = document.createElement('div');
+            label.className = 'kb-payment-label';
+            label.textContent = `Scan to copy ${paymentDetails.asset || 'crypto'} address · ${paymentDetails.network || 'network'}`;
+            const qrWrap = document.createElement('div');
+            qrWrap.className = 'kb-payment-qr';
+            const qr = document.createElement('img');
+            qr.alt = `QR code for ${paymentDetails.asset || 'crypto'} receiving address`;
+            qr.loading = 'lazy';
+            qr.referrerPolicy = 'no-referrer';
+            qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=4&data=${encodeURIComponent(paymentDetails.address)}`;
+            qr.onerror = () => { qrWrap.textContent = 'QR unavailable — use Copy address below.'; qrWrap.style.cssText = 'width:auto;height:auto;min-height:70px;padding:10px;text-align:center;color:#725b1c;background:#fff8dc;font-size:.7rem'; };
+            qrWrap.appendChild(qr);
+            const address = document.createElement('div');
+            address.className = 'kb-payment-address';
+            address.textContent = paymentDetails.address;
+            const copy = document.createElement('button');
+            copy.type = 'button';
+            copy.className = 'kb-copy-address';
+            copy.textContent = 'Copy wallet address';
+            copy.onclick = async () => {
+                try {
+                    await navigator.clipboard.writeText(paymentDetails.address);
+                    copy.textContent = 'Copied';
+                    setTimeout(() => copy.textContent = 'Copy wallet address', 1800);
+                } catch (_) {
+                    copy.textContent = 'Select and copy the address above';
+                }
+            };
+            card.append(label, qrWrap, address, copy);
+            el.appendChild(card);
         }
         if (quickReplies && quickReplies.length) {
             const qrDiv = document.createElement('div');

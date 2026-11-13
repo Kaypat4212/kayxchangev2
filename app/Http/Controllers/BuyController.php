@@ -466,7 +466,7 @@ class BuyController extends Controller
      */
     public function paymentPage($id)
     {
-       $trade = BuyTrade::findOrFail($id);
+       $trade = BuyTrade::where('id', $id)->where('user_id', auth()->id())->firstOrFail();
     $accountDetails = CompanyAccount::where('is_active', true)->first(); // Adjust query as needed
 
     if (!$accountDetails) {
