@@ -200,7 +200,7 @@ class WalletController extends Controller
                 $message = 'This amount is below the minimum for the selected asset and network. Increase the amount or choose another network, then try again. No balance was deducted.';
             } elseif (str_contains($normalized, 'INVALID_API_KEY') || str_contains($normalized, 'REJECTED THE API KEY')) {
                 $title = 'Crypto deposits are temporarily unavailable';
-                $message = 'We could not connect to the payment provider. Please try again later or contact support. No balance was deducted.';
+                $message = 'The payment provider could not authorize this deposit. Please try again later or contact support. No balance was deducted.';
             } elseif (str_contains($normalized, 'NETWORK') || str_contains($normalized, 'CURRENCY')) {
                 $title = 'This deposit option is unavailable';
                 $message = 'The selected asset or network could not be used right now. Choose another available network or try again later. No balance was deducted.';
