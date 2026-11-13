@@ -623,12 +623,15 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
 
     // Buy Routes
     Route::get('/buy', [CryptoController::class, 'buy'])->name('buy');
-    Route::get('/convert', [CryptoController::class, 'convert'])->name('convert');
-    Route::post('/convert', [CryptoController::class, 'convertSubmit'])->name('convert.submit');
-    Route::post('/convert/quote', [CryptoController::class, 'convertQuote'])->name('convert.quote');
-    Route::post('/convert/manual', [CryptoController::class, 'convertManualSubmit'])->name('convert.manual');
-    Route::get('/convert/success/{id}', [CryptoController::class, 'convertSuccess'])->name('convert.success');
-    Route::get('/convert/failed/{id}', [CryptoController::class, 'convertFailed'])->name('convert.failed');
+    Route::middleware('auth')->group(function () {
+        Route::get('/convert', [CryptoController::class, 'convert'])->name('convert');
+        Route::post('/convert', [CryptoController::class, 'convertSubmit'])->middleware('throttle:8,1')->name('convert.submit');
+        Route::post('/convert/quote', [CryptoController::class, 'convertQuote'])->middleware('throttle:30,1')->name('convert.quote');
+        Route::post('/convert/manual', [CryptoController::class, 'convertManualSubmit'])->middleware('throttle:8,1')->name('convert.manual');
+        Route::get('/convert/success/{id}', [CryptoController::class, 'convertSuccess'])->name('convert.success');
+        Route::get('/convert/status/{id}', [CryptoController::class, 'convertStatus'])->middleware('throttle:12,1')->name('convert.status');
+        Route::get('/convert/failed/{id}', [CryptoController::class, 'convertFailed'])->name('convert.failed');
+    });
     Route::get('/api/crypto-prices', [BuyController::class, 'cryptoPricesApi'])->name('api.crypto.prices');
     Route::post('/buy/submit', [BuyController::class, 'submit'])->name('buy.submit');
     Route::get('/buy/summary/{id}', [BuyController::class, 'summary'])->name('buy.summary');
@@ -729,6 +732,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('settings',                    [\App\Http\Controllers\Admin\AdminSettingsController::class, 'index'])->name('settings.index');
     Route::post('settings',                   [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('settings.update');
     Route::post('settings/nowpayments-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPayments'])->middleware('throttle:5,1')->name('settings.nowpayments-test');
+    Route::post('settings/nowpayments-custody-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPaymentsCustody'])->middleware('throttle:3,1')->name('settings.nowpayments-custody-test');
     Route::post('settings/cloudflare-action', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'cloudflareAction'])->name('settings.cloudflare-action');
     Route::get('settings/ai-usage',           [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiUsage'])->name('settings.ai-usage');
     Route::get('settings/ai-test',            [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiTest'])->name('settings.ai-test');

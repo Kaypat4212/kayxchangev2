@@ -23,7 +23,7 @@ class AdminConversionController extends Controller
         if ($status && in_array($status, ['pending', 'processing', 'completed', 'failed'], true)) {
             $query->where('status', $status);
         }
-        if ($mode && in_array($mode, ['cryptomus', 'manual'], true)) {
+        if ($mode && in_array($mode, ['cryptomus', 'nowpayments', 'manual'], true)) {
             $query->where('mode', $mode);
         }
 
@@ -45,6 +45,13 @@ class AdminConversionController extends Controller
     public function show($id)
     {
         $conversion = Conversion::with(['user', 'processor'])->findOrFail($id);
+        if ($conversion->mode === 'nowpayments' && in_array($conversion->status, ['pending', 'processing'], true)) {
+            try {
+                $conversion = app(\App\Services\NowPaymentsConversionService::class)->refresh($conversion)->load(['user', 'processor']);
+            } catch (\Throwable $e) {
+                Log::warning('Admin NOWPayments conversion refresh failed', ['conversion_id' => $conversion->id, 'error' => $e->getMessage()]);
+            }
+        }
 
         return view('admin.conversions.show', compact('conversion'));
     }
@@ -59,6 +66,10 @@ class AdminConversionController extends Controller
         ]);
 
         $conversion = Conversion::findOrFail($id);
+
+        if ($conversion->mode === 'nowpayments') {
+            return back()->with('error', 'NOWPayments swaps settle only after verified provider confirmation.');
+        }
 
         if ($conversion->isCompleted()) {
             return back()->with('error', 'This conversion is already completed.');
@@ -89,6 +100,10 @@ class AdminConversionController extends Controller
         ]);
 
         $conversion = Conversion::findOrFail($id);
+
+        if ($conversion->mode === 'nowpayments') {
+            return back()->with('error', 'NOWPayments swaps can only be failed and refunded after a verified provider failure.');
+        }
 
         if ($conversion->isCompleted()) {
             return back()->with('error', 'This conversion is already completed.');

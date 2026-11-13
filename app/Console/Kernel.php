@@ -26,6 +26,13 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Reconcile provider-side crypto swaps even when the customer has left
+        // the status page; settlement is idempotent inside the conversion service.
+        $schedule->command('nowpayments:sync-conversions')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // Check price alerts every 5 minutes
         $schedule->command('alerts:check')
             ->everyFiveMinutes()

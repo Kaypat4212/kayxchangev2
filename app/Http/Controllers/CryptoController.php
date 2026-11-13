@@ -146,12 +146,20 @@ class CryptoController extends Controller
             ];
         }
 
-        $feePercent = (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5');
+        $platformFeePercent = max(0, min(19.5, (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5')));
         $convertMode = \App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus'); // compare | cryptomus | manual
-        if (!in_array($convertMode, ['compare', 'cryptomus', 'manual'], true)) {
+        if (!in_array($convertMode, ['compare', 'cryptomus', 'nowpayments', 'manual'], true)) {
             $convertMode = 'cryptomus';
         }
+        if ($convertMode === 'nowpayments') {
+            $coins = array_intersect_key($coins, array_flip(['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL']));
+        }
         $cryptomusReady = (new CryptomusService())->isEnabled();
+        $nowPayments = app(\App\Services\NowPaymentsService::class);
+        $swapReady = $nowPayments->isCustodyConversionReady();
+        $feePercent = $convertMode === 'nowpayments'
+            ? app(\App\Services\NowPaymentsConversionService::class)->totalFeePercent()
+            : $platformFeePercent;
         $convertInstructions = \App\Models\AdminSetting::getSetting('convert_instructions', '');
 
         $recentConversions = Conversion::where('user_id', Auth::id())
@@ -159,7 +167,11 @@ class CryptoController extends Controller
             ->limit(5)
             ->get();
 
-        return view('convert', compact('coins', 'feePercent', 'convertMode', 'cryptomusReady', 'convertInstructions', 'recentConversions', 'rateSource', 'ratesUpdated'));
+        $walletBalances = Auth::user()->wallets()->where('is_active', true)->get()
+            ->mapWithKeys(fn ($wallet) => [strtoupper($wallet->currency) => (float) $wallet->balance])->all();
+        $swapRequestKey = (string) Str::uuid();
+
+        return view('convert', compact('coins', 'walletBalances', 'swapRequestKey', 'feePercent', 'convertMode', 'cryptomusReady', 'swapReady', 'convertInstructions', 'recentConversions', 'rateSource', 'ratesUpdated'));
     }
 
     /**
@@ -191,7 +203,10 @@ class CryptoController extends Controller
         }
 
         try {
-            $feePercent = (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5');
+            $feePercent = max(0, min(19.5, (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5')));
+            if (\App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus') === 'nowpayments') {
+                $feePercent = app(\App\Services\NowPaymentsConversionService::class)->totalFeePercent();
+            }
             $quote = $rateService->quote($fromCoin, $toCoin, (float) $request->from_amount, $feePercent);
 
             return response()->json([
@@ -245,6 +260,9 @@ class CryptoController extends Controller
                 ], 400);
             }
             if ($convertMode !== 'cryptomus') {
+                if ($convertMode === 'nowpayments') {
+                    return $this->submitNowPaymentsWalletSwap($request);
+                }
                 return response()->json([
                     'success' => false,
                     'message' => 'Conversions are currently in compare-only mode.'
@@ -453,7 +471,93 @@ class CryptoController extends Controller
             ->where('user_id', Auth::id())
             ->firstOrFail();
 
+        if ($conversion->mode === 'nowpayments' && in_array($conversion->status, ['pending', 'processing'], true)) {
+            try {
+                $conversion = app(\App\Services\NowPaymentsConversionService::class)->refresh($conversion);
+            } catch (\Throwable $e) {
+                Log::warning('User conversion status refresh failed', ['conversion_id' => $conversion->id, 'error' => $e->getMessage()]);
+            }
+        }
+
         return view('convert.success', compact('conversion'));
+    }
+
+    public function convertStatus($id)
+    {
+        $conversion = Conversion::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        if ($conversion->mode === 'nowpayments' && !$conversion->provider_conversion_id && in_array($conversion->status, ['pending', 'processing'], true)) {
+            return response()->json([
+                'success' => true,
+                'status' => $conversion->status,
+                'syncable' => false,
+                'to_amount' => (float) $conversion->to_amount,
+                'fee_amount' => (float) $conversion->fee_amount,
+                'to_coin' => $conversion->to_coin,
+                'message' => 'The provider response is being reconciled. Your source balance remains reserved; support will verify the request before release.',
+            ])->header('Cache-Control', 'private, no-store');
+        }
+        if ($conversion->mode === 'nowpayments' && in_array($conversion->status, ['pending', 'processing'], true)) {
+            try {
+                $conversion = app(\App\Services\NowPaymentsConversionService::class)->refresh($conversion);
+            } catch (\Throwable $e) {
+                Log::warning('NOWPayments conversion status poll failed', ['conversion_id' => $conversion->id, 'error' => $e->getMessage()]);
+                return response()->json(['success' => false, 'message' => 'Status refresh is temporarily unavailable. Your reserved balance remains protected.'], 503);
+            }
+        }
+        return response()->json([
+            'success' => true,
+            'status' => $conversion->status,
+            'to_amount' => (float) $conversion->to_amount,
+            'fee_amount' => (float) $conversion->fee_amount,
+            'to_coin' => $conversion->to_coin,
+            'provider_status' => $conversion->provider_status,
+            'syncable' => $conversion->mode === 'nowpayments' && in_array($conversion->status, ['pending', 'processing'], true) && !empty($conversion->provider_conversion_id),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    private function submitNowPaymentsWalletSwap(Request $request)
+    {
+        if (\App\Models\AdminSetting::getSetting('cryptomus_convert_enabled', '1') !== '1') {
+            return response()->json(['success' => false, 'message' => 'Crypto swaps are currently disabled.'], 403);
+        }
+
+        $service = app(\App\Services\NowPaymentsConversionService::class);
+        if (!app(\App\Services\NowPaymentsService::class)->isCustodyConversionReady()) {
+            return response()->json(['success' => false, 'message' => 'Crypto swaps are not configured yet. Please try again later.'], 503);
+        }
+
+        $request->validate(['swap_request_key' => ['required', 'uuid']]);
+
+        $fromCoin = strtoupper($request->input('from_coin'));
+        $toCoin = strtoupper($request->input('to_coin'));
+        $fromAmount = round((float) $request->input('from_amount'), 8);
+        $rates = app(\App\Services\ExchangeRateService::class);
+        if (!$rates->isSupported($fromCoin) || !$rates->isSupported($toCoin) || $fromCoin === $toCoin) {
+            return response()->json(['success' => false, 'message' => 'Choose a supported, different cryptocurrency pair.'], 422);
+        }
+
+        try {
+            $quote = $rates->quote($fromCoin, $toCoin, $fromAmount, $service->totalFeePercent());
+            if ($quote['usd_value'] < 1) {
+                return response()->json(['success' => false, 'message' => 'Minimum swap is $1.00 worth of crypto.'], 422);
+            }
+            $conversion = $service->submit(Auth::user(), $fromCoin, $toCoin, $fromAmount, $quote, (string) $request->input('swap_request_key'));
+            return response()->json([
+                'success' => true,
+                'message' => $conversion->status === 'completed'
+                    ? 'Swap completed and your destination wallet has been credited.'
+                    : ($conversion->status === 'failed'
+                        ? 'The provider rejected this swap and your source balance was restored.'
+                        : 'Swap submitted. Your source amount is reserved while NOWPayments confirms the conversion.'),
+                'conversion_id' => $conversion->id,
+                'status' => $conversion->status,
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            Log::error('NOWPayments wallet swap failed', ['user_id' => Auth::id(), 'from_coin' => $fromCoin, 'to_coin' => $toCoin, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'We could not safely complete this swap request. Please try again or contact support.'], 500);
+        }
     }
 
     public function convertFailed($id)

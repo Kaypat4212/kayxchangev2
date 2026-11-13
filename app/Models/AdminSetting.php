@@ -97,12 +97,15 @@ class AdminSetting extends Model
             ['key' => 'cryptomus_enabled',     'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable Cryptomus',      'description' => '1 = enable crypto payments, 0 = disable'],
             ['key' => 'nowpayments_api_key', 'group' => 'payment', 'is_encrypted' => true, 'label' => 'NOWPayments API Key', 'description' => 'From your NOWPayments merchant dashboard → API keys'],
             ['key' => 'nowpayments_ipn_secret', 'group' => 'payment', 'is_encrypted' => true, 'label' => 'NOWPayments IPN Secret', 'description' => 'Webhook signature secret from NOWPayments Payment Settings'],
+            ['key' => 'nowpayments_account_email', 'group' => 'payment', 'is_encrypted' => true, 'label' => 'NOWPayments Account Email', 'description' => 'Account email used only to obtain short-lived Custody conversion tokens'],
+            ['key' => 'nowpayments_account_password', 'group' => 'payment', 'is_encrypted' => true, 'label' => 'NOWPayments Account Password', 'description' => 'Encrypted server-side credential for Custody conversion authentication'],
+            ['key' => 'nowpayments_conversion_enabled', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable NOWPayments Custody Swaps', 'description' => 'Allow wallet-to-wallet swaps backed by merchant Custody funds; requires account credentials and available Custody liquidity'],
             ['key' => 'nowpayments_enabled', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable NOWPayments', 'description' => '1 = allow NOWPayments crypto deposits, 0 = disable'],
             ['key' => 'nowpayments_sandbox', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'NOWPayments Sandbox Mode', 'description' => 'Use test environment credentials and simulated transactions when enabled'],
             ['key' => 'crypto_deposit_provider', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Crypto Deposit Provider', 'description' => 'Choose NOWPayments, Cryptomus, or automatically use the first configured provider'],
             ['key' => 'cryptomus_convert_enabled', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable Convert Feature', 'description' => '1 = show convert page to users, 0 = hide convert feature'],
             ['key' => 'convert_mode', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Convert Mode', 'description' => 'compare = price comparison only · cryptomus = automated via Cryptomus API · manual = user submits wallet, admin processes'],
-            ['key' => 'convert_fee_percent', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Convert Fee (%)', 'description' => 'Fee charged on crypto conversions, e.g. 0.5 = 0.5%'],
+            ['key' => 'convert_fee_percent', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Platform Swap Fee (%)', 'description' => 'Your platform fee, added to the NOWPayments conversion fee. Users see only the combined fee.'],
             ['key' => 'convert_instructions', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Manual Convert Instructions', 'description' => 'Shown to users in manual mode — e.g. where/how to send the source crypto'],
 
             // ── Telegram ───────────────────────────────────────────────────

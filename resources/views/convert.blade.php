@@ -29,6 +29,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 .swap-panel:focus-within{border-color:rgba(0,204,0,.4);}
 .swap-panel-label{font-size:.75rem;color:var(--kx-muted);margin-bottom:.6rem;display:flex;justify-content:space-between;}
 .swap-panel-label .usd-val{color:var(--kx-muted);font-variant-numeric:tabular-nums;}
+.wallet-balance-hint{font-size:.72rem;color:var(--kx-muted);margin-top:.45rem;text-align:right;}
 .swap-row{display:flex;align-items:center;gap:.75rem;}
 .coin-select-wrap{position:relative;flex-shrink:0;}
 .coin-select{appearance:none;background:var(--kx-card);border:1px solid var(--kx-border);border-radius:10px;padding:.55rem 2rem .55rem .7rem;color:var(--kx-text);font-size:.9rem;font-weight:700;cursor:pointer;max-width:130px;}
@@ -111,8 +112,8 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 
     {{-- Header --}}
     <div class="kx-hero">
-        <h1><i class="bi bi-arrow-left-right me-2"></i>Crypto Converter</h1>
-        <p>Convert between cryptocurrencies instantly</p>
+        <h1><i class="bi bi-arrow-left-right me-2"></i>{{ $convertMode === 'nowpayments' ? 'Crypto Wallet Swap' : 'Crypto Converter' }}</h1>
+        <p>{{ $convertMode === 'nowpayments' ? 'Swap crypto from your wallet balance' : 'Convert between cryptocurrencies instantly' }}</p>
         <div class="live-badge {{ $rateSource === 'fallback' ? 'stale' : '' }}" id="rateBadge">
             <span class="dot"></span>
             @if($rateSource === 'fallback')
@@ -127,6 +128,8 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
                 <i class="bi bi-bar-chart"></i> Compare Mode
             @elseif($convertMode === 'manual')
                 <i class="bi bi-person-gear"></i> Manual Mode
+            @elseif($convertMode === 'nowpayments')
+                <i class="bi bi-shield-check"></i> NOWPayments Custody Swap
             @else
                 <i class="bi bi-lightning-charge"></i> Instant Convert
             @endif
@@ -137,6 +140,13 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div class="notice-warn">
         <i class="bi bi-exclamation-triangle-fill"></i>
         <div>Crypto conversion payments are not fully configured yet. You can preview rates, but submitting a conversion is temporarily unavailable.</div>
+    </div>
+    @endif
+
+    @if($convertMode === 'nowpayments' && !$swapReady)
+    <div class="notice-warn">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <div>NOWPayments wallet swaps are not enabled yet. An administrator must configure the Custody credentials and enable swaps.</div>
     </div>
     @endif
 
@@ -151,6 +161,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div class="kx-card">
         <form id="convertForm" action="{{ $convertMode === 'manual' ? route('convert.manual') : route('convert.submit') }}" method="post">
             @csrf
+            @if($convertMode === 'nowpayments')<input type="hidden" name="swap_request_key" value="{{ $swapRequestKey }}">@endif
 
             {{-- You Pay --}}
             <div class="swap-panel">
@@ -168,6 +179,9 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
                     </div>
                     <input type="number" id="fromAmount" name="from_amount" class="amount-input" placeholder="0.00" step="0.00000001" min="0" required autocomplete="off">
                 </div>
+                @if($convertMode === 'nowpayments')
+                <div class="wallet-balance-hint" id="fromWalletBalance">Available: {{ rtrim(rtrim(number_format((float)($walletBalances['BTC'] ?? 0), 8), '0'), '.') }} BTC</div>
+                @endif
             </div>
 
             {{-- Swap --}}
@@ -198,7 +212,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
             {{-- Quote breakdown --}}
             <div class="quote-box" id="quoteBox">
                 <div class="quote-row"><span class="k">Rate</span><span class="v" id="qRate">—</span></div>
-                <div class="quote-row"><span class="k">Fee ({{ rtrim(rtrim(number_format($feePercent, 2), '0'), '.') }}%)</span><span class="v amber" id="qFee">—</span></div>
+                <div class="quote-row"><span class="k">{{ $convertMode === 'nowpayments' ? 'Total fee (including provider fee)' : 'Fee' }} · {{ rtrim(rtrim(number_format($feePercent, 2), '0'), '.') }}%</span><span class="v amber" id="qFee">—</span></div>
                 <div class="quote-row"><span class="k">You receive</span><span class="v green" id="qReceive">—</span></div>
             </div>
 
@@ -219,8 +233,8 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
                 <i class="bi bi-send me-1"></i>Request Conversion
             </button>
             @else
-            <button type="submit" class="btn-kx-primary" id="convertBtn" {{ $cryptomusReady ? '' : 'disabled' }}>
-                <i class="bi bi-arrow-left-right me-1"></i>Convert Now
+            <button type="submit" class="btn-kx-primary" id="convertBtn" {{ ($convertMode === 'nowpayments' ? $swapReady : $cryptomusReady) ? '' : 'disabled' }}>
+                <i class="bi bi-arrow-left-right me-1"></i>{{ $convertMode === 'nowpayments' ? 'Swap Now' : 'Convert Now' }}
             </button>
             @endif
         </form>
@@ -244,7 +258,13 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     </div>
     @endif
 
-    {{-- Cryptomus Partnership --}}
+    {{-- Conversion provider --}}
+    @if($convertMode === 'nowpayments')
+    <div class="crypto-info">
+        <div class="crypto-info-icon"><i class="bi bi-arrow-left-right"></i></div>
+        <div class="crypto-info-text"><h6>Powered by NOWPayments Custody</h6><p>Swaps are completed from platform Custody liquidity. Your wallet balance is reserved until provider confirmation.</p></div>
+    </div>
+    @else
     <div class="crypto-info">
         <div class="crypto-info-icon">
             <img src="{{ asset('assets/img/cryptomus-logo.svg') }}" alt="Cryptomus" style="width:100%;height:100%;object-fit:contain;border-radius:4px;" onerror="this.parentElement.textContent='C'">
@@ -254,6 +274,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
             <p>Secure and instant cryptocurrency conversions</p>
         </div>
     </div>
+    @endif
 
     {{-- Recent Conversions --}}
     @if($recentConversions->isNotEmpty())
@@ -294,7 +315,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
             <div class="feat-item">
                 <i class="bi bi-cash-stack"></i>
                 <div class="t">Low Fees</div>
-                <div class="d">Only {{ rtrim(rtrim(number_format($feePercent, 2), '0'), '.') }}% fee</div>
+                <div class="d">{{ rtrim(rtrim(number_format($feePercent, 2), '0'), '.') }}% total estimated fee</div>
             </div>
             <div class="feat-item">
                 <i class="bi bi-graph-up"></i>
@@ -317,6 +338,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 
 <script>
 const COINS = @json($coins);
+const WALLET_BALANCES = @json($walletBalances);
 const FEE_PERCENT = {{ $feePercent }};
 const CONVERT_MODE = '{{ $convertMode }}';
 const QUOTE_URL = '{{ route('convert.quote') }}';
@@ -338,6 +360,12 @@ function fmt(n, dp = 8) {
 }
 function fmtUsd(n) {
     return '≈ $' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function updateWalletBalance() {
+    const el = document.getElementById('fromWalletBalance');
+    if (!el) return;
+    const coin = fromCoinEl.value;
+    el.textContent = 'Available: ' + fmt(WALLET_BALANCES[coin] || 0) + ' ' + coin;
 }
 
 let quoteTimer = null;
@@ -394,7 +422,7 @@ async function fetchQuote() {
     }
 }
 
-fromCoinEl.addEventListener('change', () => { scheduleQuote(); renderCompare(); });
+fromCoinEl.addEventListener('change', () => { scheduleQuote(); renderCompare(); updateWalletBalance(); });
 toCoinEl.addEventListener('change', () => {
     scheduleQuote();
     const wc = document.getElementById('walletCoin');
@@ -423,6 +451,7 @@ function renderCompare() {
         }).join('');
 }
 renderCompare();
+updateWalletBalance();
 
 // Swap coins
 document.getElementById('swapBtn').addEventListener('click', function() {
@@ -453,6 +482,12 @@ document.getElementById('convertForm').addEventListener('submit', function(e) {
                 btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Request Submitted!';
                 btn.style.background = 'linear-gradient(90deg,#10b981,#059669)';
                 setTimeout(() => { window.location.href = '{{ route('convert.success', ['id' => '__ID__']) }}'.replace('__ID__', data.conversion_id); }, 1200);
+                return;
+            }
+            if (CONVERT_MODE === 'nowpayments') {
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Swap submitted';
+                btn.style.background = 'linear-gradient(90deg,#10b981,#059669)';
+                setTimeout(() => { window.location.href = '{{ route('convert.success', ['id' => '__ID__']) }}'.replace('__ID__', data.conversion_id); }, 500);
                 return;
             }
             btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Redirecting to Payment...';

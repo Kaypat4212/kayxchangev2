@@ -264,13 +264,15 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             @foreach($grouped['payment'] ?? [] as $row)
             <div class="field-row">
                 <div>
-                    <div class="field-label">{{ $row->label ?? $row->key }}
+                    <div class="field-label">{{ $row->key === 'convert_fee_percent' ? 'Platform Swap Fee (%)' : ($row->label ?? $row->key) }}
                         @if($row->is_encrypted)<span class="badge-enc">🔒 encrypted</span>@else<span class="badge-plain">visible</span>@endif
                     </div>
-                    @if($row->description)<div class="field-desc">{{ $row->description }}</div>@endif
+                    @if($row->key === 'convert_fee_percent')
+                        <div class="field-desc">Your platform fee is added to NOWPayments’ conversion fee. Users see one combined fee percentage and amount.</div>
+                    @elseif($row->description)<div class="field-desc">{{ $row->description }}</div>@endif
                 </div>
                 <div class="field-input">
-                    @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_enabled', 'nowpayments_sandbox']))
+                    @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_enabled', 'nowpayments_sandbox', 'nowpayments_conversion_enabled']))
                         @php
                             $toggleVal = $row->value ?? (in_array($row->key, ['cryptomus_convert_enabled', 'nowpayments_sandbox'], true) ? '1' : '0');
                             $toggleOn  = $toggleVal === '1';
@@ -296,10 +298,11 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         <select name="{{ $row->key }}">
                             <option value="compare"   {{ $cm === 'compare'   ? 'selected' : '' }}>📊 Compare — price comparison only, no conversions</option>
                             <option value="cryptomus" {{ $cm === 'cryptomus' ? 'selected' : '' }}>⚡ Cryptomus — automated via Cryptomus API</option>
+                            <option value="nowpayments" {{ $cm === 'nowpayments' ? 'selected' : '' }}>🔁 NOWPayments Custody — swap from user crypto wallets</option>
                             <option value="manual"    {{ $cm === 'manual'    ? 'selected' : '' }}>🖐 Manual — user submits wallet, admin processes</option>
                         </select>
                     @elseif($row->key === 'convert_fee_percent')
-                        <input type="number" name="{{ $row->key }}" value="{{ $row->value ?? '0.5' }}" min="0" max="20" step="0.1">
+                        <input type="number" name="{{ $row->key }}" value="{{ $row->value ?? '0.5' }}" min="0" max="19.5" step="0.1">
                     @elseif($row->key === 'convert_instructions')
                         <textarea name="{{ $row->key }}" rows="3" style="font-size:.82rem;">{{ $row->value ?? '' }}</textarea>
                     @elseif($row->is_encrypted)
@@ -316,6 +319,11 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     <span id="nowpayments-test-result" class="small" role="status">Save the API key and environment setting before testing.</span>
                 </div>
                 <div class="field-desc mt-2">This checks the saved API key against the selected Sandbox or Live endpoint without creating a payment.</div>
+                <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+                    <button type="button" class="btn btn-sm btn-outline-info" id="nowpayments-custody-test-btn" onclick="testNowPaymentsCustody()"><i class="bi bi-shield-check me-1"></i>Test Custody credentials</button>
+                    <span id="nowpayments-custody-test-result" class="small" role="status">Save the account email and password first.</span>
+                </div>
+                <div class="field-desc mt-2">Custody account credentials are encrypted in the settings database and used only on the server to obtain short-lived conversion tokens. Enter the separate platform swap fee above; customers see only the combined fee estimate.</div>
             </div>
         </div>
 
@@ -434,6 +442,27 @@ async function cfAction(action) {
                 result.textContent = 'Could not reach the server. Save settings and try again.';
                 result.className = 'small text-warning';
             } finally { button.disabled = false; }
+        }
+
+        async function testNowPaymentsCustody() {
+            const button = document.getElementById('nowpayments-custody-test-btn');
+            const result = document.getElementById('nowpayments-custody-test-result');
+            button.disabled = true;
+            result.textContent = 'Checking Custody access…';
+            try {
+                const response = await fetch(@json(route('admin.settings.nowpayments-custody-test')), {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
+                });
+                const data = await response.json();
+                result.textContent = data.message || (data.ok ? 'Custody access verified.' : 'Custody check failed.');
+                result.style.color = data.ok ? '#4ade80' : '#f87171';
+            } catch (e) {
+                result.textContent = 'Could not reach NOWPayments. Check hosting network access.';
+                result.style.color = '#f87171';
+            } finally {
+                button.disabled = false;
+            }
         }
         </script>
 @endsection

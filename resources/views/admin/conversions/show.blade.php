@@ -21,6 +21,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 .mode-tag{font-size:.7rem;font-weight:700;padding:.25rem .7rem;border-radius:6px;}
 .mode-tag.manual{background:rgba(167,139,250,.12);color:#a78bfa;}
 .mode-tag.cryptomus{background:rgba(0,204,0,.1);color:#4ade80;}
+.mode-tag.nowpayments{background:rgba(56,189,248,.12);color:#7dd3fc;}
 .btn-action{border:none;border-radius:10px;padding:.7rem 1.5rem;font-weight:700;font-size:.85rem;cursor:pointer;width:100%;}
 .btn-complete{background:linear-gradient(90deg,#00cc00,#009900);color:#fff;}
 .btn-complete:hover{opacity:.9;}
@@ -65,7 +66,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         <div class="detail-row"><span class="k">Pair</span><span class="v">{{ $conversion->from_coin }} → {{ $conversion->to_coin }}</span></div>
         <div class="detail-row"><span class="k">User sends</span><span class="v">{{ rtrim(rtrim(number_format((float) $conversion->from_amount, 8), '0'), '.') }} {{ $conversion->from_coin }}</span></div>
         <div class="detail-row"><span class="k">Rate used</span><span class="v">1 {{ $conversion->from_coin }} = {{ rtrim(rtrim(number_format((float) $conversion->rate_used, 8), '0'), '.') }} {{ $conversion->to_coin }}</span></div>
-        <div class="detail-row"><span class="k">Fee</span><span class="v" style="color:#f59e0b">{{ rtrim(rtrim(number_format((float) $conversion->fee_amount, 8), '0'), '.') }} {{ $conversion->to_coin }}</span></div>
+        <div class="detail-row"><span class="k">{{ $conversion->mode === 'nowpayments' ? 'Total swap fee' : 'Fee' }}</span><span class="v" style="color:#f59e0b">{{ rtrim(rtrim(number_format((float) $conversion->fee_amount, 8), '0'), '.') }} {{ $conversion->to_coin }}</span></div>
         <div class="detail-row"><span class="k">User receives</span><span class="v" style="color:var(--kx-green)">{{ rtrim(rtrim(number_format((float) $conversion->to_amount, 8), '0'), '.') }} {{ $conversion->to_coin }}</span></div>
 
         @if($conversion->wallet_address)
@@ -77,6 +78,12 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
         @if($conversion->cryptomus_order_id)
         <div class="detail-row"><span class="k">Cryptomus UUID</span><span class="v mono">{{ $conversion->cryptomus_order_id }}</span></div>
+        @endif
+        @if($conversion->provider_conversion_id)
+        <div class="detail-row"><span class="k">NOWPayments conversion ID</span><span class="v mono">{{ $conversion->provider_conversion_id }}</span></div>
+        @endif
+        @if($conversion->provider_status)
+        <div class="detail-row"><span class="k">Provider status</span><span class="v">{{ strtoupper($conversion->provider_status) }}</span></div>
         @endif
 
         @if($conversion->processed_by)
@@ -94,7 +101,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     </div>
 
     {{-- Actions --}}
-    @if(!$conversion->isCompleted() && !$conversion->isFailed())
+    @if(!$conversion->isCompleted() && !$conversion->isFailed() && $conversion->mode !== 'nowpayments')
     <div class="row g-3">
         <div class="col-md-6">
             <div class="kx-card">
@@ -130,6 +137,9 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             </div>
         </div>
     </div>
+    @endif
+    @if($conversion->mode === 'nowpayments' && in_array($conversion->status, ['pending', 'processing'], true))
+    <div class="kx-card"><div class="d-flex gap-2 align-items-center">@if($conversion->provider_conversion_id)<span class="spinner-border spinner-border-sm text-info" role="status"></span><span>NOWPayments status was checked when this page loaded. Reload to check again; user funds remain reserved until provider success or failure is verified.</span>@else<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Provider did not return a conversion ID. Source funds remain reserved. Check Custody conversion history before manually resolving this request.</span>@endif</div></div>
     @endif
 
     <a href="{{ route('admin.conversions.index') }}" style="color:var(--kx-muted);font-size:.8rem;text-decoration:none;">

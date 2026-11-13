@@ -75,7 +75,7 @@
 .kx-type-sell{background:rgba(0,204,0,.1);color:#00cc00;}
 .kx-type-withdrawal{background:rgba(168,85,247,.12);color:#c084fc;}
 .kx-type-deposit{background:rgba(245,158,11,.1);color:#fbbf24;}
-.kx-type-crypto_deposit,.kx-type-crypto_withdrawal{background:rgba(56,189,248,.12);color:#7dd3fc;}
+.kx-type-crypto_deposit,.kx-type-crypto_withdrawal,.kx-type-crypto_swap{background:rgba(56,189,248,.12);color:#7dd3fc;}
 .kx-type-bill_payment{background:rgba(251,146,60,.12);color:#fdba74;}
 .kx-type-transfer{background:rgba(192,132,252,.12);color:#c084fc;}
 
@@ -257,7 +257,7 @@
            class="kx-tab {{ $activeType==='withdrawal' ? 'active' : '' }}">
             <i class="bi bi-bank"></i> Withdrawals
         </a>
-        @foreach(['deposit'=>'Deposits','crypto_deposit'=>'Crypto deposits','crypto_withdrawal'=>'Crypto withdrawals','bill_payment'=>'Bills','transfer'=>'Transfers'] as $kind=>$label)
+        @foreach(['deposit'=>'Deposits','crypto_deposit'=>'Crypto deposits','crypto_withdrawal'=>'Crypto withdrawals','crypto_swap'=>'Crypto swaps','bill_payment'=>'Bills','transfer'=>'Transfers'] as $kind=>$label)
         <a href="{{ route('transactions.history', array_merge(request()->except('type'), ['type'=>$kind])) }}" class="kx-tab {{ $activeType===$kind ? 'active' : '' }}">{{ $label }}</a>
         @endforeach
     </div>
@@ -342,7 +342,7 @@
                 @php
                     $typClass = 'kx-type-'.($trade->type ?? 'other');
                     $stsClass = 'kx-sts-'.($trade->status ?? 'other');
-                    $typIcon  = $trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle')))));
+                    $typIcon  = $trade->type==='crypto_swap' ? 'bi-arrow-left-right' : ($trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle'))))));
                     $walletLabel = in_array($trade->type, ['buy', 'sell']) ? ($trade->wallet_address ?? '—') : '—';
                     if($trade->payment_method && $trade->type==='withdrawal'){
                         $bd = json_decode($trade->payment_method,true);
@@ -353,11 +353,11 @@
                     <td>
                         <span class="kx-type-badge {{ $typClass }}">
                             <i class="bi {{ $typIcon }}"></i>
-                            {{ ucfirst($trade->type) }}
+                            {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ucfirst($trade->type) }}
                         </span>
                     </td>
                     <td style="font-weight:600;color:#fff;">{{ $trade->coin ?? '—' }}</td>
-                    <td><span class="kx-amt">@if(in_array($trade->type,['crypto_deposit','crypto_withdrawal'])){{ number_format((float)$trade->amount,8) }} {{ strtoupper($trade->coin ?? 'CRYPTO') }}@else₦{{ number_format($trade->naira_amount ?? $trade->amount, 2) }}@endif</span></td>
+                    <td><span class="kx-amt">@if(in_array($trade->type,['crypto_deposit','crypto_withdrawal','crypto_swap'])){{ number_format((float)$trade->amount,8) }} {{ strtoupper($trade->coin ?? 'CRYPTO') }}@else₦{{ number_format($trade->naira_amount ?? $trade->amount, 2) }}@endif</span></td>
                     <td><span class="kx-amt-usd">{{ $trade->usd_amount ? '$'.number_format($trade->usd_amount,2) : '—' }}</span></td>
                     <td>
                         <span class="kx-sts {{ $stsClass }}">
@@ -401,12 +401,12 @@
         @php
             $typClass = 'kx-type-'.($trade->type ?? 'other');
             $stsClass = 'kx-sts-'.($trade->status ?? 'other');
-                    $typIcon  = $trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle')))));
+                    $typIcon  = $trade->type==='crypto_swap' ? 'bi-arrow-left-right' : ($trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle'))))));
         @endphp
         <div class="kx-tx-card">
             <div class="kx-tx-card-top">
                 <span class="kx-type-badge {{ $typClass }}">
-                    <i class="bi {{ $typIcon }}"></i> {{ ucfirst($trade->type) }}
+                    <i class="bi {{ $typIcon }}"></i> {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ucfirst($trade->type) }}
                 </span>
                 <span class="kx-sts {{ $stsClass }}">
                     @if(in_array($trade->status,['completed','approved']))<i class="bi bi-check-circle-fill"></i>
@@ -417,7 +417,7 @@
             </div>
             <div class="kx-tx-card-mid">
                 <div>
-                    <div style="font-size:.82rem;font-weight:700;color:#fff;">@if(in_array($trade->type,['crypto_deposit','crypto_withdrawal'])){{ number_format((float)$trade->amount,8) }} {{ strtoupper($trade->coin ?? 'CRYPTO') }}@else₦{{ number_format($trade->naira_amount ?? $trade->amount, 2) }}@endif</div>
+                    <div style="font-size:.82rem;font-weight:700;color:#fff;">@if(in_array($trade->type,['crypto_deposit','crypto_withdrawal','crypto_swap'])){{ number_format((float)$trade->amount,8) }} {{ strtoupper($trade->coin ?? 'CRYPTO') }}@else₦{{ number_format($trade->naira_amount ?? $trade->amount, 2) }}@endif</div>
                     @if($trade->usd_amount)<div class="kx-amt-usd">${{ number_format($trade->usd_amount,2) }}</div>@endif
                     @if(in_array($trade->type, ['buy','sell']) && !empty($trade->wallet_address))
                         <div class="kx-ref" style="margin-top:.15rem;max-width:140px" title="{{ $trade->wallet_address }}">{{ Str::limit($trade->wallet_address, 18) }}</div>
@@ -642,9 +642,9 @@ function row(label, val, cls = '', copyVal = null) {
 }
 
 function renderDrawer(data) {
-    const typeLabels  = { buy: 'Buy Order', sell: 'Sell Order', withdrawal: 'Withdrawal', deposit: 'Deposit', crypto_deposit: 'Crypto Deposit', crypto_withdrawal: 'Crypto Withdrawal', bill_payment: 'Bill Payment', transfer: 'Wallet Transfer' };
-    const typeColors  = { buy: '#38bdf8', sell: '#00cc00', withdrawal: '#c084fc', deposit:'#fbbf24', crypto_deposit:'#7dd3fc', crypto_withdrawal:'#7dd3fc', bill_payment:'#fdba74', transfer:'#c084fc' };
-    const typeIcons   = { buy: 'bi-arrow-down-circle-fill', sell: 'bi-arrow-up-circle-fill', withdrawal: 'bi-bank', deposit:'bi-box-arrow-in-down', crypto_deposit:'bi-box-arrow-in-down', crypto_withdrawal:'bi-box-arrow-up', bill_payment:'bi-receipt', transfer:'bi-arrow-left-right' };
+    const typeLabels  = { buy: 'Buy Order', sell: 'Sell Order', withdrawal: 'Withdrawal', deposit: 'Deposit', crypto_deposit: 'Crypto Deposit', crypto_withdrawal: 'Crypto Withdrawal', crypto_swap: 'Crypto Swap', bill_payment: 'Bill Payment', transfer: 'Wallet Transfer' };
+    const typeColors  = { buy: '#38bdf8', sell: '#00cc00', withdrawal: '#c084fc', deposit:'#fbbf24', crypto_deposit:'#7dd3fc', crypto_withdrawal:'#7dd3fc', crypto_swap:'#7dd3fc', bill_payment:'#fdba74', transfer:'#c084fc' };
+    const typeIcons   = { buy: 'bi-arrow-down-circle-fill', sell: 'bi-arrow-up-circle-fill', withdrawal: 'bi-bank', deposit:'bi-box-arrow-in-down', crypto_deposit:'bi-box-arrow-in-down', crypto_withdrawal:'bi-box-arrow-up', crypto_swap:'bi-arrow-left-right', bill_payment:'bi-receipt', transfer:'bi-arrow-left-right' };
     const sColor = statusColor(data.status);
     const colorMap = { green: '#00cc00', yellow: '#ffc107', red: '#ef4444' };
 
@@ -661,7 +661,7 @@ function renderDrawer(data) {
         </div>
         <div style="text-align:right">
             <div style="font-size:.72rem;color:#7a8599;text-transform:uppercase;letter-spacing:.06em;">Amount</div>
-            <div style="font-size:1rem;font-weight:700;color:#fff;margin-top:2px;">${fmt(data.naira_amount ?? data.amount)}</div>
+            <div style="font-size:1rem;font-weight:700;color:#fff;margin-top:2px;">${data.type === 'crypto_swap' ? Number(data.from_amount || data.amount || 0).toFixed(8) + ' ' + (data.from_coin || data.coin) : fmt(data.naira_amount ?? data.amount)}</div>
         </div>
     </div>`;
 
@@ -776,6 +776,16 @@ function renderDrawer(data) {
         if (data.payment_address) html += row('Deposit Address', data.payment_address, 'mono');
         if (data.fee) html += row('Fee', fmt(data.fee));
         if (data.note) html += row('Note', data.note);
+        html += `</div>`;
+    }
+
+    if (data.type === 'crypto_swap') {
+        html += `<div class="kx-detail-section">
+            <div class="kx-detail-section-title">Swap Details</div>`;
+        if (data.from_amount && data.from_coin) html += row('Sent', Number(data.from_amount).toFixed(8) + ' ' + data.from_coin.toUpperCase());
+        if (data.to_amount && data.to_coin) html += row('Received', Number(data.to_amount).toFixed(8) + ' ' + data.to_coin.toUpperCase());
+        if (data.fee) html += row('Total swap fee', Number(data.fee).toFixed(8) + ' ' + (data.to_coin || 'crypto').toUpperCase());
+        if (data.provider_status) html += row('Processing status', data.provider_status);
         html += `</div>`;
     }
 

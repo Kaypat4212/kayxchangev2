@@ -170,6 +170,12 @@ class AdminSettingsController extends Controller
         if (isset($data['crypto_deposit_provider']) && !in_array($data['crypto_deposit_provider'], ['auto', 'cryptomus', 'nowpayments'], true)) {
             return back()->with('error', 'Choose a supported crypto deposit provider.');
         }
+        if (isset($data['convert_mode']) && !in_array($data['convert_mode'], ['compare', 'cryptomus', 'nowpayments', 'manual'], true)) {
+            return back()->with('error', 'Choose a supported crypto conversion mode.');
+        }
+        if (isset($data['convert_fee_percent']) && (!is_numeric($data['convert_fee_percent']) || (float)$data['convert_fee_percent'] < 0 || (float)$data['convert_fee_percent'] > 19.5)) {
+            return back()->with('error', 'The platform conversion fee must be between 0% and 19.5%.');
+        }
 
         foreach ($data as $key => $value) {
             $row = AdminSetting::where('key', $key)->first();
@@ -199,6 +205,16 @@ class AdminSettingsController extends Controller
             ]);
         } catch (\Throwable $e) {
             return response()->json(['ok'=>false, 'message'=>$e->getMessage()], 422);
+        }
+    }
+
+    public function testNowPaymentsCustody(NowPaymentsService $provider)
+    {
+        try {
+            $result = $provider->testCustodyConnection();
+            return response()->json(['ok' => true, 'message' => 'NOWPayments ' . strtoupper($result['environment']) . ' Custody conversion access verified.']);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
         }
     }
 

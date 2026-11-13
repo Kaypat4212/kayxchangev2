@@ -7,18 +7,23 @@ use App\Models\AdminSetting;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Client\Response;
 
 class NowPaymentsService
 {
     private string $apiKey;
     private string $ipnSecret;
+    private string $accountEmail;
+    private string $accountPassword;
     private string $baseUrl;
 
     public function __construct()
     {
         $this->apiKey = trim((string) AdminSetting::getSetting('nowpayments_api_key', ''));
         $this->ipnSecret = trim((string) AdminSetting::getSetting('nowpayments_ipn_secret', ''));
+        $this->accountEmail = trim((string) AdminSetting::getSetting('nowpayments_account_email', ''));
+        $this->accountPassword = (string) AdminSetting::getSetting('nowpayments_account_password', '');
         $sandbox = AdminSetting::getSetting('nowpayments_sandbox', '1') !== '0';
         $this->baseUrl = $sandbox ? 'https://api-sandbox.nowpayments.io/v1' : 'https://api.nowpayments.io/v1';
     }
@@ -29,6 +34,137 @@ class NowPaymentsService
     }
 
     public function isConfigured(): bool { return $this->apiKey !== '' && $this->ipnSecret !== ''; }
+
+    public function isCustodyConversionReady(): bool
+    {
+        return AdminSetting::getSetting('nowpayments_conversion_enabled', '0') === '1'
+            && $this->hasCustodyCredentials();
+    }
+
+    private function hasCustodyCredentials(): bool
+    {
+        return $this->apiKey !== '' && $this->accountEmail !== '' && $this->accountPassword !== '';
+    }
+
+    /** Obtain a short-lived JWT for authenticated Custody endpoints. */
+    private function custodyToken(): string
+    {
+        if (!$this->hasCustodyCredentials()) {
+            throw new \RuntimeException('NOWPayments Custody API credentials are not fully configured.');
+        }
+
+        $cacheKey = 'nowpayments_custody_jwt_' . hash('sha256', $this->environment() . '|' . strtolower($this->accountEmail));
+        return Cache::remember($cacheKey, now()->addMinutes(4), function (): string {
+            try {
+                $response = Http::acceptJson()->asJson()->timeout(12)
+                    ->post($this->baseUrl . '/auth', [
+                        'email' => $this->accountEmail,
+                        'password' => $this->accountPassword,
+                    ]);
+            } catch (ConnectionException $e) {
+                throw new NowPaymentsApiException('NOWPayments Custody is temporarily unreachable.', 0, $e);
+            }
+
+            if (!$response->successful() || !is_string($response->json('token'))) {
+                $this->throwProviderError($response, 'authenticate for Custody conversions');
+            }
+
+            return $response->json('token');
+        });
+    }
+
+    public function prepareCustodyAccess(): void
+    {
+        $this->custodyToken();
+    }
+
+    /** Create a merchant-Custody conversion; this does not send funds to an external address. */
+    public function createCustodyConversion(string $fromCurrency, string $toCurrency, string $amount): array
+    {
+        if (!$this->isCustodyConversionReady()) throw new \RuntimeException('NOWPayments Custody swaps are currently disabled or not fully configured.');
+        $token = $this->custodyToken();
+        try {
+            $response = Http::acceptJson()->asJson()->withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'x-api-key' => $this->apiKey,
+            ])->timeout(20)->post($this->baseUrl . '/conversion', [
+                'from_currency' => strtolower($fromCurrency),
+                'to_currency' => strtolower($toCurrency),
+                'amount' => (float) $amount,
+            ]);
+        } catch (ConnectionException $e) {
+            // A timeout is ambiguous: the provider may have accepted the swap.
+            throw new NowPaymentsApiException('NOWPayments did not confirm whether the conversion was created. Reconcile the request before retrying.', 0, $e);
+        }
+
+        if (!$response->successful()) $this->throwProviderError($response, 'create the Custody conversion');
+        return $response->json() ?? [];
+    }
+
+    public function custodyConversionStatus(string $conversionId): array
+    {
+        $token = $this->custodyToken();
+        try {
+            $response = Http::acceptJson()->withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'x-api-key' => $this->apiKey,
+            ])->timeout(12)->get($this->baseUrl . '/conversion/' . rawurlencode($conversionId));
+        } catch (ConnectionException $e) {
+            throw new NowPaymentsApiException('NOWPayments Custody is temporarily unreachable.', 0, $e);
+        }
+
+        if (!$response->successful()) $this->throwProviderError($response, 'refresh the Custody conversion');
+        return $response->json() ?? [];
+    }
+
+    /** Live provider-side reserve for a network-specific asset code. */
+    public function custodyAvailableBalance(string $currencyCode): float
+    {
+        if ($this->apiKey === '') throw new \RuntimeException('NOWPayments API key is not configured.');
+        try {
+            $response = Http::acceptJson()->withHeaders(['x-api-key' => $this->apiKey])
+                ->timeout(12)->get($this->baseUrl . '/balance');
+        } catch (ConnectionException $e) {
+            throw new NowPaymentsApiException('NOWPayments balance service is temporarily unreachable.', 0, $e);
+        }
+        if (!$response->successful()) $this->throwProviderError($response, 'check Custody liquidity');
+
+        $body = $response->json() ?? [];
+        $balances = $body['balances'] ?? $body['result'] ?? $body;
+        $requestedCode = strtolower($currencyCode);
+        $requestedAsset = preg_replace('/(trc20|erc20|bep20|bsc|sol)$/', '', $requestedCode);
+        foreach ($balances as $code => $balance) {
+            if (!is_array($balance)) continue;
+            // /balance reports canonical asset tickers (for example `usdt`),
+            // while conversion requests can use a network-qualified currency.
+            $balanceCode = strtolower((string) ($balance['currency'] ?? $balance['code'] ?? $balance['ticker'] ?? $code));
+            $balanceAsset = preg_replace('/(trc20|erc20|bep20|bsc|sol)$/', '', $balanceCode);
+            if ($balanceCode !== $requestedCode && $balanceAsset !== $requestedAsset) continue;
+            $amount = (float) ($balance['amount'] ?? $balance['available'] ?? 0);
+            $pending = (float) ($balance['pendingAmount'] ?? $balance['pending_amount'] ?? 0);
+            return max(0, $amount - max(0, $pending));
+        }
+        return 0.0;
+    }
+
+    public function testCustodyConnection(): array
+    {
+        $token = $this->custodyToken();
+        try {
+            $response = Http::acceptJson()->withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'x-api-key' => $this->apiKey,
+            ])->timeout(12)->get($this->baseUrl . '/conversion', ['limit' => 1]);
+        } catch (ConnectionException $e) {
+            throw new NowPaymentsApiException('NOWPayments Custody is temporarily unreachable.', 0, $e);
+        }
+        if (!$response->successful()) $this->throwProviderError($response, 'verify Custody conversion access');
+        // Swaps must not be enabled without the provider liquidity endpoint used
+        // to guard internal user liabilities before reserving their balances.
+        $balanceResponse = Http::acceptJson()->withHeaders(['x-api-key' => $this->apiKey])->timeout(12)->get($this->baseUrl . '/balance');
+        if (!$balanceResponse->successful()) $this->throwProviderError($balanceResponse, 'verify Custody balance access');
+        return ['environment' => $this->environment()];
+    }
 
     public function environment(): string
     {

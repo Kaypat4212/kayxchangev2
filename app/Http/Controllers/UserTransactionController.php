@@ -10,6 +10,7 @@ use App\Models\CryptoDeposit;
 use App\Models\CryptoWithdrawal;
 use App\Models\BillPayment;
 use App\Models\P2pTransfer;
+use App\Models\Conversion;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -106,7 +107,12 @@ class UserTransactionController extends Controller
             DB::raw('NULL as usd_amount'), 'status', DB::raw('"Wallet transfer" as payment_method'),
             DB::raw('NULL as wallet_address'), 'created_at', DB::raw('"transfer" as type'), DB::raw('reference as reference'),
         ]);
-        $queries = [&$buyQuery, &$sellQuery, &$withdrawalQuery, &$depositQuery, &$cryptoDepositQuery, &$cryptoWithdrawalQuery, &$billQuery, &$p2pQuery];
+        $cryptoSwapQuery = Conversion::where('user_id', $user->id)->where('mode', 'nowpayments')->select([
+            'id', 'from_coin as coin', 'from_amount as amount', DB::raw('NULL as naira_amount'),
+            DB::raw('NULL as usd_amount'), 'status', DB::raw('to_coin as payment_method'),
+            DB::raw('NULL as wallet_address'), 'created_at', DB::raw('"crypto_swap" as type'),
+            DB::raw("COALESCE(provider_conversion_id, CONCAT('SWAP-', id)) as reference"),
+        ]);
 
         // Apply filters
         if ($search) {
@@ -130,17 +136,22 @@ class UserTransactionController extends Controller
             $cryptoWithdrawalQuery->where(function ($q) use ($search) { $q->where('network', 'like', "%{$search}%")->orWhere('transaction_hash', 'like', "%{$search}%")->orWhere('address', 'like', "%{$search}%"); });
             $billQuery->where(function ($q) use ($search) { $q->where('category', 'like', "%{$search}%")->orWhere('reference', 'like', "%{$search}%")->orWhere('provider_reference', 'like', "%{$search}%"); });
             $p2pQuery->where('reference', 'like', "%{$search}%");
+            $cryptoSwapQuery->where(function ($q) use ($search) {
+                $q->where('from_coin', 'like', "%{$search}%")
+                    ->orWhere('to_coin', 'like', "%{$search}%")
+                    ->orWhere('provider_conversion_id', 'like', "%{$search}%");
+            });
         }
 
         if ($status) {
             $buyQuery->where('status', $status);
             $sellQuery->where('status', $status);
             $withdrawalQuery->where('status', $status);
-            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery] as $q) $q->where('status', $status);
+            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery] as $q) $q->where('status', $status);
         }
 
         if ($type) {
-            $typeQueries = ['buy'=>$buyQuery,'sell'=>$sellQuery,'withdrawal'=>$withdrawalQuery,'deposit'=>$depositQuery,'crypto_deposit'=>$cryptoDepositQuery,'crypto_withdrawal'=>$cryptoWithdrawalQuery,'bill_payment'=>$billQuery,'transfer'=>$p2pQuery];
+            $typeQueries = ['buy'=>$buyQuery,'sell'=>$sellQuery,'withdrawal'=>$withdrawalQuery,'deposit'=>$depositQuery,'crypto_deposit'=>$cryptoDepositQuery,'crypto_withdrawal'=>$cryptoWithdrawalQuery,'crypto_swap'=>$cryptoSwapQuery,'bill_payment'=>$billQuery,'transfer'=>$p2pQuery];
             if (isset($typeQueries[$type])) foreach ($typeQueries as $queryType=>$queryRef) if ($queryType !== $type) $queryRef->whereRaw('1 = 0');
         }
 
@@ -148,21 +159,21 @@ class UserTransactionController extends Controller
             $buyQuery->whereDate('created_at', $date);
             $sellQuery->whereDate('created_at', $date);
             $withdrawalQuery->whereDate('created_at', $date);
-            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery] as $q) $q->whereDate('created_at', $date);
+            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery] as $q) $q->whereDate('created_at', $date);
         }
 
         if ($minAmount) {
             $buyQuery->where('naira_amount', '>=', $minAmount);
             $sellQuery->where('naira_amount', '>=', $minAmount);
             $withdrawalQuery->where('amount', '>=', $minAmount);
-            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery] as $q) $q->where('amount', '>=', $minAmount);
+            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery] as $q) $q->where('amount', '>=', $minAmount);
         }
 
         if ($maxAmount) {
             $buyQuery->where('naira_amount', '<=', $maxAmount);
             $sellQuery->where('naira_amount', '<=', $maxAmount);
             $withdrawalQuery->where('amount', '<=', $maxAmount);
-            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery] as $q) $q->where('amount', '<=', $maxAmount);
+            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery] as $q) $q->where('amount', '<=', $maxAmount);
         }
 
         // Handle export
@@ -170,7 +181,7 @@ class UserTransactionController extends Controller
             $allTrades = $buyQuery->get()
                 ->merge($sellQuery->get())
                 ->merge($withdrawalQuery->get())
-                ->merge($depositQuery->get())->merge($cryptoDepositQuery->get())->merge($cryptoWithdrawalQuery->get())->merge($billQuery->get())->merge($p2pQuery->get())
+                ->merge($depositQuery->get())->merge($cryptoDepositQuery->get())->merge($cryptoWithdrawalQuery->get())->merge($billQuery->get())->merge($p2pQuery->get())->merge($cryptoSwapQuery->get())
                 ->sortByDesc('created_at');
 
             $csvData = [];
@@ -215,7 +226,7 @@ class UserTransactionController extends Controller
         $allTradesQuery = $buyQuery->getQuery()
             ->union($sellQuery->getQuery())
             ->union($withdrawalQuery->getQuery())->union($depositQuery->getQuery())->union($cryptoDepositQuery->getQuery())
-            ->union($cryptoWithdrawalQuery->getQuery())->union($billQuery->getQuery())->union($p2pQuery->getQuery());
+            ->union($cryptoWithdrawalQuery->getQuery())->union($billQuery->getQuery())->union($p2pQuery->getQuery())->union($cryptoSwapQuery->getQuery());
 
         // Paginate the unified query
         $allTrades = DB::table(DB::raw("({$allTradesQuery->toSql()}) as trades"))
@@ -347,6 +358,21 @@ class UserTransactionController extends Controller
             case 'crypto_withdrawal':
                 $record = CryptoWithdrawal::where('id', $id)->where('user_id', $user->id)->firstOrFail();
                 $data = ['type'=>'crypto_withdrawal','id'=>$record->id,'coin'=>$record->wallet?->currency ?? 'Crypto','amount'=>$record->amount,'fee'=>$record->fee,'network'=>$record->network,'wallet_address'=>$record->address,'status'=>$record->status,'reference'=>$record->transaction_hash,'processed_at'=>$record->processed_at?->format('d M Y, H:i'),'created_at'=>$record->created_at->format('d M Y, H:i'),'updated_at'=>$record->updated_at->format('d M Y, H:i'),'created_at_unix'=>$record->created_at->timestamp];
+                break;
+            case 'crypto_swap':
+                $record = Conversion::where('id', $id)->where('user_id', $user->id)->where('mode', 'nowpayments')->firstOrFail();
+                $data = [
+                    'type' => 'crypto_swap', 'id' => $record->id,
+                    'coin' => $record->from_coin, 'from_coin' => $record->from_coin,
+                    'to_coin' => $record->to_coin, 'amount' => $record->from_amount,
+                    'from_amount' => $record->from_amount, 'to_amount' => $record->to_amount,
+                    'fee' => $record->fee_amount, 'status' => $record->status,
+                    'reference' => $record->provider_conversion_id ?: 'SWAP-'.$record->id,
+                    'provider_status' => $record->provider_status,
+                    'created_at' => $record->created_at->format('d M Y, H:i'),
+                    'updated_at' => $record->updated_at->format('d M Y, H:i'),
+                    'created_at_unix' => $record->created_at->timestamp,
+                ];
                 break;
             case 'bill_payment':
                 $record = BillPayment::where('id', $id)->where('user_id', $user->id)->firstOrFail();

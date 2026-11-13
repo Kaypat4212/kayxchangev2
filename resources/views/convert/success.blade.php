@@ -31,17 +31,17 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
     {{-- Header --}}
     <div class="kx-hero">
-        <h1><i class="bi bi-check-circle me-2"></i>Conversion Successful</h1>
-        <p>Your cryptocurrency conversion has been completed</p>
+        <h1><i class="bi bi-arrow-left-right me-2"></i>{{ $conversion->mode === 'nowpayments' && $conversion->status !== 'completed' ? 'Swap in progress' : ($conversion->status === 'completed' ? 'Conversion Successful' : 'Conversion update') }}</h1>
+        <p>{{ $conversion->mode === 'nowpayments' && $conversion->status !== 'completed' ? 'We are checking the provider status and will update your wallets after confirmation.' : 'Your cryptocurrency conversion status and details' }}</p>
     </div>
 
     {{-- Success Card --}}
     <div class="kx-card text-center">
-        <div class="success-icon">
-            <i class="bi bi-check-circle-fill"></i>
+        <div class="success-icon" style="{{ $conversion->status === 'completed' ? '' : 'background:linear-gradient(135deg,#f59e0b,#d97706);' }}">
+            <i class="bi {{ $conversion->status === 'completed' ? 'bi-check-circle-fill' : ($conversion->status === 'failed' ? 'bi-x-circle-fill' : 'bi-arrow-repeat') }}"></i>
         </div>
 
-        <h4 style="color:var(--kx-text);margin-bottom:1rem;">Conversion Completed!</h4>
+        <h4 id="conversionStatus" style="color:var(--kx-text);margin-bottom:1rem;">{{ ucfirst($conversion->status) }}{{ $conversion->status === 'completed' ? '!' : '' }}</h4>
 
         <div style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:8px;padding:1rem;margin-bottom:1rem;">
             <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
@@ -49,12 +49,12 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 <span style="color:var(--kx-text);font-weight:600;">{{ $conversion->from_amount }} {{ $conversion->from_coin }}</span>
             </div>
             <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
-                <span style="color:var(--kx-muted);">To:</span>
-                <span style="color:var(--kx-text);font-weight:600;">{{ $conversion->to_amount }} {{ $conversion->to_coin }}</span>
+                <span id="toAmountLabel" style="color:var(--kx-muted);">{{ $conversion->status === 'completed' ? 'To:' : 'Estimated receive:' }}</span>
+                <span id="toAmountValue" style="color:var(--kx-text);font-weight:600;">{{ rtrim(rtrim(number_format((float) $conversion->to_amount, 8), '0'), '.') }} {{ $conversion->to_coin }}</span>
             </div>
             <div style="display:flex;justify-content:space-between;">
-                <span style="color:var(--kx-muted);">Fee:</span>
-                <span style="color:#f59e0b;font-weight:600;">{{ $conversion->fee_amount }} {{ $conversion->to_coin }}</span>
+                <span style="color:var(--kx-muted);">{{ $conversion->mode === 'nowpayments' ? 'Total swap fee:' : 'Fee:' }}</span>
+                <span id="feeAmountValue" style="color:#f59e0b;font-weight:600;">{{ rtrim(rtrim(number_format((float) $conversion->fee_amount, 8), '0'), '.') }} {{ $conversion->to_coin }}</span>
             </div>
         </div>
 
@@ -67,6 +67,16 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         <div style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:8px;padding:.75rem;font-family:monospace;font-size:.75rem;word-break:break-all;color:var(--kx-green);margin-bottom:1.5rem;">
             {{ $conversion->wallet_address }}
         </div>
+        @elseif($conversion->mode === 'nowpayments')
+        <p id="conversionMessage" style="color:var(--kx-muted);font-size:.9rem;margin-bottom:1.5rem;">
+            @if($conversion->status === 'completed')
+                Your destination wallet has been credited.
+            @elseif($conversion->status === 'failed')
+                The provider rejected the swap. Your source wallet balance has been restored.
+            @else
+                Your source amount is reserved while the provider processes the swap. Do not submit this swap again.
+            @endif
+        </p>
         @else
         <p style="color:var(--kx-muted);font-size:.9rem;margin-bottom:1.5rem;">
             Your converted {{ $conversion->to_coin }} has been credited to your wallet.
@@ -93,4 +103,42 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         </div>
     </div>
 </div>
+@if($conversion->mode === 'nowpayments' && in_array($conversion->status, ['pending', 'processing'], true))
+<script>
+(function () {
+    const url = @json(route('convert.status', $conversion->id));
+    const statusEl = document.getElementById('conversionStatus');
+    const messageEl = document.getElementById('conversionMessage');
+    const toLabelEl = document.getElementById('toAmountLabel');
+    const toAmountEl = document.getElementById('toAmountValue');
+    const feeEl = document.getElementById('feeAmountValue');
+    const fmt = value => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 8 });
+    let pollTimer = null;
+    async function refresh() {
+        try {
+            const response = await fetch(url, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+            if (!response.ok) return;
+            const data = await response.json();
+            if (!data.success) return;
+            statusEl.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1) + (data.status === 'completed' ? '!' : '');
+            toAmountEl.textContent = fmt(data.to_amount) + ' ' + data.to_coin;
+            feeEl.textContent = fmt(data.fee_amount) + ' ' + data.to_coin;
+            if (data.status === 'completed') {
+                toLabelEl.textContent = 'To:';
+                messageEl.textContent = 'Your destination wallet has been credited.';
+                window.location.reload();
+            } else if (data.status === 'failed') {
+                messageEl.textContent = 'The provider rejected the swap. Your source wallet balance has been restored.';
+                window.location.reload();
+            } else if (data.syncable === false) {
+                messageEl.textContent = data.message || 'The provider response is being reconciled. Your source balance remains reserved; contact support if this status persists.';
+                if (pollTimer) window.clearInterval(pollTimer);
+            }
+        } catch (e) { /* keep displaying the last confirmed state */ }
+    }
+    refresh();
+    pollTimer = window.setInterval(refresh, 12000);
+})();
+</script>
+@endif
 @endsection

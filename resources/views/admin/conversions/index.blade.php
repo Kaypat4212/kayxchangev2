@@ -29,6 +29,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 .mode-tag{font-size:.68rem;font-weight:700;padding:.2rem .6rem;border-radius:6px;}
 .mode-tag.manual{background:rgba(167,139,250,.12);color:#a78bfa;}
 .mode-tag.cryptomus{background:rgba(0,204,0,.1);color:#4ade80;}
+.mode-tag.nowpayments{background:rgba(56,189,248,.12);color:#7dd3fc;}
 .btn-view{font-size:.75rem;padding:.3rem .8rem;border-radius:8px;background:var(--kx-card2);border:1px solid var(--kx-border);color:var(--kx-text);text-decoration:none;font-weight:600;}
 .btn-view:hover{border-color:var(--kx-green);color:var(--kx-green);}
 </style>
@@ -71,7 +72,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                class="filter-pill {{ ($status ?? '') === $val ? 'active' : '' }}">{{ $label }}</a>
             @endforeach
             <span style="border-left:1px solid var(--kx-border);margin:0 .5rem;"></span>
-            @foreach(['' => 'All Modes', 'manual' => 'Manual', 'cryptomus' => 'Cryptomus'] as $val => $label)
+            @foreach(['' => 'All Modes', 'manual' => 'Manual', 'cryptomus' => 'Cryptomus', 'nowpayments' => 'NOWPayments Custody'] as $val => $label)
             <a href="{{ route('admin.conversions.index', array_filter(['status' => $status, 'mode' => $val])) }}"
                class="filter-pill {{ ($mode ?? '') === $val ? 'active' : '' }}">{{ $label }}</a>
             @endforeach
