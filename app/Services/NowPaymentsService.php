@@ -66,6 +66,9 @@ class NowPaymentsService
             }
 
             if (!$response->successful() || !is_string($response->json('token'))) {
+                if (in_array($response->status(), [401, 403], true)) {
+                    throw new \RuntimeException('NOWPayments rejected the Custody account login. Verify the account email and password exactly (they are case-sensitive) and that they belong to the selected LIVE or Sandbox account. This login is separate from the API key check.');
+                }
                 $this->throwProviderError($response, 'authenticate for Custody conversions');
             }
 
@@ -97,7 +100,12 @@ class NowPaymentsService
             throw new NowPaymentsApiException('NOWPayments did not confirm whether the conversion was created. Reconcile the request before retrying.', 0, $e);
         }
 
-        if (!$response->successful()) $this->throwProviderError($response, 'create the Custody conversion');
+        if (!$response->successful()) {
+            if (in_array($response->status(), [401, 403], true)) {
+                throw new \RuntimeException('NOWPayments denied access to the Custody conversion endpoint. The regular payment API key can still be valid; ask NOWPayments to enable Custody conversions for this account and confirm the login belongs to the same environment.');
+            }
+            $this->throwProviderError($response, 'create the Custody conversion');
+        }
         return $response->json() ?? [];
     }
 
@@ -113,7 +121,12 @@ class NowPaymentsService
             throw new NowPaymentsApiException('NOWPayments Custody is temporarily unreachable.', 0, $e);
         }
 
-        if (!$response->successful()) $this->throwProviderError($response, 'refresh the Custody conversion');
+        if (!$response->successful()) {
+            if (in_array($response->status(), [401, 403], true)) {
+                throw new \RuntimeException('NOWPayments denied access to the Custody conversion status. Confirm Custody access is enabled for this account and the saved LIVE or Sandbox credentials still match.');
+            }
+            $this->throwProviderError($response, 'refresh the Custody conversion');
+        }
         return $response->json() ?? [];
     }
 
@@ -127,7 +140,12 @@ class NowPaymentsService
         } catch (ConnectionException $e) {
             throw new NowPaymentsApiException('NOWPayments balance service is temporarily unreachable.', 0, $e);
         }
-        if (!$response->successful()) $this->throwProviderError($response, 'check Custody liquidity');
+        if (!$response->successful()) {
+            if (in_array($response->status(), [401, 403], true)) {
+                throw new \RuntimeException('NOWPayments denied access to the account balance endpoint. Standard payments may work, but swaps require Custody balance access; ask NOWPayments to enable the required balance/Custody permissions for this account.');
+            }
+            $this->throwProviderError($response, 'check Custody liquidity');
+        }
 
         $body = $response->json() ?? [];
         $balances = $body['balances'] ?? $body['result'] ?? $body;
@@ -158,11 +176,21 @@ class NowPaymentsService
         } catch (ConnectionException $e) {
             throw new NowPaymentsApiException('NOWPayments Custody is temporarily unreachable.', 0, $e);
         }
-        if (!$response->successful()) $this->throwProviderError($response, 'verify Custody conversion access');
+        if (!$response->successful()) {
+            if (in_array($response->status(), [401, 403], true)) {
+                throw new \RuntimeException('Custody account login succeeded, but NOWPayments denied access to its conversion endpoint. This is separate from regular payment API access; ask NOWPayments to enable Custody conversions for this account.');
+            }
+            $this->throwProviderError($response, 'verify Custody conversion access');
+        }
         // Swaps must not be enabled without the provider liquidity endpoint used
         // to guard internal user liabilities before reserving their balances.
         $balanceResponse = Http::acceptJson()->withHeaders(['x-api-key' => $this->apiKey])->timeout(12)->get($this->baseUrl . '/balance');
-        if (!$balanceResponse->successful()) $this->throwProviderError($balanceResponse, 'verify Custody balance access');
+        if (!$balanceResponse->successful()) {
+            if (in_array($balanceResponse->status(), [401, 403], true)) {
+                throw new \RuntimeException('Custody conversion access passed, but NOWPayments denied access to the account balance endpoint. Swaps require this reserve check; ask NOWPayments to enable balance/Custody permissions for this account.');
+            }
+            $this->throwProviderError($balanceResponse, 'verify Custody balance access');
+        }
         return ['environment' => $this->environment()];
     }
 
