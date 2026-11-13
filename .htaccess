@@ -3,8 +3,9 @@ DirectoryIndex public/index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Send the domain root into Laravel's public folder.
-    RewriteRule ^$ public/ [L]
+    # Redirect into Laravel's public folder so the browser URL and Laravel's
+    # detected base path stay aligned when this project runs below htdocs.
+    RewriteRule ^$ %{REQUEST_URI}public/ [R=302,L]
 
     # Avoid rewrite loops for requests already under /public.
     RewriteCond %{REQUEST_URI} !^/public/ [NC]

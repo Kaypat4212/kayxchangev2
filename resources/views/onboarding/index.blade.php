@@ -167,6 +167,7 @@ select.ob-input option{background:#161b27;color:#e4e8f0;}
 </style>
 </head>
 <body>
+@if(!empty($preview))<div style="position:fixed;z-index:200;top:12px;right:12px;background:#facc15;color:#111;padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700">Admin preview · no onboarding data will be changed</div>@endif
 
 <!-- Background decoration -->
 <div class="ob-bg">
@@ -191,12 +192,12 @@ select.ob-input option{background:#161b27;color:#e4e8f0;}
         {{-- ─────────── Step 1: Welcome ─────────── --}}
         <div class="ob-step active" id="step0">
             <div class="ob-logo">&#x2B22;</div>
-            <h1 class="ob-welcome-title">Welcome,<br>{{ explode(' ', Auth::user()->name)[0] }}!</h1>
-            <p class="ob-welcome-sub">You're just a few steps away from trading crypto with ease. Let's get your account ready.</p>
+            <h1 class="ob-welcome-title">{{ $onboardingContent['onboarding_welcome_title'] ?? 'Welcome to KayXchange' }},<br>{{ explode(' ', Auth::user()->name)[0] }}!</h1>
+            <p class="ob-welcome-sub">{{ $onboardingContent['onboarding_welcome_subtitle'] ?? "You're a few steps away from using your account. Let's get it ready." }}</p>
             <div class="ob-features">
-                <div class="ob-feat"><div class="ob-feat-icon">&#x1F512;</div><span>Set up your security PIN to protect withdrawals</span></div>
-                <div class="ob-feat"><div class="ob-feat-icon">&#x1F3E6;</div><span>Add your bank details for fast NGN payouts</span></div>
-                <div class="ob-feat"><div class="ob-feat-icon">&#x26A1;</div><span>Buy & sell crypto instantly at great rates</span></div>
+                <div class="ob-feat"><div class="ob-feat-icon">&#x1F512;</div><span>{{ $onboardingContent['onboarding_feature_security'] ?? 'Set up a security PIN to protect sensitive actions' }}</span></div>
+                <div class="ob-feat"><div class="ob-feat-icon">&#x1F3E6;</div><span>{{ $onboardingContent['onboarding_feature_bank'] ?? 'Add bank details for convenient NGN payouts' }}</span></div>
+                <div class="ob-feat"><div class="ob-feat-icon">&#x26A1;</div><span>{{ $onboardingContent['onboarding_feature_trading'] ?? 'Buy and sell supported assets at current platform rates' }}</span></div>
             </div>
             <button class="ob-btn" onclick="goStep(1)">
                 Get Started <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
@@ -205,8 +206,8 @@ select.ob-input option{background:#161b27;color:#e4e8f0;}
 
         {{-- ─────────── Step 2: Set PIN ─────────── --}}
         <div class="ob-step" id="step1">
-            <p class="ob-step-title">&#x1F512; Set Your Security PIN</p>
-            <p class="ob-step-sub">Your 4-digit PIN protects withdrawals and sensitive actions. Keep it private.</p>
+            <p class="ob-step-title">&#x1F512; {{ $onboardingContent['onboarding_pin_title'] ?? 'Set Your Security PIN' }}</p>
+            <p class="ob-step-sub">{{ $onboardingContent['onboarding_pin_description'] ?? 'Your 4-digit PIN protects withdrawals and sensitive actions. Keep it private.' }}</p>
 
             <!-- PIN entry sub-steps -->
             <div id="pinEnterBlock">
@@ -254,8 +255,8 @@ select.ob-input option{background:#161b27;color:#e4e8f0;}
 
         {{-- ─────────── Step 3: Bank Details ─────────── --}}
         <div class="ob-step" id="step2">
-            <p class="ob-step-title">&#x1F3E6; Bank Details</p>
-            <p class="ob-step-sub">Add your bank account for quick NGN withdrawals. You can skip this and add it later in Settings.</p>
+            <p class="ob-step-title">&#x1F3E6; {{ $onboardingContent['onboarding_bank_title'] ?? 'Add Bank Details' }}</p>
+            <p class="ob-step-sub">{{ $onboardingContent['onboarding_bank_description'] ?? 'Add your bank account for NGN withdrawals. You can skip this and add it later in Settings.' }}</p>
 
             <div class="ob-err" id="bankErr"></div>
 
@@ -283,8 +284,8 @@ select.ob-input option{background:#161b27;color:#e4e8f0;}
         {{-- ─────────── Step 4: Done ─────────── --}}
         <div class="ob-step" id="step3">
             <div class="ob-done-icon">&#x2705;</div>
-            <h2 class="ob-welcome-title" style="font-size:1.5rem;margin-bottom:.4rem">You're all set!</h2>
-            <p class="ob-welcome-sub" style="margin-bottom:2rem">Your account is ready. Start buying and selling crypto at the best rates.</p>
+            <h2 class="ob-welcome-title" style="font-size:1.5rem;margin-bottom:.4rem">{{ $onboardingContent['onboarding_complete_title'] ?? "You're all set!" }}</h2>
+            <p class="ob-welcome-sub" style="margin-bottom:2rem">{{ $onboardingContent['onboarding_complete_description'] ?? 'Your account is ready. Open your dashboard to get started.' }}</p>
             <button class="ob-btn" id="obFinishBtn" onclick="finish()">
                 &#x1F680; Start Trading
             </button>
@@ -435,7 +436,7 @@ window.savePinToServer = async function() {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json',
             },
-            body: JSON.stringify({ pin: pin1, pin_confirm: pin2 }),
+            body: JSON.stringify({ pin: pin1, pin_confirm: pin2, preview: {{ !empty($preview) ? 'true' : 'false' }} }),
         });
         const data = await res.json();
         if (res.ok && data.success) {
@@ -567,7 +568,7 @@ window.saveBank = async function() {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json',
             },
-            body: JSON.stringify({ bank_name: bname, bank_code: bcode, account_number: accnum, account_name: accname }),
+            body: JSON.stringify({ bank_name: bname, bank_code: bcode, account_number: accnum, account_name: accname, preview: {{ !empty($preview) ? 'true' : 'false' }} }),
         });
         const data = await res.json();
         if (res.ok && data.success) {
@@ -593,6 +594,7 @@ window.finish = async function() {
         const res = await fetch('{{ route("onboard.complete") }}', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preview: {{ !empty($preview) ? 'true' : 'false' }} }),
         });
         const data = await res.json();
         window.location.href = data.redirect || '{{ route("dashboard") }}';

@@ -617,6 +617,9 @@
                     </div>
                     <i class="bi bi-chevron-right ms-auto" style="color:var(--kx-muted)"></i>
                 </a>
+                <a href="{{ route('admin.crypto-withdrawals.index') }}" class="kx-nav-card" style="padding:14px;height:auto">
+                    <div class="kx-nav-card-title">Crypto withdrawals</div><div class="kx-nav-card-sub">Review wallet payouts</div>
+                </a>
                 <a href="{{ route('admin.withdrawals') }}" class="kx-nav-card" style="padding:14px;height:auto">
                     <div class="kx-stat-icon orange" style="width:38px;height:38px;font-size:1rem"><i class="bi bi-bank"></i></div>
                     <div>
@@ -689,6 +692,8 @@
                     @endif
                     <div class="col-6"><a href="{{ url('/admin/blog') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-journal-richtext me-1"></i>Blog</a></div>
                     <div class="col-6"><a href="{{ url('/admin/site-content') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-pencil-square me-1"></i>Site Content</a></div>
+                    <div class="col-6"><a href="{{ route('admin.onboarding-content.index') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-person-check me-1"></i>Onboarding Page</a></div>
+                    <div class="col-6"><a href="{{ route('install.complete') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-clipboard-check me-1"></i>Installation Status</a></div>
                     <div class="col-6"><a href="{{ url('/admin/chat') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-chat-dots me-1"></i>Admin Chat</a></div>
                     <div class="col-6"><a href="{{ url('/admin/email-settings') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-envelope-gear me-1"></i>Email Settings</a></div>
                     <div class="col-6"><a href="{{ route('admin.email-templates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-envelope-paper me-1"></i>Email Templates</a></div>

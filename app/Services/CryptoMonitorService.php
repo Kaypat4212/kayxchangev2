@@ -282,20 +282,15 @@ class CryptoMonitorService
 
     private function approveTrade(SellTrade $trade, string $txHash): bool
     {
-        if ($trade->status !== 'pending') return false;
-
-        $trade->status          = 'completed';
-        $trade->transaction_ref = $txHash;
-        $trade->save();
+        $transition = app(BalanceSettlementService::class)->updateSellStatus(
+            (int) $trade->id,
+            'completed',
+            $txHash
+        );
+        if (!$transition['changed']) return false;
+        $trade = $transition['trade'];
 
         $user = User::find($trade->user_id);
-
-        if ($trade->payment_method === 'wallet_balance') {
-            if ($user && $trade->naira_amount > 0) {
-                $user->increment('balance', (float) $trade->naira_amount);
-                $user->refresh(); // reload after increment
-            }
-        }
 
         Log::info("[CryptoMonitor] Auto-approved SellTrade #{$trade->id} ({$trade->coin}/{$trade->network}) tx: {$txHash}");
 

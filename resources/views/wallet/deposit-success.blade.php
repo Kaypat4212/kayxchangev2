@@ -1,108 +1,101 @@
 @extends('layouts.app')
-
-@section('title', 'Crypto Deposit Status')
-
+@section('title','Crypto Deposit Status')
 @section('content')
 @php
-    $isBitcoin = strtoupper($deposit->currency) === 'BTC';
     $paymentData = $deposit->payment_data ?? [];
-    $providerStatus = $paymentData['provider_status'] ?? 'waiting';
-    $confirmations = (int) ($paymentData['bitcoin_confirmations'] ?? 0);
-    $requiredConfirmations = (int) ($paymentData['bitcoin_required_confirmations'] ?? 3);
-    $payerAmount = data_get($paymentData, 'payer_amount');
+    $depositInput = $depositInput ?? data_get($paymentData,'deposit_input',[]);
+    $network = strtoupper((string)data_get($depositInput,'network',data_get($paymentData,'network','')));
+    $networkNames = ['BTC'=>'Bitcoin','ERC20'=>'Ethereum (ERC20)','TRC20'=>'Tron (TRC20)','BEP20'=>'BNB Smart Chain (BEP20)','SOL'=>'Solana'];
+    $networkLabel = $networkNames[$network] ?? ($network ?: 'Network shown below');
+    $coin = strtoupper($deposit->currency);
+    $expectedCrypto = (float)data_get($paymentData,'expected_crypto_amount',data_get($paymentData,'payer_amount',0));
+    $paymentStatus = strtolower((string)data_get($paymentData,'provider_status','waiting'));
+    $statusLabels = ['waiting'=>'Awaiting payment','waiting_for_transfer'=>'Waiting for transfer','partially_paid'=>'Partially paid','submitted_for_review'=>'Under review','confirming'=>'Confirming on network','confirmed'=>'Confirmations received','finished'=>'Completed','paid'=>'Completed','paid_over'=>'Completed','expired'=>'Expired','failed'=>'Needs attention','rejected_by_admin'=>'Needs attention'];
+    $statusLabel = $deposit->status === 'awaiting_admin_review' ? 'Awaiting admin review' : ($deposit->status === 'completed' ? 'Completed' : ($deposit->status === 'failed' ? 'Needs attention' : ($statusLabels[$paymentStatus] ?? 'Processing')));
+    $paymentReference = data_get($paymentData, 'provider_payment_id');
+    $partialReceived = (float)($deposit->received_amount ?? data_get($paymentData, 'underpaid_amount', 0));
+    $partialExpected = (float)data_get($paymentData, 'expected_crypto_amount', $expectedCrypto ?? 0);
+    $partialRemaining = max(0, $partialExpected - $partialReceived);
+    $partialRemainingUsd = data_get($paymentData, 'partial_remaining_usd');
+    $isPartiallyPaid = $paymentStatus === 'partially_paid' || ($partialReceived > 0 && $partialExpected > $partialReceived + 0.00000001);
+    $isManualFallback = data_get($paymentData,'provider') === 'manual';
+    $isBitcoin = $coin === 'BTC';
+    $confirmations = (int)data_get($paymentData,'bitcoin_confirmations',0);
+    $requiredConfirmations = (int)data_get($paymentData,'bitcoin_required_confirmations',3);
+    $explorerBase = match($network) { 'BTC'=>'https://blockstream.info/tx/','ERC20'=>'https://etherscan.io/tx/','TRC20'=>'https://tronscan.org/#/transaction/','BEP20'=>'https://bscscan.com/tx/','SOL'=>'https://solscan.io/tx/', default=>'https://blockchair.com/search?q=' };
 @endphp
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-2xl mx-auto">
-        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 md:p-8">
-            <div class="flex items-start gap-4 mb-6">
-                <div class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                    <i class="fas fa-coins text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Crypto deposit status</h1>
-                    <p class="text-gray-600 mt-1">This page refreshes automatically while your payment is processing.</p>
-                </div>
-            </div>
+<style>
+.ds-page{max-width:900px;margin:0 auto;padding:34px 16px 70px;color:#eef4f8}.ds-hero{position:relative;overflow:hidden;padding:27px;border-radius:24px;border:1px solid rgba(255,255,255,.1);background:radial-gradient(circle at 88% 3%,rgba(0,204,0,.18),transparent 33%),linear-gradient(135deg,#101a27,#111c22);margin-bottom:18px}.ds-brand{display:flex;align-items:center;gap:14px}.ds-coin{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;background:rgba(0,204,0,.13);color:#61e37a;font-size:1.5rem}.ds-title{font-size:clamp(1.4rem,3vw,2rem);font-weight:850;margin:0;color:#fff}.ds-sub{color:#a0adbb;margin:.3rem 0 0}.ds-status{margin-left:auto;padding:8px 13px;border-radius:999px;background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.25);color:#f5d16f;font-size:.8rem;font-weight:750;white-space:nowrap}.ds-status.done{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.25);color:#86efac}.ds-status.bad{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.25);color:#fca5a5}.ds-card{background:#131c26;border:1px solid rgba(255,255,255,.09);border-radius:20px;padding:22px;margin-bottom:16px}.ds-kicker{font-size:.71rem;text-transform:uppercase;letter-spacing:.12em;color:#6fdf87;font-weight:800}.ds-section-title{font-size:1.05rem;color:#fff;font-weight:800;margin:5px 0 15px}.ds-row{display:flex;justify-content:space-between;gap:20px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.88rem}.ds-row:last-child{border-bottom:0}.ds-row span{color:#99a7b5}.ds-row strong{text-align:right;color:#f1f6fa;overflow-wrap:anywhere}.ds-send{background:linear-gradient(135deg,#0d1918,#101a22);border:1px solid rgba(34,197,94,.2);border-radius:16px;padding:18px}.ds-amount{font-size:1.65rem;color:#9ef0ad;font-weight:850;letter-spacing:-.02em}.ds-address{display:flex;gap:8px;margin-top:10px}.ds-address input,.ds-hash-input{width:100%;min-width:0;background:#080f16;color:#eff6fb;border:1px solid #344452;border-radius:10px;padding:12px;font: .82rem ui-monospace,SFMono-Regular,Consolas,monospace}.ds-copy{border:1px solid rgba(255,255,255,.14);background:#1c2934;color:#f3f7f9;border-radius:10px;padding:0 15px;font-weight:750}.ds-help{font-size:.8rem;line-height:1.55;color:#aab6c3;margin:12px 0 0}.ds-alert{border-radius:13px;padding:13px 15px;margin-bottom:15px;font-size:.86rem}.ds-alert.ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#a7f3b7}.ds-alert.warn{background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.18);color:#f6d98d}.ds-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.ds-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.1);background:#1a2733;color:#edf3f7;text-decoration:none;border-radius:11px;padding:11px 15px;font-size:.85rem;font-weight:750}.ds-btn.primary{background:linear-gradient(120deg,#13d313,#069a18);color:#041207;border:0}.ds-btn:hover{filter:brightness(1.08);color:inherit}.ds-form{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-top:14px}.ds-form label{display:block;color:#a5b1bd;font-size:.78rem;margin-bottom:6px}.ds-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}.ds-step{padding:10px;border-radius:11px;background:#0d151e;color:#8998a7;font-size:.74rem;text-align:center;border:1px solid rgba(255,255,255,.06)}.ds-step.active{color:#a7f3b7;border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.06)}.ds-btc{border-top:1px solid rgba(255,255,255,.08);margin-top:14px;padding-top:12px}@media(max-width:620px){.ds-hero{padding:20px}.ds-card{padding:17px}.ds-status{margin:13px 0 0 68px}.ds-brand{flex-wrap:wrap}.ds-form{grid-template-columns:1fr}.ds-row{font-size:.82rem}}
+.ds-qr-wrap{display:flex;align-items:center;gap:16px;margin-top:16px;padding:14px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}.ds-qr-frame{display:grid;place-items:center;flex:0 0 160px;width:160px;height:160px;background:#fff;border-radius:12px;padding:8px}.ds-qr-frame canvas{display:block;max-width:100%;height:auto}.ds-qr-copy{color:#eaf1f5;font-weight:750}.ds-qr-fallback{color:#f0c970;font-size:.8rem}@media(max-width:520px){.ds-qr-wrap{align-items:flex-start;flex-direction:column}.ds-qr-frame{flex-basis:auto;width:148px;height:148px}}
+</style>
+<main class="ds-page">
+ <header class="ds-hero"><div class="ds-brand"><div class="ds-coin"><i class="bi bi-currency-bitcoin"></i></div><div><h1 class="ds-title">Crypto deposit</h1><p class="ds-sub">Track your transfer and wallet credit from this page.</p></div><span id="deposit-status-badge" class="ds-status {{ $deposit->status === 'completed' ? 'done' : ($deposit->status === 'failed' ? 'bad' : '') }}">{{ $statusLabel }}</span></div>
+  <div class="ds-steps"><div class="ds-step active"><i class="bi bi-check2-circle me-1"></i>Deposit created</div><div class="ds-step {{ in_array($paymentStatus,['confirming','confirmed','finished','paid','paid_over','submitted_for_review'],true) || in_array($deposit->status,['awaiting_admin_review','completed'],true) ? 'active' : '' }}">Transfer received</div><div class="ds-step {{ $deposit->status==='completed' ? 'active' : '' }}">Wallet credited</div></div>
+ </header>
+ @if(session('success'))<div class="ds-alert ok" role="status"><i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}</div>@endif
+ @if(session('error'))<div class="ds-alert warn" role="alert"><i class="bi bi-exclamation-circle-fill me-2"></i>{{ session('error') }}</div>@endif
+ <section class="ds-card"><div class="ds-kicker">Deposit summary</div><h2 class="ds-section-title">Your payment details</h2>
+  <div class="ds-row"><span>Asset</span><strong>{{ $coin }}</strong></div>
+  @if($network)<div class="ds-row"><span>Network</span><strong>{{ $networkLabel }}</strong></div>@endif
+  <div class="ds-row"><span>Invoice value</span><strong>${{ number_format((float)$deposit->expected_amount,2) }} USD</strong></div>
+  @if(!empty($depositInput))<div class="ds-row"><span>You entered</span><strong>{{ number_format((float)($depositInput['input_amount'] ?? 0),($depositInput['input_type'] ?? '')==='crypto'?8:2) }} {{ strtoupper($depositInput['input_currency'] ?? 'USD') }}</strong></div>@endif
+  <div id="received-row" class="ds-row {{ $deposit->received_amount ? '' : 'd-none' }}"><span>Crypto received</span><strong id="received-amount">{{ $deposit->received_amount ? number_format((float)$deposit->received_amount,8).' '.$coin : '' }}</strong></div>
+  <div id="payment-reference-row" class="ds-row {{ $paymentReference ? '' : 'd-none' }}"><span>Payment ID</span><strong id="payment-reference" class="font-monospace">{{ $paymentReference ?: '' }}</strong></div>
+  <div id="partial-remaining-row" class="ds-row {{ $isPartiallyPaid ? '' : 'd-none' }}"><span>Amount remaining</span><strong id="partial-remaining">{{ $isPartiallyPaid ? number_format($partialRemaining,8).' '.$coin : '' }}</strong></div>
+  <div id="partial-remaining-usd-row" class="ds-row {{ $isPartiallyPaid && $partialRemainingUsd !== null ? '' : 'd-none' }}"><span>Approx. USD remaining</span><strong id="partial-remaining-usd">{{ $isPartiallyPaid && $partialRemainingUsd !== null ? '$'.number_format((float)$partialRemainingUsd,2).' USD' : '' }}</strong></div>
+  <div id="market-value-row" class="ds-row {{ isset($depositValuation['market_value_usd']) ? '' : 'd-none' }}"><span>Market value at deposit</span><strong id="market-value">{{ isset($depositValuation['market_value_usd']) ? '$'.number_format((float)$depositValuation['market_value_usd'],2) : '' }}</strong></div>
+  <div id="current-value-row" class="ds-row {{ $currentMarketValue !== null ? '' : 'd-none' }}"><span>Current market value</span><strong id="current-value">{{ $currentMarketValue !== null ? '$'.number_format($currentMarketValue,2) : '' }}</strong></div>
+  <div id="ngn-row" class="ds-row {{ $deposit->ngn_credited_amount ? '' : 'd-none' }}"><span>Naira credited</span><strong id="ngn-amount">{{ $deposit->ngn_credited_amount ? '₦'.number_format((float)$deposit->ngn_credited_amount,2) : '' }}</strong></div>
+  <div class="ds-row"><span>Status</span><strong id="deposit-status-text">{{ $statusLabel }}</strong></div>
+  <p id="deposit-sync-label" class="ds-help mt-1 mb-0" role="status" aria-live="polite"><i class="bi bi-arrow-repeat me-1"></i>Checking for updates automatically…</p>
+  <div id="partial-payment-notice" class="ds-alert warn mt-3 mb-0 {{ $isPartiallyPaid ? '' : 'd-none' }}" role="status"><i class="bi bi-exclamation-circle-fill me-2"></i><span id="partial-payment-message">We received {{ number_format($partialReceived,8) }} {{ $coin }} so far. Please send the remaining {{ number_format($partialRemaining,8) }} {{ $coin }} to this same payment address{{ $partialRemainingUsd !== null ? ' (about $'.number_format((float)$partialRemainingUsd,2).' USD).' : '.' }} The balance will be credited after the full payment is confirmed and reviewed.</span></div>
+  @if($isBitcoin)<div class="ds-btc"><div class="ds-row"><span>Bitcoin confirmations</span><strong id="confirmation-count">{{ $confirmations }} / {{ $requiredConfirmations }}</strong></div><p id="confirmation-remaining" class="ds-help">{{ $deposit->status==='completed' ? 'The transfer is confirmed.' : ($deposit->transaction_hash ? max(0,$requiredConfirmations-$confirmations).' more confirmation(s) required.' : 'Waiting for the transfer to appear on the network.') }}</p></div>@endif
+ </section>
 
-            <div class="rounded-lg bg-gray-50 border border-gray-200 p-5 space-y-3">
-                <div class="flex justify-between gap-4"><span class="text-gray-600">Asset</span><strong>{{ strtoupper($deposit->currency) }}</strong></div>
-                <div class="flex justify-between gap-4"><span class="text-gray-600">Invoice value</span><strong>${{ number_format((float) $deposit->expected_amount, 2) }} USD</strong></div>
-                @if($isBitcoin && $payerAmount)
-                    <div class="flex justify-between gap-4"><span class="text-gray-600">Expected BTC</span><strong>{{ number_format((float) $payerAmount, 8) }} BTC</strong></div>
-                @endif
-                <div class="flex justify-between gap-4"><span class="text-gray-600">Payment status</span><strong id="deposit-status">{{ ucfirst(str_replace('_', ' ', $providerStatus)) }}</strong></div>
-                @if($isBitcoin)
-                    <div class="border-t border-gray-200 pt-3">
-                        <div class="flex justify-between gap-4"><span class="text-gray-600">Bitcoin confirmations</span><strong id="confirmation-count">{{ $confirmations }} / {{ $requiredConfirmations }}</strong></div>
-                        <div class="text-sm text-gray-600 mt-1" id="confirmation-remaining">@if($deposit->status === 'completed') Payment provider confirmed settlement. @elseif($deposit->transaction_hash) {{ max(0, $requiredConfirmations - $confirmations) }} more confirmation(s) required @else Waiting for the provider to detect your transaction. @endif</div>
-                    </div>
-                    <div id="tx-row" class="{{ $deposit->transaction_hash ? '' : 'hidden' }} border-t border-gray-200 pt-3">
-                        <span class="text-gray-600 text-sm">Transaction</span>
-                        <div><a id="tx-link" class="text-blue-700 underline break-all" href="{{ $deposit->transaction_hash ? 'https://blockstream.info/tx/' . rawurlencode($deposit->transaction_hash) : '#' }}" target="_blank" rel="noopener">{{ $deposit->transaction_hash ?: 'Waiting for transaction' }}</a></div>
-                    </div>
-                @endif
-                <div id="ngn-row" class="{{ $deposit->ngn_credited_amount ? '' : 'hidden' }} border-t border-gray-200 pt-3 flex justify-between gap-4">
-                    <span class="text-gray-600">NGN credited</span>
-                    <strong id="ngn-credited">{{ $deposit->ngn_credited_amount ? '₦' . number_format((float) $deposit->ngn_credited_amount, 2) : '' }}</strong>
-                </div>
-                @if($deposit->ngn_rate_used)
-                    <div class="flex justify-between gap-4 text-sm"><span class="text-gray-600">BTC sell rate used</span><span>₦{{ number_format((float) $deposit->ngn_rate_used, 2) }} / USD</span></div>
-                @endif
-            </div>
+ @if($deposit->status === 'pending' && $deposit->payment_address)
+  <section class="ds-card"><div class="ds-kicker">Transfer instructions</div><h2 class="ds-section-title">Send to this address</h2>
+   <div class="ds-send"><div class="small text-secondary">Send exactly</div><div class="ds-amount">{{ number_format($expectedCrypto,8,'.',',') }} {{ $coin }}</div><div class="ds-help mt-1">Network: <strong class="text-light">{{ $networkLabel }}</strong></div>
+    <label class="ds-help d-block mt-3" for="payment-address">Receiving address</label><div class="ds-address"><input id="payment-address" readonly value="{{ $deposit->payment_address }}" aria-label="Deposit receiving address"><button id="copy-address" type="button" class="ds-copy">Copy</button></div>
+    <div class="ds-qr-wrap"><div class="ds-qr-frame"><img id="payment-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&amp;margin=4&amp;data={{ urlencode($deposit->payment_address) }}" width="144" height="144" alt="QR code for the receiving wallet address" loading="eager" referrerpolicy="no-referrer" onerror="this.hidden=true;document.getElementById('qr-error').hidden=false"><div id="qr-error" class="ds-qr-fallback" hidden>QR preview is unavailable. You can still copy the receiving address.</div></div><div><div class="ds-qr-copy"><i class="bi bi-qr-code me-1 text-success"></i>Scan with your crypto wallet</div><p class="ds-help mt-1">This code represents the receiving address above. Confirm the asset and network, then enter the exact amount shown.</p></div></div>
+    <p class="ds-help">Send {{ $coin }} only on the {{ $networkLabel }} network. Check the address and amount carefully before confirming your transfer. Transfers on the wrong network may be lost.</p>
+   </div>
+   @if($isManualFallback)
+    @if($deposit->transaction_hash)
+     <div class="ds-alert warn mt-3 mb-0"><i class="bi bi-hourglass-split me-2"></i>Transaction reference received. An admin will verify the transfer before your wallet is credited.</div>
+    @else
+     <form method="POST" action="{{ route('wallet.deposit.tx-hash',$deposit->id) }}" class="ds-form">@csrf<div><label for="transaction_hash">After sending, enter your transaction hash</label><input id="transaction_hash" name="transaction_hash" class="ds-hash-input" minlength="20" maxlength="150" placeholder="Paste the transaction ID from your wallet" required></div><button class="ds-btn primary" type="submit"><i class="bi bi-send-check"></i>Submit reference</button></form>
+     <p class="ds-help">Manual transfers are reviewed by our team. The wallet balance is credited after verification.</p>
+    @endif
+   @endif
+  </section>
+ @endif
 
-            <p id="deposit-help" class="text-sm text-gray-600 mt-4">
-                @if($isBitcoin)
-                    Your NGN balance is credited after Cryptomus confirms the Bitcoin payment. The final conversion uses the KayXchange BTC sell rate at confirmation.
-                @else
-                    Your crypto wallet is credited after the payment provider confirms the deposit.
-                @endif
-            </p>
-            <div class="flex flex-wrap gap-3 mt-6">
-                <a href="{{ route('wallet.index') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium">Back to Wallet</a>
-                <a href="{{ route('wallet.history') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-5 py-2 rounded-lg font-medium">View History</a>
-                @if($deposit->payment_url)
-                    <a href="{{ $deposit->payment_url }}" target="_blank" rel="noopener" class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700">Open payment page</a>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
-
+ <section class="ds-card"><div class="ds-kicker">Settlement</div><h2 class="ds-section-title">What happens next?</h2><p id="deposit-help" class="ds-help mt-0">@if($deposit->status==='completed')Your crypto wallet has been credited with the received amount.@elseif($deposit->status==='awaiting_admin_review')The transfer is confirmed. An admin will review it before your wallet is credited.@elseif($isManualFallback)Your deposit is awaiting a transfer. After you submit its transaction hash, an admin will verify it and update your balance.@else Your wallet is credited after the transfer is detected and confirmed on the selected network. This page checks for status updates automatically.@endif</p>
+  <div id="tx-row" class="ds-row mt-2 {{ $deposit->transaction_hash ? '' : 'd-none' }}"><span>Transaction</span><strong><a id="tx-link" class="text-success text-break" target="_blank" rel="noopener" href="{{ $deposit->transaction_hash ? $explorerBase.rawurlencode($deposit->transaction_hash) : '#' }}">{{ $deposit->transaction_hash ?: '' }}</a></strong></div>
+  <div class="ds-actions"><a href="{{ route('wallet.index') }}" class="ds-btn primary"><i class="bi bi-wallet2"></i>Back to wallet</a><a href="{{ route('wallet.history') }}" class="ds-btn"><i class="bi bi-clock-history"></i>View history</a></div>
+ </section>
+</main>
 <script>
-(function () {
-    const statusUrl = @json(route('wallet.deposit.status', $deposit->id));
-    const statusEl = document.getElementById('deposit-status');
-    const helpEl = document.getElementById('deposit-help');
-    const timer = setInterval(refreshStatus, 15000);
-
-    function refreshStatus() {
-        fetch(statusUrl, {headers: {'Accept': 'application/json'}, credentials: 'same-origin'})
-            .then(response => response.ok ? response.json() : null)
-            .then(data => {
-                if (!data) return;
-                statusEl.textContent = data.status === 'completed' ? 'Completed' : (data.status === 'failed' ? 'Needs attention' : String(data.provider_status || 'pending').replaceAll('_', ' '));
-                if (data.transaction_hash) {
-                    const row = document.getElementById('tx-row');
-                    const link = document.getElementById('tx-link');
-                    row?.classList.remove('hidden');
-                    if (link) { link.textContent = data.transaction_hash; link.href = data.explorer_url; }
-                }
-                const count = document.getElementById('confirmation-count');
-                const remaining = document.getElementById('confirmation-remaining');
-                if (count && data.currency === 'BTC') {
-                    count.textContent = `${data.confirmations} / ${data.required_confirmations}`;
-                    remaining.textContent = data.status === 'completed' ? 'Payment provider confirmed settlement.' : (data.transaction_hash ? (data.remaining_confirmations > 0 ? `${data.remaining_confirmations} more confirmation(s) required` : 'On-chain confirmation target reached; awaiting provider settlement.') : 'Waiting for the provider to detect your transaction.');
-                }
-                if (data.ngn_credited_amount) {
-                    document.getElementById('ngn-row')?.classList.remove('hidden');
-                    document.getElementById('ngn-credited').textContent = '₦' + Number(data.ngn_credited_amount).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    helpEl.textContent = 'Your NGN balance has been credited using the BTC sell rate shown above.';
-                }
-                if (data.status === 'completed' || data.status === 'failed') clearInterval(timer);
-            })
-            .catch(() => {});
-    }
-    refreshStatus();
+(function(){
+ const copy=document.getElementById('copy-address');
+ copy?.addEventListener('click',async()=>{const input=document.getElementById('payment-address');try{await navigator.clipboard.writeText(input.value);copy.textContent='Copied';}catch(_){input.select();document.execCommand('copy');copy.textContent='Copied';}setTimeout(()=>copy.textContent='Copy',1800)});
+ const statusUrl=@json(route('wallet.deposit.status',$deposit->id)),badge=document.getElementById('deposit-status-badge'),statusText=document.getElementById('deposit-status-text'),help=document.getElementById('deposit-help'),syncLabel=document.getElementById('deposit-sync-label');
+ const labels={waiting:'Awaiting payment',waiting_for_transfer:'Waiting for transfer',partially_paid:'Partially paid',submitted_for_review:'Under review',confirming:'Confirming on network',confirmed:'Confirmations received',finished:'Completed',paid:'Completed',paid_over:'Completed',expired:'Expired',failed:'Needs attention',rejected_by_admin:'Needs attention'};
+ let timer;
+ async function refresh(){if(document.visibilityState!=='visible')return;try{const response=await fetch(statusUrl,{headers:{Accept:'application/json'},credentials:'same-origin',cache:'no-store'});if(!response.ok){if(syncLabel)syncLabel.innerHTML='<i class="bi bi-arrow-repeat me-1"></i>Connection interrupted · retrying';return}const data=await response.json();if(syncLabel)syncLabel.innerHTML='<i class="bi bi-arrow-repeat me-1"></i>Live sync · Checked '+new Date().toLocaleTimeString();const label=data.status==='awaiting_admin_review'?'Awaiting admin review':data.status==='completed'?'Completed':data.status==='failed'?'Needs attention':(labels[String(data.provider_status||'').toLowerCase()]||'Processing');badge.textContent=label;statusText.textContent=label;badge.classList.toggle('done',data.status==='completed');badge.classList.toggle('bad',data.status==='failed');
+  const count=document.getElementById('confirmation-count'),remaining=document.getElementById('confirmation-remaining');if(count&&data.currency==='BTC'){count.textContent=`${data.confirmations} / ${data.required_confirmations}`;if(remaining)remaining.textContent=data.status==='completed'?'The transfer is confirmed.':(data.transaction_hash?`${data.remaining_confirmations} more confirmation(s) required.`:'Waiting for the transfer to appear on the network.')}
+  if(data.transaction_hash){const row=document.getElementById('tx-row'),link=document.getElementById('tx-link');row?.classList.remove('d-none');if(link){link.textContent=data.transaction_hash;link.href=@json($explorerBase)+encodeURIComponent(data.transaction_hash)}}
+  if(data.ngn_credited_amount){document.getElementById('ngn-row')?.classList.remove('d-none');document.getElementById('ngn-amount').textContent='₦'+Number(data.ngn_credited_amount).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2})}
+  if(data.received_amount){document.getElementById('received-row')?.classList.remove('d-none');document.getElementById('received-amount').textContent=Number(data.received_amount).toFixed(8)+' '+String(data.currency||'').toUpperCase()}
+  if(data.payment_id){document.getElementById('payment-reference-row')?.classList.remove('d-none');document.getElementById('payment-reference').textContent=String(data.payment_id)}
+  const partialNotice=document.getElementById('partial-payment-notice'),partialRemainingRow=document.getElementById('partial-remaining-row'),partialUsdRow=document.getElementById('partial-remaining-usd-row');if(data.partial_payment){const coin=String(data.currency||'').toUpperCase(),received=Number(data.received_amount||0),remaining=Number(data.remaining_crypto_amount||0),remainingUsd=data.remaining_usd_amount===null?null:Number(data.remaining_usd_amount);partialNotice?.classList.remove('d-none');partialRemainingRow?.classList.remove('d-none');document.getElementById('partial-remaining').textContent=remaining.toFixed(8)+' '+coin;if(remainingUsd!==null){partialUsdRow?.classList.remove('d-none');document.getElementById('partial-remaining-usd').textContent='$'+remainingUsd.toFixed(2)+' USD'}else{partialUsdRow?.classList.add('d-none')}document.getElementById('partial-payment-message').textContent=remaining>0?`We received ${received.toFixed(8)} ${coin} so far. Please send the remaining ${remaining.toFixed(8)} ${coin}${remainingUsd!==null?' (about $'+remainingUsd.toFixed(2)+' USD)':''} to this same payment address. Your balance will be credited after the full payment is confirmed and reviewed.`:`We received ${received.toFixed(8)} ${coin}. The payment is being confirmed.`}else{partialNotice?.classList.add('d-none');partialRemainingRow?.classList.add('d-none');partialUsdRow?.classList.add('d-none')}
+  if(data.deposit_valuation?.market_value_usd!==null&&data.deposit_valuation?.market_value_usd!==undefined){document.getElementById('market-value-row')?.classList.remove('d-none');document.getElementById('market-value').textContent='$'+Number(data.deposit_valuation.market_value_usd).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+  if(data.current_market_value_usd!==null&&data.current_market_value_usd!==undefined){document.getElementById('current-value-row')?.classList.remove('d-none');document.getElementById('current-value').textContent='$'+Number(data.current_market_value_usd).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+  if(data.status==='awaiting_admin_review'){help.textContent='The transfer is confirmed. An admin will review it before your wallet is credited.';document.querySelectorAll('.ds-step')[1]?.classList.add('active')}
+  if(data.status==='completed'){help.textContent='Your wallet has been credited with the verified amount.';document.querySelectorAll('.ds-step')[1]?.classList.add('active');document.querySelectorAll('.ds-step')[2]?.classList.add('active')}
+  if(data.status==='completed'||data.status==='failed')clearInterval(timer);
+ }catch(_){} }
+ timer=setInterval(refresh,15000);refresh();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});window.addEventListener('focus',refresh);
 })();
 </script>
 @endsection

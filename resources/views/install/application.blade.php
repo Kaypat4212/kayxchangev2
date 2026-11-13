@@ -219,6 +219,17 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="config-section">
+                        <h5><i class="fas fa-building text-primary"></i> Platform Contact & Bank Details</h5>
+                        <div class="row">
+                            <div class="col-md-6 form-floating"><input type="email" class="form-control" id="support_email" name="support_email" value="{{ old('support_email') }}"><label for="support_email">Support Email</label></div>
+                            <div class="col-md-6 form-floating"><input class="form-control" id="company_bank_name" name="company_bank_name" value="{{ old('company_bank_name') }}"><label for="company_bank_name">Settlement Bank Name</label></div>
+                            <div class="col-md-6 form-floating"><input class="form-control" id="company_account_name" name="company_account_name" value="{{ old('company_account_name') }}"><label for="company_account_name">Settlement Account Name</label></div>
+                            <div class="col-md-6 form-floating"><input class="form-control" id="company_account_number" name="company_account_number" value="{{ old('company_account_number') }}"><label for="company_account_number">Settlement Account Number</label></div>
+                        </div>
+                        <small class="text-muted">Optional for setup. Add these only if you want them available to platform users.</small>
+                    </div>
                     
                     <!-- Email Configuration -->
                     <div class="config-section">
@@ -288,12 +299,16 @@
                         
                         <div id="telegram-config" class="collapsible-content">
                             <div class="form-floating">
-                                <input type="text" class="form-control" id="telegram_bot_token" name="telegram_bot_token" 
-                                       value="{{ old('telegram_bot_token') }}" placeholder="123456789:ABCdefGhIJKlmNoPQRstUVwxyz">
+                            <input type="password" class="form-control" id="telegram_bot_token" name="telegram_bot_token"
+                                   placeholder="123456789:ABCdefGhIJKlmNoPQRstUVwxyz" autocomplete="new-password">
                                 <label for="telegram_bot_token">Telegram Bot Token</label>
                                 <div class="form-text">
                                     Get your bot token from <a href="https://t.me/BotFather" target="_blank">@BotFather</a> on Telegram
                                 </div>
+                            </div>
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="telegram_chat_id" name="telegram_chat_id" value="{{ old('telegram_chat_id') }}">
+                                <label for="telegram_chat_id">Admin Telegram Chat ID (Optional)</label>
                             </div>
                         </div>
                     </div>
@@ -313,13 +328,82 @@
                             
                             <div class="form-floating">
                                 <input type="password" class="form-control" id="paystack_secret_key" name="paystack_secret_key" 
-                                       value="{{ old('paystack_secret_key') }}" placeholder="sk_test_...">
+                                       placeholder="sk_test_..." autocomplete="new-password">
                                 <label for="paystack_secret_key">Paystack Secret Key</label>
                             </div>
                             
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle"></i>
                                 Get your Paystack keys from your <a href="https://dashboard.paystack.com" target="_blank">Paystack Dashboard</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <div class="toggle-section" onclick="toggleSection('additional-payments')">
+                            <h5><i class="fas fa-wallet text-primary"></i> Other Payment Providers (Optional) <i class="fas fa-chevron-down float-end"></i></h5>
+                        </div>
+                        <div id="additional-payments" class="collapsible-content">
+                            <div class="row">
+                                <div class="col-md-6 form-floating"><input class="form-control" id="flutterwave_public_key" name="flutterwave_public_key" value="{{ old('flutterwave_public_key') }}"><label for="flutterwave_public_key">Flutterwave Public Key</label></div>
+                                <div class="col-md-6 form-floating"><input type="password" class="form-control" id="flutterwave_secret_key" name="flutterwave_secret_key" autocomplete="new-password"><label for="flutterwave_secret_key">Flutterwave Secret Key</label></div>
+                                <div class="col-md-6 form-floating"><input class="form-control" id="korapay_public_key" name="korapay_public_key" value="{{ old('korapay_public_key') }}"><label for="korapay_public_key">Korapay Public Key</label></div>
+                                <div class="col-md-6 form-floating"><input type="password" class="form-control" id="korapay_secret_key" name="korapay_secret_key" autocomplete="new-password"><label for="korapay_secret_key">Korapay Secret Key</label></div>
+                                <div class="col-md-6 form-floating"><input class="form-control" id="opay_merchant_id" name="opay_merchant_id" value="{{ old('opay_merchant_id') }}"><label for="opay_merchant_id">OPay Merchant ID</label></div>
+                                <div class="col-md-6 form-floating"><input class="form-control" id="opay_public_key" name="opay_public_key" value="{{ old('opay_public_key') }}"><label for="opay_public_key">OPay Public Key</label></div>
+                                <div class="col-md-6 form-floating"><input type="password" class="form-control" id="opay_private_key" name="opay_private_key" autocomplete="new-password"><label for="opay_private_key">OPay Private Key</label></div>
+                            </div>
+                            <small class="text-muted">Only configure providers you have activated. Credentials can be added later in the admin environment settings.</small>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <div class="toggle-section" onclick="toggleSection('ai-config')">
+                            <h5><i class="fas fa-robot text-primary"></i> AI Assistant (Optional) <i class="fas fa-chevron-down float-end"></i></h5>
+                        </div>
+                        <div id="ai-config" class="collapsible-content">
+                            <div class="form-floating">
+                                <input type="password" class="form-control" id="groq_api_key" name="groq_api_key" autocomplete="new-password">
+                                <label for="groq_api_key">Groq API Key</label>
+                            </div>
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="groq_model" name="groq_model" value="{{ old('groq_model', 'llama-3.3-70b-versatile') }}">
+                                <label for="groq_model">Groq Model</label>
+                            </div>
+                            <small class="text-muted">The AI assistant stays unavailable until a valid key and supported model are configured.</small>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <div class="toggle-section" onclick="toggleSection('wallet-config')">
+                            <h5><i class="fab fa-bitcoin text-primary"></i> Deposit Wallet Addresses (Optional) <i class="fas fa-chevron-down float-end"></i></h5>
+                        </div>
+                        <div id="wallet-config" class="collapsible-content">
+                            <div class="alert alert-warning">Only enter addresses you control. Users will be shown these addresses for deposits.</div>
+                            <div class="row">
+                                @foreach([
+                                    'wallet_btc_address' => 'Bitcoin (BTC)', 'wallet_eth_address' => 'Ethereum (ETH)',
+                                    'wallet_bnb_address' => 'BNB Smart Chain (BNB)', 'wallet_sol_address' => 'Solana (SOL)',
+                                    'wallet_usdt_address' => 'USDT default', 'wallet_usdt_trc20_address' => 'USDT TRC20',
+                                    'wallet_usdt_erc20_address' => 'USDT ERC20', 'wallet_usdt_bep20_address' => 'USDT BEP20',
+                                    'wallet_usdc_address' => 'USDC default', 'wallet_usdc_erc20_address' => 'USDC ERC20',
+                                    'wallet_usdc_bep20_address' => 'USDC BEP20',
+                                ] as $field => $label)
+                                <div class="col-md-6 form-floating"><input type="text" class="form-control" id="{{ $field }}" name="{{ $field }}" value="{{ old($field) }}"><label for="{{ $field }}">{{ $label }} deposit address</label></div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <div class="toggle-section" onclick="toggleSection('chain-config')">
+                            <h5><i class="fas fa-link text-primary"></i> Blockchain Data Providers (Optional) <i class="fas fa-chevron-down float-end"></i></h5>
+                        </div>
+                        <div id="chain-config" class="collapsible-content">
+                            <div class="row">
+                                @foreach(['blockcypher_token' => 'BlockCypher token', 'trongrid_api_key' => 'TronGrid API key', 'etherscan_api_key' => 'Etherscan API key', 'bscscan_api_key' => 'BscScan API key'] as $field => $label)
+                                <div class="col-md-6 form-floating"><input type="password" class="form-control" id="{{ $field }}" name="{{ $field }}" autocomplete="new-password"><label for="{{ $field }}">{{ $label }}</label></div>
+                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -330,7 +414,7 @@
                         <ul class="mb-0 mt-2">
                             <li>Make sure all URLs use HTTPS in production</li>
                             <li>Use strong passwords for security</li>
-                            <li>Optional configurations can be set up later in admin panel</li>
+                            <li>Optional integrations can be added later in Admin → Environment Settings</li>
                             <li>Test email configuration to ensure notifications work</li>
                         </ul>
                     </div>

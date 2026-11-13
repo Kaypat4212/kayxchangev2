@@ -129,6 +129,9 @@
         background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
         cursor:pointer; color:rgba(255,255,255,0.72) !important;
     }
+    button.kx-qbtn { width:100%; font-family:inherit; }
+    .kx-qbtn.kx-coming-soon { opacity:.76; }
+    .kx-qbtn.kx-coming-soon small { color:#93a3b2; font-size:.65rem; font-weight:500; margin-top:-6px; }
     body.light-mode .kx-qbtn { background:#fff; border-color:rgba(0,0,0,0.07); color:#1a2a1a !important; }
     .kx-qbtn:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,0.3); color:#fff !important; }
     body.light-mode .kx-qbtn:hover { box-shadow:0 8px 20px rgba(0,0,0,0.1); border-color:rgba(0,120,0,0.2); }
@@ -441,6 +444,34 @@
             </div>
         </div>
 
+        <div class="kx-card p-3 mb-4">
+            <div class="kx-sec-title mb-3"><i class="bi bi-lightning-charge-fill"></i>Bills & Utilities <span class="kx-sec-tag ms-auto">Airtime · Data · Utilities</span></div>
+            <div class="kx-quick">
+                @foreach([
+                    ['title'=>'Airtime','icon'=>'bi-phone-fill','category'=>'airtime','enabled'=>$billPaymentsEnabled],
+                    ['title'=>'Data','icon'=>'bi-wifi','category'=>'data','enabled'=>$billPaymentsEnabled],
+                    ['title'=>'Electricity','icon'=>'bi-lightning-charge-fill','category'=>'electricity','enabled'=>$utilityPaymentsEnabled],
+                    ['title'=>'Cable TV','icon'=>'bi-tv-fill','category'=>'cable_tv','enabled'=>$utilityPaymentsEnabled],
+                    ['title'=>'All Bills','icon'=>'bi-grid-fill','category'=>'','enabled'=>$billPaymentsEnabled],
+                ] as $billAction)
+                    @if($billAction['enabled'])
+                        <a href="{{ route('bills.index', $billAction['category'] ? ['category'=>$billAction['category']] : []) }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi {{ $billAction['icon'] }}"></i></div>{{ $billAction['title'] }}</a>
+                    @else
+                        <button type="button" class="kx-qbtn kx-coming-soon" data-coming-soon="{{ $billAction['title'] }}"><div class="kx-qicon"><i class="bi {{ $billAction['icon'] }}"></i></div>{{ $billAction['title'] }}<small>Coming soon</small></button>
+                    @endif
+                @endforeach
+            </div>
+        </div>
+
+        <div class="kx-card p-3 mb-4">
+            <div class="kx-sec-title mb-3"><i class="bi bi-wallet2"></i>Wallets <span class="kx-sec-tag ms-auto">USD and crypto</span></div>
+            <div class="kx-quick">
+                <a href="{{ route('wallet.usd') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-currency-dollar"></i></div>USD Wallet</a>
+                <a href="{{ route('wallet.crypto') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-currency-bitcoin"></i></div>Crypto Wallets</a>
+                <a href="{{ route('wallet.index') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-wallet-fill"></i></div>Wallet Overview</a>
+            </div>
+        </div>
+
         <!-- ===== Rates + Prices Row ===== -->
         <div class="row g-4 mb-4">
             <!-- Buy/Sell Rates -->
@@ -631,6 +662,21 @@
 
     </div>
 </div>
+
+<div class="modal fade" id="featureComingSoonModal" tabindex="-1" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-secondary" style="background:#121b25;color:#eef4f8;border-radius:18px">
+  <div class="modal-header border-secondary"><h2 class="modal-title fs-5 fw-bold"><i class="bi bi-hourglass-split text-success me-2"></i><span id="comingSoonTitle">Coming soon</span></h2><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
+  <div class="modal-body text-secondary">We’re getting this service ready. Please check back soon.</div>
+  <div class="modal-footer border-secondary"><button type="button" class="btn btn-success" data-bs-dismiss="modal">Got it</button></div>
+ </div></div>
+</div>
+<script>
+document.querySelectorAll('[data-coming-soon]').forEach(button=>button.addEventListener('click',()=>{
+ const title=document.getElementById('comingSoonTitle'); if(title) title.textContent=button.dataset.comingSoon+' is coming soon';
+ if(window.bootstrap?.Modal) bootstrap.Modal.getOrCreateInstance(document.getElementById('featureComingSoonModal')).show();
+ else window.alert(button.dataset.comingSoon+' is coming soon. Please check back soon.');
+}));
+</script>
 
 <script>
     let allTransactions = @json($transactions);

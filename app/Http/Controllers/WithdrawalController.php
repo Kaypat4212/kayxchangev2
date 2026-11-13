@@ -16,6 +16,7 @@ use App\Models\SiteContent;
 use App\Models\User;
 use App\Models\Withdrawal;
 use App\Services\AdminTradeAlertService;
+use App\Services\BalanceSettlementService;
 use App\Services\PayoutService;
 use Illuminate\Support\Str;
 use PHPMailer\PHPMailer\PHPMailer;
@@ -125,6 +126,14 @@ class WithdrawalController extends Controller
             // Re-calculate fee inside transaction with validated amount
             $validatedAmount = (float) $request->amount;
             $fee = $this->calculateFee($validatedAmount, $feeType, $feeValue);
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            $pendingReserved = (float) Withdrawal::query()
+                ->where('user_id', $lockedUser->id)
+                ->where('status', 'pending')
+                ->sum(DB::raw('amount + COALESCE(fee_amount, 0)'));
+            if ((float) $lockedUser->balance - $pendingReserved < $validatedAmount + $fee) {
+                throw new \RuntimeException('Insufficient available balance after pending withdrawals and fees.');
+            }
 
             // Create withdrawal record
             $withdrawal = Withdrawal::create([
@@ -198,37 +207,22 @@ class WithdrawalController extends Controller
                 'user_id' => $user->id,
                 'request' => $request->all(),
             ]);
+            if (str_contains($e->getMessage(), 'Insufficient available balance')) {
+                return response()->json(['errors' => ['amount' => [$e->getMessage()]]], 422);
+            }
             return response()->json(['error' => 'Withdrawal failed: ' . $e->getMessage()], 500);
         }
     }
 
     public function approveWithdrawal(Request $request, $id)
     {
-        $withdrawal = Withdrawal::findOrFail($id);
-        $user = User::findOrFail($withdrawal->user_id);
-
-        if ($withdrawal->status !== 'pending') {
-            Log::warning('Withdrawal approval failed: Not in pending status', ['withdrawal_id' => $id]);
-            return response()->json(['error' => 'Withdrawal is not pending.'], 400);
-        }
-
-        DB::beginTransaction();
         try {
-            $feeAmount   = (float) ($withdrawal->fee_amount ?? 0);
-            $totalDeduct = (float) $withdrawal->amount + $feeAmount;
-
-            if ($user->balance < $totalDeduct) {
-                throw new \Exception('Insufficient balance.');
+            $changed = app(BalanceSettlementService::class)->approveWithdrawal((int) $id);
+            if (!$changed) {
+                return response()->json(['error' => 'Withdrawal is no longer pending.'], 409);
             }
-
-            // Deduct amount + fee from balance
-            $user->balance -= $totalDeduct;
-            $user->save();
-
-            // Update withdrawal status and processed_at
-            $withdrawal->status = 'approved';
-            $withdrawal->processed_at = now();
-            $withdrawal->save();
+            $withdrawal = Withdrawal::with('user')->findOrFail($id);
+            $user = $withdrawal->user;
 
             // Send Telegram notification for approval
             $bankDetails = $withdrawal->bank_account;
@@ -254,7 +248,6 @@ class WithdrawalController extends Controller
                 Log::warning('Withdrawal approved email failed: ' . $mailEx->getMessage());
             }
 
-            DB::commit();
             Log::info('Withdrawal approved: ', $withdrawal->toArray());
 
             // ── Auto-payout after commit ────────────────────────────────
@@ -262,12 +255,12 @@ class WithdrawalController extends Controller
 
             return response()->json(['message' => 'Transaction approved, funds sent.']);
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Withdrawal approval failed: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'withdrawal_id' => $id,
             ]);
-            return response()->json(['error' => 'Approval failed: ' . $e->getMessage()], 500);
+            $statusCode = str_contains($e->getMessage(), 'Insufficient') ? 422 : 500;
+            return response()->json(['error' => 'Approval failed: ' . $e->getMessage()], $statusCode);
         }
     }
 
@@ -458,12 +451,12 @@ class WithdrawalController extends Controller
             return response()->json(['error' => 'Withdrawal is not pending.'], 400);
         }
 
-        DB::beginTransaction();
         try {
-            // Update withdrawal status
-            $withdrawal->status = 'cancelled';
-            $withdrawal->processed_at = now();
-            $withdrawal->save();
+            $changed = app(BalanceSettlementService::class)->setWithdrawalStatus((int) $id, 'cancelled');
+            if (!$changed) {
+                return response()->json(['error' => 'Withdrawal is no longer pending.'], 409);
+            }
+            $withdrawal->refresh();
 
             // Send Telegram notification for cancellation
             $bankDetails = $withdrawal->bank_account;
@@ -490,12 +483,10 @@ class WithdrawalController extends Controller
                 Log::warning('Withdrawal cancelled email failed: ' . $mailEx->getMessage());
             }
 
-            DB::commit();
             Log::info('Withdrawal cancelled: ', $withdrawal->toArray());
 
             return response()->json(['message' => 'Withdrawal cancelled successfully.']);
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Withdrawal cancellation failed: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'withdrawal_id' => $id,
@@ -632,8 +623,12 @@ class WithdrawalController extends Controller
             }
 
             $oldStatus = $withdrawal->status;
-            $withdrawal->status = $request->status;
-            $withdrawal->save();
+            $changed = app(BalanceSettlementService::class)
+                ->setWithdrawalStatus((int) $withdrawal->id, $request->status);
+            if (!$changed) {
+                return back()->with('info', 'This withdrawal has already been processed.');
+            }
+            $withdrawal->refresh();
 
             // Log the status change
             Log::info('Withdrawal status updated', [
@@ -698,6 +693,10 @@ class WithdrawalController extends Controller
                 }
             }
 
+            if ($request->status === 'approved' && $oldStatus === 'pending' && $withdrawal->user) {
+                $this->attemptAutoPayout($withdrawal, $withdrawal->user);
+            }
+
             return back()->with('success', 'Withdrawal status updated successfully.');
             
         } catch (\Exception $e) {
@@ -721,10 +720,11 @@ class WithdrawalController extends Controller
             return response()->json(['error' => 'Only pending withdrawals can be cancelled.'], 422);
         }
 
-        $withdrawal->update([
-            'status'       => 'cancelled',
-            'processed_at' => now(),
-        ]);
+        $changed = app(BalanceSettlementService::class)->setWithdrawalStatus((int) $withdrawal->id, 'cancelled');
+        if (!$changed) {
+            return response()->json(['error' => 'This withdrawal has already been processed.'], 409);
+        }
+        $withdrawal->refresh();
 
         // Notify user by email
         try {

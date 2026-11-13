@@ -102,7 +102,10 @@ class CryptoController extends Controller
         // Latest published blog posts for dashboard carousel
         $blogPosts = \App\Models\BlogPost::published()->limit(8)->get();
 
-        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts'));
+        $billService = app(\App\Services\BillPaymentProviderService::class);
+        $billPaymentsEnabled = $billService->billPaymentsEnabled() && $billService->providers() !== [];
+        $utilityPaymentsEnabled = $billPaymentsEnabled && $billService->utilityPaymentsEnabled();
+        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts', 'billPaymentsEnabled', 'utilityPaymentsEnabled'));
     }
 
     public function buy()

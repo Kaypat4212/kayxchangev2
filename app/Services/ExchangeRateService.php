@@ -31,8 +31,9 @@ class ExchangeRateService
         'TON'  => ['coingecko' => 'the-open-network', 'coincap' => 'toncoin', 'name' => 'Toncoin',   'fallback' => 5.40],
     ];
 
-    private const CACHE_KEY = 'convert_usd_rates_v2';
-    private const CACHE_TTL = 120; // seconds
+    private const CACHE_KEY = 'market_usd_rates_v3';
+    private const STALE_CACHE_KEY = 'market_usd_rates_stale_v3';
+    private const CACHE_TTL = 60; // seconds
 
     /**
      * Live USD rate per supported coin: ['BTC' => 97500.0, ...]
@@ -40,9 +41,21 @@ class ExchangeRateService
      */
     public function getUsdRates(): array
     {
-        $rates = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
-            return $this->fetchRates();
-        });
+        $cached = Cache::get(self::CACHE_KEY);
+        if (is_array($cached)) return $cached;
+
+        $rates = $this->fetchRates();
+        if (($rates['_source'] ?? '') !== 'fallback') {
+            Cache::put(self::CACHE_KEY, $rates, now()->addSeconds(self::CACHE_TTL));
+            Cache::put(self::STALE_CACHE_KEY, $rates, now()->addDay());
+            return $rates;
+        }
+
+        $lastKnown = Cache::get(self::STALE_CACHE_KEY);
+        if (is_array($lastKnown)) {
+            $lastKnown['_stale'] = true;
+            return $lastKnown;
+        }
 
         return $rates;
     }
@@ -90,6 +103,7 @@ class ExchangeRateService
     private function fetchRates(): array
     {
         $rates = $this->fetchFromCoinGecko()
+              ?? $this->fetchFromCoinMarketCap()
               ?? $this->fetchFromCoinCap()
               ?? $this->staticFallback();
 
@@ -101,9 +115,15 @@ class ExchangeRateService
         try {
             $ids = implode(',', array_column(self::SUPPORTED_COINS, 'coingecko'));
 
-            $response = Http::timeout(8)->get('https://api.coingecko.com/api/v3/simple/price', [
+            $apiKey = config('services.coingecko.api_key');
+            $baseUrl = $apiKey ? 'https://pro-api.coingecko.com/api/v3' : 'https://api.coingecko.com/api/v3';
+            $request = Http::timeout(7)->acceptJson();
+            if ($apiKey) $request = $request->withHeaders(['x-cg-pro-api-key' => $apiKey]);
+            $response = $request->get($baseUrl . '/simple/price', [
                 'ids'           => $ids,
                 'vs_currencies' => 'usd',
+                'include_24hr_change' => 'true',
+                'include_last_updated_at' => 'true',
             ]);
 
             if (!$response->successful()) {
@@ -113,11 +133,16 @@ class ExchangeRateService
 
             $data  = $response->json();
             $rates = [];
+            $changes = [];
+            $liveCoins = [];
 
             foreach (self::SUPPORTED_COINS as $symbol => $map) {
                 $price = $data[$map['coingecko']]['usd'] ?? null;
                 if (is_numeric($price) && $price > 0) {
                     $rates[$symbol] = (float) $price;
+                    $liveCoins[] = $symbol;
+                    $changes[$symbol] = isset($data[$map['coingecko']]['usd_24h_change'])
+                        ? (float) $data[$map['coingecko']]['usd_24h_change'] : null;
                 }
             }
 
@@ -132,11 +157,72 @@ class ExchangeRateService
 
             $rates['_source']     = 'coingecko';
             $rates['_updated_at'] = now()->toIso8601String();
+            $rates['_live_coins'] = $liveCoins;
+            $rates['_change_24h'] = $changes;
 
             return $rates;
 
         } catch (\Throwable $e) {
             Log::warning('ExchangeRateService: CoinGecko error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function fetchFromCoinMarketCap(): ?array
+    {
+        try {
+            $slugs = [
+                'BTC'=>'bitcoin', 'ETH'=>'ethereum', 'USDT'=>'tether', 'USDC'=>'usd-coin',
+                'BNB'=>'bnb', 'SOL'=>'solana', 'XRP'=>'xrp', 'DOGE'=>'dogecoin',
+                'LTC'=>'litecoin', 'TRX'=>'tron', 'ADA'=>'cardano', 'TON'=>'toncoin',
+            ];
+            $apiKey = (string) config('services.coinmarketcap.api_key', '');
+            $baseUrl = $apiKey
+                ? 'https://pro-api.coinmarketcap.com/v3/cryptocurrency/quotes/latest'
+                : 'https://pro-api.coinmarketcap.com/public-api/v3/cryptocurrency/quotes/latest';
+            $request = Http::timeout(7)->acceptJson();
+            if ($apiKey) $request = $request->withHeaders(['X-CMC_PRO_API_KEY' => $apiKey]);
+            $response = $request->get($baseUrl, [
+                'slug' => implode(',', array_values($slugs)),
+                'convert' => 'USD',
+                'skip_invalid' => 'true',
+            ]);
+            if (!$response->successful()) {
+                Log::warning('ExchangeRateService: CoinMarketCap request failed', ['status' => $response->status()]);
+                return null;
+            }
+
+            $rows = $response->json('data', []);
+            if (!is_array($rows)) return null;
+            $rates = [];
+            $changes = [];
+            $liveCoins = [];
+            foreach ($rows as $row) {
+                if (!is_array($row)) continue;
+                $symbol = strtoupper((string) ($row['symbol'] ?? ''));
+                if (!isset(self::SUPPORTED_COINS[$symbol])) continue;
+                $quote = $row['quote'] ?? [];
+                if (array_is_list($quote)) {
+                    $quote = collect($quote)->first(fn ($item) => strtoupper((string)($item['symbol'] ?? '')) === 'USD') ?? ($quote[0] ?? []);
+                } else {
+                    $quote = $quote['USD'] ?? [];
+                }
+                $price = $quote['price'] ?? null;
+                if (!is_numeric($price) || (float) $price <= 0) continue;
+                $rates[$symbol] = (float) $price;
+                $changes[$symbol] = isset($quote['percent_change_24h']) ? (float) $quote['percent_change_24h'] : null;
+                $liveCoins[] = $symbol;
+            }
+
+            if (count($rates) < 3) return null;
+            foreach (self::SUPPORTED_COINS as $symbol => $map) $rates[$symbol] = $rates[$symbol] ?? $map['fallback'];
+            $rates['_source'] = 'coinmarketcap';
+            $rates['_updated_at'] = now()->toIso8601String();
+            $rates['_live_coins'] = $liveCoins;
+            $rates['_change_24h'] = $changes;
+            return $rates;
+        } catch (\Throwable $e) {
+            Log::warning('ExchangeRateService: CoinMarketCap error: ' . $e->getMessage());
             return null;
         }
     }
@@ -157,11 +243,16 @@ class ExchangeRateService
 
             $data  = collect($response->json('data') ?? [])->keyBy('id');
             $rates = [];
+            $liveCoins = [];
+            $changes = [];
 
             foreach (self::SUPPORTED_COINS as $symbol => $map) {
                 $price = $data[$map['coincap']]['priceUsd'] ?? null;
                 if (is_numeric($price) && $price > 0) {
                     $rates[$symbol] = (float) $price;
+                    $liveCoins[] = $symbol;
+                    $changes[$symbol] = isset($data[$map['coincap']]['changePercent24Hr'])
+                        ? (float) $data[$map['coincap']]['changePercent24Hr'] : null;
                 }
             }
 
@@ -175,6 +266,8 @@ class ExchangeRateService
 
             $rates['_source']     = 'coincap';
             $rates['_updated_at'] = now()->toIso8601String();
+            $rates['_live_coins'] = $liveCoins;
+            $rates['_change_24h'] = $changes;
 
             return $rates;
 
@@ -192,6 +285,9 @@ class ExchangeRateService
         }
         $rates['_source']     = 'fallback';
         $rates['_updated_at'] = now()->toIso8601String();
+        $rates['_live_coins'] = [];
+        $rates['_change_24h'] = [];
+        $rates['_stale'] = true;
 
         return $rates;
     }

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\SellTrade;
 use App\Models\User;
 use App\Services\AdminTradeAlertService;
+use App\Services\BalanceSettlementService;
 use App\Mail\TradeNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -22,12 +23,17 @@ class AdminTradeController extends Controller
      */
     public function updateStatus(Request $request, $trade_id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'status' => 'required|in:pending,completed,rejected',
         ]);
 
-        $trade = SellTrade::findOrFail($trade_id);
-        $originalStatus = $trade->status;
+        $transition = app(BalanceSettlementService::class)
+            ->updateSellStatus((int) $trade_id, $validated['status']);
+        $trade = $transition['trade'];
+        $originalStatus = $transition['old_status'];
+        if (!$transition['changed']) {
+            return redirect()->back()->with('info', 'This sell trade already has that status.');
+        }
         $tradeUser = User::find($trade->user_id);
 
         // Handle admin payment proof upload
@@ -38,46 +44,14 @@ class AdminTradeController extends Controller
             $trade->admin_payment_proof = $request->file('admin_payment_proof')->store('admin-sell-proofs', 'public');
         }
 
-        $trade->status = $request->status;
-
         Log::info('Attempting to update trade status', [
             'trade_id' => $trade->id,
             'old_status' => $originalStatus,
-            'new_status' => $trade->status,
+            'new_status' => $validated['status'],
         ]);
 
         try {
-            $trade->save();
             Log::info('Trade status updated successfully', ['trade_id' => $trade->id]);
-
-            if ($trade->payment_method === 'wallet_balance' && $trade->status === 'completed' && $originalStatus !== 'completed') {
-                $user = User::findOrFail($trade->user_id);
-                $oldBalance = $user->balance ?? 0;
-                $user->balance = $oldBalance + $trade->naira_amount;
-
-                Log::info('Attempting to update user balance for completed trade', [
-                    'user_id' => $user->id,
-                    'trade_id' => $trade->id,
-                    'old_balance' => $oldBalance,
-                    'new_balance' => $user->balance,
-                    'naira_amount' => $trade->naira_amount,
-                ]);
-
-                try {
-                    $user->save();
-                    Log::info('User balance updated successfully', [
-                        'user_id' => $user->id,
-                        'new_balance' => $user->balance,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Failed to update user balance', [
-                        'user_id' => $user->id,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
-                    ]);
-                    throw new \Exception('Failed to update user balance: ' . $e->getMessage());
-                }
-            }
 
             // Send email notification to user
             try {

@@ -259,9 +259,22 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
           </a>
         </li>
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('wallet*')) kx-active @endif" href="{{ url('/wallet/send') }}" title="Send Money">
-            <i class="bi bi-send-fill"></i>Send Money
+          <a class="kx-nav-link @if(request()->is('bills*')) kx-active @endif" href="{{ route('bills.index') }}" title="Bills and utilities">
+            <i class="bi bi-lightning-charge-fill"></i>Pay Bills
           </a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="kx-nav-link dropdown-toggle @if(request()->is('wallet*')) kx-active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Wallets">
+            <i class="bi bi-wallet2"></i>Wallets
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li><a class="dropdown-item" href="{{ route('wallet.index') }}"><i class="bi bi-wallet-fill me-2"></i>Wallet overview</a></li>
+            <li><a class="dropdown-item" href="{{ route('wallet.usd') }}"><i class="bi bi-currency-dollar me-2"></i>USD wallet</a></li>
+            <li><a class="dropdown-item" href="{{ route('wallet.crypto') }}"><i class="bi bi-currency-bitcoin me-2"></i>Crypto wallets</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ route('wallet.send') }}"><i class="bi bi-send-fill me-2"></i>Send money</a></li>
+            <li><a class="dropdown-item" href="{{ route('wallet.history') }}"><i class="bi bi-clock-history me-2"></i>Wallet history</a></li>
+          </ul>
         </li>
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('rate')) kx-active @endif" href="{{ url('/rate') }}">

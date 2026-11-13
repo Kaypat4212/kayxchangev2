@@ -8,6 +8,7 @@ use App\Models\Referral;
 use App\Models\SiteContent;
 use App\Models\Wallet;
 use App\Services\PaymentGatewayService;
+use App\Services\BalanceSettlementService;
 use App\Mail\DepositApproved;
 use App\Mail\TradeNotification;
 use Illuminate\Http\Request;
@@ -200,12 +201,21 @@ class DepositController extends Controller
         };
 
         if ($verification['success']) {
-            $deposit->update([
-                'status'           => 'approved',
-                'gateway_response' => json_encode($verification['data'] ?? []),
-            ]);
+            $approved = app(BalanceSettlementService::class)->approveDeposit(
+                (int) $deposit->id,
+                json_encode($verification['data'] ?? [])
+            );
+            if (!$approved) {
+                $deposit->refresh();
+                if ($deposit->status === 'approved') {
+                    return redirect()->route('deposits.index')
+                        ->with('success', 'Your deposit has already been credited!');
+                }
 
-            $deposit->user->increment('balance', $deposit->amount);
+                return redirect()->route('deposits.index')
+                    ->withErrors(['error' => 'This deposit can no longer be approved. Please contact support.']);
+            }
+            $deposit->refresh();
 
             Log::info('Gateway deposit approved', [
                 'deposit_id' => $deposit->id,
@@ -218,13 +228,20 @@ class DepositController extends Controller
             $this->sendTelegramAlert($deposit, false);
 
             return redirect()->route('deposits.index')
-                ->with('success', 'Payment successful! ₦' . number_format($deposit->amount, 2) . ' has been credited to your wallet.');
+                ->with('success', 'Payment successful! ₦' . number_format(max(0, (float) $deposit->amount - (float) $deposit->fee_amount), 2) . ' has been credited to your wallet.');
         }
 
-        $deposit->update([
-            'status'           => 'rejected',
-            'gateway_response' => json_encode($verification['data'] ?? []),
-        ]);
+        app(BalanceSettlementService::class)->setDepositStatus(
+            (int) $deposit->id,
+            'rejected',
+            null,
+            json_encode($verification['data'] ?? [])
+        );
+        $deposit->refresh();
+        if ($deposit->status === 'approved') {
+            return redirect()->route('deposits.index')
+                ->with('success', 'Your deposit has already been credited!');
+        }
 
         Log::warning('Gateway payment verification failed', [
             'deposit_id' => $deposit->id,
@@ -325,14 +342,11 @@ class DepositController extends Controller
             ->orWhere('transaction_ref', $reference)
             ->first();
 
-        if (! $deposit || $deposit->status === 'approved') return;
+        if (! $deposit) return;
 
-        $deposit->update([
-            'status'           => 'approved',
-            'gateway_response' => $rawPayload,
-        ]);
-
-        $deposit->user->increment('balance', $deposit->amount);
+        $approved = app(BalanceSettlementService::class)->approveDeposit((int) $deposit->id, $rawPayload);
+        if (!$approved) return;
+        $deposit->refresh();
 
         Log::info('Deposit approved via webhook', [
             'deposit_id' => $deposit->id,
@@ -533,13 +547,19 @@ class DepositController extends Controller
         ]);
 
         try {
-            $deposit->status = $request->status;
-            $deposit->admin_note = $request->admin_note;
-            $deposit->save();
+            $changed = app(BalanceSettlementService::class)->setDepositStatus(
+                (int) $deposit->id,
+                $request->status,
+                $request->admin_note
+            );
+
+            if (!$changed) {
+                return redirect()->route('deposits.index')->with('info', 'This deposit has already been processed.');
+            }
+            $deposit->refresh();
 
             // Send email notification if approved
             if ($request->status === 'approved' && $deposit->user && $deposit->user->email) {
-                $deposit->user->increment('balance', $deposit->amount);
                 $this->checkAndCompleteReferral($deposit);
                 Mail::to($deposit->user->email)->send(new DepositApproved($deposit));
                 Log::info('Deposit approval email sent', [
@@ -961,9 +981,11 @@ class DepositController extends Controller
             return response()->json(['error' => 'Only pending deposits can be cancelled.'], 422);
         }
 
-        $deposit->update([
-            'status' => 'cancelled',
-        ]);
+        $cancelled = app(BalanceSettlementService::class)->setDepositStatus((int) $deposit->id, 'cancelled');
+        if (!$cancelled) {
+            return response()->json(['error' => 'This deposit has already been processed.'], 409);
+        }
+        $deposit->refresh();
 
         // Notify user by email
         try {

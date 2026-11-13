@@ -520,14 +520,19 @@ class BuyController extends Controller
     {
         // Fetch trade and check authorization
         $trade = BuyTrade::findOrFail($id);
-        if ($trade->user_id !== auth()->id() && !auth()->user()->is_admin) {
+        $isAdmin = (bool) auth()->user()->is_admin;
+        if ($trade->user_id !== auth()->id() && !$isAdmin) {
             abort(403, 'Unauthorized access.');
         }
 
-        // Validate new status
+        // Customers may cancel their own pending request, but only an admin
+        // may mark a buy order completed after fiat receipt and crypto payout.
         $validated = $request->validate([
-            'status' => 'required|in:pending,completed,canceled',
+            'status' => $isAdmin ? 'required|in:pending,completed,canceled' : 'required|in:canceled',
         ]);
+        if (!$isAdmin && $trade->status !== 'pending') {
+            return redirect()->back()->withErrors(['status' => 'Only pending buy orders can be cancelled.']);
+        }
 
         try {
             // Update trade status

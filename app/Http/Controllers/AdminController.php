@@ -405,21 +405,28 @@ class AdminController extends Controller
 
     public function updateSellStatus(Request $request, $id)    {
         try {
-            $trade = SellTrade::findOrFail($id);
-            $oldStatus = $trade->status;
-            $newStatus = $request->input('status');
+            $validated = $request->validate([
+                'status' => 'required|in:pending,completed,rejected',
+                'admin_payment_proof' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            ]);
+            $newStatus = $validated['status'];
 
-            $updatePayload = ['status' => $newStatus];
+            $transition = app(\App\Services\BalanceSettlementService::class)
+                ->updateSellStatus((int) $id, $newStatus);
+            $trade = $transition['trade'];
+            $oldStatus = $transition['old_status'];
+            if (!$transition['changed']) {
+                return back()->with('info', 'This sell trade already has that status.');
+            }
 
             // Store admin payment proof if provided
             if ($request->hasFile('admin_payment_proof')) {
                 if ($trade->admin_payment_proof) {
                     Storage::disk('public')->delete($trade->admin_payment_proof);
                 }
-                $updatePayload['admin_payment_proof'] = $request->file('admin_payment_proof')->store('admin-sell-proofs', 'public');
+                $trade->admin_payment_proof = $request->file('admin_payment_proof')->store('admin-sell-proofs', 'public');
+                $trade->save();
             }
-
-            $trade->update($updatePayload);
 
             // Auto-payout via Paystack when sell is completed with bank transfer
             if ($newStatus === 'completed' && $oldStatus !== 'completed'
@@ -665,13 +672,16 @@ class AdminController extends Controller
         }
 
          try {
-            $user->update([
-                'name' => $request->name,
-                'email' => $request->email,
-                'balance' => $request->balance,
-                'role' => $role,
-                'is_admin' => $isAdmin,
-            ]);
+            \Illuminate\Support\Facades\DB::transaction(function () use ($user, $request, $role, $isAdmin): void {
+                $user->update([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'role' => $role,
+                    'is_admin' => $isAdmin,
+                ]);
+                app(\App\Services\BalanceSettlementService::class)
+                    ->setNgnBalance((int) $user->id, (float) $request->balance);
+            });
             return redirect()->route('admin.users.index')->with('success', 'User updated successfully');
         } catch (\Exception $e) {
             Log::error('Failed to update user: ' . $e->getMessage());
@@ -692,17 +702,15 @@ class AdminController extends Controller
             'action' => 'required|in:add,subtract',
         ]);
 
-        $amount = $request->amount;
-        if ($request->action === 'subtract') {
-            if ($user->balance < $amount) {
-                return redirect()->route('admin.users.index')->with('error', 'Insufficient balance');
-            }
-            $user->balance -= $amount;
-        } else {
-            $user->balance += $amount;
+        $amount = (float) $request->amount;
+        try {
+            app(\App\Services\BalanceSettlementService::class)->adjustNgnBalance(
+                (int) $user->id,
+                $request->action === 'subtract' ? -$amount : $amount
+            );
+        } catch (\RuntimeException $e) {
+            return redirect()->route('admin.users.index')->with('error', $e->getMessage());
         }
-
-        $user->save();
         return redirect()->route('admin.users.index')->with('success', 'Balance updated successfully');
     }
     public function adjustBalance(Request $request, User $user)
@@ -713,17 +721,11 @@ class AdminController extends Controller
         ]);
 
         try {
-            $amount = $request->amount;
-            if ($request->action === 'subtract') {
-                if ($user->balance < $amount) {
-                    return redirect()->route('admin.users.edit', $user->id)->with('error', 'Insufficient balance');
-                }
-                $user->balance -= $amount;
-            } else {
-                $user->balance += $amount;
-            }
-
-            $user->save();
+            $amount = (float) $request->amount;
+            app(\App\Services\BalanceSettlementService::class)->adjustNgnBalance(
+                (int) $user->id,
+                $request->action === 'subtract' ? -$amount : $amount
+            );
             return redirect()->route('admin.users.edit', $user->id)->with('success', 'Balance adjusted successfully');
         } catch (\Exception $e) {
             Log::error('Failed to adjust balance: ' . $e->getMessage());

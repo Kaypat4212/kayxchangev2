@@ -16,6 +16,11 @@ class Handler extends ExceptionHandler
         'current_password',
         'password',
         'password_confirmation',
+        'vtpass_api_key',
+        'vtpass_public_key',
+        'vtpass_secret_key',
+        'monnify_api_key',
+        'monnify_secret_key',
     ];
 
     /**

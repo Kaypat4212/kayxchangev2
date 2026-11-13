@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminSetting;
 use App\Models\AiChatMessage;
 use App\Services\CloudflareService;
+use App\Services\NowPaymentsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -166,6 +167,10 @@ class AdminSettingsController extends Controller
     {
         $data = $request->except(['_token', '_method', 'action']);
 
+        if (isset($data['crypto_deposit_provider']) && !in_array($data['crypto_deposit_provider'], ['auto', 'cryptomus', 'nowpayments'], true)) {
+            return back()->with('error', 'Choose a supported crypto deposit provider.');
+        }
+
         foreach ($data as $key => $value) {
             $row = AdminSetting::where('key', $key)->first();
             if (! $row) continue;
@@ -182,6 +187,19 @@ class AdminSettingsController extends Controller
         }
 
         return back()->with('success', 'Settings saved successfully.');
+    }
+
+    public function testNowPayments(NowPaymentsService $provider)
+    {
+        try {
+            $result = $provider->testConnection();
+            return response()->json([
+                'ok' => true,
+                'message' => 'NOWPayments ' . strtoupper($result['environment']) . ' API key accepted. Available currencies: ' . $result['currency_count'] . '.',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['ok'=>false, 'message'=>$e->getMessage()], 422);
+        }
     }
 
     public function cloudflareAction(Request $request)

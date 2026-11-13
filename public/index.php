@@ -118,6 +118,60 @@ if ($resolvedBasePath === null) {
     exit('Laravel bootstrap files were not found. Ensure vendor and bootstrap exist, or set LARAVEL_BASE_PATH.');
 }
 
+// cPanel deployments commonly exclude .env from the uploaded archive. Create a
+// safe first-boot environment so /install can load instead of failing while
+// Laravel tries to encrypt its session cookie. The installer fills in the
+// database and service credentials in later steps.
+$environmentFile = $resolvedBasePath.'/.env';
+if (!is_file($environmentFile)) {
+    $initialKey = 'base64:'.base64_encode(random_bytes(32));
+    $initialEnvironment = implode(PHP_EOL, [
+        'APP_NAME="KayXchange"',
+        'APP_ENV=production',
+        'APP_KEY='.$initialKey,
+        'APP_DEBUG=false',
+        'APP_URL=https://example.com',
+        'LOG_CHANNEL=stack',
+        'DB_CONNECTION=mysql',
+        'DB_HOST=localhost',
+        'DB_PORT=3306',
+        'DB_DATABASE=',
+        'DB_USERNAME=',
+        'DB_PASSWORD=',
+        'CACHE_DRIVER=file',
+        'SESSION_DRIVER=file',
+        'QUEUE_CONNECTION=sync',
+        '',
+    ]);
+
+    if (@file_put_contents($environmentFile, $initialEnvironment, LOCK_EX) === false) {
+        http_response_code(500);
+        exit('KayXchange needs write access to its application folder to create .env. Set the cPanel file owner/permissions, then reload /install.');
+    }
+    @chmod($environmentFile, 0600);
+} else {
+    $environmentContents = @file_get_contents($environmentFile);
+    $existingKey = '';
+    if (is_string($environmentContents) && preg_match('/^APP_KEY=(.*)$/m', $environmentContents, $keyMatch)) {
+        $existingKey = trim(trim($keyMatch[1]), "\\\"' ");
+    }
+    $decodedKey = str_starts_with($existingKey, 'base64:')
+        ? base64_decode(substr($existingKey, 7), true)
+        : $existingKey;
+    if (is_string($environmentContents) && (!is_string($decodedKey) || strlen($decodedKey) !== 32)) {
+        $generatedKey = 'base64:'.base64_encode(random_bytes(32));
+        if (preg_match('/^APP_KEY=.*$/m', $environmentContents)) {
+            $environmentContents = preg_replace('/^APP_KEY=.*$/m', 'APP_KEY='.$generatedKey, $environmentContents, 1);
+        } else {
+            $environmentContents .= PHP_EOL.'APP_KEY='.$generatedKey.PHP_EOL;
+        }
+        if (@file_put_contents($environmentFile, $environmentContents, LOCK_EX) === false) {
+            http_response_code(500);
+            exit('KayXchange needs write access to .env to generate its application key. Fix the cPanel file owner/permissions, then reload /install.');
+        }
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | Register The Auto Loader

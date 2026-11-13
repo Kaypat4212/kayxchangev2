@@ -190,6 +190,12 @@ class TelegramAiBotService
     private function buildSystemPrompt(User $user): string
     {
         $customPrompt = trim($this->getSetting('ai_bot_system_prompt', ''));
+        $billServices = app(\App\Services\BillPaymentProviderService::class);
+        $billAvailable = $billServices->billPaymentsEnabled() && $billServices->providers() !== [];
+        $utilityAvailable = $billAvailable && $billServices->utilityPaymentsEnabled();
+        $featureFacts = "Wallet guidance: KayXchange provides NGN, USD, and supported crypto wallet pages with history and balance views. Deposit networks currently include BTC/Bitcoin, ETH/ERC20, USDT/TRC20-ERC20-BEP20, USDC/ERC20-BEP20, BNB/BEP20, and SOL/Solana. Crypto deposits are network-specific and users should follow the address and amount shown on their deposit page. During provider downtime, a configured manual wallet may be used; users submit the transaction hash and an admin verifies the transfer before credit. Never say a deposit is credited until the account reflects it.\n"
+            . 'Airtime/data service availability: ' . ($billAvailable ? 'enabled subject to live provider configuration' : 'currently unavailable or switched off') . ".\n"
+            . 'Electricity/cable TV service availability: ' . ($utilityAvailable ? 'enabled subject to live provider configuration' : 'currently unavailable or switched off') . ".\n";
 
         // Live rates context
         $ratesText = $this->buildRatesContext();
@@ -215,6 +221,7 @@ class TelegramAiBotService
             : "\n- Do not suggest specific trades. Only provide informational answers.";
 
         return $base
+            . "\n\nCurrent platform feature guidance:\n{$featureFacts}"
             . "\n\nCurrent platform rates:\n{$ratesText}"
             . "\n\nCurrent user context: {$userContext}"
             . $tradeSuggestionNote

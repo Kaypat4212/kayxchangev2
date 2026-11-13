@@ -224,7 +224,7 @@
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i>
                     <strong>Ready to Install!</strong>
-                    <p class="mb-0 mt-2">All configurations have been saved. Click the button below to complete the installation process.</p>
+                    <p class="mb-0 mt-2">The server will run migrations, prepare storage, create the administrator, and check the installation. Progress remains active until the server responds.</p>
                 </div>
                 
                 <div class="installation-steps">
@@ -336,6 +336,11 @@
             const progress = document.getElementById('installProgress');
             const progressBar = progress.querySelector('.progress-bar');
             const log = document.getElementById('installLog');
+
+            if (!document.getElementById('agree_terms').checked) {
+                document.getElementById('agree_terms').focus();
+                return;
+            }
             
             // Disable buttons and show progress
             installBtn.disabled = true;
@@ -344,50 +349,10 @@
             progress.style.display = 'block';
             log.style.display = 'block';
             
-            // Simulate installation steps
-            const steps = [
-                { id: 'step-migrations', name: 'Database Migration', progress: 20 },
-                { id: 'step-storage', name: 'Storage Setup', progress: 40 },
-                { id: 'step-admin', name: 'Admin Account', progress: 60 },
-                { id: 'step-cache', name: 'Cache Optimization', progress: 80 },
-                { id: 'step-finalize', name: 'Finalization', progress: 100 }
-            ];
-            
-            let currentStep = 0;
-            
-            function processStep() {
-                if (currentStep < steps.length) {
-                    const step = steps[currentStep];
-                    const stepElement = document.getElementById(step.id);
-                    const stepIcon = stepElement.querySelector('.step-icon');
-                    
-                    // Mark as processing
-                    stepIcon.classList.add('processing');
-                    addLogLine(`[INFO] Processing ${step.name}...`, 'log-info');
-                    
-                    // Update progress
-                    progressBar.style.width = step.progress + '%';
-                    
-                    setTimeout(() => {
-                        // Mark as completed
-                        stepIcon.classList.remove('processing');
-                        stepIcon.classList.add('completed');
-                        stepIcon.innerHTML = '<i class="fas fa-check"></i>';
-                        addLogLine(`[SUCCESS] ${step.name} completed`, 'log-success');
-                        
-                        currentStep++;
-                        processStep();
-                    }, 1500 + Math.random() * 1000); // Random delay for realism
-                } else {
-                    // Installation complete
-                    setTimeout(() => {
-                        document.getElementById('installForm').submit();
-                    }, 1000);
-                }
-            }
-            
-            // Start processing
-            setTimeout(processStep, 500);
+            progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+            progressBar.style.width = '100%';
+            addLogLine('[INFO] The server is applying migrations, setting up storage, creating the admin account, and running readiness checks.', 'log-info');
+            installBtn.closest('form').requestSubmit();
         }
         
         function addLogLine(message, className = '') {

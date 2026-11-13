@@ -270,9 +270,9 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     @if($row->description)<div class="field-desc">{{ $row->description }}</div>@endif
                 </div>
                 <div class="field-input">
-                    @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled']))
+                    @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_enabled', 'nowpayments_sandbox']))
                         @php
-                            $toggleVal = $row->value ?? ($row->key === 'cryptomus_convert_enabled' ? '1' : '0');
+                            $toggleVal = $row->value ?? (in_array($row->key, ['cryptomus_convert_enabled', 'nowpayments_sandbox'], true) ? '1' : '0');
                             $toggleOn  = $toggleVal === '1';
                         @endphp
                         <div class="kx-switch-row">
@@ -284,6 +284,13 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             </label>
                             <span class="kx-switch-state {{ $toggleOn ? 'on' : '' }}" id="state_{{ $row->key }}">{{ $toggleOn ? 'ON' : 'OFF' }}</span>
                         </div>
+                    @elseif($row->key === 'crypto_deposit_provider')
+                        @php $dp = $row->value ?? 'auto'; @endphp
+                        <select name="{{ $row->key }}">
+                            <option value="auto" {{ $dp === 'auto' ? 'selected' : '' }}>Automatic — use a configured provider</option>
+                            <option value="nowpayments" {{ $dp === 'nowpayments' ? 'selected' : '' }}>NOWPayments</option>
+                            <option value="cryptomus" {{ $dp === 'cryptomus' ? 'selected' : '' }}>Cryptomus</option>
+                        </select>
                     @elseif($row->key === 'convert_mode')
                         @php $cm = $row->value ?? 'cryptomus'; @endphp
                         <select name="{{ $row->key }}">
@@ -303,6 +310,13 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 </div>
             </div>
             @endforeach
+            <div class="mt-3 p-3 rounded-3" style="background:rgba(255,255,255,.03);border:1px solid var(--kx-border)">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-success" id="nowpayments-test-btn" onclick="testNowPaymentsKey()"><i class="bi bi-plug me-1"></i>Test saved NOWPayments API key</button>
+                    <span id="nowpayments-test-result" class="small" role="status">Save the API key and environment setting before testing.</span>
+                </div>
+                <div class="field-desc mt-2">This checks the saved API key against the selected Sandbox or Live endpoint without creating a payment.</div>
+            </div>
         </div>
 
         {{-- ─── TELEGRAM ────────────────────────────────────────────────── --}}
@@ -400,4 +414,26 @@ async function cfAction(action) {
     }
 }
 </script>
+
+        <script>
+        async function testNowPaymentsKey() {
+            const button = document.getElementById('nowpayments-test-btn');
+            const result = document.getElementById('nowpayments-test-result');
+            button.disabled = true;
+            result.textContent = 'Checking saved key against NOWPayments…';
+            result.className = 'small text-secondary';
+            try {
+                const response = await fetch(@json(route('admin.settings.nowpayments-test')), {
+                    method: 'POST',
+                    headers: {'X-CSRF-TOKEN': @json(csrf_token()), 'Accept': 'application/json'},
+                });
+                const data = await response.json();
+                result.textContent = data.message || 'NOWPayments key check failed.';
+                result.className = 'small ' + (response.ok ? 'text-success' : 'text-warning');
+            } catch (_) {
+                result.textContent = 'Could not reach the server. Save settings and try again.';
+                result.className = 'small text-warning';
+            } finally { button.disabled = false; }
+        }
+        </script>
 @endsection

@@ -66,7 +66,8 @@ Route::prefix('install')->name('install.')->group(function () {
     Route::post('/application', [InstallController::class, 'applicationStore'])->name('application.store');
     Route::get('/final', [InstallController::class, 'final'])->name('final');
     Route::post('/install', [InstallController::class, 'install'])->name('install');
-    Route::get('/complete', [InstallController::class, 'complete'])->name('complete');
+    Route::get('/complete', [InstallController::class, 'complete'])->middleware(['auth', 'admin'])->name('complete');
+    Route::get('/status', [InstallController::class, 'status'])->middleware(['auth', 'admin'])->name('status');
 });
 
 Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
@@ -173,13 +174,27 @@ Route::post('withdrawals/webhook/{gateway}', [WithdrawalController::class, 'payo
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 // ── Wallet / P2P Transfers ───────────────────────────────────────────────────
+Route::middleware(['auth', 'throttle:60,1'])->prefix('bills')->name('bills.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\BillPaymentController::class, 'index'])->name('index');
+    Route::get('/catalog', [\App\Http\Controllers\BillPaymentController::class, 'catalog'])->middleware('throttle:30,1')->name('catalog');
+    Route::post('/validate', [\App\Http\Controllers\BillPaymentController::class, 'validateCustomer'])->middleware('throttle:10,1')->name('validate');
+    Route::post('/{id}/purchase', [\App\Http\Controllers\BillPaymentController::class, 'purchase'])->middleware('throttle:20,1')->name('purchase');
+    Route::post('/{id}/requery', [\App\Http\Controllers\BillPaymentController::class, 'requery'])->middleware('throttle:10,1')->name('requery');
+    Route::get('/history/all', [\App\Http\Controllers\BillPaymentController::class, 'history'])->name('history');
+    Route::get('/{id}', [\App\Http\Controllers\BillPaymentController::class, 'show'])->whereNumber('id')->name('show');
+});
+
 Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () {
     Route::get('/',          [\App\Http\Controllers\WalletController::class, 'index'])->name('index');
+    Route::get('/market-prices', [\App\Http\Controllers\WalletController::class, 'marketPrices'])->middleware('throttle:30,1')->name('market-prices');
+    Route::get('/usd',       [\App\Http\Controllers\WalletController::class, 'usd'])->name('usd');
+    Route::get('/crypto',    [\App\Http\Controllers\WalletController::class, 'crypto'])->name('crypto');
     Route::get('/deposit',   [\App\Http\Controllers\WalletController::class, 'deposit'])->name('deposit');
     Route::post('/deposit',  [\App\Http\Controllers\WalletController::class, 'createDeposit'])->name('deposit.create');
     Route::get('/deposit/{id}/success', [\App\Http\Controllers\WalletController::class, 'depositSuccess'])->name('deposit.success');
     Route::get('/deposit/{id}/status', [\App\Http\Controllers\WalletController::class, 'depositStatus'])->name('deposit.status');
     Route::get('/deposit/{id}/failed',  [\App\Http\Controllers\WalletController::class, 'depositFailed'])->name('deposit.failed');
+    Route::post('/deposit/{id}/tx-hash', [\App\Http\Controllers\WalletController::class, 'submitManualDepositHash'])->whereNumber('id')->middleware('throttle:5,1')->name('deposit.tx-hash');
     Route::get('/withdraw',  [\App\Http\Controllers\WalletController::class, 'withdraw'])->name('withdraw');
     Route::post('/withdraw', [\App\Http\Controllers\WalletController::class, 'createWithdrawal'])->name('withdraw.create');
     Route::get('/history',   [\App\Http\Controllers\WalletController::class, 'history'])->name('history');
@@ -195,11 +210,33 @@ Route::middleware(['auth', 'admin'])->post('admin/p2p/{transfer}/reverse', [\App
 use App\Http\Controllers\Admin\SiteContentController;
 use App\Http\Controllers\Admin\EmailSettingsController;
 use App\Http\Controllers\Admin\EnvEditorController;
+use App\Http\Controllers\Admin\BillProviderSettingsController;
 use App\Http\Controllers\Admin\AdminTelegramController;
 use App\Http\Controllers\Admin\AdminBackupController;
 use App\Http\Controllers\Admin\AdminProfileController;
 
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('transactions', [\App\Http\Controllers\Admin\AdminTransactionHistoryController::class, 'index'])->name('admin.transactions.index');
+    Route::get('wallet-rates', [\App\Http\Controllers\Admin\AdminWalletRateController::class, 'index'])->name('admin.wallet-rates.index');
+    Route::put('wallet-rates', [\App\Http\Controllers\Admin\AdminWalletRateController::class, 'update'])->name('admin.wallet-rates.update');
+    Route::get('bill-providers', [BillProviderSettingsController::class, 'index'])->name('admin.bill-providers.index');
+    Route::put('bill-providers', [BillProviderSettingsController::class, 'update'])->name('admin.bill-providers.update');
+    Route::get('features', [\App\Http\Controllers\Admin\AdminFeatureSettingsController::class, 'index'])->name('admin.features.index');
+    Route::put('features', [\App\Http\Controllers\Admin\AdminFeatureSettingsController::class, 'update'])->name('admin.features.update');
+    Route::post('features/presence', [\App\Http\Controllers\Admin\AdminFeatureSettingsController::class, 'togglePresence'])->name('admin.features.presence');
+    Route::post('bill-providers/test', [BillProviderSettingsController::class, 'test'])->middleware('throttle:5,1')->name('admin.bill-providers.test');
+    Route::get('crypto-deposit-settings', [\App\Http\Controllers\Admin\CryptoDepositSettingsController::class, 'index'])->name('admin.crypto-deposit-settings.index');
+    Route::put('crypto-deposit-settings', [\App\Http\Controllers\Admin\CryptoDepositSettingsController::class, 'update'])->middleware('throttle:10,1')->name('admin.crypto-deposit-settings.update');
+    Route::get('manual-crypto-deposits', [\App\Http\Controllers\Admin\AdminManualCryptoDepositController::class, 'index'])->name('admin.manual-crypto-deposits.index');
+    Route::post('manual-crypto-deposits/{deposit}/approve', [\App\Http\Controllers\Admin\AdminManualCryptoDepositController::class, 'approve'])->whereNumber('deposit')->middleware('throttle:10,1')->name('admin.manual-crypto-deposits.approve');
+    Route::post('manual-crypto-deposits/{deposit}/reject', [\App\Http\Controllers\Admin\AdminManualCryptoDepositController::class, 'reject'])->whereNumber('deposit')->middleware('throttle:10,1')->name('admin.manual-crypto-deposits.reject');
+    Route::get('bill-payments', [\App\Http\Controllers\BillPaymentController::class, 'adminHistory'])->name('admin.bill-payments.index');
+    Route::post('bill-payments/{id}/review', [\App\Http\Controllers\BillPaymentController::class, 'adminReview'])->whereNumber('id')->middleware('throttle:20,1')->name('admin.bill-payments.review');
+    Route::post('bill-payments/{id}/requery', [\App\Http\Controllers\BillPaymentController::class, 'adminRequery'])->whereNumber('id')->middleware('throttle:10,1')->name('admin.bill-payments.requery');
+    Route::get('onboarding-content', [\App\Http\Controllers\Admin\AdminOnboardingContentController::class, 'index'])->name('admin.onboarding-content.index');
+    Route::put('onboarding-content', [\App\Http\Controllers\Admin\AdminOnboardingContentController::class, 'update'])->name('admin.onboarding-content.update');
+    Route::get('crypto-withdrawals', [\App\Http\Controllers\Admin\AdminCryptoWithdrawalController::class, 'index'])->name('admin.crypto-withdrawals.index');
+    Route::patch('crypto-withdrawals/{cryptoWithdrawal}', [\App\Http\Controllers\Admin\AdminCryptoWithdrawalController::class, 'update'])->name('admin.crypto-withdrawals.update');
     Route::get('campaigns', [\App\Http\Controllers\Admin\AdminCampaignController::class, 'index'])->name('admin.campaigns.index');
     Route::post('campaigns', [\App\Http\Controllers\Admin\AdminCampaignController::class, 'send'])->name('admin.campaigns.send');
     // ── Telegram Bot Management ─────────────────────────────────────────────
@@ -371,8 +408,10 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin')->name('admin.')->group(
     Route::get('/trades/{id}', function ($id) {
         return redirect()->route('admin.trades', ['highlight' => $id]);
     })->name('trades.show')->where('id', '[0-9]+');
-    Route::get('/set-rates', [AdminController::class, 'setRates'])->name('set-rates');
-    Route::get('/edit-rate/{id}', [AdminController::class, 'editRate'])->name('edit-rate');
+    // Legacy rate URLs now forward to the maintained crypto rate manager.
+    Route::get('/set-rates', fn () => redirect()->route('admin.crypto-rates.index'))->name('set-rates');
+    Route::get('/edit-rate/{id}', fn ($id) => redirect()->route('admin.crypto-rates.index', ['highlight' => $id]))
+        ->whereNumber('id')->name('edit-rate');
     Route::get('/rate', [CryptoRateupdateController::class, 'index'])->name('rates');
     Route::post('/rate', [CryptoRateupdateController::class, 'update'])->name('rates.update');
     Route::post('/trade/{trade_id}/status', [AdminTradeController::class, 'updateStatus'])->name('trade.updateStatus');
@@ -496,6 +535,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::post('/kyc-analyze',        [AdminAiController::class, 'kycAnalyze'])->name('kyc-analyze');
         Route::post('/notification-copy',  [NotificationAiController::class, 'generateCopy'])->name('notification-copy');
         Route::post('/email-subject',      [NotificationAiController::class, 'optimizeSubject'])->name('email-subject');
+        Route::post('/email-campaign',     [NotificationAiController::class, 'generateEmailCampaign'])->middleware('throttle:8,1')->name('email-campaign');
     });
 
     // Blog Management
@@ -688,6 +728,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('settings',                    [\App\Http\Controllers\Admin\AdminSettingsController::class, 'index'])->name('settings.index');
     Route::post('settings',                   [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('settings.update');
+    Route::post('settings/nowpayments-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPayments'])->middleware('throttle:5,1')->name('settings.nowpayments-test');
     Route::post('settings/cloudflare-action', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'cloudflareAction'])->name('settings.cloudflare-action');
     Route::get('settings/ai-usage',           [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiUsage'])->name('settings.ai-usage');
     Route::get('settings/ai-test',            [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiTest'])->name('settings.ai-test');

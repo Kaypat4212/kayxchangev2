@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Hash;
 
 class EnvEditorController extends Controller
 {
@@ -24,6 +25,8 @@ class EnvEditorController extends Controller
         'TELEGRAM_CHAT_ID'               => ['label' => 'Chat ID',             'group' => 'telegram',    'type' => 'text'],
 
         // ── Wallet Addresses
+        'COINGECKO_API_KEY'        => ['label' => 'CoinGecko API Key (optional)', 'group' => 'market_data', 'type' => 'password'],
+        'COINMARKETCAP_API_KEY'    => ['label' => 'CoinMarketCap API Key (optional)', 'group' => 'market_data', 'type' => 'password'],
         'WALLET_BTC_ADDRESS'       => ['label' => 'BTC Wallet Address',      'group' => 'wallets',     'type' => 'text'],
         'WALLET_ETH_ADDRESS'       => ['label' => 'ETH Wallet Address',      'group' => 'wallets',     'type' => 'text'],
         'WALLET_SOL_ADDRESS'       => ['label' => 'SOL Wallet Address',      'group' => 'wallets',     'type' => 'text'],
@@ -108,6 +111,7 @@ class EnvEditorController extends Controller
 
     private const GROUP_META = [
         'app'          => ['label' => 'Application',           'icon' => 'bi-gear-fill',          'color' => '#60a5fa'],
+        'market_data'  => ['label' => 'Market Data APIs',      'icon' => 'bi-graph-up-arrow',     'color' => '#38bdf8'],
         'telegram'     => ['label' => 'Telegram Bot',          'icon' => 'bi-telegram',           'color' => '#38bdf8'],
         'wallets'      => ['label' => 'Wallet Addresses',      'icon' => 'bi-wallet2',            'color' => '#22c55e'],
         'trade_alerts' => ['label' => 'Trade Alert Rules',     'icon' => 'bi-bell-fill',          'color' => '#f59e0b'],
@@ -188,6 +192,7 @@ class EnvEditorController extends Controller
         $request->validate([
             'env'   => 'required|array',
             'env.*' => 'nullable|string|max:500',
+            'wallet_change_pin' => 'nullable|digits:4',
         ]);
 
         $submitted = $request->input('env', []);
@@ -203,6 +208,42 @@ class EnvEditorController extends Controller
         // Keep legacy token alias in sync so any code paths reading TELEGRAM_BOT_TOKEN continue working.
         if (isset($toWrite['KAYXCHANGE_TELEGRAM_BOT_TOKEN'])) {
             $toWrite['TELEGRAM_BOT_TOKEN'] = $toWrite['KAYXCHANGE_TELEGRAM_BOT_TOKEN'];
+        }
+
+        $currentEnv = [];
+        $envPath = base_path('.env');
+        if (is_file($envPath)) {
+            foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                if (!str_contains($line, '=')) continue;
+                [$key, $value] = explode('=', $line, 2);
+                $currentEnv[trim($key)] = trim($value, " \\t\\n\\r\\0\\x0B\\\"'");
+            }
+        }
+        $walletAddressesChanged = false;
+        foreach ($toWrite as $key=>$value) {
+            if (str_starts_with($key, 'WALLET_') && str_ends_with($key, '_ADDRESS')
+                && trim((string)($currentEnv[$key] ?? '')) !== trim((string)$value)) {
+                $walletAddressesChanged = true;
+                break;
+            }
+        }
+        if ($walletAddressesChanged) {
+            $pinError = DB::transaction(function () use ($request): ?string {
+                $admin = \App\Models\User::query()->lockForUpdate()->findOrFail(auth()->id());
+                if (!$admin->transaction_pin) return 'Set up your security PIN before changing deposit wallet addresses.';
+                if ($admin->pin_locked_until && now()->lt($admin->pin_locked_until)) return 'Your security PIN is temporarily locked. Try again after the lock expires.';
+                if (!Hash::check((string)$request->input('wallet_change_pin'), $admin->transaction_pin)) {
+                    $admin->pin_attempts = (int)$admin->pin_attempts + 1;
+                    if ($admin->pin_attempts >= 5) $admin->pin_locked_until = now()->addMinutes(15);
+                    $admin->save();
+                    return 'The security PIN is incorrect. Wallet addresses were not changed.';
+                }
+                $admin->pin_attempts = 0;
+                $admin->pin_locked_until = null;
+                $admin->save();
+                return null;
+            });
+            if ($pinError) return back()->withInput()->withErrors(['wallet_change_pin'=>$pinError]);
         }
 
         $this->writeEnvValues($toWrite);

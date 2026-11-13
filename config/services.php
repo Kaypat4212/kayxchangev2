@@ -70,6 +70,25 @@ return [
         'callback_url' => env('PAYSTACK_CALLBACK_URL'),
     ],
 
+    'vtpass' => [
+        'api_key' => env('VTPASS_API_KEY'),
+        'public_key' => env('VTPASS_PUBLIC_KEY'),
+        'secret_key' => env('VTPASS_SECRET_KEY'),
+        'sandbox' => env('VTPASS_SANDBOX', true),
+    ],
+    'monnify' => [
+        'api_key' => env('MONNIFY_API_KEY'),
+        'secret_key' => env('MONNIFY_SECRET_KEY'),
+        'contract_code' => env('MONNIFY_CONTRACT_CODE'),
+        'sandbox' => env('MONNIFY_SANDBOX', true),
+    ],
+    'coingecko' => [
+        'api_key' => env('COINGECKO_API_KEY'),
+    ],
+    'coinmarketcap' => [
+        'api_key' => env('COINMARKETCAP_API_KEY'),
+    ],
+
     'opay' => [
         'public_key'  => env('OPAY_PUBLIC_KEY'),
         'private_key' => env('OPAY_PRIVATE_KEY'),

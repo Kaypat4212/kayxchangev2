@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use App\Services\BadgeService;
+use App\Models\SiteContent;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -19,16 +20,18 @@ class OnboardingController extends Controller
     }
 
     /** Show the onboarding wizard */
-    public function show()
+    public function show(Request $request)
     {
         $user = Auth::user();
+        $preview = $request->boolean('preview') && $user->is_admin;
 
         // Already onboarded — send to dashboard
-        if ($user->onboarding_completed) {
+        if ($user->onboarding_completed && !$preview) {
             return redirect()->route('dashboard');
         }
 
-        return view('onboarding.index', compact('user'));
+        $onboardingContent = SiteContent::where('group', 'onboarding')->pluck('value', 'key')->all();
+        return view('onboarding.index', compact('user', 'onboardingContent', 'preview'));
     }
 
     /** GET /onboard/banks — return Paystack bank list (cached 6h) */
@@ -108,6 +111,7 @@ class OnboardingController extends Controller
     /** AJAX: Save the PIN during onboarding (step 2) */
     public function savePin(Request $request)
     {
+        if (Auth::user()->is_admin && $request->boolean('preview')) return response()->json(['success' => true, 'preview' => true]);
         $v = Validator::make($request->all(), [
             'pin'     => ['required', 'digits:4'],
             'pin_confirm' => ['required', 'same:pin'],
@@ -138,6 +142,7 @@ class OnboardingController extends Controller
     /** AJAX: Save bank details during onboarding (step 3 — optional) */
     public function saveBank(Request $request)
     {
+        if (Auth::user()->is_admin && $request->boolean('preview')) return response()->json(['success' => true, 'preview' => true]);
         $v = Validator::make($request->all(), [
             'bank_name'      => ['required', 'string', 'max:100'],
             'bank_code'      => ['required', 'string', 'max:20'],
@@ -187,6 +192,10 @@ class OnboardingController extends Controller
     /** AJAX/POST: Mark onboarding complete */
     public function complete(Request $request)
     {
+        if (Auth::user()->is_admin && $request->boolean('preview')) {
+            if ($request->expectsJson()) return response()->json(['redirect' => route('admin.onboarding-content.index')]);
+            return redirect()->route('admin.onboarding-content.index');
+        }
         /** @var \App\Models\User $user */
         $user = Auth::user();
         $user->onboarding_completed = true;

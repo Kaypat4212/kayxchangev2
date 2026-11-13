@@ -2706,21 +2706,14 @@ class TelegramService
             return;
         }
 
-        DB::beginTransaction();
         try {
-            $oldStatus = $trade->status;
-            $trade->status = 'completed';
-            $trade->save();
-
-            // Credit wallet balance if payout method is wallet_balance
-            if ($trade->payment_method === 'wallet_balance') {
-                $user = User::find($trade->user_id);
-                if ($user) {
-                    $user->increment('balance', (float)$trade->naira_amount);
-                }
+            $transition = app(BalanceSettlementService::class)->updateSellStatus($tradeId, 'completed');
+            if (!$transition['changed']) {
+                $this->sendMessage($chatId, "⚠️ Trade #{$tradeId} has already been processed.");
+                return;
             }
-
-            DB::commit();
+            $oldStatus = $transition['old_status'];
+            $trade = $transition['trade'];
 
             if ($messageId) {
                 $this->editMessage($chatId, $messageId,
@@ -2753,7 +2746,6 @@ class TelegramService
             } catch (\Throwable $e) {}
 
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error("handleAdminApproveSell error: {$e->getMessage()}");
             $this->sendMessage($chatId, "❌ Failed to approve trade: {$e->getMessage()}");
         }
@@ -2778,8 +2770,12 @@ class TelegramService
         }
 
         $oldStatus = $trade->status;
-        $trade->status = 'rejected';
-        $trade->save();
+        $transition = app(BalanceSettlementService::class)->updateSellStatus($tradeId, 'rejected');
+        if (!$transition['changed']) {
+            $this->sendMessage($chatId, "⚠️ Trade #{$tradeId} has already been processed.");
+            return;
+        }
+        $trade = $transition['trade'];
 
         if ($messageId) {
             $this->editMessage($chatId, $messageId,
@@ -3010,24 +3006,15 @@ class TelegramService
             return;
         }
 
-        DB::beginTransaction();
         try {
-            if ($user->balance < $withdrawal->amount) {
-                DB::rollBack();
-                $this->sendMessage($chatId, "❌ Insufficient balance — cannot approve withdrawal #{$withdrawalId}.");
+            $changed = app(BalanceSettlementService::class)->approveWithdrawal($withdrawalId);
+            if (!$changed) {
+                $this->sendMessage($chatId, "⚠️ Withdrawal #{$withdrawalId} has already been processed.");
                 return;
             }
-
-            $user->balance -= $withdrawal->amount;
-            $user->save();
-
-            $withdrawal->status       = 'approved';
-            $withdrawal->processed_at = now();
-            $withdrawal->save();
-
-            DB::commit();
+            $withdrawal->refresh();
+            $user->refresh();
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error("handleAdminApproveWithdrawal error: {$e->getMessage()}");
             $this->sendMessage($chatId, "❌ Failed to approve withdrawal: {$e->getMessage()}");
             return;
@@ -3040,7 +3027,8 @@ class TelegramService
             $this->editMessage($chatId, $messageId,
                 "✅ *APPROVED* — Withdrawal #{$withdrawalId}\n" .
                 "Ref: {$withdrawal->reference}\n" .
-                "User: {$user->name} | ₦" . number_format((float)$withdrawal->amount, 2) . "\n" .
+                "User: {$user->name} | ₦" . number_format((float)$withdrawal->amount, 2) .
+                " + fee ₦" . number_format((float)($withdrawal->fee_amount ?? 0), 2) . "\n" .
                 "Bank: " . ($bd['bank_name'] ?? 'N/A') . " · " . ($bd['account_number'] ?? 'N/A'));
         }
 
@@ -3048,7 +3036,8 @@ class TelegramService
             $this->sendMessage((int) $user->telegram_chat_id,
                 "✅ *Withdrawal Approved!*\n\n" .
                 "🔖 Ref: `{$withdrawal->reference}`\n" .
-                "💴 Amount: ₦" . number_format((float)$withdrawal->amount, 2) . "\n\n" .
+                "💴 Amount: ₦" . number_format((float)$withdrawal->amount, 2) . "\n" .
+                "💸 Fee: ₦" . number_format((float)($withdrawal->fee_amount ?? 0), 2) . "\n\n" .
                 "Your payment is being processed to your bank account.",
                 'Markdown');
         }
@@ -3081,11 +3070,14 @@ class TelegramService
             return;
         }
 
-        $user          = $withdrawal->user;
-        $oldStatus     = $withdrawal->status;
-        $withdrawal->status       = 'cancelled';
-        $withdrawal->processed_at = now();
-        $withdrawal->save();
+        $user = $withdrawal->user;
+        $oldStatus = $withdrawal->status;
+        $changed = app(BalanceSettlementService::class)->setWithdrawalStatus($withdrawalId, 'cancelled');
+        if (!$changed) {
+            $this->sendMessage($chatId, "⚠️ Withdrawal #{$withdrawalId} has already been processed.");
+            return;
+        }
+        $withdrawal->refresh();
 
         if ($messageId) {
             $this->editMessage($chatId, $messageId,
@@ -3547,33 +3539,35 @@ class TelegramService
             return;
         }
 
-        DB::beginTransaction();
         try {
-            $deposit->update(['status' => 'approved']);
+            $approved = app(BalanceSettlementService::class)->approveDeposit($depositId);
+            if (!$approved) {
+                $this->sendMessage($chatId, "⚠️ Deposit #{$depositId} has already been processed.");
+                return;
+            }
+            $deposit->refresh();
+            $creditedAmount = max(0, (float) $deposit->amount - (float) ($deposit->fee_amount ?? 0));
             $user = $deposit->user;
             if ($user) {
-                $user->increment('balance', $deposit->amount);
                 // In-app notification
                 \App\Models\Notification::create([
                     'user_id' => $user->id,
                     'type'    => 'deposit_approved',
                     'title'   => 'Deposit Approved',
-                    'message' => "Your deposit of ₦" . number_format($deposit->amount, 2) . " has been approved and added to your wallet.",
+                    'message' => "Your deposit of ₦" . number_format($creditedAmount, 2) . " has been approved and added to your wallet.",
                 ]);
                 // Telegram notification to user
                 if ($user->telegram_chat_id) {
                     $this->sendMessage((int) $user->telegram_chat_id,
                         "✅ *Deposit Approved!*\n\n" .
-                        "₦" . number_format($deposit->amount, 2) . " has been added to your wallet balance.\n" .
+                        "₦" . number_format($creditedAmount, 2) . " has been added to your wallet balance.\n" .
                         "🔖 Ref: `{$deposit->transaction_ref}`",
                         'Markdown'
                     );
                 }
             }
-            DB::commit();
-            $this->sendMessage($chatId, "✅ Deposit #{$depositId} approved. ₦" . number_format($deposit->amount, 2) . " credited to user.", 'Markdown');
+            $this->sendMessage($chatId, "✅ Deposit #{$depositId} approved. ₦" . number_format($creditedAmount, 2) . " credited to user.", 'Markdown');
         } catch (\Throwable $e) {
-            DB::rollBack();
             $this->sendMessage($chatId, "❌ Failed to approve deposit: " . $e->getMessage());
         }
     }
@@ -3590,7 +3584,12 @@ class TelegramService
             return;
         }
 
-        $deposit->update(['status' => 'rejected']);
+        $rejected = app(BalanceSettlementService::class)->setDepositStatus($depositId, 'rejected');
+        if (!$rejected) {
+            $this->sendMessage($chatId, "⚠️ Deposit #{$depositId} has already been processed.");
+            return;
+        }
+        $deposit->refresh();
         $user = $deposit->user;
         if ($user) {
             \App\Models\Notification::create([

@@ -17,9 +17,9 @@
                     <select name="wallet_id" id="wallet_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                         <option value="">Choose wallet...</option>
                         @foreach($wallets as $wallet)
-                            @if($wallet->isCrypto() && $wallet->balance > 0)
-                                <option value="{{ $wallet->id }}" data-balance="{{ $wallet->balance }}" data-currency="{{ $wallet->currency }}">
-                                    {{ $wallet->currency }} - Balance: {{ number_format($wallet->balance, 8) }}
+                            @if($wallet->isCrypto() && $wallet->is_active && $wallet->available_balance > 0)
+                                <option value="{{ $wallet->id }}" data-balance="{{ $wallet->available_balance }}" data-currency="{{ $wallet->currency }}">
+                                    {{ $wallet->currency }} - Available: {{ number_format($wallet->available_balance, 8) }}
                                 </option>
                             @endif
                         @endforeach

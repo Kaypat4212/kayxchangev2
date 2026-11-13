@@ -12,28 +12,32 @@ Your Telegram bot system is **100% compatible** with cPanel shared hosting!
 - Webhook system ✅
 - Web interface enhancements ✅
 
-### ✅ **Requirements Met:**
-- PHP 8.1+ (most cPanel hosts support this)
-- MySQL database ✅
-- SSL certificate (Let's Encrypt free) ✅
-- Domain name ✅
+### Requirements
+- PHP 8.2 or newer with `pdo_mysql`, `mbstring`, `openssl`, `curl`, `fileinfo`, `gd`, `zip`, `bcmath`, `xml`, and `ctype`
+- MySQL database and database user created in cPanel
+- Composer dependencies uploaded (`vendor/` included) or installed with cPanel Terminal
+- Domain SSL enabled
 
 ## 🔧 **Step-by-Step Deployment:**
 
 ### **Step 1: Upload Files**
-1. **Zip your project** (exclude `node_modules`, `vendor`)
+1. Package the Laravel project with `vendor/` and the built `public/build` assets. Exclude `.env`, `.git`, `node_modules`, and local caches.
 2. **Upload to cPanel** File Manager
-3. **Extract** in `public_html` or subdomain folder
-4. **Set permissions** (755 for folders, 644 for files)
+3. Extract the application outside the public web root when possible. Set the domain or subdomain document root to the project's `public/` directory.
+4. Make `storage/`, `bootstrap/cache/`, and the application root writable by the cPanel PHP user (usually 755/775 directories and 644/640 files).
+5. Visit `https://yourdomain.com/install` and follow the interactive setup. If `.env` is missing, the front controller creates a secure starter file so the installer can load.
 
 ### **Step 2: Database Setup**
-1. **Create MySQL database** in cPanel
-2. **Import** your database SQL file
-3. **Update `.env`** with new database credentials
-4. **Run migrations**: Access `/migrate` or use terminal
+1. Create a MySQL database and user in cPanel and grant the user access to that database.
+2. Enter the exact database host, name, username, and password in the installer. Use the installer's connection test before continuing.
+3. The installer writes the `.env` settings, runs migrations, creates the first admin account, and marks the application installed.
 
 ### **Step 3: Environment Configuration**
-Update your `.env` file:
+Set the required application URL, database, administrator, and mail settings in `/install`. Payment, AI, Telegram, wallet address, and blockchain provider credentials are optional and can be added in the installer or later in Admin → Environment Settings.
+
+The installer creates a production application key and keeps debug mode off. Do not copy credentials from another server or commit your `.env` file.
+
+Example `.env` values (the installer fills these in):
 ```env
 APP_NAME="KayXchange"
 APP_ENV=production
@@ -49,8 +53,8 @@ DB_USERNAME=your_cpanel_db_user
 DB_PASSWORD=your_cpanel_db_password
 
 # Telegram Bot (same as before)
-KAYXCHANGE_TELEGRAM_BOT_TOKEN=6249943820:AAEGJ2Oc7XJLtPGFBx8-rbPUuXZtgBvQ7hI
-KAYXCHANGE_TELEGRAM_BOT_USERNAME=TradewithkayxchangeBOT
+KAYXCHANGE_TELEGRAM_BOT_TOKEN=your_bot_token
+KAYXCHANGE_TELEGRAM_BOT_USERNAME=your_bot_username
 ```
 
 ### **Step 4: SSL Certificate**
@@ -149,7 +153,7 @@ if (APP_URL != localhost) {
 **Problem**: Old PHP version
 **Solution**: 
 ```
-cPanel → PHP Selector → Choose PHP 8.1+
+cPanel → MultiPHP Manager / PHP Selector → Choose PHP 8.2+
 ```
 
 ### **Issue 2: File Permissions**
@@ -163,7 +167,7 @@ storage/: 775 (writable)
 
 ### **Issue 3: Database Connection**
 **Problem**: Connection refused
-**Solution**: Update `.env` with exact cPanel credentials
+**Solution**: Re-open `/install` before completion and enter the exact cPanel database credentials. After installation, update them only through secure server-side configuration.
 
 ### **Issue 4: SSL Certificate**
 **Problem**: Webhook fails (HTTP not allowed)

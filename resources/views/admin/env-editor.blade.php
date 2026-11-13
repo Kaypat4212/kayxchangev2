@@ -342,6 +342,14 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 @endforeach
             </div>
 
+            @if($groupKey === 'wallets')
+            <div class="env-guide mt-3" style="border-color:rgba(245,158,11,.22);background:rgba(245,158,11,.05)">
+                <strong style="color:#fcd38d">Wallet address protection:</strong> Changing a receiving wallet requires the current admin security PIN. Leave the PIN field blank when you are only updating other settings.
+                <label for="wallet_change_pin" class="d-block mt-3 mb-1" style="color:#e4e8f0;font-weight:700">Admin security PIN</label>
+                <input type="password" name="wallet_change_pin" id="wallet_change_pin" class="env-input" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="current-password" placeholder="4-digit PIN">
+            </div>
+            @endif
+
             {{-- Korapay help guide --}}
             @if($groupKey === 'korapay')
             <div style="margin-top:16px">

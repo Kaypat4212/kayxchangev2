@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Exceptions\DepositMinimumException;
+use App\Exceptions\NowPaymentsApiException;
 use App\Models\Wallet;
 use App\Models\User;
 use App\Models\CryptoDeposit;
 use App\Models\CryptoRate;
+use App\Models\AdminSetting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,10 +16,14 @@ use Illuminate\Support\Facades\Log;
 class CryptoWalletService
 {
     protected $cryptomusService;
+    protected NowPaymentsService $nowPaymentsService;
+    protected CryptoDepositConfiguration $depositConfiguration;
 
     public function __construct()
     {
         $this->cryptomusService = new CryptomusService();
+        $this->nowPaymentsService = new NowPaymentsService();
+        $this->depositConfiguration = new CryptoDepositConfiguration();
     }
 
     /**
@@ -67,10 +74,28 @@ class CryptoWalletService
     /**
      * Create a crypto deposit invoice using Cryptomus
      */
-    public function createCryptoDeposit(User $user, string $currency, float $amount): array
+    public function createCryptoDeposit(User $user, string $currency, float $amount, array $inputDetails = []): array
     {
-        if (!$this->cryptomusService->isEnabled()) {
-            throw new \Exception('Crypto payments are not available');
+        $provider = $this->selectedDepositProvider();
+        $network = strtoupper((string)($inputDetails['network'] ?? $this->getDefaultNetwork($currency)));
+        $payCurrency = null;
+        $fallbackContext = null;
+
+        if ($provider === 'nowpayments') {
+            $payCurrency = $this->nowPaymentsCurrencyCode($currency, $network);
+            $minimumUsd = $this->depositConfiguration->minimumUsd($currency, $network);
+            if ($amount + 0.000001 < $minimumUsd) throw new DepositMinimumException($minimumUsd);
+            try {
+                $minimumUsd = max($minimumUsd, $this->nowPaymentsService->minimumUsd($payCurrency));
+                if ($amount + 0.000001 < $minimumUsd) throw new DepositMinimumException($minimumUsd);
+            } catch (DepositMinimumException $e) {
+                throw $e;
+            } catch (NowPaymentsApiException $e) {
+                if (!$e->isTransient()) throw $e;
+                $fallbackContext = $this->buildManualFallbackContext($currency, $network, $amount, $inputDetails);
+                if (!$fallbackContext) throw $e;
+                $fallbackContext['reason'] = 'Provider temporarily unavailable during minimum check.';
+            }
         }
 
         $wallet = $user->wallets()->where('currency', $currency)->first();
@@ -86,7 +111,55 @@ class CryptoWalletService
             'expected_amount' => $amount,
             'status' => 'pending',
             'expires_at' => now()->addHours(24),
+            'payment_data' => ['deposit_input' => $inputDetails],
         ]);
+
+        if ($provider === 'nowpayments') {
+            if ($fallbackContext) return $this->createManualFallbackDeposit($deposit, $fallbackContext, $inputDetails);
+            try {
+                $payment = $this->nowPaymentsService->createPayment(
+                    $amount,
+                    $payCurrency,
+                    'dep_' . $deposit->id,
+                    route('nowpayments.webhook'),
+                    'KayXchange crypto wallet deposit #' . $deposit->id
+                );
+            } catch (NowPaymentsApiException $e) {
+                if ($e->isTransient()) {
+                    $fallbackContext = $this->buildManualFallbackContext($currency, $network, $amount, $inputDetails);
+                    if ($fallbackContext) {
+                        $fallbackContext['reason'] = 'Provider temporarily unavailable while creating payment.';
+                        return $this->createManualFallbackDeposit($deposit, $fallbackContext, $inputDetails);
+                    }
+                }
+                $deposit->update(['status'=>'failed', 'payment_data'=>array_merge($deposit->payment_data ?? [], [
+                    'provider'=>'nowpayments', 'provider_status'=>'creation_failed', 'provider_error'=>$e->getMessage(),
+                ])]);
+                throw $e;
+            } catch (\Throwable $e) {
+                $deposit->update(['status'=>'failed', 'payment_data'=>array_merge($deposit->payment_data ?? [], [
+                    'provider'=>'nowpayments', 'provider_status'=>'creation_failed', 'provider_error'=>$e->getMessage(),
+                ])]);
+                throw $e;
+            }
+            $paymentData = array_merge($deposit->payment_data ?? [], [
+                'provider' => 'nowpayments',
+                'provider_payment_id' => (string)$payment['payment_id'],
+                'provider_status' => $payment['payment_status'] ?? 'waiting',
+                'provider_pay_currency' => $payCurrency,
+                'expected_crypto_amount' => $payment['pay_amount'] ?? null,
+                'provider_response' => $payment,
+                'deposit_input' => $inputDetails,
+            ]);
+            $deposit->update([
+                'payment_address' => $payment['pay_address'],
+                'payment_url' => $payment['invoice_url'] ?? null,
+                'payment_data' => $paymentData,
+                'expires_at' => now()->addHours((int)\App\Models\AdminSetting::getSetting('crypto_deposit_expiry_hours', '24')),
+            ]);
+            return ['deposit'=>$deposit, 'payment_url'=>$deposit->payment_url, 'payment_address'=>$deposit->payment_address,
+                'expected_amount'=>(float)($payment['pay_amount'] ?? 0), 'currency'=>$currency, 'provider'=>'nowpayments'];
+        }
 
         // Create Cryptomus payment
         $paymentData = [
@@ -112,7 +185,12 @@ class CryptoWalletService
                 'cryptomus_payment_id' => $payment['result']['uuid'],
                 'payment_url' => $payment['result']['url'] ?? null,
                 'payment_address' => $payment['result']['address'] ?? null,
-                'payment_data' => $payment['result'],
+                'payment_data' => array_merge($deposit->payment_data ?? [], $payment['result'], [
+                    'provider' => 'cryptomus',
+                    'provider_payment_id' => $payment['result']['uuid'] ?? null,
+                    'provider_status' => $payment['result']['payment_status'] ?? 'waiting',
+                    'deposit_input' => $inputDetails,
+                ]),
             ]);
 
             return [
@@ -121,6 +199,7 @@ class CryptoWalletService
                 'payment_address' => $payment['result']['address'] ?? null,
                 'expected_amount' => $amount,
                 'currency' => $currency,
+                'provider' => 'cryptomus',
             ];
         }
 
@@ -139,11 +218,19 @@ class CryptoWalletService
 
         $depositId = substr($orderId, 4);
         $deposit = CryptoDeposit::find($depositId);
-        if (!$deposit || $deposit->status !== 'pending') {
+        if (!$deposit || !in_array($deposit->status, ['pending', 'awaiting_admin_review'], true)) {
             return;
         }
 
-        $providerStatus = strtolower((string) ($webhookData['status'] ?? $webhookData['payment_status'] ?? ''));
+        $provider = strtolower((string)($webhookData['_provider'] ?? data_get($deposit->payment_data, 'provider', 'cryptomus')));
+        $providerStatus = strtolower((string) ($webhookData['payment_status'] ?? $webhookData['status'] ?? ''));
+        $paidNow = (float)($webhookData['actually_paid'] ?? $webhookData['payer_amount'] ?? 0);
+        $expectedNow = (float)data_get($deposit->payment_data, 'expected_crypto_amount', 0);
+        $hasPartialAmount = $expectedNow > 0 && $paidNow > 0 && $paidNow + 0.00000001 < $expectedNow;
+        if ($provider === 'nowpayments' && ($providerStatus === 'partially_paid' || $hasPartialAmount)) {
+            $this->recordPartialNowPayment($deposit, $webhookData, $providerStatus, $paidNow, $expectedNow);
+            return;
+        }
         $paymentData = array_merge($deposit->payment_data ?? [], [
             'provider_status' => $providerStatus ?: 'unknown',
             'latest_webhook' => $webhookData,
@@ -154,35 +241,65 @@ class CryptoWalletService
             $deposit->transaction_hash = (string) $webhookData['txid'];
         }
 
-        // Cryptomus reports confirm_check while confirmations are still pending.
-        // Record progress but never credit on a non-final status.
-        if (!in_array($providerStatus, ['paid', 'paid_over'], true)) {
-            if (in_array($providerStatus, ['fail', 'cancel', 'system_fail'], true)) {
+        // Neither provider gets balance credit until its final successful status.
+        $isFinalPayment = $provider === 'nowpayments'
+            ? $providerStatus === 'finished'
+            : in_array($providerStatus, ['paid', 'paid_over'], true);
+        if (!$isFinalPayment) {
+            $failedStatuses = $provider === 'nowpayments' ? ['failed', 'expired', 'refunded'] : ['fail', 'cancel', 'system_fail'];
+            if (in_array($providerStatus, $failedStatuses, true)) {
                 $deposit->status = 'failed';
             }
             $deposit->save();
             return;
         }
 
-        DB::transaction(function () use ($deposit, $webhookData, $providerStatus) {
+        if (filter_var(AdminSetting::getSetting('crypto_deposit_admin_review_enabled', '1'), FILTER_VALIDATE_BOOLEAN)
+            && empty($webhookData['manual_review'])
+            && empty(data_get($deposit->payment_data, 'admin_review_approved'))) {
+            $deposit->received_amount = (float)($webhookData['actually_paid'] ?? $webhookData['payer_amount'] ?? $webhookData['payment_amount'] ?? $deposit->received_amount ?? 0);
+            $deposit->status = 'awaiting_admin_review';
+            $deposit->payment_data = array_merge($deposit->payment_data ?? [], [
+                'admin_review_required' => true,
+                'admin_review_received_at' => now()->toIso8601String(),
+            ]);
+            $deposit->save();
+            try {
+                app(AdminTradeAlertService::class)->sendTriggeredAlert('crypto_deposit', [
+                    'reference' => 'DEP-' . $deposit->id,
+                    'user_name' => $deposit->user?->name, 'user_email' => $deposit->user?->email,
+                    'coin' => $deposit->currency, 'usd_amount' => $deposit->expected_amount,
+                    'naira_amount' => $deposit->ngn_credited_amount, 'status' => 'awaiting admin review',
+                    'wallet_address' => $deposit->payment_address,
+                ]);
+            } catch (\Throwable $e) { Log::warning('Crypto deposit admin alert failed', ['deposit_id'=>$deposit->id,'error'=>$e->getMessage()]); }
+            return;
+        }
+
+        // Take a server-side market snapshot at settlement so the history keeps
+        // the value of the actual received crypto at the time it was deposited.
+        $marketRates = app(ExchangeRateService::class)->getUsdRates();
+
+        DB::transaction(function () use ($deposit, $webhookData, $providerStatus, $marketRates) {
             $locked = CryptoDeposit::whereKey($deposit->id)->lockForUpdate()->first();
-            if (!$locked || $locked->status !== 'pending') {
+            if (!$locked || !in_array($locked->status, ['pending', 'awaiting_admin_review'], true)) {
                 return;
             }
 
             $txid = (string) ($webhookData['txid'] ?? $locked->transaction_hash ?? '');
-            $paidCrypto = (float) ($webhookData['payer_amount'] ?? $webhookData['payment_amount'] ?? 0);
+            $paidCrypto = (float) ($webhookData['actually_paid'] ?? $webhookData['payer_amount'] ?? $webhookData['payment_amount'] ?? 0);
+            $currency = strtoupper($locked->currency);
 
-            if (strtoupper($locked->currency) === 'BTC') {
-                $payerCurrency = strtoupper((string) ($webhookData['payer_currency'] ?? $webhookData['currency'] ?? 'BTC'));
-                if ($payerCurrency !== 'BTC') {
-                    throw new \RuntimeException('Cryptomus reported a non-BTC payer currency for a BTC deposit.');
+            if ($currency === 'BTC') {
+                $payerCurrency = strtoupper((string) ($webhookData['pay_currency'] ?? $webhookData['payer_currency'] ?? $webhookData['currency'] ?? 'BTC'));
+                if (!str_starts_with($payerCurrency, 'BTC')) {
+                    throw new \RuntimeException('Payment provider reported a non-BTC payer currency for a BTC deposit.');
                 }
                 if ($paidCrypto <= 0) {
                     throw new \RuntimeException('Cryptomus did not provide the actual BTC amount received.');
                 }
 
-                $usdValue = (float) ($webhookData['payment_amount_usd'] ?? 0);
+                $usdValue = (float) ($webhookData['price_amount'] ?? $webhookData['payment_amount_usd'] ?? 0);
                 if ($usdValue <= 0 && $providerStatus === 'paid') {
                     $usdValue = (float) ($webhookData['amount'] ?? 0);
                 }
@@ -200,8 +317,8 @@ class CryptoWalletService
                     throw new \RuntimeException('BTC deposit user record was not found.');
                 }
 
-                // User.balance is the canonical NGN balance used by trade flows.
-                $user->increment('balance', $ngnAmount);
+                // Keep the canonical NGN user balance and its wallet row aligned.
+                app(BalanceSettlementService::class)->creditNgnBalance((int) $user->id, $ngnAmount);
                 $locked->ngn_credited_amount = $ngnAmount;
                 $locked->ngn_rate_used = $rate;
                 $locked->received_amount = $paidCrypto > 0 ? $paidCrypto : null;
@@ -213,6 +330,20 @@ class CryptoWalletService
                 }
                 $wallet->credit((float) $locked->received_amount);
             }
+
+            $receivedAmount = (float) $locked->received_amount;
+            $liveCoins = $marketRates['_live_coins'] ?? array_keys(array_filter($marketRates, 'is_numeric'));
+            $marketPrice = !($marketRates['_stale'] ?? false) && in_array($currency, $liveCoins, true) && is_numeric($marketRates[$currency] ?? null)
+                ? (float) $marketRates[$currency] : null;
+            $paymentData = $locked->payment_data ?? [];
+            $paymentData['deposit_valuation'] = [
+                'market_price_usd' => $marketPrice,
+                'market_value_usd' => $marketPrice !== null ? round($receivedAmount * $marketPrice, 8) : null,
+                'source' => $marketPrice !== null ? ($marketRates['_source'] ?? 'unknown') : null,
+                'priced_at' => $marketPrice !== null ? ($marketRates['_updated_at'] ?? now()->toIso8601String()) : null,
+            ];
+            $locked->payment_data = $paymentData;
+            if ($currency === 'BTC' && $marketPrice !== null) $locked->btc_usd_price = $marketPrice;
 
             $locked->transaction_hash = $txid ?: $locked->transaction_hash;
             $locked->status = 'completed';
@@ -234,10 +365,80 @@ class CryptoWalletService
         });
     }
 
+    /** Persist partial provider payments and notify the account once per newly received amount. */
+    private function recordPartialNowPayment(CryptoDeposit $deposit, array $webhookData, string $providerStatus, float $paid, float $expected): void
+    {
+        DB::transaction(function () use ($deposit, $webhookData, $providerStatus, $paid, $expected): void {
+            $locked = CryptoDeposit::whereKey($deposit->id)->lockForUpdate()->first();
+            if (!$locked || $locked->status !== 'pending') return;
+
+            $data = $locked->payment_data ?? [];
+            $previousNotified = (float)($data['partial_notification_amount'] ?? 0);
+            $received = $paid > 0 ? $paid : (float)($locked->received_amount ?? 0);
+            $remaining = $expected > 0 ? max(0, $expected - $received) : null;
+            $data = array_merge($data, [
+                'provider_status' => 'partially_paid',
+                'provider_reported_status' => $providerStatus,
+                'latest_webhook' => $webhookData,
+                'underpaid_amount' => $received,
+                'partial_remaining_crypto' => $remaining,
+                'partial_remaining_usd' => ($expected > 0 && $remaining !== null)
+                    ? round((float)$locked->expected_amount * ($remaining / $expected), 2) : null,
+                'updated_at' => now()->toIso8601String(),
+            ]);
+            $locked->payment_data = $data;
+            if ($received > 0) $locked->received_amount = $received;
+            if (!empty($webhookData['txid'])) $locked->transaction_hash = (string)$webhookData['txid'];
+
+            $needsNotice = $received > $previousNotified + 0.00000001
+                || ($received <= 0 && empty($data['partial_notification_sent']));
+            if ($needsNotice) {
+                if ($received > 0) $data['partial_notification_amount'] = $received;
+                $data['partial_notification_sent'] = true;
+                $locked->payment_data = $data;
+                \App\Models\Notification::createForUser(
+                    (int)$locked->user_id,
+                    'warning',
+                    'Partial crypto deposit received',
+                    ($received > 0
+                        ? 'We detected ' . number_format($received, 8, '.', '') . ' ' . strtoupper($locked->currency)
+                            . ' toward your $' . number_format((float)$locked->expected_amount, 2) . ' deposit. '
+                            . ($remaining !== null && $remaining > 0
+                                ? 'About ' . number_format($remaining, 8, '.', '') . ' ' . strtoupper($locked->currency)
+                                    . ' (approximately $' . number_format((float)$locked->expected_amount * ($remaining / max($expected, 0.00000001)), 2) . ' USD) remains.'
+                                : 'We are waiting for the payment status to update.')
+                        : 'The payment service marked your $' . number_format((float)$locked->expected_amount, 2)
+                            . ' deposit as partially paid. Open the deposit status page for the latest amount and remaining balance.'),
+                    [
+                        'type' => 'crypto_deposit_partial', 'deposit_id' => $locked->id,
+                        'payment_id' => data_get($data, 'provider_payment_id'),
+                        'received_amount' => $received, 'remaining_amount' => $remaining,
+                        'remaining_usd_amount' => ($remaining !== null && $expected > 0)
+                            ? round((float)$locked->expected_amount * ($remaining / $expected), 2) : null,
+                        'currency' => strtoupper($locked->currency),
+                    ]
+                );
+            }
+            $locked->save();
+        });
+    }
+
     /** Refresh provider status and public Bitcoin confirmation progress for an owned deposit. */
     public function refreshDepositStatus(CryptoDeposit $deposit): CryptoDeposit
     {
-        if ($deposit->status === 'pending' && $deposit->cryptomus_payment_id) {
+        $paymentData = $deposit->payment_data ?? [];
+        $provider = strtolower((string)($paymentData['provider'] ?? 'cryptomus'));
+        if ($deposit->status === 'pending' && $provider === 'nowpayments' && !empty($paymentData['provider_payment_id'])) {
+            try {
+                $providerData = $this->nowPaymentsService->paymentStatus((string)$paymentData['provider_payment_id']);
+                $providerData['order_id'] = $providerData['order_id'] ?? 'dep_' . $deposit->id;
+                $providerData['_provider'] = 'nowpayments';
+                $this->processDepositSuccess($providerData);
+                $deposit->refresh();
+            } catch (\Throwable $e) {
+                Log::warning('Could not refresh NOWPayments deposit status', ['deposit_id'=>$deposit->id,'error'=>$e->getMessage()]);
+            }
+        } elseif ($deposit->status === 'pending' && $deposit->cryptomus_payment_id) {
             try {
                 $response = $this->cryptomusService->checkPayment($deposit->cryptomus_payment_id);
                 $providerData = $response['result'] ?? [];
@@ -299,5 +500,81 @@ class CryptoWalletService
             'BNB' => ['name' => 'Binance Coin', 'networks' => ['BEP20']],
             'SOL' => ['name' => 'Solana', 'networks' => ['SOL']],
         ];
+    }
+
+    private function buildManualFallbackContext(string $currency, string $network, float $usdAmount, array $inputDetails): ?array
+    {
+        if (!$this->depositConfiguration->fallbackEnabled()) return null;
+        // A positive static floor is required when the provider is down, because
+        // its live minimum endpoint is unavailable during manual fallback.
+        if ($this->depositConfiguration->minimumUsd($currency, $network) <= 0) return null;
+        $address = $this->depositConfiguration->fallbackAddress($currency, $network);
+        if ($address === '') return null;
+
+        $market = app(ExchangeRateService::class)->getUsdRates();
+        if (($market['_stale'] ?? true) || !in_array($currency, $market['_live_coins'] ?? [], true) || !is_numeric($market[$currency] ?? null)) return null;
+        $price = (float)$market[$currency];
+        if ($price <= 0) return null;
+        return [
+            'currency'=>$currency, 'network'=>$network, 'address'=>$address,
+            'expected_crypto_amount'=>round($usdAmount / $price, 8),
+            'quote_price_usd'=>$price,
+            'provider_pay_currency'=>$this->nowPaymentsCurrencyCode($currency, $network),
+        ];
+    }
+
+    private function createManualFallbackDeposit(CryptoDeposit $deposit, array $context, array $inputDetails): array
+    {
+        $reason = $context['reason'] ?? 'Provider temporarily unavailable during payment setup.';
+        $paymentData = array_merge($deposit->payment_data ?? [], [
+            'provider'=>'manual', 'provider_status'=>'waiting_for_transfer',
+            'provider_pay_currency'=>$context['provider_pay_currency'],
+            'expected_crypto_amount'=>$context['expected_crypto_amount'],
+            'fallback_quote_price_usd'=>$context['quote_price_usd'],
+            'fallback_reason'=>$reason,
+            'deposit_input'=>$inputDetails,
+        ]);
+        $deposit->update([
+            'payment_address'=>$context['address'],
+            'payment_url'=>null,
+            'payment_data'=>$paymentData,
+            'expires_at'=>now()->addHours((int)\App\Models\AdminSetting::getSetting('crypto_deposit_expiry_hours', '24')),
+        ]);
+        Log::warning('Crypto deposit switched to manual wallet fallback', ['deposit_id'=>$deposit->id,'currency'=>$deposit->currency,'network'=>$context['network']]);
+        return ['deposit'=>$deposit, 'payment_url'=>null, 'payment_address'=>$context['address'],
+            'expected_amount'=>(float)$context['expected_crypto_amount'], 'currency'=>$deposit->currency, 'provider'=>'manual'];
+    }
+
+    public function depositProviderLabel(): ?string
+    {
+        try { return $this->selectedDepositProvider() === 'nowpayments' ? 'NOWPayments' : 'Cryptomus'; }
+        catch (\Throwable) { return null; }
+    }
+
+    private function selectedDepositProvider(): string
+    {
+        $selected = (string)(AdminSetting::getSetting('crypto_deposit_provider', 'auto') ?: 'auto');
+        $nowEnabled = $this->nowPaymentsService->isEnabled();
+        $cryptomusEnabled = $this->cryptomusService->isEnabled();
+        if ($selected === 'nowpayments' && $nowEnabled) return 'nowpayments';
+        if ($selected === 'cryptomus' && $cryptomusEnabled) return 'cryptomus';
+        if ($selected === 'auto') {
+            if ($nowEnabled) return 'nowpayments';
+            if ($cryptomusEnabled) return 'cryptomus';
+        }
+        throw new \RuntimeException('Crypto deposits are currently unavailable. The selected provider is not enabled or its API credentials are incomplete.');
+    }
+
+    private function nowPaymentsCurrencyCode(string $currency, string $network): string
+    {
+        $map = [
+            'BTC'=>['BTC'=>'btc'], 'ETH'=>['ERC20'=>'eth'],
+            'USDT'=>['TRC20'=>'usdttrc20','ERC20'=>'usdterc20','BEP20'=>'usdtbsc'],
+            'USDC'=>['ERC20'=>'usdcerc20','BEP20'=>'usdcbsc'],
+            'BNB'=>['BEP20'=>'bnbbsc'], 'SOL'=>['SOL'=>'sol'],
+        ];
+        $code = $map[strtoupper($currency)][strtoupper($network)] ?? null;
+        if (!$code) throw new \RuntimeException('That asset and network combination is not supported by NOWPayments.');
+        return $code;
     }
 }

@@ -23,6 +23,7 @@ use App\Http\Controllers\AdminApiController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\CryptomusWebhookController;
+use App\Http\Controllers\Api\NowPaymentsWebhookController;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/transactions', [TransactionController::class, 'index']);
@@ -101,6 +102,7 @@ Route::get('/telegram/setup-webhook', [TelegramWebhookController::class, 'setup'
 
 // Cryptomus Webhook Route
 Route::post('/cryptomus/webhook', [CryptomusWebhookController::class, 'handle']);
+Route::post('/nowpayments/webhook', NowPaymentsWebhookController::class)->name('nowpayments.webhook');
 Route::get('/telegram/bot-info', [TelegramWebhookController::class, 'botInfo']);
 
 // Webhook health check (for monitoring)
