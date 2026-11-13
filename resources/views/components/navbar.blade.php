@@ -295,16 +295,16 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
         try {
             $kaybotVisible = \App\Models\AdminSetting::getSetting('ai_chatbot_enabled','1') == '1' &&
                            (\App\Models\AdminSetting::getSetting('openai_api_key') ?: env('OPENAI_API_KEY') ?: \App\Models\AdminSetting::getSetting('groq_api_key') ?: env('GROQ_API_KEY'));
-            $convertVisible = \App\Models\AdminSetting::getSetting('cryptomus_convert_enabled','1') == '1';
+            $swapVisible = \App\Models\AdminSetting::getSetting('cryptomus_convert_enabled','1') == '1';
         } catch (\Exception $e) {
             $kaybotVisible = env('OPENAI_API_KEY') ?: env('GROQ_API_KEY');
-            $convertVisible = true;
+            $swapVisible = true;
         }
         @endphp
-        @if($convertVisible)
+        @if($swapVisible)
         <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('convert*')) kx-active @endif" href="{{ url('/convert') }}" title="Convert">
-            <i class="bi bi-arrow-left-right"></i>Convert
+          <a class="kx-nav-link @if(request()->is('swap*')) kx-active @endif" href="{{ url('/swap') }}" title="Swap">
+            <i class="bi bi-arrow-left-right"></i>Swap
           </a>
         </li>
         @endif

@@ -37,7 +37,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
     <div class="kx-page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-            <h1><i class="bi bi-arrow-left-right me-2" style="color:var(--kx-green)"></i>Conversion #{{ $conversion->id }}</h1>
+            <h1><i class="bi bi-arrow-left-right me-2" style="color:var(--kx-green)"></i>Swap #{{ $conversion->id }}</h1>
             <p>{{ $conversion->created_at->format('M d, Y H:i') }} · requested by {{ $conversion->user->name ?? 'User #'.$conversion->user_id }}</p>
         </div>
         <div class="d-flex gap-2">
@@ -61,7 +61,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
     {{-- Details --}}
     <div class="kx-card">
-        <h6 class="mb-3" style="color:var(--kx-text)">Conversion Details</h6>
+        <h6 class="mb-3" style="color:var(--kx-text)">Swap details</h6>
         <div class="detail-row"><span class="k">User</span><span class="v">{{ $conversion->user->name ?? '—' }} ({{ $conversion->user->email ?? '—' }})</span></div>
         <div class="detail-row"><span class="k">Pair</span><span class="v">{{ $conversion->from_coin }} → {{ $conversion->to_coin }}</span></div>
         <div class="detail-row"><span class="k">User sends</span><span class="v">{{ rtrim(rtrim(number_format((float) $conversion->from_amount, 8), '0'), '.') }} {{ $conversion->from_coin }}</span></div>
@@ -143,7 +143,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     @endif
 
     <a href="{{ route('admin.conversions.index') }}" style="color:var(--kx-muted);font-size:.8rem;text-decoration:none;">
-        <i class="bi bi-arrow-left me-1"></i>Back to conversions
+        <i class="bi bi-arrow-left me-1"></i>Back to swaps
     </a>
 </div>
 @endsection

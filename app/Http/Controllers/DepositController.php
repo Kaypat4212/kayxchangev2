@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Deposit;
+use App\Models\CryptoDeposit;
 use App\Models\CompanyAccount;
 use App\Models\Referral;
 use App\Models\SiteContent;
@@ -23,13 +24,46 @@ class DepositController extends Controller
 {
     public function index(Request $request)
     {
+        $userId = (int) Auth::id();
         $sort = $request->query('sort', 'created_at');
         $direction = $request->query('direction', 'desc');
         $validSorts = ['amount', 'status', 'transaction_ref', 'created_at'];
         $sort = in_array($sort, $validSorts) ? $sort : 'created_at';
         $direction = in_array($direction, ['asc', 'desc']) ? $direction : 'desc';
+        $status = $request->query('status');
+        $asset = strtoupper((string) $request->query('asset', ''));
+        $search = trim((string) $request->query('search', ''));
+        $validStatuses = ['pending', 'processing', 'awaiting_admin_review', 'approved', 'completed', 'rejected', 'failed'];
 
-        $deposits = Deposit::orderBy($sort, $direction)->paginate(10);
+        $fiatQuery = Deposit::where('user_id', $userId);
+        $cryptoQuery = CryptoDeposit::where('user_id', $userId);
+        if (in_array($status, $validStatuses, true)) {
+            $fiatQuery->where('status', $status);
+            $cryptoQuery->where('status', $status);
+        }
+        if ($search !== '') {
+            $fiatQuery->where(function ($query) use ($search) {
+                $query->where('transaction_ref', 'like', '%' . $search . '%')
+                    ->orWhere('gateway_reference', 'like', '%' . $search . '%')
+                    ->orWhere('payment_method', 'like', '%' . $search . '%');
+            });
+            $cryptoQuery->where(function ($query) use ($search) {
+                $query->where('transaction_hash', 'like', '%' . $search . '%')
+                    ->orWhere('currency', 'like', '%' . $search . '%')
+                    ->orWhere('payment_data->provider_payment_id', 'like', '%' . $search . '%');
+            });
+        }
+        if ($asset !== '') $cryptoQuery->where('currency', $asset);
+
+        $deposits = $fiatQuery->orderBy($sort, $direction)->paginate(8, ['*'], 'fiat_page')->withQueryString();
+        $cryptoDeposits = $cryptoQuery->latest()->paginate(8, ['*'], 'crypto_page')->withQueryString();
+        $stats = [
+            'fiat_total' => Deposit::where('user_id', $userId)->whereIn('status', ['approved', 'successful', 'completed'])->sum('amount'),
+            'fiat_pending' => Deposit::where('user_id', $userId)->whereIn('status', ['pending', 'processing'])->count(),
+            'crypto_total_ngn' => CryptoDeposit::where('user_id', $userId)->where('status', 'completed')->sum('ngn_credited_amount'),
+            'crypto_pending' => CryptoDeposit::where('user_id', $userId)->whereIn('status', ['pending', 'awaiting_admin_review'])->count(),
+            'all_count' => Deposit::where('user_id', $userId)->count() + CryptoDeposit::where('user_id', $userId)->count(),
+        ];
 
         Log::info('Deposits Loaded', [
             'count' => $deposits->count(),
@@ -37,10 +71,10 @@ class DepositController extends Controller
             'current_page' => $deposits->currentPage(),
             'sort' => $sort,
             'direction' => $direction,
-            'class' => get_class($deposits)
+            'user_id' => $userId,
         ]);
 
-        return view('deposits.index', compact('deposits'));
+        return view('deposits.index', compact('deposits', 'cryptoDeposits', 'stats', 'status', 'asset', 'search', 'sort', 'direction'));
     }
 
     public function create()

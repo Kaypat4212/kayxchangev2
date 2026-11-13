@@ -39,8 +39,8 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 <div class="container-fluid py-4" style="max-width:1100px">
 
     <div class="kx-page-header">
-        <h1><i class="bi bi-arrow-left-right me-2" style="color:var(--kx-green)"></i>Conversions</h1>
-        <p>Review and process crypto conversion requests. Manual conversions require you to send the target crypto to the user's wallet.</p>
+        <h1><i class="bi bi-arrow-left-right me-2" style="color:var(--kx-green)"></i>Crypto swaps</h1>
+        <p>Review and process crypto swap requests. Manual swaps require you to send the target crypto to the user's wallet.</p>
     </div>
 
     @if(session('success'))
@@ -102,7 +102,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         <td><a href="{{ route('admin.conversions.show', $conv->id) }}" class="btn-view">View</a></td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" style="text-align:center;color:var(--kx-muted);padding:2rem;">No conversions found.</td></tr>
+            <tr><td colspan="9" style="text-align:center;color:var(--kx-muted);padding:2rem;">No swaps found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

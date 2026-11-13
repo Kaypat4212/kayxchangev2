@@ -34,8 +34,8 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
     {{-- Header --}}
     <div class="kx-hero">
-        <h1><i class="bi bi-x-circle me-2"></i>Conversion Failed</h1>
-        <p>Your cryptocurrency conversion could not be completed</p>
+        <h1><i class="bi bi-x-circle me-2"></i>Swap failed</h1>
+        <p>Your cryptocurrency swap could not be completed</p>
     </div>
 
     {{-- Failed Card --}}
@@ -44,7 +44,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             <i class="bi bi-x-circle-fill"></i>
         </div>
 
-        <h4 style="color:var(--kx-text);margin-bottom:1rem;">Conversion Failed</h4>
+        <h4 style="color:var(--kx-text);margin-bottom:1rem;">Swap failed</h4>
 
         @if($conversion->failure_reason)
         <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:1rem;margin-bottom:1rem;text-align:left;">
@@ -74,7 +74,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         </p>
 
         <div style="display:flex;gap:.75rem;">
-            <a href="{{ route('convert') }}" class="btn-kx-primary" style="text-decoration:none;flex:1;">
+            <a href="{{ route('swap') }}" class="btn-kx-primary" style="text-decoration:none;flex:1;">
                 <i class="bi bi-arrow-clockwise me-1"></i>Try Again
             </a>
             <a href="{{ route('dashboard') }}" class="btn-kx-secondary" style="text-decoration:none;flex:1;">
@@ -87,7 +87,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     <div class="kx-card">
         <h6 style="color:var(--kx-text);margin-bottom:1rem;">Need Help?</h6>
         <p style="color:var(--kx-muted);font-size:.9rem;margin-bottom:1rem;">
-            If you're experiencing issues with conversions, our support team is here to help.
+            If you're experiencing issues with swaps, our support team is here to help.
         </p>
         <a href="{{ route('chat') }}" class="btn-kx-secondary" style="text-decoration:none;width:100%;display:inline-block;text-align:center;">
             <i class="bi bi-chat-dots me-1"></i>Contact Support

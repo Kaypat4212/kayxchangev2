@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Log;
  *
  * Primary source : CoinGecko (free public API, no key required)
  * Fallback source: CoinCap   (free public API, no key required)
- * Last resort    : static fallback rates so the convert page never breaks
+ * Last resort    : static fallback rates so the swap quote page remains available
  */
 class ExchangeRateService
 {
-    /** Coins supported on the convert page, mapped to price-source IDs. */
+    /** Coins supported on the swap page, mapped to price-source IDs. */
     public const SUPPORTED_COINS = [
         'BTC'  => ['coingecko' => 'bitcoin',      'coincap' => 'bitcoin',     'name' => 'Bitcoin',   'fallback' => 97500.0],
         'ETH'  => ['coingecko' => 'ethereum',     'coincap' => 'ethereum',    'name' => 'Ethereum',  'fallback' => 3600.0],

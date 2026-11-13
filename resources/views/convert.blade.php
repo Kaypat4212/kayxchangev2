@@ -1,4 +1,5 @@
 @extends('buylayout')
+@section('title', 'Crypto Swap')
 
 @push('styles')
 <style>
@@ -112,8 +113,8 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 
     {{-- Header --}}
     <div class="kx-hero">
-        <h1><i class="bi bi-arrow-left-right me-2"></i>{{ $convertMode === 'nowpayments' ? 'Crypto Wallet Swap' : 'Crypto Converter' }}</h1>
-        <p>{{ $convertMode === 'nowpayments' ? 'Swap crypto from your wallet balance' : 'Convert between cryptocurrencies instantly' }}</p>
+        <h1><i class="bi bi-arrow-left-right me-2"></i>Crypto Swap</h1>
+        <p>{{ $convertMode === 'nowpayments' ? 'Swap crypto from your wallet balance' : 'Swap between supported cryptocurrencies' }}</p>
         <div class="live-badge {{ $rateSource === 'fallback' ? 'stale' : '' }}" id="rateBadge">
             <span class="dot"></span>
             @if($rateSource === 'fallback')
@@ -131,7 +132,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
             @elseif($convertMode === 'nowpayments')
                 <i class="bi bi-shield-check"></i> NOWPayments Custody Swap
             @else
-                <i class="bi bi-lightning-charge"></i> Instant Convert
+                <i class="bi bi-lightning-charge"></i> Instant Swap
             @endif
         </div>
     </div>
@@ -139,7 +140,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     @if($convertMode === 'cryptomus' && !$cryptomusReady)
     <div class="notice-warn">
         <i class="bi bi-exclamation-triangle-fill"></i>
-        <div>Crypto conversion payments are not fully configured yet. You can preview rates, but submitting a conversion is temporarily unavailable.</div>
+        <div>Crypto swap payments are not fully configured yet. You can preview rates, but submitting a swap is temporarily unavailable.</div>
     </div>
     @endif
 
@@ -157,9 +158,9 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     </div>
     @endif
 
-    {{-- Conversion Form --}}
+    {{-- Swap Form --}}
     <div class="kx-card">
-        <form id="convertForm" action="{{ $convertMode === 'manual' ? route('convert.manual') : route('convert.submit') }}" method="post">
+        <form id="convertForm" action="{{ $convertMode === 'manual' ? route('swap.manual') : route('swap.submit') }}" method="post">
             @csrf
             @if($convertMode === 'nowpayments')<input type="hidden" name="swap_request_key" value="{{ $swapRequestKey }}">@endif
 
@@ -226,15 +227,15 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 
             @if($convertMode === 'compare')
             <button type="button" class="btn-kx-primary" disabled style="background:var(--kx-card2);color:var(--kx-muted);border:1px solid var(--kx-border);">
-                <i class="bi bi-bar-chart me-1"></i>Compare-only mode — conversions disabled
+                <i class="bi bi-bar-chart me-1"></i>Compare-only mode — swaps disabled
             </button>
             @elseif($convertMode === 'manual')
             <button type="submit" class="btn-kx-primary" id="convertBtn">
-                <i class="bi bi-send me-1"></i>Request Conversion
+                <i class="bi bi-send me-1"></i>Request Swap
             </button>
             @else
             <button type="submit" class="btn-kx-primary" id="convertBtn" {{ ($convertMode === 'nowpayments' ? $swapReady : $cryptomusReady) ? '' : 'disabled' }}>
-                <i class="bi bi-arrow-left-right me-1"></i>{{ $convertMode === 'nowpayments' ? 'Swap Now' : 'Convert Now' }}
+                <i class="bi bi-arrow-left-right me-1"></i>Swap Now
             </button>
             @endif
         </form>
@@ -258,7 +259,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     </div>
     @endif
 
-    {{-- Conversion provider --}}
+    {{-- Swap provider --}}
     @if($convertMode === 'nowpayments')
     <div class="crypto-info">
         <div class="crypto-info-icon"><i class="bi bi-arrow-left-right"></i></div>
@@ -271,17 +272,17 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
         </div>
         <div class="crypto-info-text">
             <h6>Powered by Cryptomus</h6>
-            <p>Secure and instant cryptocurrency conversions</p>
+            <p>Secure cryptocurrency swaps at a live quoted rate</p>
         </div>
     </div>
     @endif
 
-    {{-- Recent Conversions --}}
+    {{-- Recent Swaps --}}
     @if($recentConversions->isNotEmpty())
     <div class="kx-card">
         <h6 style="color:var(--kx-text);margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem;">
             <i class="bi bi-clock-history" style="color:var(--kx-green);"></i>
-            Recent Conversions
+            Recent swaps
         </h6>
         @foreach($recentConversions as $conv)
         <div class="hist-row">
@@ -299,13 +300,13 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div class="kx-card">
         <h6 style="color:var(--kx-text);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;">
             <i class="bi bi-star" style="color:var(--kx-green);"></i>
-            Why Choose Our Converter?
+            Why choose KayXchange Swap?
         </h6>
         <div class="feat-grid">
             <div class="feat-item">
                 <i class="bi bi-lightning-charge"></i>
                 <div class="t">Instant</div>
-                <div class="d">Convert in seconds</div>
+                <div class="d">Swap supported assets</div>
             </div>
             <div class="feat-item">
                 <i class="bi bi-shield-check"></i>
@@ -341,7 +342,7 @@ const COINS = @json($coins);
 const WALLET_BALANCES = @json($walletBalances);
 const FEE_PERCENT = {{ $feePercent }};
 const CONVERT_MODE = '{{ $convertMode }}';
-const QUOTE_URL = '{{ route('convert.quote') }}';
+const QUOTE_URL = '{{ route('swap.quote') }}';
 const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 const fromCoinEl = document.getElementById('fromCoin');
@@ -481,13 +482,13 @@ document.getElementById('convertForm').addEventListener('submit', function(e) {
             if (CONVERT_MODE === 'manual') {
                 btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Request Submitted!';
                 btn.style.background = 'linear-gradient(90deg,#10b981,#059669)';
-                setTimeout(() => { window.location.href = '{{ route('convert.success', ['id' => '__ID__']) }}'.replace('__ID__', data.conversion_id); }, 1200);
+                setTimeout(() => { window.location.href = '{{ route('swap.success', ['id' => '__ID__']) }}'.replace('__ID__', data.conversion_id); }, 1200);
                 return;
             }
             if (CONVERT_MODE === 'nowpayments') {
                 btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Swap submitted';
                 btn.style.background = 'linear-gradient(90deg,#10b981,#059669)';
-                setTimeout(() => { window.location.href = '{{ route('convert.success', ['id' => '__ID__']) }}'.replace('__ID__', data.conversion_id); }, 500);
+                setTimeout(() => { window.location.href = '{{ route('swap.success', ['id' => '__ID__']) }}'.replace('__ID__', data.conversion_id); }, 500);
                 return;
             }
             btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Redirecting to Payment...';
@@ -496,16 +497,16 @@ document.getElementById('convertForm').addEventListener('submit', function(e) {
             if (data.payment_url) {
                 setTimeout(() => { window.location.href = data.payment_url; }, 800);
             } else {
-                setTimeout(() => { window.location.href = '{{ route('convert.success', ['id' => '__ID__']) }}'.replace('__ID__', data.conversion_id); }, 1200);
+                setTimeout(() => { window.location.href = '{{ route('swap.success', ['id' => '__ID__']) }}'.replace('__ID__', data.conversion_id); }, 1200);
             }
         } else {
             btn.innerHTML = originalText;
             btn.disabled = false;
-            alert(data.message || 'An error occurred during conversion');
+            alert(data.message || 'An error occurred while submitting the swap');
         }
     })
     .catch(error => {
-        console.error('Conversion error:', error);
+        console.error('Swap error:', error);
         btn.innerHTML = originalText;
         btn.disabled = false;
         alert('Network error. Please try again.');

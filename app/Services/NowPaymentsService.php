@@ -214,6 +214,11 @@ class NowPaymentsService
     public function minimumUsd(string $payCurrency): float
     {
         if ($this->apiKey === '') throw new \RuntimeException('Enter and save a NOWPayments API key first.');
+        $cacheKey = 'nowpayments_minimum_usd_' . $this->environment() . '_' . strtolower($payCurrency) . '_' . hash('sha256', implode('|', [
+            AdminSetting::getSetting('nowpayments_fixed_rate', '0'),
+            AdminSetting::getSetting('nowpayments_fee_paid_by_user', '0'),
+        ]));
+        $cachedMinimum = Cache::get($cacheKey);
         try {
             $response = Http::acceptJson()->withHeaders(['x-api-key'=>$this->apiKey])->timeout(10)
                 ->get($this->baseUrl . '/min-amount', [
@@ -222,11 +227,25 @@ class NowPaymentsService
                     'is_fee_paid_by_user'=>AdminSetting::getSetting('nowpayments_fee_paid_by_user', '0') === '1' ? 'true' : 'false',
                 ]);
         } catch (ConnectionException $e) {
+            if (is_numeric($cachedMinimum) && (float) $cachedMinimum > 0) {
+                Log::warning('NOWPayments minimum endpoint timed out; using short-lived cached minimum.', ['currency' => strtolower($payCurrency), 'environment' => $this->environment()]);
+                return (float) $cachedMinimum;
+            }
             throw new NowPaymentsApiException('NOWPayments is temporarily unreachable.', 0, $e);
         }
-        if (!$response->successful()) $this->throwProviderError($response, 'check the minimum payment amount');
+        if (!$response->successful()) {
+            if (($response->status() === 429 || $response->status() >= 500) && is_numeric($cachedMinimum) && (float) $cachedMinimum > 0) {
+                Log::warning('NOWPayments minimum endpoint returned a transient error; using short-lived cached minimum.', ['currency' => strtolower($payCurrency), 'environment' => $this->environment(), 'http_status' => $response->status()]);
+                return (float) $cachedMinimum;
+            }
+            $this->throwProviderError($response, 'check the minimum payment amount');
+        }
         $fiatMinimum = $response->json('fiat_equivalent');
-        if (is_numeric($fiatMinimum)) return max(0, (float)$fiatMinimum);
+        if (is_numeric($fiatMinimum)) {
+            $minimum = max(0, (float) $fiatMinimum);
+            if ($minimum > 0) Cache::put($cacheKey, $minimum, now()->addMinutes(10));
+            return $minimum;
+        }
         return 0.0;
     }
 

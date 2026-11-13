@@ -103,10 +103,10 @@ class AdminSetting extends Model
             ['key' => 'nowpayments_enabled', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable NOWPayments', 'description' => '1 = allow NOWPayments crypto deposits, 0 = disable'],
             ['key' => 'nowpayments_sandbox', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'NOWPayments Sandbox Mode', 'description' => 'Use test environment credentials and simulated transactions when enabled'],
             ['key' => 'crypto_deposit_provider', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Crypto Deposit Provider', 'description' => 'Choose NOWPayments, Cryptomus, or automatically use the first configured provider'],
-            ['key' => 'cryptomus_convert_enabled', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable Convert Feature', 'description' => '1 = show convert page to users, 0 = hide convert feature'],
-            ['key' => 'convert_mode', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Convert Mode', 'description' => 'compare = price comparison only · cryptomus = automated via Cryptomus API · manual = user submits wallet, admin processes'],
-            ['key' => 'convert_fee_percent', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Platform Swap Fee (%)', 'description' => 'Your platform fee, added to the NOWPayments conversion fee. Users see only the combined fee.'],
-            ['key' => 'convert_instructions', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Manual Convert Instructions', 'description' => 'Shown to users in manual mode — e.g. where/how to send the source crypto'],
+            ['key' => 'cryptomus_convert_enabled', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Enable Swap Feature', 'description' => '1 = show the crypto swap page to users, 0 = hide it'],
+            ['key' => 'convert_mode', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Swap Mode', 'description' => 'Compare rates, process swaps through an available provider, or use admin-processed manual swaps.'],
+            ['key' => 'convert_fee_percent', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Platform Swap Fee (%)', 'description' => 'Your platform fee, added to the NOWPayments provider swap fee. Users see only the combined fee.'],
+            ['key' => 'convert_instructions', 'group' => 'payment', 'is_encrypted' => false, 'label' => 'Manual Swap Instructions', 'description' => 'Shown to users in manual mode — e.g. where/how to send the source crypto'],
 
             // ── Telegram ───────────────────────────────────────────────────
             ['key' => 'telegram_token',        'group' => 'telegram', 'is_encrypted' => true,  'label' => 'Bot Token',          'description' => 'From @BotFather'],

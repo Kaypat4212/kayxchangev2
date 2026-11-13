@@ -624,13 +624,22 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     // Buy Routes
     Route::get('/buy', [CryptoController::class, 'buy'])->name('buy');
     Route::middleware('auth')->group(function () {
-        Route::get('/convert', [CryptoController::class, 'convert'])->name('convert');
+        Route::get('/swap', [CryptoController::class, 'convert'])->name('swap');
+        Route::post('/swap', [CryptoController::class, 'convertSubmit'])->middleware('throttle:8,1')->name('swap.submit');
+        Route::post('/swap/quote', [CryptoController::class, 'convertQuote'])->middleware('throttle:30,1')->name('swap.quote');
+        Route::post('/swap/manual', [CryptoController::class, 'convertManualSubmit'])->middleware('throttle:8,1')->name('swap.manual');
+        Route::get('/swap/success/{id}', [CryptoController::class, 'convertSuccess'])->name('swap.success');
+        Route::get('/swap/status/{id}', [CryptoController::class, 'convertStatus'])->middleware('throttle:12,1')->name('swap.status');
+        Route::get('/swap/failed/{id}', [CryptoController::class, 'convertFailed'])->name('swap.failed');
+
+        // Keep legacy URLs working while directing customers to the new Swap naming.
+        Route::get('/convert', fn () => redirect()->route('swap', request()->query(), 301))->name('convert');
         Route::post('/convert', [CryptoController::class, 'convertSubmit'])->middleware('throttle:8,1')->name('convert.submit');
         Route::post('/convert/quote', [CryptoController::class, 'convertQuote'])->middleware('throttle:30,1')->name('convert.quote');
         Route::post('/convert/manual', [CryptoController::class, 'convertManualSubmit'])->middleware('throttle:8,1')->name('convert.manual');
-        Route::get('/convert/success/{id}', [CryptoController::class, 'convertSuccess'])->name('convert.success');
+        Route::get('/convert/success/{id}', fn ($id) => redirect()->route('swap.success', ['id' => $id], 301))->name('convert.success');
         Route::get('/convert/status/{id}', [CryptoController::class, 'convertStatus'])->middleware('throttle:12,1')->name('convert.status');
-        Route::get('/convert/failed/{id}', [CryptoController::class, 'convertFailed'])->name('convert.failed');
+        Route::get('/convert/failed/{id}', fn ($id) => redirect()->route('swap.failed', ['id' => $id], 301))->name('convert.failed');
     });
     Route::get('/api/crypto-prices', [BuyController::class, 'cryptoPricesApi'])->name('api.crypto.prices');
     Route::post('/buy/submit', [BuyController::class, 'submit'])->name('buy.submit');

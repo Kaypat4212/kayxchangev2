@@ -23,16 +23,18 @@
    @php($currency = strtoupper($wallet->currency))
    @if($currency !== 'NGN')
    @php($isUsd = $currency === 'USD')
+   @php($isMultiNetworkUsdt = $currency === 'USDT')
    @php($marketPrice = $isUsd ? 1 : ($prices[$currency]['price_usd'] ?? null))
    @php($currentValue = $marketPrice !== null ? (float)$wallet->balance * $marketPrice : null)
    <div class="col-md-6 col-xl-4"><article class="kw-card {{ $isUsd ? 'kw-fiat-card' : '' }} wallet-card" data-currency="{{ $currency }}" data-amount="{{ (float)$wallet->balance }}">
-    <div class="d-flex justify-content-between"><div class="d-flex gap-3 align-items-center"><div class="kw-coin-icon">@if($isUsd)<i class="bi bi-currency-dollar"></i>@else<i class="bi bi-currency-bitcoin"></i>@endif</div><div><div class="kw-symbol">{{ $currency }}</div><div class="kw-asset-name">{{ $isUsd ? 'US dollar wallet' : ($wallet->network ?: 'Crypto wallet') }}</div></div></div><span class="kw-status-pill">{{ $isUsd ? 'Fiat' : ($wallet->network ?: 'Crypto') }}</span></div>
+    <div class="d-flex justify-content-between"><div class="d-flex gap-3 align-items-center"><div class="kw-coin-icon">@if($isUsd)<i class="bi bi-currency-dollar"></i>@else<i class="bi bi-currency-bitcoin"></i>@endif</div><div><div class="kw-symbol">{{ $currency }}</div><div class="kw-asset-name">{{ $isUsd ? 'US dollar wallet' : ($isMultiNetworkUsdt ? 'Tether · multiple networks' : ($wallet->network ?: 'Crypto wallet')) }}</div></div></div><span class="kw-status-pill">{{ $isUsd ? 'Fiat' : ($isMultiNetworkUsdt ? 'Multi-network' : ($wallet->network ?: 'Crypto')) }}</span></div>
     <div class="kw-balance">{{ number_format((float)$wallet->balance, $isUsd ? 2 : 8) }} <span class="fs-6">{{ $currency }}</span></div>
     <div class="kw-value"><span>Current market value</span><strong class="wallet-value">{{ $currentValue !== null ? '$'.number_format($currentValue,2) : '—' }}</strong></div>
     <div class="kw-price">@if($isUsd)Reference value: $1.00 USD @elseif($marketPrice !== null)Spot price: ${{ number_format($marketPrice, $marketPrice < 1 ? 6 : 2) }} @else Live spot price unavailable @endif
      @if(!$isUsd && isset($prices[$currency]['change_24h']) && $prices[$currency]['change_24h'] !== null)<span class="kw-change {{ $prices[$currency]['change_24h'] >= 0 ? 'kw-up' : 'kw-down' }} ms-1">{{ $prices[$currency]['change_24h'] >= 0 ? '+' : '' }}{{ number_format($prices[$currency]['change_24h'],2) }}% 24h</span>@endif
     </div>
     @if($wallet->address)<div class="kw-note text-truncate mt-2" title="{{ $wallet->address }}">{{ $wallet->address }}</div>@endif
+    @if($isMultiNetworkUsdt)<div class="kw-note mt-2">USDT balance is shared across TRC20, ERC20 and BEP20 deposits. Choose the matching network on each deposit invoice.</div>@endif
     <div class="kw-asset-actions"><a href="{{ route('wallet.deposit') }}">Deposit</a><a href="{{ route('wallet.withdraw') }}">Withdraw</a>@if($isUsd)<a href="{{ route('wallet.usd') }}">USD rates</a>@endif</div>
    </article></div>
    @endif

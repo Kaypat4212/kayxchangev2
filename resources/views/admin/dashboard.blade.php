@@ -428,7 +428,7 @@
             </div>
             <div>
                 <div class="kx-stat-val">{{ $totalConversions }}</div>
-                <div class="kx-stat-label">Conversions</div>
+                <div class="kx-stat-label">Swaps</div>
             </div>
         </div>
     </div>
@@ -569,7 +569,7 @@
                             <span class="badge bg-success" style="font-size:0.7rem;">Active</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mt-2">
-                            <span style="font-size:0.85rem;color:var(--kx-text);">Conversions</span>
+                            <span style="font-size:0.85rem;color:var(--kx-text);">Swaps</span>
                             <span class="badge bg-success" style="font-size:0.7rem;">Active</span>
                         </div>
                     </div>
@@ -661,11 +661,11 @@
                     <i class="bi bi-chevron-right ms-auto" style="color:var(--kx-muted)"></i>
                 </a>
                 @if($cryptomusEnabled)
-                <a href="#" class="kx-nav-card" style="padding:14px;height:auto" onclick="alert('Conversion management coming soon!')">
+                <a href="{{ route('admin.conversions.index') }}" class="kx-nav-card" style="padding:14px;height:auto">
                     <div class="kx-stat-icon green" style="width:38px;height:38px;font-size:1rem"><i class="bi bi-arrow-left-right"></i></div>
                     <div>
-                        <div class="kx-nav-card-title">Crypto Conversions</div>
-                        <div class="kx-nav-card-sub">Manage user conversions</div>
+                        <div class="kx-nav-card-title">Crypto swaps</div>
+                        <div class="kx-nav-card-sub">Review and manage user swaps</div>
                     </div>
                     <i class="bi bi-chevron-right ms-auto" style="color:var(--kx-muted)"></i>
                 </a>
@@ -688,7 +688,7 @@
                     <div class="col-6"><a href="{{ url('/admin/crypto-rates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-currency-bitcoin me-1"></i>Crypto Rates</a></div>
                     <div class="col-6"><a href="{{ url('/admin/gift-card-rates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-gift me-1"></i>Gift Card Rates</a></div>
                     @if($cryptomusEnabled)
-                    <div class="col-6"><a href="#" class="btn-kx-outline w-100 justify-content-center" onclick="alert('Conversion management coming soon!')"><i class="bi bi-arrow-left-right me-1"></i>Conversions</a></div>
+                    <div class="col-6"><a href="{{ route('admin.conversions.index') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-arrow-left-right me-1"></i>Swaps</a></div>
                     @endif
                     <div class="col-6"><a href="{{ url('/admin/blog') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-journal-richtext me-1"></i>Blog</a></div>
                     <div class="col-6"><a href="{{ url('/admin/site-content') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-pencil-square me-1"></i>Site Content</a></div>

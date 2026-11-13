@@ -201,6 +201,9 @@ class WalletController extends Controller
             } elseif (str_contains($normalized, 'INVALID_API_KEY') || str_contains($normalized, 'REJECTED THE API KEY')) {
                 $title = 'Crypto deposits are temporarily unavailable';
                 $message = 'The payment provider could not authorize this deposit. Please try again later or contact support. No balance was deducted.';
+            } elseif (str_contains($normalized, 'TEMPORARILY UNAVAILABLE') || str_contains($normalized, 'TEMPORARILY UNREACHABLE')) {
+                $title = 'Payment service is temporarily unavailable';
+                $message = 'The payment service did not respond in time. Please try again shortly or contact support. No balance was deducted.';
             } elseif (str_contains($normalized, 'NETWORK') || str_contains($normalized, 'CURRENCY')) {
                 $title = 'This deposit option is unavailable';
                 $message = 'The selected asset or network could not be used right now. Choose another available network or try again later. No balance was deducted.';

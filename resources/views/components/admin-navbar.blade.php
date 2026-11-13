@@ -49,7 +49,7 @@
             </li>
             <li>
               <a class="dropdown-item @if(request()->is('admin/conversions*')) active @endif" href="{{ route('admin.conversions.index') }}">
-                <i class="bi bi-arrow-repeat me-2"></i>Conversions
+                <i class="bi bi-arrow-repeat me-2"></i>Swaps
               </a>
             </li>
             <li>

@@ -260,15 +260,16 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
         {{-- ─── PAYMENT ─────────────────────────────────────────────────── --}}
         <div id="group-payment" class="kx-card group-section" style="display:none;">
-            <h5 class="mb-3 fw-bold" style="color:#4ade80">💳 Payments & Convert</h5>
+            <h5 class="mb-3 fw-bold" style="color:#4ade80">💳 Payments & Swaps</h5>
             @foreach($grouped['payment'] ?? [] as $row)
             <div class="field-row">
                 <div>
-                    <div class="field-label">{{ $row->key === 'convert_fee_percent' ? 'Platform Swap Fee (%)' : ($row->label ?? $row->key) }}
+                    <div class="field-label">{{ $row->key === 'convert_fee_percent' ? 'Platform Swap Fee (%)' : ($row->key === 'cryptomus_convert_enabled' ? 'Enable Swap Feature' : ($row->label ?? $row->key)) }}
                         @if($row->is_encrypted)<span class="badge-enc">🔒 encrypted</span>@else<span class="badge-plain">visible</span>@endif
                     </div>
                     @if($row->key === 'convert_fee_percent')
-                        <div class="field-desc">Your platform fee is added to NOWPayments’ conversion fee. Users see one combined fee percentage and amount.</div>
+                        <div class="field-desc">Your platform fee is added to NOWPayments’ provider swap fee. Users see one combined fee percentage and amount.</div>
+                    @elseif($row->key === 'cryptomus_convert_enabled')<div class="field-desc">Show or hide the crypto swap page for customers.</div>
                     @elseif($row->description)<div class="field-desc">{{ $row->description }}</div>@endif
                 </div>
                 <div class="field-input">
@@ -296,7 +297,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     @elseif($row->key === 'convert_mode')
                         @php $cm = $row->value ?? 'cryptomus'; @endphp
                         <select name="{{ $row->key }}">
-                            <option value="compare"   {{ $cm === 'compare'   ? 'selected' : '' }}>📊 Compare — price comparison only, no conversions</option>
+                            <option value="compare"   {{ $cm === 'compare'   ? 'selected' : '' }}>📊 Compare — price comparison only, swaps disabled</option>
                             <option value="cryptomus" {{ $cm === 'cryptomus' ? 'selected' : '' }}>⚡ Cryptomus — automated via Cryptomus API</option>
                             <option value="nowpayments" {{ $cm === 'nowpayments' ? 'selected' : '' }}>🔁 NOWPayments Custody — swap from user crypto wallets</option>
                             <option value="manual"    {{ $cm === 'manual'    ? 'selected' : '' }}>🖐 Manual — user submits wallet, admin processes</option>
@@ -372,7 +373,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     <button type="button" class="btn btn-sm btn-outline-info" id="nowpayments-custody-test-btn" onclick="testNowPaymentsCustody()"><i class="bi bi-shield-check me-1"></i>Test Custody credentials</button>
                     <span id="nowpayments-custody-test-result" class="small" role="status">Save the account email and password first.</span>
                 </div>
-                <div class="field-desc mt-2">Custody account credentials are encrypted in the settings database and used only on the server to obtain short-lived conversion tokens. Enter the separate platform swap fee above; customers see only the combined fee estimate.</div>
+                <div class="field-desc mt-2">Custody account credentials are encrypted in the settings database and used only on the server to obtain short-lived swap tokens. Enter the separate platform swap fee above; customers see only the combined fee estimate.</div>
             </div>
         </div>
 

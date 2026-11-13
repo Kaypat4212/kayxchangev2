@@ -240,7 +240,7 @@
     <div class="sell-hero">
         <div class="sell-hero-icon"><i class="bi bi-arrow-up-circle-fill"></i></div>
         <h1>Sell Crypto</h1>
-        <p>Convert your crypto to Naira — fast, secure, and at competitive rates.</p>
+        <p>Get a clear naira payout quote for your crypto before you submit your trade.</p>
     </div>
 
     {{-- Progress --}}

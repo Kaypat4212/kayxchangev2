@@ -215,7 +215,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 <hr class="conv-divider">
                 <div class="conv-crypto-label">Crypto Equivalent</div>
                 <div class="conv-crypto-value" id="cryptoEquivAmount">&#8212;</div>
-                <button type="button" class="btn-toggle-crypto" id="toggleConvBtn" title="Toggle view"><i class="bi bi-arrow-left-right me-1"></i>Convert</button>
+                <button type="button" class="btn-toggle-crypto" id="toggleConvBtn" title="Toggle amount view"><i class="bi bi-arrow-left-right me-1"></i>Toggle amount</button>
             </div>
 
             <button type="button" id="nextButton" class="btn-kx-primary" disabled>
@@ -551,7 +551,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 convertedAmountEl.textContent = convertedAmountEl.dataset.usd || convertedAmountEl.textContent;
             }
             cryptoEquivEl.textContent = cryptoEquivEl.dataset.qty || cryptoEquivEl.textContent;
-            toggleConvBtn.innerHTML = '<i class="bi bi-arrow-left-right me-1"></i>Convert';
+            toggleConvBtn.innerHTML = '<i class="bi bi-arrow-left-right me-1"></i>Toggle amount';
         }
     }
 

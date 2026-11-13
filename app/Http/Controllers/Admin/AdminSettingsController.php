@@ -174,7 +174,7 @@ class AdminSettingsController extends Controller
             return back()->with('error', 'Choose a supported crypto conversion mode.');
         }
         if (isset($data['convert_fee_percent']) && (!is_numeric($data['convert_fee_percent']) || (float)$data['convert_fee_percent'] < 0 || (float)$data['convert_fee_percent'] > 19.5)) {
-            return back()->with('error', 'The platform conversion fee must be between 0% and 19.5%.');
+            return back()->with('error', 'The platform swap fee must be between 0% and 19.5%.');
         }
 
         foreach ($data as $key => $value) {
@@ -199,9 +199,21 @@ class AdminSettingsController extends Controller
     {
         try {
             $result = $provider->testConnection();
+            try {
+                $usdtBep20Minimum = $provider->minimumUsd('usdtbsc');
+                $minimumMessage = $usdtBep20Minimum > 0
+                    ? ' USDT BEP20 live minimum: $' . number_format($usdtBep20Minimum, 2) . '.'
+                    : ' The live minimum endpoint returned no fiat minimum; invoice creation still uses NOWPayments validation.';
+            } catch (\Throwable $minimumError) {
+                Log::warning('NOWPayments API key test passed but minimum quote probe failed.', [
+                    'environment' => $result['environment'],
+                    'error' => $minimumError->getMessage(),
+                ]);
+                $minimumMessage = ' The key and currency list are valid, but the minimum quote probe failed; invoice creation will still be attempted and the payment endpoint will validate the amount.';
+            }
             return response()->json([
                 'ok' => true,
-                'message' => 'NOWPayments ' . strtoupper($result['environment']) . ' API key accepted. Available currencies: ' . $result['currency_count'] . '.',
+                'message' => 'NOWPayments ' . strtoupper($result['environment']) . ' API key accepted. Available currencies: ' . $result['currency_count'] . '.' . $minimumMessage,
             ]);
         } catch (\Throwable $e) {
             return response()->json(['ok'=>false, 'message'=>$e->getMessage()], 422);

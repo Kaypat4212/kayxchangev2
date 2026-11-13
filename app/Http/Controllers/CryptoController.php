@@ -128,7 +128,7 @@ class CryptoController extends Controller
         // Check if convert feature is enabled
         $convertEnabled = \App\Models\AdminSetting::getSetting('cryptomus_convert_enabled', '1');
         if ($convertEnabled !== '1') {
-            abort(404, 'Convert feature is currently disabled.');
+            abort(404, 'Swap feature is currently disabled.');
         }
 
         $rateService = new \App\Services\ExchangeRateService();
@@ -265,7 +265,7 @@ class CryptoController extends Controller
                 }
                 return response()->json([
                     'success' => false,
-                    'message' => 'Conversions are currently in compare-only mode.'
+                    'message' => 'Swaps are currently disabled in compare-only mode.'
                 ], 400);
             }
 
@@ -329,7 +329,7 @@ class CryptoController extends Controller
                 'crypto_currency' => $fromCoin, // User pays in the source coin
                 'order_id' => 'conv_' . $conversion->id,
                 'url_callback' => route('cryptomus.webhook'),
-                'url_return' => route('convert.success', $conversion->id),
+                'url_return' => route('swap.success', $conversion->id),
                 'lifetime' => 3600, // 1 hour
                 'additional_data' => json_encode([
                     'conversion_id' => $conversion->id,

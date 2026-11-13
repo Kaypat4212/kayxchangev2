@@ -90,11 +90,16 @@ class CryptoWalletService
                 if ($amount + 0.000001 < $minimumUsd) throw new DepositMinimumException($minimumUsd);
             } catch (DepositMinimumException $e) {
                 throw $e;
-            } catch (NowPaymentsApiException $e) {
-                if (!$e->isTransient()) throw $e;
-                $fallbackContext = $this->buildManualFallbackContext($currency, $network, $amount, $inputDetails);
-                if (!$fallbackContext) throw $e;
-                $fallbackContext['reason'] = 'Provider temporarily unavailable during minimum check.';
+            } catch (\Throwable $e) {
+                // The payment endpoint performs its own authoritative amount and
+                // currency validation. A separate minimum-quote outage should
+                // not stop an otherwise valid invoice from being created.
+                Log::warning('NOWPayments minimum quote check failed; continuing to authoritative payment creation.', [
+                    'currency' => $currency,
+                    'network' => $network,
+                    'pay_currency' => $payCurrency,
+                    'exception' => $e->getMessage(),
+                ]);
             }
         }
 

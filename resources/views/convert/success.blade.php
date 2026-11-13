@@ -31,8 +31,8 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
     {{-- Header --}}
     <div class="kx-hero">
-        <h1><i class="bi bi-arrow-left-right me-2"></i>{{ $conversion->mode === 'nowpayments' && $conversion->status !== 'completed' ? 'Swap in progress' : ($conversion->status === 'completed' ? 'Conversion Successful' : 'Conversion update') }}</h1>
-        <p>{{ $conversion->mode === 'nowpayments' && $conversion->status !== 'completed' ? 'We are checking the provider status and will update your wallets after confirmation.' : 'Your cryptocurrency conversion status and details' }}</p>
+        <h1><i class="bi bi-arrow-left-right me-2"></i>{{ $conversion->status === 'completed' ? 'Swap complete' : ($conversion->status === 'failed' ? 'Swap update' : 'Swap in progress') }}</h1>
+        <p>{{ $conversion->mode === 'nowpayments' && $conversion->status !== 'completed' ? 'We are checking the provider status and will update your wallets after confirmation.' : 'Your cryptocurrency swap status and details' }}</p>
     </div>
 
     {{-- Success Card --}}
@@ -60,7 +60,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
         @if($conversion->isManual())
         <p style="color:var(--kx-muted);font-size:.9rem;margin-bottom:1rem;">
-            Your conversion request has been submitted. Our team will process it and send
+            Your swap request has been submitted. Our team will process it and send
             <strong style="color:var(--kx-text);">{{ rtrim(rtrim(number_format((float) $conversion->to_amount, 8), '0'), '.') }} {{ $conversion->to_coin }}</strong>
             to your wallet address:
         </p>
@@ -79,7 +79,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         </p>
         @else
         <p style="color:var(--kx-muted);font-size:.9rem;margin-bottom:1.5rem;">
-            Your converted {{ $conversion->to_coin }} has been credited to your wallet.
+            Your swapped {{ $conversion->to_coin }} has been credited to your wallet.
         </p>
         @endif
 
@@ -92,9 +92,9 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     <div class="kx-card">
         <h6 style="color:var(--kx-text);margin-bottom:1rem;">What would you like to do next?</h6>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
-            <a href="{{ route('convert') }}" style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:8px;padding:1rem;text-decoration:none;text-align:center;color:var(--kx-text);">
+            <a href="{{ route('swap') }}" style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:8px;padding:1rem;text-decoration:none;text-align:center;color:var(--kx-text);">
                 <i class="bi bi-arrow-left-right" style="font-size:1.5rem;color:var(--kx-green);margin-bottom:.5rem;"></i>
-                <div style="font-size:.9rem;font-weight:600;">Convert Again</div>
+                <div style="font-size:.9rem;font-weight:600;">Swap again</div>
             </a>
             <a href="{{ route('buy') }}" style="background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:8px;padding:1rem;text-decoration:none;text-align:center;color:var(--kx-text);">
                 <i class="bi bi-cash" style="font-size:1.5rem;color:var(--kx-green);margin-bottom:.5rem;"></i>
@@ -106,7 +106,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 @if($conversion->mode === 'nowpayments' && in_array($conversion->status, ['pending', 'processing'], true))
 <script>
 (function () {
-    const url = @json(route('convert.status', $conversion->id));
+    const url = @json(route('swap.status', $conversion->id));
     const statusEl = document.getElementById('conversionStatus');
     const messageEl = document.getElementById('conversionMessage');
     const toLabelEl = document.getElementById('toAmountLabel');

@@ -161,9 +161,9 @@
             <i class="bi bi-grid-1x2-fill"></i><span>Home</span>
         </a>
         @if(\App\Models\AdminSetting::getSetting('cryptomus_convert_enabled', '1') === '1')
-        <a href="{{ url('/convert') }}"
-           class="kx-bnav-item @if(request()->is('convert*')) kx-bnav-active @endif">
-            <i class="bi bi-arrow-left-right"></i><span>Convert</span>
+        <a href="{{ url('/swap') }}"
+           class="kx-bnav-item @if(request()->is('swap*')) kx-bnav-active @endif">
+            <i class="bi bi-arrow-left-right"></i><span>Swap</span>
         </a>
         @endif
         <a href="{{ url('/sell') }}"
