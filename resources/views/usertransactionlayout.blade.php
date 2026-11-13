@@ -38,6 +38,7 @@
             transform: translate(-50%, -50%);
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}">
 </head>
 
 <body class="bg-light">

@@ -145,6 +145,7 @@
         z-index: 9999;
     }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}">
     @stack('styles')
 </head>
 

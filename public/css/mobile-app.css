@@ -1,0 +1,127 @@
+/* Shared mobile-first polish for KayXchange customer and admin screens. */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: 5rem;
+}
+
+body {
+    min-height: 100vh;
+    min-height: 100svh;
+    overflow-x: clip;
+    -webkit-tap-highlight-color: transparent;
+}
+
+img, video, canvas, svg {
+    max-width: 100%;
+}
+
+button, [role="button"], a, input, select, textarea {
+    touch-action: manipulation;
+}
+
+button, .btn, [role="button"] {
+    min-height: 44px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select, textarea, .form-control, .form-select {
+    font-size: 16px;
+}
+
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.modal {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+.kx-bottom-nav {
+    min-height: 64px;
+    height: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+@media (max-width: 767.98px) {
+    body {
+        padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    }
+
+    main, .container, .container-fluid, .container-xl {
+        min-width: 0;
+    }
+
+    .container, .container-fluid, .container-xl {
+        --bs-gutter-x: 1rem;
+    }
+
+    .row {
+        --bs-gutter-x: 1rem;
+    }
+
+    .btn, button.btn {
+        padding-top: .65rem;
+        padding-bottom: .65rem;
+    }
+
+    .modal-dialog {
+        margin: .5rem;
+    }
+
+    .modal-dialog-centered {
+        align-items: flex-end;
+        min-height: calc(100% - 1rem);
+    }
+
+    .modal-content {
+        border-radius: 22px 22px 16px 16px;
+        max-height: calc(100svh - 1rem - env(safe-area-inset-top));
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .kx-bottom-nav {
+        padding-left: max(4px, env(safe-area-inset-left));
+        padding-right: max(4px, env(safe-area-inset-right));
+    }
+
+    .kx-bnav-item {
+        min-width: 0;
+        min-height: 58px;
+        font-size: .68rem;
+    }
+
+    .adminnavlayout .container-fluid {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    pre, code, .text-break, td, th {
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 380px) {
+    .kx-bnav-item {
+        font-size: .62rem;
+        padding-left: 2px;
+        padding-right: 2px;
+    }
+
+    .kx-bnav-item i {
+        font-size: 1.15rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}

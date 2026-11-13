@@ -85,6 +85,7 @@
         #adminNavbar .navbar-actions { flex-wrap: wrap; padding: .5rem 0; }
     }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}">
     @stack('styles')
 </head>
 <body>
