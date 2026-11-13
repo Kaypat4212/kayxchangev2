@@ -233,6 +233,21 @@ class AdminSettingsController extends Controller
             ->header('Pragma', 'no-cache');
     }
 
+    /** Reveal the encrypted NOWPayments IPN secret after an explicit admin request. */
+    public function previewNowPaymentsIpnSecret()
+    {
+        $ipnSecret = (string) AdminSetting::getSetting('nowpayments_ipn_secret', '');
+        if ($ipnSecret === '') {
+            return response()->json(['ok' => false, 'message' => 'No saved NOWPayments IPN secret is available to preview.'], 404)
+                ->header('Cache-Control', 'private, no-store, max-age=0')
+                ->header('Pragma', 'no-cache');
+        }
+
+        return response()->json(['ok' => true, 'ipn_secret' => $ipnSecret])
+            ->header('Cache-Control', 'private, no-store, max-age=0')
+            ->header('Pragma', 'no-cache');
+    }
+
     public function cloudflareAction(Request $request)
     {
         $action = $request->input('action');

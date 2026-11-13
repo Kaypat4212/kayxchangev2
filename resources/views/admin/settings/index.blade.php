@@ -313,6 +313,14 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             </button>
                         </div>
                         <div id="nowpayments-api-key-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved key stays masked until you preview it.</div>
+                    @elseif($row->key === 'nowpayments_ipn_secret')
+                        <div class="input-group">
+                            <input type="password" name="{{ $row->key }}" id="nowpayments-ipn-secret-field" placeholder="{{ $row->display_value ?: 'Enter IPN secret' }}" autocomplete="new-password" spellcheck="false">
+                            <button type="button" class="btn btn-outline-secondary" id="nowpayments-ipn-secret-preview" onclick="previewNowPaymentsIpnSecret()" aria-label="Preview saved NOWPayments IPN secret" aria-pressed="false">
+                                <i class="bi bi-eye me-1" aria-hidden="true"></i>Preview
+                            </button>
+                        </div>
+                        <div id="nowpayments-ipn-secret-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved IPN secret stays masked until you preview it.</div>
                     @elseif($row->is_encrypted)
                         <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password">
                     @else
@@ -327,6 +335,39 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     <span id="nowpayments-test-result" class="small" role="status">Save the API key and environment setting before testing.</span>
                 </div>
                 <div class="field-desc mt-2">This checks the saved API key against the selected Sandbox or Live endpoint without creating a payment.</div>
+                @php
+                    $nowPaymentsIpnUrl = route('nowpayments.webhook');
+                    $nowPaymentsIpnScheme = parse_url($nowPaymentsIpnUrl, PHP_URL_SCHEME);
+                    $nowPaymentsIpnHost = strtolower((string) parse_url($nowPaymentsIpnUrl, PHP_URL_HOST));
+                    $nowPaymentsIpnSecretConfigured = (string) \App\Models\AdminSetting::getSetting('nowpayments_ipn_secret', '') !== '';
+                    $nowPaymentsIpnReady = $nowPaymentsIpnScheme === 'https'
+                        && $nowPaymentsIpnHost !== ''
+                        && !in_array($nowPaymentsIpnHost, ['localhost', '127.0.0.1', '::1', 'example.com', 'www.example.com'], true)
+                        && !str_ends_with($nowPaymentsIpnHost, '.test');
+                @endphp
+                <div class="mt-3 p-3 rounded-3" style="background:rgba(56,189,248,.055);border:1px solid rgba(56,189,248,.16)">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                        <div>
+                            <div class="fw-bold" style="color:#d9f2ff"><i class="bi bi-broadcast-pin me-1"></i>NOWPayments IPN webhook</div>
+                            <div class="field-desc mt-1">Use this callback URL in NOWPayments notifications. New crypto deposit requests also send this URL automatically.</div>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <span class="badge {{ $nowPaymentsIpnReady ? 'bg-success' : 'bg-warning text-dark' }}">{{ $nowPaymentsIpnReady ? 'HTTPS endpoint ready' : 'Check APP_URL / HTTPS' }}</span>
+                            <span class="badge {{ $nowPaymentsIpnSecretConfigured ? 'bg-success' : 'bg-secondary' }}">{{ $nowPaymentsIpnSecretConfigured ? 'IPN secret saved' : 'IPN secret not set' }}</span>
+                        </div>
+                    </div>
+                    <div class="input-group mt-3">
+                        <input type="text" class="form-control" id="nowpayments-ipn-url" value="{{ $nowPaymentsIpnUrl }}" readonly aria-label="NOWPayments IPN callback URL">
+                        <button class="btn btn-outline-info" type="button" onclick="copyNowPaymentsIpnUrl()"><i class="bi bi-copy me-1"></i>Copy URL</button>
+                        <button class="btn btn-outline-success" type="button" id="nowpayments-ipn-health-btn" onclick="testNowPaymentsIpnEndpoint()"><i class="bi bi-heart-pulse me-1"></i>Test endpoint</button>
+                    </div>
+                    <div id="nowpayments-ipn-health-result" class="field-desc mt-2" role="status" aria-live="polite">Endpoint check confirms public reachability; provider signatures are still verified on each payment callback.</div>
+                    <ol class="field-desc mt-3 mb-0 ps-3">
+                        <li>Save the NOWPayments IPN Secret above.</li>
+                        <li>Copy this URL into the NOWPayments dashboard under Payment Settings → IPN callback URL.</li>
+                        <li>Keep the site on HTTPS and allow NOWPayments callbacks through your firewall or CDN.</li>
+                    </ol>
+                </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
                     <button type="button" class="btn btn-sm btn-outline-info" id="nowpayments-custody-test-btn" onclick="testNowPaymentsCustody()"><i class="bi bi-shield-check me-1"></i>Test Custody credentials</button>
                     <span id="nowpayments-custody-test-result" class="small" role="status">Save the account email and password first.</span>
@@ -501,6 +542,88 @@ async function cfAction(action) {
                 status.textContent = 'Saved API key revealed. Hide it when you are finished.';
             } catch (error) {
                 status.textContent = error.message || 'Could not preview the saved key. Try again.';
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function previewNowPaymentsIpnSecret() {
+            const field = document.getElementById('nowpayments-ipn-secret-field');
+            const button = document.getElementById('nowpayments-ipn-secret-preview');
+            const status = document.getElementById('nowpayments-ipn-secret-preview-status');
+            if (!field || !button || !status) return;
+
+            if (field.type === 'text') {
+                field.type = 'password';
+                button.innerHTML = '<i class="bi bi-eye me-1" aria-hidden="true"></i>Preview';
+                button.setAttribute('aria-pressed', 'false');
+                status.textContent = 'The IPN secret is hidden again.';
+                return;
+            }
+            if (field.value && field.dataset.loadedSavedSecret !== 'true') {
+                field.type = 'text';
+                button.innerHTML = '<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>Hide';
+                button.setAttribute('aria-pressed', 'true');
+                status.textContent = 'Previewing the unsaved IPN secret. Hide it when finished.';
+                return;
+            }
+
+            button.disabled = true;
+            status.textContent = 'Loading the saved IPN secret securely…';
+            try {
+                const response = await fetch(@json(route('admin.settings.nowpayments-ipn-secret-preview')), {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json', 'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({})
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok || !data.ipn_secret) throw new Error(data.message || 'The saved IPN secret could not be loaded.');
+                field.value = data.ipn_secret;
+                field.dataset.loadedSavedSecret = 'true';
+                field.type = 'text';
+                field.focus();
+                field.select();
+                button.innerHTML = '<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>Hide';
+                button.setAttribute('aria-pressed', 'true');
+                status.textContent = 'Saved IPN secret revealed. Hide it when finished.';
+            } catch (error) {
+                status.textContent = error.message || 'Could not preview the saved IPN secret. Try again.';
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function copyNowPaymentsIpnUrl() {
+            const field = document.getElementById('nowpayments-ipn-url');
+            const result = document.getElementById('nowpayments-ipn-health-result');
+            try {
+                await navigator.clipboard.writeText(field.value);
+                result.textContent = 'IPN callback URL copied.';
+            } catch (_) {
+                field.select();
+                document.execCommand('copy');
+                result.textContent = 'IPN callback URL copied.';
+            }
+        }
+
+        async function testNowPaymentsIpnEndpoint() {
+            const button = document.getElementById('nowpayments-ipn-health-btn');
+            const result = document.getElementById('nowpayments-ipn-health-result');
+            button.disabled = true;
+            result.textContent = 'Checking the public webhook endpoint…';
+            try {
+                const response = await fetch(@json(route('nowpayments.webhook.health')), {
+                    method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' },
+                    cache: 'no-store'
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error(data.message || 'The webhook endpoint did not respond successfully.');
+                result.textContent = 'Endpoint is reachable. NOWPayments can POST signed notifications to the URL above.';
+            } catch (error) {
+                result.textContent = error.message || 'Could not reach the webhook endpoint.';
             } finally {
                 button.disabled = false;
             }

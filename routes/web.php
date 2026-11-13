@@ -733,6 +733,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('settings',                   [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('settings.update');
     Route::post('settings/nowpayments-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPayments'])->middleware('throttle:5,1')->name('settings.nowpayments-test');
     Route::post('settings/nowpayments-api-key-preview', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'previewNowPaymentsApiKey'])->middleware('throttle:3,1')->name('settings.nowpayments-api-key-preview');
+    Route::post('settings/nowpayments-ipn-secret-preview', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'previewNowPaymentsIpnSecret'])->middleware('throttle:3,1')->name('settings.nowpayments-ipn-secret-preview');
     Route::post('settings/nowpayments-custody-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPaymentsCustody'])->middleware('throttle:3,1')->name('settings.nowpayments-custody-test');
     Route::post('settings/cloudflare-action', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'cloudflareAction'])->name('settings.cloudflare-action');
     Route::get('settings/ai-usage',           [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiUsage'])->name('settings.ai-usage');

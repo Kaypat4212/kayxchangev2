@@ -103,6 +103,7 @@ Route::get('/telegram/setup-webhook', [TelegramWebhookController::class, 'setup'
 // Cryptomus Webhook Route
 Route::post('/cryptomus/webhook', [CryptomusWebhookController::class, 'handle']);
 Route::post('/nowpayments/webhook', NowPaymentsWebhookController::class)->name('nowpayments.webhook');
+Route::get('/nowpayments/webhook/health', [NowPaymentsWebhookController::class, 'health'])->name('nowpayments.webhook.health');
 Route::get('/telegram/bot-info', [TelegramWebhookController::class, 'botInfo']);
 
 // Webhook health check (for monitoring)

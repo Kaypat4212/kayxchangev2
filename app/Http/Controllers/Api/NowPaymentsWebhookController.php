@@ -11,6 +11,15 @@ use Illuminate\Support\Facades\Log;
 
 class NowPaymentsWebhookController extends Controller
 {
+    public function health()
+    {
+        return response()->json([
+            'ok' => true,
+            'service' => 'nowpayments-ipn',
+            'message' => 'NOWPayments IPN endpoint is reachable. Signed POST notifications are required for deposit updates.',
+        ])->header('Cache-Control', 'no-store, max-age=0');
+    }
+
     public function __invoke(Request $request, NowPaymentsService $provider, CryptoWalletService $wallets)
     {
         $payload = $request->json()->all();
@@ -39,13 +48,12 @@ class NowPaymentsWebhookController extends Controller
         }
 
         $expectedCrypto = (float)($metadata['expected_crypto_amount'] ?? 0);
-        if ($expectedCrypto > 0 && isset($payload['actually_paid']) && (float)$payload['actually_paid'] + 0.00000001 < $expectedCrypto) {
-            Log::info('NOWPayments IPN reports an underpayment; deposit remains pending', ['deposit_id'=>$deposit->id]);
-            return response()->json(['status'=>'underpaid']);
-        }
+        $isUnderpaid = $expectedCrypto > 0 && isset($payload['actually_paid'])
+            && (float)$payload['actually_paid'] + 0.00000001 < $expectedCrypto;
+        if ($isUnderpaid) Log::info('NOWPayments IPN reports an underpayment; recording partial deposit progress', ['deposit_id'=>$deposit->id]);
 
         $payload['_provider'] = 'nowpayments';
         $wallets->processDepositSuccess($payload);
-        return response()->json(['status'=>'ok']);
+        return response()->json(['status' => $isUnderpaid ? 'partial' : 'ok']);
     }
 }
