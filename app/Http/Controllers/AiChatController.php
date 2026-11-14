@@ -713,6 +713,7 @@ class AiChatController extends Controller
     {
         $url         = url('/gift-cards');
         $enabled = filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        $salesEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
         $activeRates = GiftCardRate::where('is_active', true)
             ->whereIn('country', ['US', 'UK'])
             ->orderBy('category')->orderBy('name')
@@ -720,7 +721,7 @@ class AiChatController extends Controller
 
         $msg  = "🎁 **USA & UK Gift Cards**\n\n";
         $msg .= $enabled ? "You can request USA and UK gift card purchases from your Naira wallet. Requests are manually fulfilled.\n" : "Gift card purchases are temporarily paused by the platform team.\n";
-        $msg .= "Gift card selling is not available yet.\n\n";
+        $msg .= $salesEnabled ? "Gift card sales are open for USA and UK cards with active buy rates. Requests require admin verification before any Naira credit.\n\n" : "Gift card selling is temporarily unavailable.\n\n";
         $msg .= "Purchase page and current rates:\n[🔗 {$url}]({$url})\n";
 
         if ($activeRates->isNotEmpty()) {
@@ -941,6 +942,7 @@ class AiChatController extends Controller
         $billServices = app(\App\Services\BillPaymentProviderService::class);
         $billAvailable = $billServices->billPaymentsEnabled() && $billServices->providers() !== [];
         $utilityAvailable = $billAvailable && $billServices->utilityPaymentsEnabled();
+        $giftSalesEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
         $billFeatureFacts = '- Airtime and mobile data payments: ' . ($billAvailable ? 'currently enabled when providers are live' : 'currently unavailable; tell users the feature may be switched off or still being configured') . "\n"
             . '- Electricity and cable TV payments: ' . ($utilityAvailable ? 'currently enabled when providers are live' : 'currently unavailable or switched off') . "\n";
         return "You are KayBot, a smart and friendly crypto trading assistant for KayXchange - a Nigerian crypto exchange.\n\n"
@@ -956,7 +958,7 @@ class AiChatController extends Controller
             . "- Buy: Pay NGN via bank transfer -> receive crypto to wallet\n"
             . "- Sell: Send crypto -> receive NGN to bank account\n"
             . "- Wallets: USD is a read-only estimate of supported crypto wallet holdings and excludes NGN. Crypto stays on-platform; external crypto sends are not available yet. Users can convert selected crypto to NGN from the portfolio page.\n"
-            . "- Gift cards: USA and UK gift card purchase requests can be placed at /gift-cards when enabled; rates are set by admins, payment is taken from NGN wallet, and admin manually fulfills requests. Gift card selling is not available yet.\n"
+            . "- Gift cards: USA and UK purchase requests can be placed at /gift-cards when enabled; the NGN charge is reserved and admin manually fulfills the order. Gift card sales are " . ($giftSalesEnabled ? 'enabled for supported cards with active buy rates; card submissions require admin verification and approval before NGN credit' : 'paused by default') . ".\n"
             . "- Crypto deposit networks currently configured in the platform: BTC on Bitcoin; ETH on ERC20; USDT on TRC20, ERC20, or BEP20; USDC on ERC20 or BEP20; BNB on BEP20; SOL on Solana\n"
             . "- Crypto deposits: users select an asset and network, follow the displayed address and amount, and track pending/confirmation status on the deposit page\n"
             . "- If an automated crypto deposit service is temporarily unavailable, a configured manual receiving address may be offered; the user submits a transaction hash and an admin verifies it before the balance is credited\n"

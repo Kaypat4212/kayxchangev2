@@ -258,7 +258,7 @@
            class="kx-tab {{ $activeType==='withdrawal' ? 'active' : '' }}">
             <i class="bi bi-bank"></i> Withdrawals
         </a>
-        @foreach(['deposit'=>'Deposits','crypto_deposit'=>'Crypto deposits','crypto_withdrawal'=>'Crypto withdrawals','crypto_swap'=>'Crypto swaps','gift_card_purchase'=>'Gift cards','bill_payment'=>'Bills','transfer'=>'Transfers'] as $kind=>$label)
+        @foreach(['deposit'=>'Deposits','crypto_deposit'=>'Crypto deposits','crypto_withdrawal'=>'Crypto withdrawals','crypto_swap'=>'Crypto swaps','gift_card_purchase'=>'Gift card purchases','gift_card_sale'=>'Gift card sales','bill_payment'=>'Bills','transfer'=>'Transfers'] as $kind=>$label)
         <a href="{{ route('transactions.history', array_merge(request()->except('type'), ['type'=>$kind])) }}" class="kx-tab {{ $activeType===$kind ? 'active' : '' }}">{{ $label }}</a>
         @endforeach
     </div>
@@ -354,7 +354,7 @@
                     <td>
                         <span class="kx-type-badge {{ $typClass }}">
                             <i class="bi {{ $typIcon }}"></i>
-                            {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ($trade->type === 'gift_card_purchase' ? 'Gift card purchase' : ucfirst($trade->type)) }}
+                            {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ($trade->type === 'gift_card_purchase' ? 'Gift card purchase' : ($trade->type === 'gift_card_sale' ? 'Gift card sale' : ucfirst($trade->type))) }}
                         </span>
                     </td>
                     <td style="font-weight:600;color:#fff;">{{ $trade->coin ?? '—' }}</td>
@@ -407,7 +407,7 @@
         <div class="kx-tx-card">
             <div class="kx-tx-card-top">
                 <span class="kx-type-badge {{ $typClass }}">
-                    <i class="bi {{ $typIcon }}"></i> {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ($trade->type === 'gift_card_purchase' ? 'Gift card purchase' : ucfirst($trade->type)) }}
+                    <i class="bi {{ $typIcon }}"></i> {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ($trade->type === 'gift_card_purchase' ? 'Gift card purchase' : ($trade->type === 'gift_card_sale' ? 'Gift card sale' : ucfirst($trade->type))) }}
                 </span>
                 <span class="kx-sts {{ $stsClass }}">
                     @if(in_array($trade->status,['completed','approved']))<i class="bi bi-check-circle-fill"></i>
@@ -649,9 +649,9 @@ function safeText(value) {
 }
 
 function renderDrawer(data) {
-    const typeLabels  = { buy: 'Buy Order', sell: 'Sell Order', withdrawal: 'Withdrawal', deposit: 'Deposit', crypto_deposit: 'Crypto Deposit', crypto_withdrawal: 'Crypto Withdrawal', crypto_swap: 'Crypto Swap', gift_card_purchase: 'Gift Card Purchase', bill_payment: 'Bill Payment', transfer: 'Wallet Transfer' };
-    const typeColors  = { buy: '#38bdf8', sell: '#00cc00', withdrawal: '#c084fc', deposit:'#fbbf24', crypto_deposit:'#7dd3fc', crypto_withdrawal:'#7dd3fc', crypto_swap:'#7dd3fc', gift_card_purchase:'#f9a8d4', bill_payment:'#fdba74', transfer:'#c084fc' };
-    const typeIcons   = { buy: 'bi-arrow-down-circle-fill', sell: 'bi-arrow-up-circle-fill', withdrawal: 'bi-bank', deposit:'bi-box-arrow-in-down', crypto_deposit:'bi-box-arrow-in-down', crypto_withdrawal:'bi-box-arrow-up', crypto_swap:'bi-arrow-left-right', gift_card_purchase:'bi-gift-fill', bill_payment:'bi-receipt', transfer:'bi-arrow-left-right' };
+    const typeLabels  = { buy: 'Buy Order', sell: 'Sell Order', withdrawal: 'Withdrawal', deposit: 'Deposit', crypto_deposit: 'Crypto Deposit', crypto_withdrawal: 'Crypto Withdrawal', crypto_swap: 'Crypto Swap', gift_card_purchase: 'Gift Card Purchase', gift_card_sale: 'Gift Card Sale', bill_payment: 'Bill Payment', transfer: 'Wallet Transfer' };
+    const typeColors  = { buy: '#38bdf8', sell: '#00cc00', withdrawal: '#c084fc', deposit:'#fbbf24', crypto_deposit:'#7dd3fc', crypto_withdrawal:'#7dd3fc', crypto_swap:'#7dd3fc', gift_card_purchase:'#f9a8d4', gift_card_sale:'#fb923c', bill_payment:'#fdba74', transfer:'#c084fc' };
+    const typeIcons   = { buy: 'bi-arrow-down-circle-fill', sell: 'bi-arrow-up-circle-fill', withdrawal: 'bi-bank', deposit:'bi-box-arrow-in-down', crypto_deposit:'bi-box-arrow-in-down', crypto_withdrawal:'bi-box-arrow-up', crypto_swap:'bi-arrow-left-right', gift_card_purchase:'bi-gift-fill', gift_card_sale:'bi-gift', bill_payment:'bi-receipt', transfer:'bi-arrow-left-right' };
     const sColor = statusColor(data.status);
     const colorMap = { green: '#00cc00', yellow: '#ffc107', red: '#ef4444' };
 
@@ -804,7 +804,15 @@ function renderDrawer(data) {
         if (data.recipient_email) html += row('Delivery email', safeText(data.recipient_email));
         if (data.delivery_code) html += row('Gift card code', `<span class="mono">${safeText(data.delivery_code)}</span>`);
         if (data.admin_note) html += row('Admin update', safeText(data.admin_note));
-        html += `<div class="kx-note mt-2">Gift card sales are currently unavailable. Purchase requests are manually fulfilled.</div></div>`;
+        html += `<div class="kx-note mt-2">Purchase requests are manually fulfilled by KayXchange. Delivery details are only shown to you.</div></div>`;
+    }
+    if (data.type === 'gift_card_sale') {
+        html += `<div class="kx-detail-section"><div class="kx-detail-section-title">Gift card sale request</div>`;
+        if (data.card_name) html += row('Gift card', safeText(data.card_name) + ' · ' + safeText(data.country));
+        if (data.face_value) html += row('Card value', Number(data.face_value).toFixed(2) + ' ' + safeText(data.coin || ''));
+        if (data.unit_rate_ngn) html += row('Review rate', '₦' + Number(data.unit_rate_ngn).toLocaleString('en-NG', {minimumFractionDigits:2}) + ' per ' + safeText(data.coin || ''));
+        if (data.admin_note) html += row('Admin update', safeText(data.admin_note));
+        html += `<div class="kx-note mt-2">No funds are credited until the card is verified and the sale is approved.</div></div>`;
     }
 
     // Cancel button for pending transactions

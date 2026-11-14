@@ -143,7 +143,7 @@ select.gc-mini-input option{background:var(--kx-card);}
 <div class="container-xl">
 
     <h1 class="gc-page-title"><i class="bi bi-gift-fill me-2" style="color:#00cc00"></i>Gift Card Rates</h1>
-    <p class="gc-page-sub">Set buy &amp; sell rates (₦) for each gift card country. The customer purchase feature uses the <strong>Sell Rate</strong> as the amount KayXchange charges per face-value unit. Gift card selling stays unavailable.</p>
+    <p class="gc-page-sub">Set buy &amp; sell rates (₦) for each gift card country. Customer purchases use the <strong>Sell Rate</strong>; customer sales use the <strong>Buy Rate</strong> and require admin review.</p>
 
     {{-- Alerts --}}
     @if(session('success'))
@@ -154,8 +154,13 @@ select.gc-mini-input option{background:var(--kx-card);}
     @endif
 
     <div class="gc-add-card mb-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
-        <div><div class="gc-add-title mb-1"><i class="bi bi-toggles"></i> Customer gift card purchases</div><div style="font-size:.78rem;color:var(--kx-muted)">Only active USA and UK cards with a customer purchase rate are shown. Selling remains unavailable.</div></div>
+        <div><div class="gc-add-title mb-1"><i class="bi bi-toggles"></i> Customer gift card purchases</div><div style="font-size:.78rem;color:var(--kx-muted)">Only active USA and UK cards with a customer purchase rate are shown.</div></div>
         <div class="d-flex align-items-center gap-2"><span class="badge {{ $giftCardsEnabled ? 'bg-success' : 'bg-secondary' }}">{{ $giftCardsEnabled ? 'Purchases on' : 'Purchases off' }}</span><form method="POST" action="{{ route('admin.gift-card-rates.toggle-feature') }}">@csrf<input type="hidden" name="enabled" value="{{ $giftCardsEnabled ? 0 : 1 }}"><button class="gc-save-btn" type="submit">{{ $giftCardsEnabled ? 'Turn purchases off' : 'Turn purchases on' }}</button></form><a class="btn btn-outline-light btn-sm" href="{{ route('admin.gift-card-orders.index') }}"><i class="bi bi-inbox me-1"></i>Purchase requests</a></div>
+    </div>
+
+    <div class="gc-add-card mb-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+        <div><div class="gc-add-title mb-1"><i class="bi bi-shield-check"></i> Customer gift card sales</div><div style="font-size:.78rem;color:var(--kx-muted)">Sales are <strong>off by default</strong>. When enabled, users may submit USA and UK cards for manual verification. Naira is credited only after admin approval.</div></div>
+        <div class="d-flex align-items-center gap-2 flex-wrap"><span class="badge {{ $giftCardSalesEnabled ? 'bg-success' : 'bg-secondary' }}">{{ $giftCardSalesEnabled ? 'Sales on' : 'Sales off' }}</span><form method="POST" action="{{ route('admin.gift-card-rates.toggle-sales-feature') }}">@csrf<input type="hidden" name="enabled" value="{{ $giftCardSalesEnabled ? 0 : 1 }}"><button class="gc-save-btn" type="submit">{{ $giftCardSalesEnabled ? 'Turn sales off' : 'Turn sales on' }}</button></form><a class="btn btn-outline-light btn-sm" href="{{ route('admin.gift-card-sales.index') }}"><i class="bi bi-inbox me-1"></i>Sale requests</a></div>
     </div>
 
     {{-- Stats --}}

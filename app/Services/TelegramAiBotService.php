@@ -196,13 +196,18 @@ class TelegramAiBotService
         $billAvailable = $billServices->billPaymentsEnabled() && $billServices->providers() !== [];
         $utilityAvailable = $billAvailable && $billServices->utilityPaymentsEnabled();
         $giftCardsEnabled = filter_var(AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        $giftCardSalesEnabled = filter_var(AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
         $giftCardRates = GiftCardRate::where('is_active', true)->whereIn('country', ['US', 'UK'])->where('sell_rate', '>', 0)->orderBy('name')->limit(20)->get();
         $giftRateLines = $giftCardRates->map(fn($rate) => $rate->name . ' (' . $rate->country . '/' . $rate->currency . '): ₦' . number_format((float)$rate->sell_rate, 2) . ' per ' . $rate->currency)->implode("\n");
         if ($giftRateLines === '') $giftRateLines = 'No active USA/UK card purchase rates currently available.';
+        $giftSellRateLines = GiftCardRate::where('is_active', true)->whereIn('country', ['US', 'UK'])->where('buy_rate', '>', 0)->orderBy('name')->limit(20)->get()
+            ->map(fn($rate) => $rate->name . ' (' . $rate->country . '/' . $rate->currency . '): ₦' . number_format((float)$rate->buy_rate, 2) . ' per ' . $rate->currency)->implode("\n");
+        if ($giftSellRateLines === '') $giftSellRateLines = 'No active USA/UK card sale rates currently available.';
         $featureFacts = "Wallet guidance: KayXchange provides NGN, USD, and supported crypto wallet pages with history and balance views. Deposit networks currently include BTC/Bitcoin, ETH/ERC20, USDT/TRC20-ERC20-BEP20, USDC/ERC20-BEP20, BNB/BEP20, and SOL/Solana. Crypto deposits are network-specific and users should follow the address and amount shown on their deposit page. During provider downtime, a configured manual wallet may be used; users submit the transaction hash and an admin verifies the transfer before credit. Never say a deposit is credited until the account reflects it.\n"
             . 'USD wallet: read-only market valuation of supported crypto holdings; it does not include NGN or legacy cash USD. Users can convert selected crypto holdings into their NGN wallet. External crypto sends are currently unavailable.' . "\n"
-            . 'Gift cards: ' . ($giftCardsEnabled ? 'USA and UK purchases are enabled' : 'purchases are paused') . '; purchase rates use the sell rate set by admin, payment is reserved from NGN wallet, and admin manually fulfills pending orders. Gift card selling is not available yet. Purchase page: ' . url('/gift-cards') . ".\n"
+            . 'Gift cards: ' . ($giftCardsEnabled ? 'USA and UK purchases are enabled' : 'purchases are paused') . '; purchase rates use the sell rate set by admin, payment is reserved from NGN wallet, and admin manually fulfills pending orders. Gift card selling is ' . ($giftCardSalesEnabled ? 'enabled for USA and UK cards with an active buy rate; card submissions stay pending until admin verification and approval, then the approved NGN value is credited' : 'paused by default'). '. Purchase and sale page: ' . url('/gift-cards') . ".\n"
             . "Active USA/UK purchase rates:\n{$giftRateLines}\n"
+            . "Active USA/UK sale rates:\n{$giftSellRateLines}\n"
             . 'Airtime/data service availability: ' . ($billAvailable ? 'enabled subject to live provider configuration' : 'currently unavailable or switched off') . ".\n"
             . 'Electricity/cable TV service availability: ' . ($utilityAvailable ? 'enabled subject to live provider configuration' : 'currently unavailable or switched off') . ".\n";
 

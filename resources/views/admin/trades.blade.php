@@ -432,11 +432,10 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         @endif
                     </td>
                     <td>
-                        @if($t->wallet_address)
-                        <span style="font-size:.72rem;font-family:monospace;color:var(--kx-muted);max-width:90px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ $t->wallet_address }}">{{ $t->wallet_address }}</span>
-                        @else
-                        <span style="color:var(--kx-muted)">—</span>
-                        @endif
+                        <div class="small text-secondary">Platform receives</div>
+                        <span style="font-size:.72rem;font-family:monospace;color:var(--kx-muted);max-width:130px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ $t->wallet_address }}">{{ $t->wallet_address ?: '—' }}</span>
+                        <div class="small text-secondary mt-1">User sends from</div>
+                        <span style="font-size:.72rem;font-family:monospace;color:var(--kx-text);max-width:130px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ $t->sender_wallet_address }}">{{ $t->sender_wallet_address ?: 'Not provided' }}</span>
                     </td>
                     <td>
                         @php $proofPath = $t->payment_proof ?? $t->proof; @endphp

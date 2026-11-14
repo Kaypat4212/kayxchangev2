@@ -33,7 +33,8 @@ class RatesController extends Controller
     {
         $rates = \App\Models\GiftCardRate::where('is_active', true)->whereIn('country', ['US', 'UK'])->orderBy('category')->orderBy('name')->get();
         $enabled = filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
-        return view('rates.giftcard', compact('rates', 'enabled'));
+        $salesEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        return view('rates.giftcard', compact('rates', 'enabled', 'salesEnabled'));
     }
 
     // Show the edit form for a specific rate

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AdminSetting;
 use App\Models\GiftCardOrder;
 use App\Models\GiftCardRate;
+use App\Models\GiftCardSaleOrder;
 use App\Services\BalanceSettlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,55 @@ class GiftCardController extends Controller
         $rates = GiftCardRate::query()->where('is_active', true)->whereIn('country', ['US', 'UK'])
             ->where('sell_rate', '>', 0)->orderBy('category')->orderBy('name')->get();
         $orders = GiftCardOrder::where('user_id', auth()->id())->latest()->paginate(10);
-        return view('gift-cards.index', compact('enabled', 'rates', 'orders'));
+        $salesEnabled = filter_var(AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        $saleRates = GiftCardRate::query()->where('is_active', true)->whereIn('country', ['US', 'UK'])
+            ->where('buy_rate', '>', 0)->orderBy('category')->orderBy('name')->get();
+        $saleOrders = GiftCardSaleOrder::where('user_id', auth()->id())->latest()->paginate(10, ['*'], 'sales_page');
+        return view('gift-cards.index', compact('enabled', 'rates', 'orders', 'salesEnabled', 'saleRates', 'saleOrders'));
+    }
+
+    public function storeSale(Request $request)
+    {
+        abort_unless(filter_var(AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN), 404);
+        $data = $request->validate([
+            'gift_card_rate_id' => ['required', 'integer', 'exists:gift_card_rates,id'],
+            'face_value' => ['required', 'numeric', 'min:1', 'max:10000'],
+            'card_code' => ['required', 'string', 'min:4', 'max:2000'],
+            'card_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'customer_note' => ['nullable', 'string', 'max:500'],
+        ]);
+        $rate = GiftCardRate::query()->whereKey($data['gift_card_rate_id'])->where('is_active', true)
+            ->whereIn('country', ['US', 'UK'])->where('buy_rate', '>', 0)->firstOrFail();
+        $reference = 'GCS-' . now()->format('ymd') . '-' . Str::upper(Str::random(8));
+        $imagePath = $request->hasFile('card_image')
+            ? $request->file('card_image')->store('gift-card-sales', 'local')
+            : null;
+
+        try {
+            $order = DB::transaction(function () use ($request, $rate, $data, $reference, $imagePath) {
+                if (!filter_var(AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN)) abort(404);
+                return GiftCardSaleOrder::create([
+                    'user_id' => $request->user()->id, 'gift_card_rate_id' => $rate->id, 'reference' => $reference,
+                    'card_name' => $rate->name, 'country' => $rate->country, 'currency' => $rate->currency,
+                    'face_value' => $data['face_value'], 'unit_rate_ngn' => $rate->buy_rate,
+                    'estimated_ngn' => round((float) $data['face_value'] * (float) $rate->buy_rate, 2),
+                    'card_code' => $data['card_code'], 'image_path' => $imagePath,
+                    'customer_note' => $data['customer_note'] ?? null, 'status' => 'pending',
+                ]);
+            });
+        } catch (\Throwable $exception) {
+            if ($imagePath) \Illuminate\Support\Facades\Storage::disk('local')->delete($imagePath);
+            throw $exception;
+        }
+
+        foreach (\App\Models\User::where('is_admin', true)->pluck('id') as $adminId) {
+            \App\Models\Notification::create([
+                'admin_id' => $adminId, 'type' => 'warning', 'title' => 'Gift card sale needs review',
+                'message' => $order->reference . ' · ' . $order->card_name . ' ' . $order->country . ' · estimated ₦' . number_format((float) $order->estimated_ngn, 2),
+                'data' => ['type' => 'gift_card_sale', 'order_id' => $order->id], 'is_read' => false,
+            ]);
+        }
+        return redirect()->route('gift-cards.index')->with('success', 'Gift card sale ' . $order->reference . ' was submitted for review. No balance was credited yet.');
     }
 
     public function store(Request $request)

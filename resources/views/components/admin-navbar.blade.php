@@ -141,6 +141,9 @@
               <a class="dropdown-item @if(request()->is('admin/gift-card-orders*')) active @endif" href="{{ route('admin.gift-card-orders.index') }}">
                 <i class="bi bi-inbox me-2"></i>Gift Card Orders
               </a>
+              <a class="dropdown-item @if(request()->is('admin/gift-card-sales*')) active @endif" href="{{ route('admin.gift-card-sales.index') }}">
+                <i class="bi bi-card-list me-2"></i>Gift Card Sales
+              </a>
             </li>
             <li>
               <a class="dropdown-item @if(request()->is('admin/set-rates*') || request()->is('admin/edit-rate*') || request()->is('admin/rate*')) active @endif" href="{{ route('admin.crypto-rates.index') }}">

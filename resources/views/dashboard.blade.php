@@ -109,6 +109,20 @@
 
     /* ===== Stat Mini Cards ===== */
     .kx-stat { padding: 20px 22px; }
+    .kx-stats-grid { min-width:0; }
+    .kx-activity-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
+    .kx-activity-item { display:flex;align-items:flex-start;gap:12px;min-width:0;padding:13px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(255,255,255,.025); }
+    .kx-activity-icon { width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:12px;background:rgba(0,204,0,.12);color:#54df78;font-size:1rem; }
+    .kx-activity-copy { min-width:0;flex:1; }
+    .kx-activity-title { color:#eef8f0;font-size:.84rem;font-weight:750;line-height:1.35; }
+    .kx-activity-detail { color:rgba(255,255,255,.52);font-size:.73rem;line-height:1.45;overflow-wrap:anywhere;margin-top:3px; }
+    .kx-activity-meta { display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px;color:rgba(255,255,255,.38);font-size:.67rem; }
+    .kx-activity-status { display:inline-flex;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.07);color:#c8d6cc;font-weight:700;text-transform:capitalize; }
+    .kx-activity-amount { color:#c7f6d0;font-size:.79rem;font-weight:800;white-space:nowrap;margin-left:auto; }
+    body.light-mode .kx-activity-item { background:#fff;border-color:rgba(0,0,0,.08); }
+    body.light-mode .kx-activity-title { color:#142319; }
+    body.light-mode .kx-activity-detail,body.light-mode .kx-activity-meta { color:#66736a; }
+    @media(max-width:575.98px){.kx-stat{padding:15px 14px}.kx-stat-icon{width:38px;height:38px;margin-bottom:10px}.kx-stat-val{font-size:1.15rem}.kx-activity-grid{grid-template-columns:minmax(0,1fr)}.kx-activity-item{padding:11px}.kx-activity-amount{font-size:.74rem}}
     .kx-stat-icon { width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:1.18rem; margin-bottom:14px; }
     .kx-stat-icon-g { background:rgba(0,204,0,0.12); color:#00cc00; }
     .kx-stat-icon-b { background:rgba(0,136,204,0.12); color:#0088cc; }
@@ -375,19 +389,19 @@
                 </div>
             </div>
             <div class="col-12 col-md-7 col-lg-8">
-                <div class="row g-3 h-100">
+                <div class="row g-3 h-100 kx-stats-grid">
                     <div class="col-6 col-sm-4">
                         <div class="kx-card kx-stat h-100">
                             <div class="kx-stat-icon kx-stat-icon-g"><i class="bi bi-arrow-left-right"></i></div>
                             <div class="kx-stat-label">Total Trades</div>
-                            <div class="kx-stat-val">{{ isset($transactions) ? count($transactions) : '0' }}</div>
+                            <div class="kx-stat-val">{{ number_format($totalTradeCount ?? 0) }}</div>
                         </div>
                     </div>
                     <div class="col-6 col-sm-4">
                         <div class="kx-card kx-stat h-100">
                             <div class="kx-stat-icon kx-stat-icon-a"><i class="bi bi-clock-history"></i></div>
                             <div class="kx-stat-label">Pending</div>
-                            <div class="kx-stat-val" id="kx-pending-count">–</div>
+                            <div class="kx-stat-val" id="kx-pending-count">{{ number_format($pendingCount ?? 0) }}</div>
                         </div>
                     </div>
                     <div class="col-6 col-sm-4">
@@ -400,6 +414,34 @@
                 </div>
             </div>
         </div>
+
+        <!-- ===== Recent Account Activity ===== -->
+        <section class="kx-card p-3 p-md-4 mb-4" id="kx-account-activity" aria-labelledby="kx-activity-title">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+                <div><div class="kx-sec-title mb-1" id="kx-activity-title"><i class="bi bi-activity"></i>Recent account activity</div><div class="small" style="color:rgba(255,255,255,.42)">Your latest transactions, account updates and successful sign-ins.</div></div>
+                <a href="{{ route('transactions.history') }}" class="kx-btn-more"><i class="bi bi-clock-history"></i>Full history</a>
+            </div>
+            @if(isset($recentActivities) && $recentActivities->isNotEmpty())
+            <div class="kx-activity-grid">
+                @foreach($recentActivities as $activity)
+                @php
+                    $activityStatus = strtolower((string)($activity['status'] ?? 'update'));
+                    $activityStatusColor = in_array($activityStatus, ['completed','approved','success','secure'], true) ? '#38d977' : (in_array($activityStatus, ['failed','rejected','cancelled'], true) ? '#fb7185' : '#fbbf24');
+                @endphp
+                <article class="kx-activity-item">
+                    <div class="kx-activity-icon"><i class="bi {{ $activity['icon'] ?? 'bi-activity' }}"></i></div>
+                    <div class="kx-activity-copy">
+                        <div class="d-flex align-items-start gap-2 flex-wrap"><div class="kx-activity-title">{{ $activity['title'] ?? 'Account activity' }}</div>@if(!empty($activity['amount']))<div class="kx-activity-amount">{{ ($activity['currency'] ?? 'NGN') === 'NGN' ? '₦' : '' }}{{ number_format((float)$activity['amount'], ($activity['currency'] ?? 'NGN') === 'NGN' ? 2 : 8) }} {{ ($activity['currency'] ?? 'NGN') !== 'NGN' ? $activity['currency'] : '' }}</div>@endif</div>
+                        <div class="kx-activity-detail">{{ $activity['detail'] ?? '' }}</div>
+                        <div class="kx-activity-meta"><span>{{ $activity['created_at']?->timezone('Africa/Lagos')->format('d M Y · H:i') }}</span><span class="kx-activity-status" style="color:{{ $activityStatusColor }}">{{ str_replace('_',' ',$activityStatus) }}</span>@if(!empty($activity['reference']))<span>Ref {{ $activity['reference'] }}</span>@endif</div>
+                    </div>
+                </article>
+                @endforeach
+            </div>
+            @else
+            <div class="text-center py-4"><div class="kx-activity-icon mx-auto mb-2"><i class="bi bi-stars"></i></div><div class="fw-semibold">You’re all caught up</div><div class="small mt-1" style="color:rgba(255,255,255,.45)">Your recent account activity will appear here.</div></div>
+            @endif
+        </section>
 
         <!-- ===== AI Personalised Insight ===== -->
         <div class="kx-card mb-4" id="ai-insight-card" style="padding:1.1rem 1.4rem;border-color:rgba(0,204,0,.18);min-height:62px;display:flex;align-items:center;gap:.875rem">
@@ -898,12 +940,6 @@ document.querySelectorAll('[data-coming-soon]').forEach(button=>button.addEventL
 
     document.addEventListener('DOMContentLoaded', () => {
         // ---- Pending count ----
-        if (allTransactions) {
-            const pend = allTransactions.filter(t => t.status && t.status.toLowerCase() === 'pending').length;
-            const el = document.getElementById('kx-pending-count');
-            if (el) el.textContent = pend;
-        }
-
         fetchRates();
         fetchPrices();
         renderTransactions(allTransactions);

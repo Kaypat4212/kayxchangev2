@@ -13,6 +13,7 @@ use App\Models\P2pTransfer;
 use App\Models\Conversion;
 use App\Models\PortfolioWithdrawal;
 use App\Models\GiftCardOrder;
+use App\Models\GiftCardSaleOrder;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -125,6 +126,11 @@ class UserTransactionController extends Controller
             DB::raw('NULL as usd_amount'), 'status', DB::raw("CONCAT(card_name, ' ', country) as payment_method"),
             'recipient_email as wallet_address', 'created_at', DB::raw('"gift_card_purchase" as type'), 'reference',
         ]);
+        $giftCardSaleQuery = GiftCardSaleOrder::where('user_id', $user->id)->select([
+            'id', DB::raw('currency as coin'), DB::raw('COALESCE(approved_ngn, estimated_ngn) as amount'), DB::raw('COALESCE(approved_ngn, estimated_ngn) as naira_amount'),
+            DB::raw('NULL as usd_amount'), 'status', DB::raw("CONCAT(card_name, ' ', country) as payment_method"),
+            DB::raw('NULL as wallet_address'), 'created_at', DB::raw('"gift_card_sale" as type'), 'reference',
+        ]);
 
         // Apply filters
         if ($search) {
@@ -155,17 +161,18 @@ class UserTransactionController extends Controller
             });
             $portfolioWithdrawalQuery->where('reference', 'like', "%{$search}%");
             $giftCardQuery->where(function ($q) use ($search) { $q->where('reference', 'like', "%{$search}%")->orWhere('card_name', 'like', "%{$search}%")->orWhere('recipient_email', 'like', "%{$search}%"); });
+            $giftCardSaleQuery->where(function ($q) use ($search) { $q->where('reference', 'like', "%{$search}%")->orWhere('card_name', 'like', "%{$search}%"); });
         }
 
         if ($status) {
             $buyQuery->where('status', $status);
             $sellQuery->where('status', $status);
             $withdrawalQuery->where('status', $status);
-            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery,$portfolioWithdrawalQuery,$giftCardQuery] as $q) $q->where('status', $status);
+            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery,$portfolioWithdrawalQuery,$giftCardQuery,$giftCardSaleQuery] as $q) $q->where('status', $status);
         }
 
         if ($type) {
-            $typeQueries = ['buy'=>$buyQuery,'sell'=>$sellQuery,'withdrawal'=>$withdrawalQuery,'deposit'=>$depositQuery,'crypto_deposit'=>$cryptoDepositQuery,'crypto_withdrawal'=>$cryptoWithdrawalQuery,'crypto_swap'=>$cryptoSwapQuery,'portfolio_withdrawal'=>$portfolioWithdrawalQuery,'gift_card_purchase'=>$giftCardQuery,'bill_payment'=>$billQuery,'transfer'=>$p2pQuery];
+            $typeQueries = ['buy'=>$buyQuery,'sell'=>$sellQuery,'withdrawal'=>$withdrawalQuery,'deposit'=>$depositQuery,'crypto_deposit'=>$cryptoDepositQuery,'crypto_withdrawal'=>$cryptoWithdrawalQuery,'crypto_swap'=>$cryptoSwapQuery,'portfolio_withdrawal'=>$portfolioWithdrawalQuery,'gift_card_purchase'=>$giftCardQuery,'gift_card_sale'=>$giftCardSaleQuery,'bill_payment'=>$billQuery,'transfer'=>$p2pQuery];
             if (isset($typeQueries[$type])) foreach ($typeQueries as $queryType=>$queryRef) if ($queryType !== $type) $queryRef->whereRaw('1 = 0');
         }
 
@@ -173,7 +180,7 @@ class UserTransactionController extends Controller
             $buyQuery->whereDate('created_at', $date);
             $sellQuery->whereDate('created_at', $date);
             $withdrawalQuery->whereDate('created_at', $date);
-            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery,$portfolioWithdrawalQuery,$giftCardQuery] as $q) $q->whereDate('created_at', $date);
+            foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery,$portfolioWithdrawalQuery,$giftCardQuery,$giftCardSaleQuery] as $q) $q->whereDate('created_at', $date);
         }
 
         if ($minAmount) {
@@ -182,6 +189,7 @@ class UserTransactionController extends Controller
             $withdrawalQuery->where('amount', '>=', $minAmount);
             foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery] as $q) $q->where('amount', '>=', $minAmount);
             $giftCardQuery->where('total_ngn', '>=', $minAmount);
+            $giftCardSaleQuery->whereRaw('COALESCE(approved_ngn, estimated_ngn) >= ?', [$minAmount]);
             $portfolioWithdrawalQuery->where('naira_amount', '>=', $minAmount);
         }
 
@@ -191,6 +199,7 @@ class UserTransactionController extends Controller
             $withdrawalQuery->where('amount', '<=', $maxAmount);
             foreach ([$depositQuery,$cryptoDepositQuery,$cryptoWithdrawalQuery,$billQuery,$p2pQuery,$cryptoSwapQuery] as $q) $q->where('amount', '<=', $maxAmount);
             $giftCardQuery->where('total_ngn', '<=', $maxAmount);
+            $giftCardSaleQuery->whereRaw('COALESCE(approved_ngn, estimated_ngn) <= ?', [$maxAmount]);
             $portfolioWithdrawalQuery->where('naira_amount', '<=', $maxAmount);
         }
 
@@ -199,7 +208,7 @@ class UserTransactionController extends Controller
             $allTrades = $buyQuery->get()
                 ->merge($sellQuery->get())
                 ->merge($withdrawalQuery->get())
-                ->merge($depositQuery->get())->merge($cryptoDepositQuery->get())->merge($cryptoWithdrawalQuery->get())->merge($billQuery->get())->merge($p2pQuery->get())->merge($cryptoSwapQuery->get())->merge($portfolioWithdrawalQuery->get())->merge($giftCardQuery->get())
+                ->merge($depositQuery->get())->merge($cryptoDepositQuery->get())->merge($cryptoWithdrawalQuery->get())->merge($billQuery->get())->merge($p2pQuery->get())->merge($cryptoSwapQuery->get())->merge($portfolioWithdrawalQuery->get())->merge($giftCardQuery->get())->merge($giftCardSaleQuery->get())
                 ->sortByDesc('created_at');
 
             $csvData = [];
@@ -244,7 +253,7 @@ class UserTransactionController extends Controller
         $allTradesQuery = $buyQuery->getQuery()
             ->union($sellQuery->getQuery())
             ->union($withdrawalQuery->getQuery())->union($depositQuery->getQuery())->union($cryptoDepositQuery->getQuery())
-            ->union($cryptoWithdrawalQuery->getQuery())->union($billQuery->getQuery())->union($p2pQuery->getQuery())->union($cryptoSwapQuery->getQuery())->union($portfolioWithdrawalQuery->getQuery())->union($giftCardQuery->getQuery());
+            ->union($cryptoWithdrawalQuery->getQuery())->union($billQuery->getQuery())->union($p2pQuery->getQuery())->union($cryptoSwapQuery->getQuery())->union($portfolioWithdrawalQuery->getQuery())->union($giftCardQuery->getQuery())->union($giftCardSaleQuery->getQuery());
 
         // Paginate the unified query
         $allTrades = DB::table(DB::raw("({$allTradesQuery->toSql()}) as trades"))
@@ -407,6 +416,10 @@ class UserTransactionController extends Controller
             case 'gift_card_purchase':
                 $record = GiftCardOrder::where('id', $id)->where('user_id', $user->id)->firstOrFail();
                 $data = ['type'=>'gift_card_purchase','id'=>$record->id,'coin'=>$record->currency,'amount'=>$record->total_ngn,'naira_amount'=>$record->total_ngn,'face_value'=>$record->face_value,'unit_rate_ngn'=>$record->unit_rate_ngn,'card_name'=>$record->card_name,'country'=>$record->country,'recipient_email'=>$record->recipient_email,'status'=>$record->status,'reference'=>$record->reference,'delivery_code'=>$record->status==='completed'?$record->delivery_code:null,'admin_note'=>$record->admin_note,'created_at'=>$record->created_at->format('d M Y, H:i'),'updated_at'=>$record->updated_at->format('d M Y, H:i'),'created_at_unix'=>$record->created_at->timestamp];
+                break;
+            case 'gift_card_sale':
+                $record = GiftCardSaleOrder::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+                $data = ['type'=>'gift_card_sale','id'=>$record->id,'coin'=>$record->currency,'amount'=>$record->approved_ngn ?? $record->estimated_ngn,'naira_amount'=>$record->approved_ngn ?? $record->estimated_ngn,'face_value'=>$record->face_value,'unit_rate_ngn'=>$record->unit_rate_ngn,'card_name'=>$record->card_name,'country'=>$record->country,'status'=>$record->status,'reference'=>$record->reference,'admin_note'=>$record->admin_note,'created_at'=>$record->created_at->format('d M Y, H:i'),'updated_at'=>$record->updated_at->format('d M Y, H:i'),'created_at_unix'=>$record->created_at->timestamp];
                 break;
             case 'bill_payment':
                 $record = BillPayment::where('id', $id)->where('user_id', $user->id)->firstOrFail();

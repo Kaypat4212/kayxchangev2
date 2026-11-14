@@ -500,6 +500,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     // Gift Card Rate Management
     Route::get('/gift-card-rates', [AdminGiftCardRateController::class, 'index'])->name('admin.gift-card-rates.index');
     Route::post('/gift-card-rates/feature-toggle', [AdminGiftCardRateController::class, 'toggleFeature'])->name('admin.gift-card-rates.toggle-feature');
+    Route::post('/gift-card-rates/sales-feature-toggle', [AdminGiftCardRateController::class, 'toggleSales'])->name('admin.gift-card-rates.toggle-sales-feature');
     Route::post('/gift-card-rates/bulk-update', [AdminGiftCardRateController::class, 'bulkUpdate'])->name('admin.gift-card-rates.bulk-update');
     Route::post('/gift-card-rates/add', [AdminGiftCardRateController::class, 'store'])->name('admin.gift-card-rates.store');
     Route::post('/gift-card-rates/{id}/update', [AdminGiftCardRateController::class, 'update'])->name('admin.gift-card-rates.update');
@@ -507,6 +508,10 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/gift-card-orders', [AdminGiftCardOrderController::class, 'index'])->name('admin.gift-card-orders.index');
     Route::post('/gift-card-orders/{order}/complete', [AdminGiftCardOrderController::class, 'complete'])->middleware('throttle:15,1')->name('admin.gift-card-orders.complete');
     Route::post('/gift-card-orders/{order}/reject', [AdminGiftCardOrderController::class, 'reject'])->middleware('throttle:15,1')->name('admin.gift-card-orders.reject');
+    Route::get('/gift-card-sales', [\App\Http\Controllers\Admin\AdminGiftCardSaleController::class, 'index'])->name('admin.gift-card-sales.index');
+    Route::get('/gift-card-sales/{order}/image', [\App\Http\Controllers\Admin\AdminGiftCardSaleController::class, 'image'])->name('admin.gift-card-sales.image');
+    Route::post('/gift-card-sales/{order}/complete', [\App\Http\Controllers\Admin\AdminGiftCardSaleController::class, 'complete'])->middleware('throttle:15,1')->name('admin.gift-card-sales.complete');
+    Route::post('/gift-card-sales/{order}/reject', [\App\Http\Controllers\Admin\AdminGiftCardSaleController::class, 'reject'])->middleware('throttle:15,1')->name('admin.gift-card-sales.reject');
 
     // Admin Notification Management
     Route::prefix('notifications')->name('admin.notifications.')->group(function () {
@@ -618,6 +623,7 @@ Route::post('/admin/2fa-challenge', [AdminController::class, 'verify2faChallenge
 Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     Route::get('/gift-cards', [GiftCardController::class, 'index'])->name('gift-cards.index');
     Route::post('/gift-cards/orders', [GiftCardController::class, 'store'])->middleware('throttle:5,1')->name('gift-cards.orders.store');
+    Route::post('/gift-cards/sales', [GiftCardController::class, 'storeSale'])->middleware('throttle:5,1')->name('gift-cards.sales.store');
     Route::post('/ai/dashboard-insight', [UserAiController::class, 'dashboardInsight'])->name('ai.dashboard-insight');
 });
 

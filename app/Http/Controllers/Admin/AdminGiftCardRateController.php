@@ -25,7 +25,8 @@ class AdminGiftCardRateController extends Controller
         $grouped = $rates->groupBy('category');
 
         $giftCardsEnabled = filter_var(AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
-        return view('admin.gift-card-rates.index', compact('grouped', 'rates', 'giftCardsEnabled'));
+        $giftCardSalesEnabled = filter_var(AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        return view('admin.gift-card-rates.index', compact('grouped', 'rates', 'giftCardsEnabled', 'giftCardSalesEnabled'));
     }
 
     public function toggleFeature(Request $request)
@@ -34,6 +35,14 @@ class AdminGiftCardRateController extends Controller
         return back()->with('success', $request->boolean('enabled')
             ? 'Gift card purchases are now enabled for active USA and UK cards.'
             : 'Gift card purchases are now paused. Existing order history and fulfillment remain available.');
+    }
+
+    public function toggleSales(Request $request)
+    {
+        AdminSetting::set('gift_card_sales_enabled', $request->boolean('enabled') ? '1' : '0');
+        return back()->with('success', $request->boolean('enabled')
+            ? 'Gift card sales are enabled. Users can submit USA and UK cards for admin review.'
+            : 'Gift card sales are paused. Existing requests remain available for review.');
     }
 
     public function bulkUpdate(Request $request)
