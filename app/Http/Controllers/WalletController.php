@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class WalletController extends Controller
 {
@@ -205,9 +206,9 @@ class WalletController extends Controller
             if (str_contains($normalized, 'AMOUNT_MINIMAL_ERROR') || str_contains($normalized, 'LESS THAN MINIMAL')) {
                 $title = 'Deposit amount is below the minimum';
                 $message = 'This amount is below the minimum for the selected asset and network. Increase the amount or choose another network, then try again. No balance was deducted.';
-            } elseif (str_contains($normalized, 'INVALID_API_KEY') || str_contains($normalized, 'REJECTED THE API KEY')) {
+            } elseif (str_contains($normalized, 'INVALID_API_KEY') || str_contains($normalized, 'REJECTED THE API KEY') || str_contains($normalized, 'UNAUTHORIZED')) {
                 $title = 'Crypto deposits are temporarily unavailable';
-                $message = 'The payment provider could not authorize this deposit. Please try again later or contact support. No balance was deducted.';
+                $message = 'We could not verify the secure payment service configuration. Please try again later or contact support. No balance was deducted.';
             } elseif (str_contains($normalized, 'TEMPORARILY UNAVAILABLE') || str_contains($normalized, 'TEMPORARILY UNREACHABLE')) {
                 $title = 'Payment service is temporarily unavailable';
                 $message = 'The payment service did not respond in time. Please try again shortly or contact support. No balance was deducted.';
@@ -226,6 +227,13 @@ class WalletController extends Controller
                 'site_mode' => $mode,
                 'exception' => $rawMessage,
             ]);
+            if (str_contains($normalized, 'INVALID_API_KEY') || str_contains($normalized, 'REJECTED THE API KEY') || str_contains($normalized, 'UNAUTHORIZED')) {
+                Cache::put('provider_health.nowpayments.last_error', [
+                    'at' => now()->toIso8601String(),
+                    'message' => 'Invoice authorization failed. Verify the saved API key and Sandbox/Live environment in payment settings.',
+                    'environment' => AdminSetting::getSetting('nowpayments_sandbox', '0') === '1' ? 'sandbox' : 'live',
+                ], now()->addDays(7));
+            }
 
             $depositError = ['title'=>$title, 'message'=>$message];
             if ($mode === 'developer' && Auth::user()?->is_admin) {
@@ -319,6 +327,8 @@ class WalletController extends Controller
 
         return response()->json([
             'status' => $deposit->status,
+            'expires_at' => optional($deposit->expires_at)->toIso8601String(),
+            'local_window_expired' => (bool)data_get($paymentData, 'local_window_expired', false),
             'provider_status' => $paymentData['provider_status'] ?? 'waiting',
             'payment_id' => $paymentData['provider_payment_id'] ?? null,
             'expected_crypto_amount' => (float)data_get($paymentData, 'expected_crypto_amount', 0),

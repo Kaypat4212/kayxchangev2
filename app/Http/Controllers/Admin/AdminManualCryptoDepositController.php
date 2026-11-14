@@ -34,6 +34,13 @@ class AdminManualCryptoDepositController extends Controller
         }
         if (!$isManual) {
             $paymentData = $record->payment_data ?? [];
+            $providerStatus = strtolower((string)($paymentData['provider_status'] ?? ''));
+            $expectedCrypto = (float)data_get($paymentData, 'expected_crypto_amount', 0);
+            $receivedCrypto = (float)($record->received_amount ?? 0);
+            if (data_get($paymentData, 'provider') === 'nowpayments'
+                && ($providerStatus !== 'finished' || ($expectedCrypto > 0 && $receivedCrypto + 0.00000001 < $expectedCrypto))) {
+                return back()->with('error', 'This payment is still confirming or is underpaid. Wait for a fully paid provider status before approving wallet credit.');
+            }
             $paymentData['admin_review_approved'] = true;
             $paymentData['admin_reviewed_by'] = auth()->id();
             $paymentData['admin_reviewed_at'] = now()->toIso8601String();

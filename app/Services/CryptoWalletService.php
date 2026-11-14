@@ -12,6 +12,7 @@ use App\Models\AdminSetting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class CryptoWalletService
 {
@@ -160,7 +161,7 @@ class CryptoWalletService
                 'payment_address' => $payment['pay_address'],
                 'payment_url' => $payment['invoice_url'] ?? null,
                 'payment_data' => $paymentData,
-                'expires_at' => now()->addHours((int)\App\Models\AdminSetting::getSetting('crypto_deposit_expiry_hours', '24')),
+                'expires_at' => now()->addMinutes(max(30, min(60, (int) AdminSetting::getSetting('nowpayments_payment_window_minutes', '45')))),
             ]);
             return ['deposit'=>$deposit, 'payment_url'=>$deposit->payment_url, 'payment_address'=>$deposit->payment_address,
                 'expected_amount'=>(float)($payment['pay_amount'] ?? 0), 'currency'=>$currency, 'provider'=>'nowpayments'];
@@ -223,15 +224,45 @@ class CryptoWalletService
 
         $depositId = substr($orderId, 4);
         $deposit = CryptoDeposit::find($depositId);
-        if (!$deposit || !in_array($deposit->status, ['pending', 'awaiting_admin_review'], true)) {
+        $provider = strtolower((string)($webhookData['_provider'] ?? data_get($deposit?->payment_data, 'provider', 'cryptomus')));
+        $isLateLocalPayment = $deposit && $provider === 'nowpayments' && (
+            ($deposit->status === 'expired' && data_get($deposit->payment_data, 'local_window_expired') === true)
+            || ($deposit->status === 'pending' && $deposit->expires_at && $deposit->expires_at->isPast())
+        );
+        if (!$deposit || (!in_array($deposit->status, ['pending', 'awaiting_admin_review'], true) && !$isLateLocalPayment)) {
             return;
         }
 
-        $provider = strtolower((string)($webhookData['_provider'] ?? data_get($deposit->payment_data, 'provider', 'cryptomus')));
         $providerStatus = strtolower((string) ($webhookData['payment_status'] ?? $webhookData['status'] ?? ''));
         $paidNow = (float)($webhookData['actually_paid'] ?? $webhookData['payer_amount'] ?? 0);
         $expectedNow = (float)data_get($deposit->payment_data, 'expected_crypto_amount', 0);
         $hasPartialAmount = $expectedNow > 0 && $paidNow > 0 && $paidNow + 0.00000001 < $expectedNow;
+        if ($isLateLocalPayment && $provider === 'nowpayments' && $paidNow > 0) {
+            $lateNoticeSent = (bool)data_get($deposit->payment_data, 'late_payment_notice_sent', false);
+            $deposit->received_amount = $paidNow;
+            $deposit->transaction_hash = (string)($webhookData['txid'] ?? $deposit->transaction_hash ?? '');
+            $deposit->payment_data = array_merge($deposit->payment_data ?? [], [
+                'provider_status' => $providerStatus ?: 'payment_after_local_window',
+                'latest_webhook' => $webhookData,
+                'late_payment_after_window' => true,
+                'late_payment_notice_sent' => true,
+                'updated_at' => now()->toIso8601String(),
+            ]);
+            $deposit->save();
+            if (!$lateNoticeSent) {
+                \App\Models\Notification::createForUser(
+                    (int)$deposit->user_id,
+                    'warning',
+                    'Late deposit payment detected',
+                    'We detected a payment for a deposit after its payment window ended. It is being checked and requires admin review before any wallet credit.',
+                    ['type'=>'crypto_deposit_late_payment','deposit_id'=>$deposit->id,'currency'=>$deposit->currency]
+                );
+            }
+            if ($providerStatus === 'partially_paid' || $hasPartialAmount) {
+                $this->recordPartialNowPayment($deposit, $webhookData, $providerStatus ?: 'partially_paid', $paidNow, $expectedNow);
+                return;
+            }
+        }
         if ($provider === 'nowpayments' && ($providerStatus === 'partially_paid' || $hasPartialAmount)) {
             $this->recordPartialNowPayment($deposit, $webhookData, $providerStatus, $paidNow, $expectedNow);
             return;
@@ -259,13 +290,21 @@ class CryptoWalletService
             return;
         }
 
-        if (filter_var(AdminSetting::getSetting('crypto_deposit_admin_review_enabled', '1'), FILTER_VALIDATE_BOOLEAN)
+        $finalReceivedAmount = (float)($webhookData['actually_paid'] ?? $webhookData['payer_amount'] ?? $webhookData['payment_amount'] ?? 0);
+        if ($finalReceivedAmount > 0) {
+            $deposit->received_amount = $finalReceivedAmount;
+            $deposit->save();
+        }
+
+        if (($isLateLocalPayment || data_get($deposit->payment_data, 'late_payment_after_window')
+            || filter_var(AdminSetting::getSetting('crypto_deposit_admin_review_enabled', '1'), FILTER_VALIDATE_BOOLEAN))
             && empty($webhookData['manual_review'])
             && empty(data_get($deposit->payment_data, 'admin_review_approved'))) {
             if ($deposit->status === 'awaiting_admin_review' && !empty(data_get($deposit->payment_data, 'admin_review_required'))) {
+                $deposit->save();
                 return; // Prevent repeated IPNs/poller runs from repeatedly alerting the review queue.
             }
-            $deposit->received_amount = (float)($webhookData['actually_paid'] ?? $webhookData['payer_amount'] ?? $webhookData['payment_amount'] ?? $deposit->received_amount ?? 0);
+            $deposit->received_amount = $finalReceivedAmount > 0 ? $finalReceivedAmount : (float)($deposit->received_amount ?? 0);
             $deposit->status = 'awaiting_admin_review';
             $deposit->payment_data = array_merge($deposit->payment_data ?? [], [
                 'admin_review_required' => true,
@@ -378,7 +417,7 @@ class CryptoWalletService
     {
         DB::transaction(function () use ($deposit, $webhookData, $providerStatus, $paid, $expected): void {
             $locked = CryptoDeposit::whereKey($deposit->id)->lockForUpdate()->first();
-            if (!$locked || $locked->status !== 'pending') return;
+            if (!$locked || !in_array($locked->status, ['pending', 'expired', 'awaiting_admin_review'], true)) return;
 
             $data = $locked->payment_data ?? [];
             $previousNotified = (float)($data['partial_notification_amount'] ?? 0);
@@ -395,6 +434,10 @@ class CryptoWalletService
                 'updated_at' => now()->toIso8601String(),
             ]);
             $locked->payment_data = $data;
+            if (data_get($data, 'local_window_expired') || data_get($data, 'late_payment_after_window')) {
+                $locked->status = 'awaiting_admin_review';
+                $locked->payment_data = array_merge($data, ['late_payment_after_window' => true, 'admin_review_required' => true]);
+            }
             if ($received > 0) $locked->received_amount = $received;
             if (!empty($webhookData['txid'])) $locked->transaction_hash = (string)$webhookData['txid'];
 
@@ -436,14 +479,29 @@ class CryptoWalletService
     {
         $paymentData = $deposit->payment_data ?? [];
         $provider = strtolower((string)($paymentData['provider'] ?? 'cryptomus'));
-        if ($deposit->status === 'pending' && $provider === 'nowpayments' && !empty($paymentData['provider_payment_id'])) {
+        if (in_array($deposit->status, ['pending', 'expired'], true) && $provider === 'nowpayments' && !empty($paymentData['provider_payment_id'])) {
+            $lastCheck = (int) Cache::get('nowpayments.deposit.status_check.' . $deposit->id, 0);
+            if (time() - $lastCheck < 30) return $deposit;
+            Cache::put('nowpayments.deposit.status_check.' . $deposit->id, time(), now()->addMinutes(10));
             try {
                 $providerData = $this->nowPaymentsService->paymentStatus((string)$paymentData['provider_payment_id']);
                 $providerData['order_id'] = $providerData['order_id'] ?? 'dep_' . $deposit->id;
                 $providerData['_provider'] = 'nowpayments';
                 $this->processDepositSuccess($providerData);
                 $deposit->refresh();
+                if ($deposit->status === 'pending' && $deposit->expires_at && $deposit->expires_at->isPast()
+                    && in_array(strtolower((string)($providerData['payment_status'] ?? '')), ['waiting', 'partially_paid'], true)) {
+                    $data = $deposit->payment_data ?? [];
+                    $data['local_window_expired'] = true;
+                    $data['local_window_expired_at'] = now()->toIso8601String();
+                    $data['provider_reported_status'] = $providerData['payment_status'] ?? 'waiting';
+                    $data['provider_status'] = 'local_window_expired';
+                    $deposit->payment_data = $data;
+                    $deposit->status = 'expired';
+                    $deposit->save();
+                }
             } catch (\Throwable $e) {
+                Cache::forget('nowpayments.deposit.status_check.' . $deposit->id);
                 Log::warning('Could not refresh NOWPayments deposit status', ['deposit_id'=>$deposit->id,'error'=>$e->getMessage()]);
             }
         } elseif ($deposit->status === 'pending' && $deposit->cryptomus_payment_id) {

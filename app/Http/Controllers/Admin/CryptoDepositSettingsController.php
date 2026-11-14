@@ -22,6 +22,7 @@ class CryptoDepositSettingsController extends Controller
             'fixedRate'=>AdminSetting::getSetting('nowpayments_fixed_rate', '0') === '1',
             'feePaidByUser'=>AdminSetting::getSetting('nowpayments_fee_paid_by_user', '0') === '1',
             'expiryHours'=>(int)AdminSetting::getSetting('crypto_deposit_expiry_hours', '24'),
+            'paymentWindowMinutes'=>(int)AdminSetting::getSetting('nowpayments_payment_window_minutes', '45'),
             'adminReviewEnabled'=>filter_var(AdminSetting::getSetting('crypto_deposit_admin_review_enabled', '1'), FILTER_VALIDATE_BOOLEAN),
         ]);
     }
@@ -34,6 +35,7 @@ class CryptoDepositSettingsController extends Controller
             'wallet_change_pin'=>'nullable|digits:4',
             'fallback_enabled'=>'nullable|boolean', 'nowpayments_fixed_rate'=>'nullable|boolean',
             'nowpayments_fee_paid_by_user'=>'nullable|boolean', 'expiry_hours'=>'required|integer|min:1|max:72',
+            'payment_window_minutes'=>'required|integer|min:30|max:60',
             'admin_review_enabled'=>'nullable|boolean',
         ]);
 
@@ -91,6 +93,7 @@ class CryptoDepositSettingsController extends Controller
             AdminSetting::set('nowpayments_fixed_rate', $request->boolean('nowpayments_fixed_rate') ? '1' : '0');
             AdminSetting::set('nowpayments_fee_paid_by_user', $request->boolean('nowpayments_fee_paid_by_user') ? '1' : '0');
             AdminSetting::set('crypto_deposit_expiry_hours', (string)$request->integer('expiry_hours'));
+            AdminSetting::set('nowpayments_payment_window_minutes', (string)$request->integer('payment_window_minutes'));
             AdminSetting::set('crypto_deposit_admin_review_enabled', $request->boolean('admin_review_enabled') ? '1' : '0');
             return null;
         });

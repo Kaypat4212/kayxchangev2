@@ -27,8 +27,13 @@ class ReconcileCryptoDeposits extends Command
         $updated = 0;
         $errors = 0;
         $deposits = CryptoDeposit::query()
-            ->where('status', 'pending')
-            ->where('created_at', '>=', now()->subDays(3))
+            ->where(function ($query) {
+                $query->where('status', 'pending')
+                    ->orWhere(function ($late) {
+                        $late->where('status', 'expired')->where('payment_data->local_window_expired', true);
+                    });
+            })
+            ->where('created_at', '>=', now()->subDays(7))
             ->where(function ($query) {
                 $query->whereNull('last_provider_check_at')
                     ->orWhere('last_provider_check_at', '<=', now()->subMinutes(3));
@@ -52,6 +57,18 @@ class ReconcileCryptoDeposits extends Command
                     $providerData['order_id'] = $providerData['order_id'] ?? 'dep_' . $deposit->id;
                     $providerData['_provider'] = 'nowpayments';
                     $wallets->processDepositSuccess($providerData);
+                    $fresh = $deposit->fresh();
+                    if ($fresh && $fresh->status === 'pending' && $fresh->expires_at && $fresh->expires_at->isPast()
+                        && in_array(strtolower((string)($providerData['payment_status'] ?? '')), ['waiting', 'partially_paid'], true)) {
+                        $metadata = $fresh->payment_data ?? [];
+                        $metadata['local_window_expired'] = true;
+                        $metadata['local_window_expired_at'] = now()->toIso8601String();
+                        $metadata['provider_reported_status'] = $providerData['payment_status'] ?? 'waiting';
+                        $metadata['provider_status'] = 'local_window_expired';
+                        $fresh->payment_data = $metadata;
+                        $fresh->status = 'expired';
+                        $fresh->save();
+                    }
                     Cache::put('provider_health.nowpayments.last_success_at', now()->toIso8601String(), now()->addDays(7));
                     Cache::put('provider_health.nowpayments.last_error', null, now()->addDays(7));
                 } else {

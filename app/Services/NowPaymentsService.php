@@ -287,7 +287,7 @@ class NowPaymentsService
         if ($response->status() === 429 || $response->status() >= 500) {
             throw new NowPaymentsApiException('NOWPayments is temporarily unavailable. Please try again shortly.', $response->status());
         }
-        if ($code === 'INVALID_API_KEY' || $response->status() === 403) {
+        if ($code === 'INVALID_API_KEY' || in_array($response->status(), [401, 403], true)) {
             throw new \RuntimeException('NOWPayments rejected the API key for the ' . strtoupper($this->environment()) . ' environment. Check that you entered the API key (not the IPN secret) and that Sandbox Mode matches the key.');
         }
 
