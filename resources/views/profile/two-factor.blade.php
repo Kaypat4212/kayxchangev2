@@ -1,0 +1,13 @@
+@extends('layouts.app')
+@section('title','Account security')
+@section('content')
+<div class="container py-5" style="max-width:760px"><a href="{{ route('profile.edit') }}" class="small">← Profile</a><h1 class="h3 fw-bold mt-3">Account security</h1><p class="text-muted">Use an authenticator app to add a second check when signing in.</p>@if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+<div class="card shadow-sm border-0"><div class="card-body p-4"><div class="d-flex justify-content-between align-items-center"><div><h2 class="h5 mb-1">Authenticator verification</h2><div class="text-muted">{{ $user->two_factor_enabled ? 'Enabled' : 'Disabled' }}</div></div><span class="badge {{ $user->two_factor_enabled ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $user->two_factor_enabled ? 'Protected' : 'Off' }}</span></div>
+@if(!$user->two_factor_enabled)
+ @if(!$secret)<form method="post" action="{{ route('profile.two-factor.setup') }}">@csrf<button class="btn btn-primary mt-4">Set up authenticator</button></form>@else
+  @php($otpUri='otpauth://totp/'.rawurlencode(config('app.name','KayXchange').':'.$user->email).'?secret='.$secret.'&issuer='.rawurlencode(config('app.name','KayXchange')))
+  <div class="alert alert-info mt-4">Add this account in Google Authenticator, Microsoft Authenticator, or another TOTP app. Enter the secret manually if you cannot scan an authenticator QR code.</div><p class="small text-muted mb-1">Setup key</p><code class="user-select-all fs-5">{{ $secret }}</code><p class="small mt-2"><a href="{{ $otpUri }}">Open authenticator app</a></p><form method="post" action="{{ route('profile.two-factor.confirm') }}" class="mt-4">@csrf<label class="form-label">Six-digit authenticator code</label><input name="code" class="form-control" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required><button class="btn btn-success mt-3">Confirm and enable</button></form>
+ @endif
+@else<form method="post" action="{{ route('profile.two-factor.disable') }}" class="mt-4">@csrf<label class="form-label">Current password</label><input class="form-control" type="password" name="current_password" required><label class="form-label mt-3">Authenticator code</label><input name="code" class="form-control" inputmode="numeric" maxlength="6" required><button class="btn btn-outline-danger mt-3">Disable 2FA</button></form>@endif
+</div></div></div>
+@endsection

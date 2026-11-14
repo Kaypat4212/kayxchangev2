@@ -36,18 +36,44 @@ class Wallet extends Model
         return number_format($this->balance, 2, '.', ',');
     }
 
-    public function credit(float $amount): bool
+    public function credit(float $amount, string $source = 'wallet.credit', ?string $reference = null): bool
     {
-        $this->increment('balance', $amount);
+        if ($amount <= 0) return false;
+        if (strtoupper((string) $this->currency) === 'NGN') {
+            app(\App\Services\BalanceSettlementService::class)->adjustNgnBalance((int) $this->user_id, $amount, $source, $reference);
+            $this->refresh();
+            return true;
+        }
+        \Illuminate\Support\Facades\DB::transaction(function () use ($amount, $source, $reference): void {
+            $wallet = static::query()->lockForUpdate()->findOrFail($this->getKey());
+            $wallet->balance = (float) $wallet->balance + $amount;
+            $wallet->save();
+            app(\App\Services\WalletLedgerService::class)->record($wallet, $amount, $source, $reference);
+            $this->setRawAttributes($wallet->getAttributes(), true);
+        });
         return true;
     }
 
-    public function debit(float $amount): bool
+    public function debit(float $amount, string $source = 'wallet.debit', ?string $reference = null): bool
     {
-        if ($this->balance < $amount) {
-            return false;
+        if ($amount <= 0) return false;
+        if (strtoupper((string) $this->currency) === 'NGN') {
+            try {
+                app(\App\Services\BalanceSettlementService::class)->adjustNgnBalance((int) $this->user_id, -$amount, $source, $reference);
+                $this->refresh();
+                return true;
+            } catch (\RuntimeException) {
+                return false;
+            }
         }
-        $this->decrement('balance', $amount);
-        return true;
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($amount, $source, $reference): bool {
+            $wallet = static::query()->lockForUpdate()->findOrFail($this->getKey());
+            if ((float) $wallet->balance < $amount) return false;
+            $wallet->balance = (float) $wallet->balance - $amount;
+            $wallet->save();
+            app(\App\Services\WalletLedgerService::class)->record($wallet, -$amount, $source, $reference);
+            $this->setRawAttributes($wallet->getAttributes(), true);
+            return true;
+        });
     }
 }

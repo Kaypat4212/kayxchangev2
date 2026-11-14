@@ -85,8 +85,7 @@ class ReferralSettingsController extends Controller
             if ($totalDeposited >= 10000 && $referral->status === 'pending') {
                 $reward = (float) SiteContent::get('referral_reward_amount', '500');
                 if ($reward > 0 && $referral->referrer) {
-                    $referral->update(['status' => 'completed', 'reward_amount' => $reward]);
-                    $referral->referrer->increment('balance', $reward);
+                    app(\App\Services\ReferralRewardService::class)->settle($referral->id, $reward);
                     Log::info('Referral reward credited after admin unblock', [
                         'referral_id' => $referral->id,
                         'reward'      => $reward,

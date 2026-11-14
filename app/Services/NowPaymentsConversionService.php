@@ -100,6 +100,7 @@ class NowPaymentsConversionService
 
                     $source->balance = round((float) $source->balance - $amount, 8);
                     $source->save();
+                    app(WalletLedgerService::class)->record($source, -$amount, 'crypto_swap.reserved', $requestKey);
 
                     return Conversion::create([
                         'user_id' => $user->id,
@@ -242,6 +243,7 @@ class NowPaymentsConversionService
                 ]);
                 $wallet->balance = round((float) $wallet->balance + $receiveAmount, 8);
                 $wallet->save();
+                app(WalletLedgerService::class)->record($wallet, $receiveAmount, 'crypto_swap.completed', 'conversion:' . $locked->id);
                 $locked->save();
                 return true;
             });
@@ -280,6 +282,7 @@ class NowPaymentsConversionService
             if (!$wallet) throw new RuntimeException('Source wallet is missing; the reserved swap amount could not be restored.');
             $wallet->balance = round((float) $wallet->balance + (float) $locked->from_amount, 8);
             $wallet->save();
+            app(WalletLedgerService::class)->record($wallet, (float) $locked->from_amount, 'crypto_swap.refund', 'conversion:' . $locked->id);
             $locked->status = 'failed';
             $locked->failure_reason = $reason;
             $locked->completed_at = now();

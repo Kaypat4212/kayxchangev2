@@ -81,6 +81,7 @@ class User extends Authenticatable
         'telegram_verified',
         'onboarding_completed',
         'transaction_pin',
+        'two_factor_secret',
         'pin_attempts',
         'pin_locked_until',
         'referral_code',

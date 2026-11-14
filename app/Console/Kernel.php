@@ -33,6 +33,13 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Poll pending NOWPayments invoices as a fallback when IPNs are delayed,
+        // dropped, or filtered by the hosting firewall/CDN.
+        $schedule->command('payments:reconcile-deposits --limit=20')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // Check price alerts every 5 minutes
         $schedule->command('alerts:check')
             ->everyFiveMinutes()

@@ -30,7 +30,9 @@ class CryptoWithdrawalSettlementService
                 if ((float) $wallet->balance < $debit) {
                     throw ValidationException::withMessages(['status' => 'Wallet balance is no longer sufficient to settle this withdrawal.']);
                 }
-                $wallet->decrement('balance', $debit);
+                if (!$wallet->debit($debit, 'crypto_withdrawal.completed', 'crypto-withdrawal:' . $withdrawal->id)) {
+                    throw ValidationException::withMessages(['status' => 'Wallet balance is no longer sufficient to settle this withdrawal.']);
+                }
                 $withdrawal->transaction_hash = $transactionHash;
                 $withdrawal->processed_at = now();
             }

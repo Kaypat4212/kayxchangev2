@@ -216,6 +216,10 @@ use App\Http\Controllers\Admin\AdminBackupController;
 use App\Http\Controllers\Admin\AdminProfileController;
 
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('operations', [\App\Http\Controllers\Admin\AdminOperationsController::class, 'index'])->name('admin.operations');
+    Route::get('audit-log', [\App\Http\Controllers\Admin\AdminOperationsController::class, 'audit'])->name('admin.audit-log');
+    Route::get('support-cases', [\App\Http\Controllers\SupportCaseController::class, 'adminIndex'])->name('admin.support-cases.index');
+    Route::patch('support-cases/{supportCase}', [\App\Http\Controllers\SupportCaseController::class, 'respond'])->name('admin.support-cases.respond');
     Route::get('transactions', [\App\Http\Controllers\Admin\AdminTransactionHistoryController::class, 'index'])->name('admin.transactions.index');
     Route::get('wallet-rates', [\App\Http\Controllers\Admin\AdminWalletRateController::class, 'index'])->name('admin.wallet-rates.index');
     Route::put('wallet-rates', [\App\Http\Controllers\Admin\AdminWalletRateController::class, 'update'])->name('admin.wallet-rates.update');
@@ -713,6 +717,10 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/support/cases', [\App\Http\Controllers\SupportCaseController::class, 'index'])->name('support.cases.index');
+    Route::get('/support/deposit/{deposit}', [\App\Http\Controllers\SupportCaseController::class, 'createDeposit'])->name('support.cases.deposit.create');
+    Route::post('/support/cases', [\App\Http\Controllers\SupportCaseController::class, 'store'])->middleware('throttle:5,1')->name('support.cases.store');
+    Route::post('/support/deposit/{deposit}', [\App\Http\Controllers\SupportCaseController::class, 'store'])->middleware('throttle:5,1')->name('support.cases.deposit');
     Route::get('/support/chat', [ChatController::class, 'supportChat'])->name('support.chat');
     Route::get('/settings/edit-bank', [EditBankController::class, 'showEditBankForm'])->name('edit-bank');
     Route::post('/settings/update-bank', [EditBankController::class, 'updateBankDetails'])->name('update.bank');

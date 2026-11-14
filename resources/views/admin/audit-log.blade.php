@@ -1,0 +1,5 @@
+@extends('adminnavlayout')
+@section('title','Admin audit log')
+@section('content')
+<div class="container-fluid py-4"><div class="mb-4"><div class="text-uppercase small text-info fw-bold">Governance</div><h1 class="h3 fw-bold">Admin audit log</h1><p class="text-muted">Changes and actions performed by admin accounts. Secret values are never recorded.</p></div><div class="table-responsive card border-0 shadow-sm"><table class="table table-hover align-middle mb-0"><thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Subject</th><th>Details</th><th>IP</th></tr></thead><tbody>@forelse($logs as $log)<tr><td class="text-nowrap">{{ $log->created_at->format('Y-m-d H:i:s') }}</td><td>{{ $log->admin?->email ?? 'System' }}</td><td><code>{{ $log->action }}</code></td><td>{{ $log->subject_type }} {{ $log->subject_id }}</td><td><small>{{ json_encode($log->after, JSON_UNESCAPED_SLASHES) }}</small></td><td>{{ $log->ip_address }}</td></tr>@empty<tr><td colspan="6" class="text-center py-5 text-muted">No admin actions have been logged.</td></tr>@endforelse</tbody></table></div><div class="mt-3">{{ $logs->links() }}</div></div>
+@endsection

@@ -24,6 +24,7 @@ class CryptoDeposit extends Model
         'transaction_hash',
         'expires_at',
         'completed_at',
+        'last_provider_check_at',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class CryptoDeposit extends Model
         'payment_data' => 'array',
         'expires_at' => 'datetime',
         'completed_at' => 'datetime',
+        'last_provider_check_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

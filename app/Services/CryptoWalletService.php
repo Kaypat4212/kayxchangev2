@@ -262,6 +262,9 @@ class CryptoWalletService
         if (filter_var(AdminSetting::getSetting('crypto_deposit_admin_review_enabled', '1'), FILTER_VALIDATE_BOOLEAN)
             && empty($webhookData['manual_review'])
             && empty(data_get($deposit->payment_data, 'admin_review_approved'))) {
+            if ($deposit->status === 'awaiting_admin_review' && !empty(data_get($deposit->payment_data, 'admin_review_required'))) {
+                return; // Prevent repeated IPNs/poller runs from repeatedly alerting the review queue.
+            }
             $deposit->received_amount = (float)($webhookData['actually_paid'] ?? $webhookData['payer_amount'] ?? $webhookData['payment_amount'] ?? $deposit->received_amount ?? 0);
             $deposit->status = 'awaiting_admin_review';
             $deposit->payment_data = array_merge($deposit->payment_data ?? [], [
@@ -323,7 +326,7 @@ class CryptoWalletService
                 }
 
                 // Keep the canonical NGN user balance and its wallet row aligned.
-                app(BalanceSettlementService::class)->creditNgnBalance((int) $user->id, $ngnAmount);
+                app(BalanceSettlementService::class)->creditNgnBalance((int) $user->id, $ngnAmount, 'crypto_deposit.completed', 'crypto-deposit:' . $locked->id);
                 $locked->ngn_credited_amount = $ngnAmount;
                 $locked->ngn_rate_used = $rate;
                 $locked->received_amount = $paidCrypto > 0 ? $paidCrypto : null;
@@ -333,7 +336,7 @@ class CryptoWalletService
                 if (!$wallet) {
                     throw new \RuntimeException('Crypto deposit wallet record was not found.');
                 }
-                $wallet->credit((float) $locked->received_amount);
+                $wallet->credit((float) $locked->received_amount, 'crypto_deposit.completed', 'crypto-deposit:' . $locked->id);
             }
 
             $receivedAmount = (float) $locked->received_amount;

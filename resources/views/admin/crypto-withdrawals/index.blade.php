@@ -14,9 +14,9 @@
             <tr>
                 <td>{{ $withdrawal->user->name ?? 'User #'.$withdrawal->user_id }}<br><small>{{ $withdrawal->user->email ?? '' }}</small></td>
                 <td>{{ $withdrawal->wallet->currency ?? 'Crypto' }} / {{ $withdrawal->network }}</td>
-                <td>{{ number_format((float)$withdrawal->amount, 8) }} + {{ number_format((float)$withdrawal->fee, 8) }}</td>
+                <td>{{ number_format((float)$withdrawal->amount, 8) }} + {{ number_format((float)$withdrawal->fee, 8) }}<br><small>≈ ${{ number_format((float)$withdrawal->usd_value_at_request, 2) }} USD</small></td>
                 <td style="max-width:220px;word-break:break-all">{{ $withdrawal->address }}</td>
-                <td>{{ ucfirst($withdrawal->status) }} @if($withdrawal->transaction_hash)<br><small>{{ $withdrawal->transaction_hash }}</small>@endif</td>
+                <td>{{ ucfirst($withdrawal->status) }} @if($withdrawal->risk_flags)<br><span class="badge text-bg-warning">Elevated review</span><small class="d-block">{{ implode(', ', $withdrawal->risk_flags) }}</small>@endif @if($withdrawal->transaction_hash)<br><small>{{ $withdrawal->transaction_hash }}</small>@endif</td>
                 <td>
                     @if(in_array($withdrawal->status, ['pending','processing']))
                     <form method="POST" action="{{ route('admin.crypto-withdrawals.update', $withdrawal) }}" class="d-grid gap-2">

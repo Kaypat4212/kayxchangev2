@@ -1,0 +1,4 @@
+@extends('layouts.guest')
+@section('content')
+<div class="min-vh-100 d-flex align-items-center justify-content-center p-3"><div class="card border-0 shadow" style="width:min(440px,100%)"><div class="card-body p-4"><div class="text-primary fw-bold small text-uppercase">Account security</div><h1 class="h4 mt-2">Verify it’s you</h1><p class="text-muted">Enter the six-digit code from your authenticator app to finish signing in.</p>@if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif<form method="post" action="{{ route('two-factor.challenge.verify') }}">@csrf<input class="form-control form-control-lg text-center" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required><button class="btn btn-primary w-100 mt-3">Verify and sign in</button></form></div></div></div>
+@endsection

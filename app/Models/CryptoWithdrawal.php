@@ -18,12 +18,16 @@ class CryptoWithdrawal extends Model
         'fee',
         'processed_at',
         'rejected_reason',
+        'usd_value_at_request',
+        'risk_flags',
     ];
 
     protected $casts = [
         'amount' => 'decimal:8',
         'fee' => 'decimal:8',
         'processed_at' => 'datetime',
+        'usd_value_at_request' => 'decimal:2',
+        'risk_flags' => 'array',
     ];
 
     /**

@@ -149,6 +149,7 @@
                                 <th>Date</th>
                                 <th>Size</th>
                                 <th>Age</th>
+                                <th>Archive check</th>
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
@@ -172,6 +173,7 @@
                                         <span class="badge bg-secondary">{{ $backup['age_days'] }}d ago</span>
                                     @endif
                                 </td>
+                                <td>@if($backup['integrity'])<span class="badge bg-success">Verified</span>@else<span class="badge bg-danger">Check failed / unavailable</span>@endif</td>
                                 <td class="text-end">
                                     <a href="{{ route('admin.backup.download', $backup['filename']) }}"
                                        class="btn btn-sm btn-outline-primary me-1">

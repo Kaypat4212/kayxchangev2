@@ -119,7 +119,6 @@ class UserObserver
             ]);
         }
 
-        $wallet->increment('balance', $amount);
-        $user->increment('balance', $amount);
+        app(\App\Services\BalanceSettlementService::class)->creditNgnBalance((int) $user->id, $amount, 'referral.signup_bonus', 'signup-bonus:user:' . $user->id);
     }
 }

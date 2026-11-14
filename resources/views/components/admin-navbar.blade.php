@@ -159,6 +159,7 @@
             <i class="bi bi-headset me-1"></i>Support
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
+            <li><a class="dropdown-item @if(request()->is('admin/support-cases*')) active @endif" href="{{ route('admin.support-cases.index') }}"><i class="bi bi-ticket-detailed me-2"></i>Support Cases</a></li>
             <li>
               <a class="dropdown-item @if(request()->is('admin/chat*')) active @endif" href="{{ route('admin.chat') }}">
                 <i class="bi bi-chat-dots me-2"></i>Support Inbox
@@ -211,6 +212,9 @@
             <i class="bi bi-tools me-1"></i>Tools
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
+            <li><a class="dropdown-item @if(request()->is('admin/operations*')) active @endif" href="{{ route('admin.operations') }}"><i class="bi bi-heart-pulse me-2"></i>Operations Health</a></li>
+            <li><a class="dropdown-item @if(request()->is('admin/audit-log*')) active @endif" href="{{ route('admin.audit-log') }}"><i class="bi bi-shield-check me-2"></i>Admin Audit Log</a></li>
+            <li><hr class="dropdown-divider"></li>
             <li>
               <a class="dropdown-item @if(request()->is('admin/terminal*')) active @endif" href="{{ route('admin.terminal') }}">
                 <i class="bi bi-terminal-fill me-2"></i>Terminal

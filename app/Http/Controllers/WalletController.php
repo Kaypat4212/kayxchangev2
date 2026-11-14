@@ -363,7 +363,17 @@ class WalletController extends Controller
         ]);
 
         $user = Auth::user();
-        $withdrawal = DB::transaction(function () use ($request, $user) {
+        $selectedWallet = $user->wallets()->whereKey($request->wallet_id)->firstOrFail();
+        $market = app(ExchangeRateService::class)->getUsdRates();
+        $asset = strtoupper((string) $selectedWallet->currency);
+        $assetUsd = $asset === 'USD' ? 1.0 : (is_numeric($market[$asset] ?? null) ? (float) $market[$asset] : null);
+        $usdValue = $assetUsd !== null ? round((float) $request->amount * $assetUsd, 2) : null;
+        $riskFlags = [];
+        if ($usdValue === null || ($market['_stale'] ?? true)) $riskFlags[] = 'market_price_unavailable';
+        $singleLimit = (float) AdminSetting::getSetting('crypto_withdrawal_max_usd', '5000');
+        $dailyLimit = (float) AdminSetting::getSetting('crypto_withdrawal_daily_usd', '10000');
+        if ($usdValue !== null && $usdValue > $singleLimit) $riskFlags[] = 'single_withdrawal_threshold';
+        $withdrawal = DB::transaction(function () use ($request, $user, $usdValue, $riskFlags, $dailyLimit, $asset) {
             $wallet = $user->wallets()->whereKey($request->wallet_id)->lockForUpdate()->firstOrFail();
             if (!$wallet->isCrypto() || !$wallet->is_active) {
                 throw \Illuminate\Validation\ValidationException::withMessages(['wallet_id' => 'Select an active crypto wallet.']);
@@ -377,10 +387,21 @@ class WalletController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Insufficient available balance after pending withdrawals.']);
             }
 
+            $dayTotal = (float) \App\Models\CryptoWithdrawal::query()
+                ->join('wallets', 'wallets.id', '=', 'crypto_withdrawals.wallet_id')
+                ->where('crypto_withdrawals.user_id', $user->id)
+                ->where('wallets.currency', $asset)
+                ->whereDate('crypto_withdrawals.created_at', now()->toDateString())
+                ->whereIn('crypto_withdrawals.status', ['pending', 'processing', 'completed'])
+                ->sum('crypto_withdrawals.usd_value_at_request');
+            if ($usdValue !== null && $dayTotal + $usdValue > $dailyLimit) $riskFlags[] = 'daily_withdrawal_threshold';
+
             return \App\Models\CryptoWithdrawal::create([
                 'user_id' => $user->id, 'wallet_id' => $wallet->id,
                 'amount' => $request->amount, 'address' => $request->address,
                 'network' => $request->network, 'status' => 'pending', 'fee' => 0,
+                'usd_value_at_request' => $usdValue,
+                'risk_flags' => array_values(array_unique($riskFlags)),
             ]);
         });
 
@@ -393,6 +414,19 @@ class WalletController extends Controller
                 'naira_amount' => 0,
             ]);
         } catch (\Throwable $e) { Log::warning('Crypto withdrawal admin alert failed', ['withdrawal_id'=>$withdrawal->id,'error'=>$e->getMessage()]); }
+
+        if (!empty($withdrawal->risk_flags)) {
+            foreach (\App\Models\User::query()->where('is_admin', true)->get(['id']) as $admin) {
+                \App\Models\Notification::create([
+                    'admin_id' => $admin->id,
+                    'type' => 'warning',
+                    'title' => 'Crypto withdrawal flagged for review',
+                    'message' => 'Withdrawal CW-' . $withdrawal->id . ' needs elevated review: ' . implode(', ', $withdrawal->risk_flags) . '.',
+                    'data' => ['crypto_withdrawal_id' => $withdrawal->id, 'risk_flags' => $withdrawal->risk_flags],
+                    'is_read' => false,
+                ]);
+            }
+        }
 
         return redirect()->route('wallet.history')->with('success', 'Withdrawal request submitted');
     }
@@ -412,9 +446,12 @@ class WalletController extends Controller
             ->latest()
             ->paginate(10, ['*'], 'withdrawals_page');
 
+        $ledgerEntries = \App\Models\WalletLedgerEntry::where('user_id', $user->id)
+            ->latest()->paginate(20, ['*'], 'ledger_page');
+
         $awaitingCount = CryptoDeposit::where('user_id', $user->id)->whereIn('status', ['pending', 'awaiting_admin_review'])->count()
             + \App\Models\CryptoWithdrawal::where('user_id', $user->id)->whereIn('status', ['pending', 'processing'])->count();
 
-        return view('wallet.history', compact('deposits', 'withdrawals', 'awaitingCount'));
+        return view('wallet.history', compact('deposits', 'withdrawals', 'awaitingCount', 'ledgerEntries'));
     }
 }

@@ -77,7 +77,37 @@ class AdminBackupController extends Controller
                 'size_mb'  => round(filesize($path) / 1024 / 1024, 2),
                 'date'     => date('D, d M Y H:i:s', filemtime($path)),
                 'age_days' => floor((time() - filemtime($path)) / 86400),
+                'integrity' => \Illuminate\Support\Facades\Cache::remember(
+                    'backup_integrity_' . sha1($path . '|' . filemtime($path) . '|' . filesize($path)),
+                    now()->addHours(12),
+                    fn () => $this->verifyArchive($path)
+                ),
             ];
         }, $files);
+    }
+
+    private function verifyArchive(string $path): bool
+    {
+        if (!class_exists(\ZipArchive::class)) return false;
+        $zip = new \ZipArchive();
+        if ($zip->open($path, \ZipArchive::CHECKCONS) !== true) return false;
+        try {
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $stat = $zip->statIndex($i);
+                $stream = $zip->getStream($stat['name']);
+                if (!$stream) return false;
+                $crc = hash_init('crc32b');
+                while (!feof($stream)) {
+                    $chunk = fread($stream, 1024 * 1024);
+                    if ($chunk === false) { fclose($stream); return false; }
+                    hash_update($crc, $chunk);
+                }
+                fclose($stream);
+                if (strtolower(hash_final($crc)) !== strtolower(sprintf('%08x', $stat['crc']))) return false;
+            }
+            return true;
+        } finally {
+            $zip->close();
+        }
     }
 }

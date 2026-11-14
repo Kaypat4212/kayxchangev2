@@ -958,24 +958,8 @@ class DepositController extends Controller
                 return;
             }
 
-            // Update referral to completed
-            $referral->update([
-                'status'        => 'completed',
-                'reward_amount' => $reward,
-            ]);
-
-            // Credit referrer's balance
-            $referrer->increment('balance', $reward);
-            $wallet = $referrer->wallet;
-            if ($wallet) {
-                $wallet->increment('balance', $reward);
-            } else {
-                Wallet::create([
-                    'user_id'  => $referrer->id,
-                    'balance'  => $reward,
-                    'currency' => 'NGN',
-                ]);
-            }
+            // Status and reward credit settle together and are idempotent under webhook retries.
+            if (!app(\App\Services\ReferralRewardService::class)->settle($referral->id, $reward)) return;
 
             Log::info('Referral reward credited', [
                 'referrer_id'  => $referrer->id,

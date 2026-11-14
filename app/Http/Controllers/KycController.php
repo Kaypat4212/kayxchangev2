@@ -124,10 +124,9 @@ class KycController extends Controller
                         if ($totalDeposited >= 10000) {
                             $reward = (float) \App\Models\SiteContent::get('referral_reward_amount', '500');
                             if ($reward > 0) {
-                                $pendingReferral->update(['status' => 'completed', 'reward_amount' => $reward]);
                                 $referrer = $pendingReferral->referrer;
                                 if ($referrer) {
-                                    $referrer->increment('balance', $reward);
+                                    app(\App\Services\ReferralRewardService::class)->settle($pendingReferral->id, $reward);
                                     Log::info('Referral reward credited on KYC approval', [
                                         'referrer_id' => $referrer->id,
                                         'referred_id' => $kycUser->id,

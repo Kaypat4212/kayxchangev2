@@ -18,18 +18,18 @@ use RuntimeException;
  */
 class BalanceSettlementService
 {
-    public function creditNgnBalance(int $userId, float $amount): void
+    public function creditNgnBalance(int $userId, float $amount, string $source = 'balance.credit', ?string $reference = null): void
     {
         if ($amount <= 0) {
             return;
         }
 
-        DB::transaction(fn () => $this->changeNgnBalance($userId, round($amount, 2)));
+        DB::transaction(fn () => $this->changeNgnBalance($userId, round($amount, 2), $source, $reference));
     }
 
-    public function adjustNgnBalance(int $userId, float $delta): void
+    public function adjustNgnBalance(int $userId, float $delta, string $source = 'balance.adjustment', ?string $reference = null): void
     {
-        DB::transaction(fn () => $this->changeNgnBalance($userId, round($delta, 2)));
+        DB::transaction(fn () => $this->changeNgnBalance($userId, round($delta, 2), $source, $reference));
     }
 
     public function setNgnBalance(int $userId, float $amount): void
@@ -67,7 +67,7 @@ class BalanceSettlementService
             }
             $deposit->save();
 
-            $this->changeNgnBalance((int) $deposit->user_id, $credit);
+            $this->changeNgnBalance((int) $deposit->user_id, $credit, 'deposit.approved', $deposit->transaction_ref ?: ('deposit:' . $deposit->id));
 
             return true;
         });
@@ -119,7 +119,7 @@ class BalanceSettlementService
             }
 
             if ($status === 'completed' && $trade->payment_method === 'wallet_balance') {
-                $this->changeNgnBalance((int) $trade->user_id, (float) $trade->naira_amount);
+                $this->changeNgnBalance((int) $trade->user_id, (float) $trade->naira_amount, 'sell.completed', $trade->reference ?? ('sell:' . $trade->id));
             }
 
             $oldStatus = $trade->status;
@@ -145,7 +145,7 @@ class BalanceSettlementService
             }
 
             $totalDebit = round((float) $withdrawal->amount + (float) ($withdrawal->fee_amount ?? 0), 2);
-            $this->changeNgnBalance((int) $withdrawal->user_id, -$totalDebit);
+            $this->changeNgnBalance((int) $withdrawal->user_id, -$totalDebit, 'withdrawal.approved', $withdrawal->reference ?: ('withdrawal:' . $withdrawal->id));
 
             $withdrawal->status = $approvedStatus;
             $withdrawal->processed_at = now();
@@ -198,7 +198,7 @@ class BalanceSettlementService
         return min(max(0, round($fee, 2)), (float) $deposit->amount);
     }
 
-    private function changeNgnBalance(int $userId, float $delta): void
+    private function changeNgnBalance(int $userId, float $delta, string $source = 'balance.adjustment', ?string $reference = null): void
     {
         $user = User::query()->lockForUpdate()->findOrFail($userId);
         $newBalance = round((float) $user->balance + $delta, 2);
@@ -224,5 +224,9 @@ class BalanceSettlementService
 
         $wallet->balance = $newBalance;
         $wallet->save();
+
+        app(WalletLedgerService::class)->record($wallet, $delta, $source, $reference, [
+            'balance_source' => 'users.balance',
+        ]);
     }
 }

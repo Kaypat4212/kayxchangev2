@@ -129,13 +129,18 @@ class P2pTransferController extends Controller
 
         $reference = 'P2P-' . strtoupper(Str::random(12));
 
-        // ── Atomic DB transaction ────────────────────────────────────────────
+        // ── Atomic DB transaction with ledger entries ────────────────────────
         DB::transaction(function () use ($sender, $recipient, $amount, $fee, $recipientCredit, $reference, $request) {
-            // Deduct from sender
-            $sender->decrement('balance', $amount + $fee);
+            $ids = [(int) $sender->id, (int) $recipient->id];
+            sort($ids);
+            $lockedUsers = User::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            $lockedSender = $lockedUsers->get($sender->id);
+            if (!$lockedSender || (float) $lockedSender->balance < ($amount + $fee)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Insufficient balance. Please refresh and try again.']);
+            }
 
-            // Credit recipient
-            $recipient->increment('balance', $recipientCredit);
+            app(\App\Services\BalanceSettlementService::class)->adjustNgnBalance($sender->id, -($amount + $fee), 'p2p.sent', $reference);
+            app(\App\Services\BalanceSettlementService::class)->adjustNgnBalance($recipient->id, $recipientCredit, 'p2p.received', $reference);
 
             // Record transfer
             P2pTransfer::create([
@@ -274,12 +279,23 @@ class P2pTransferController extends Controller
         }
 
         DB::transaction(function () use ($transfer, $request) {
-            // Claw back from recipient
-            $transfer->recipient()->update(['balance' => DB::raw("balance - {$transfer->recipient_amount}")]);
-            // Refund to sender (amount + fee)
-            $transfer->sender()->update(['balance' => DB::raw("balance + " . ($transfer->amount + $transfer->fee))]);
+            $lockedTransfer = P2pTransfer::query()->whereKey($transfer->id)->lockForUpdate()->firstOrFail();
+            if ($lockedTransfer->status !== 'completed') {
+                throw \Illuminate\Validation\ValidationException::withMessages(['transfer' => 'This transfer was already processed.']);
+            }
+            $ids = [(int) $lockedTransfer->sender_id, (int) $lockedTransfer->recipient_id];
+            sort($ids);
+            $users = User::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            $recipient = $users->get($lockedTransfer->recipient_id);
+            if (!$recipient || (float) $recipient->balance < (float) $lockedTransfer->recipient_amount) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['transfer' => 'The recipient no longer has enough balance for a safe reversal. Review the account before taking action.']);
+            }
+            $reference = 'p2p-reversal:' . $lockedTransfer->reference;
+            $settlement = app(\App\Services\BalanceSettlementService::class);
+            $settlement->adjustNgnBalance((int) $lockedTransfer->recipient_id, -(float) $lockedTransfer->recipient_amount, 'p2p.reversal.debit', $reference);
+            $settlement->adjustNgnBalance((int) $lockedTransfer->sender_id, (float) $lockedTransfer->amount + (float) $lockedTransfer->fee, 'p2p.reversal.credit', $reference);
 
-            $transfer->update([
+            $lockedTransfer->update([
                 'status'          => 'reversed',
                 'reversed_reason' => $request->reason,
                 'reversed_at'     => now(),

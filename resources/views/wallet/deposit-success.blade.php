@@ -72,7 +72,7 @@
 
  <section class="ds-card"><div class="ds-kicker">Settlement</div><h2 class="ds-section-title">What happens next?</h2><p id="deposit-help" class="ds-help mt-0">@if($deposit->status==='completed')Your crypto wallet has been credited with the received amount.@elseif($deposit->status==='awaiting_admin_review')The transfer is confirmed. An admin will review it before your wallet is credited.@elseif($isManualFallback)Your deposit is awaiting a transfer. After you submit its transaction hash, an admin will verify it and update your balance.@else Your wallet is credited after the transfer is detected and confirmed on the selected network. This page checks for status updates automatically.@endif</p>
   <div id="tx-row" class="ds-row mt-2 {{ $deposit->transaction_hash ? '' : 'd-none' }}"><span>Transaction</span><strong><a id="tx-link" class="text-success text-break" target="_blank" rel="noopener" href="{{ $deposit->transaction_hash ? $explorerBase.rawurlencode($deposit->transaction_hash) : '#' }}">{{ $deposit->transaction_hash ?: '' }}</a></strong></div>
-  <div class="ds-actions"><a href="{{ route('wallet.index') }}" class="ds-btn primary"><i class="bi bi-wallet2"></i>Back to wallet</a><a href="{{ route('wallet.history') }}" class="ds-btn"><i class="bi bi-clock-history"></i>View history</a></div>
+  <div class="ds-actions"><a href="{{ route('wallet.index') }}" class="ds-btn primary"><i class="bi bi-wallet2"></i>Back to wallet</a><a href="{{ route('wallet.history') }}" class="ds-btn"><i class="bi bi-clock-history"></i>View history</a><a href="{{ route('support.cases.deposit.create',$deposit->id) }}" class="ds-btn"><i class="bi bi-headset"></i>Get help with this deposit</a></div>
  </section>
 </main>
 <script>
