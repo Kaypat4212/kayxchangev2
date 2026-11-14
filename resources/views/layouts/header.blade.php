@@ -48,6 +48,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const toggleMode = document.getElementById('toggle-mode');
             const modeIcon = document.getElementById('mode-icon');
+            const modeLabel = document.getElementById('mode-label');
             const body = document.body;
             
             // Check for saved theme preference or default to light mode
@@ -55,18 +56,28 @@
             body.setAttribute('data-bs-theme', currentTheme);
             updateModeIcon(currentTheme);
             
-            toggleMode.addEventListener('click', function() {
-                const currentTheme = body.getAttribute('data-bs-theme');
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                
-                body.setAttribute('data-bs-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                updateModeIcon(newTheme);
-            });
+            if (toggleMode) {
+                toggleMode.addEventListener('click', function() {
+                    const currentTheme = body.getAttribute('data-bs-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    body.setAttribute('data-bs-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    updateModeIcon(newTheme);
+                });
+            }
             
             function updateModeIcon(theme) {
                 if (modeIcon) {
                     modeIcon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+                }
+                if (modeLabel) {
+                    modeLabel.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+                }
+                if (toggleMode) {
+                    const target = theme === 'dark' ? 'light' : 'dark';
+                    toggleMode.setAttribute('aria-label', 'Switch to ' + target + ' mode');
+                    toggleMode.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+                    toggleMode.title = 'Switch to ' + target + ' mode';
                 }
             }
         });

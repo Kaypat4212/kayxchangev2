@@ -577,8 +577,23 @@
     .kx-hp-btn-reg:active { transform: translateY(0); box-shadow: 0 3px 12px rgba(0,204,0,0.35); }
     .kx-hp-btn-out { color: rgba(255,110,110,0.9); border: 1.5px solid rgba(255,80,80,0.35); background: transparent; border-radius: 25px; padding: 7px 16px; font-weight: 500; font-size: 0.85rem; cursor: pointer; transition: all 0.22s ease; display: inline-flex; align-items: center; gap: 6px; }
     .kx-hp-btn-out:hover { background: rgba(255,80,80,0.1); border-color: rgba(255,80,80,0.7); color: #ff5555; }
-    .kx-hp-theme { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.22s ease; }
-    .kx-hp-theme:hover { background: rgba(0,204,0,0.15); border-color: rgba(0,204,0,0.35); color: #00cc00; }
+    .kx-hp-theme {
+        position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;gap:10px;
+        min-width:158px;height:50px;padding:5px 11px;border-radius:16px;cursor:pointer;
+        color:#eff8f1;background:linear-gradient(150deg,#1a2820 0%,#101813 72%);
+        border:1px solid rgba(126,239,158,.3);box-shadow:0 5px 0 #090f0b,0 8px 18px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.12);
+        transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease,background .2s ease;
+    }
+    .kx-hp-theme::before { content:'';position:absolute;z-index:-1;inset:0;background:radial-gradient(ellipse at 12% 0,rgba(83,226,128,.2),transparent 55%);pointer-events:none; }
+    .kx-hp-theme:hover { transform:translateY(-2px);border-color:rgba(126,239,158,.6);box-shadow:0 7px 0 #090f0b,0 12px 24px rgba(0,0,0,.36),0 0 20px rgba(0,204,0,.13),inset 0 1px 0 rgba(255,255,255,.16); }
+    .kx-hp-theme:active { transform:translateY(2px);box-shadow:0 2px 0 #090f0b,inset 0 2px 5px rgba(0,0,0,.35); }
+    .kx-theme-glyph { width:36px;height:36px;display:grid;place-items:center;flex:0 0 36px;border-radius:12px;color:#f8d978;font-size:1.03rem;background:linear-gradient(145deg,#3b3521,#211f17);border:1px solid rgba(255,220,122,.3);box-shadow:0 3px 0 #17150f,inset 0 1px 0 rgba(255,255,255,.16); }
+    .kx-theme-copy { display:flex;min-width:0;flex:1;flex-direction:column;align-items:flex-start;line-height:1.12; }
+    .kx-theme-copy small { color:rgba(231,243,234,.47);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800; }
+    .kx-theme-copy strong { margin-top:4px;color:#f3f8f4;font-size:.75rem;font-weight:800;white-space:nowrap; }
+    .kx-theme-track { position:relative;width:31px;height:18px;flex:0 0 31px;border-radius:999px;background:linear-gradient(180deg,#070b08,#1a241d);border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 2px 4px rgba(0,0,0,.55); }
+    .kx-theme-knob { position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:linear-gradient(145deg,#fff,#abb8ad);box-shadow:0 2px 3px rgba(0,0,0,.55);transition:transform .25s cubic-bezier(.2,.8,.2,1); }
+    [data-bs-theme="dark"] .kx-theme-knob { transform:translateX(13px);background:linear-gradient(145deg,#80f2a2,#17a84a); }
     @media (max-width: 991.98px) {
         .kx-hp-nav .navbar-collapse { background: rgba(8,14,8,0.98); border: 1px solid rgba(0,204,0,0.14); border-radius: 14px; margin-top: 10px; padding: 16px; }
         .kx-hp-nav-actions { flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(0,204,0,0.13); }
@@ -587,7 +602,12 @@
     [data-bs-theme="light"] .kx-hp-nav .kx-brand { color: #111; }
     [data-bs-theme="light"] .kx-hp-link { color: rgba(20,20,20,0.75) !important; }
     [data-bs-theme="light"] .kx-hp-link:hover,[data-bs-theme="light"] .kx-hp-link.kx-act { color: #007a0f !important; background: rgba(0,130,17,0.07); }
-    [data-bs-theme="light"] .kx-hp-theme { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #555; }
+    [data-bs-theme="light"] .kx-hp-theme { color:#173322;background:linear-gradient(150deg,#fff,#eaf5ec);border-color:rgba(15,128,48,.28);box-shadow:0 5px 0 #cfdfd1,0 8px 18px rgba(30,65,40,.14),inset 0 1px 0 #fff; }
+    [data-bs-theme="light"] .kx-hp-theme::before { background:radial-gradient(ellipse at 12% 0,rgba(32,185,83,.17),transparent 55%); }
+    [data-bs-theme="light"] .kx-hp-theme:hover { border-color:rgba(15,128,48,.48);box-shadow:0 7px 0 #cfdfd1,0 12px 24px rgba(30,65,40,.2),0 0 18px rgba(0,153,44,.1),inset 0 1px 0 #fff; }
+    [data-bs-theme="light"] .kx-theme-copy small { color:rgba(17,54,30,.55); }
+    [data-bs-theme="light"] .kx-theme-copy strong { color:#12301c; }
+    [data-bs-theme="light"] .kx-theme-glyph { color:#fff2b0;background:linear-gradient(145deg,#625226,#393017);border-color:rgba(155,128,43,.4); }
     [data-bs-theme="light"] .kx-hp-nav .navbar-collapse { background: rgba(255,255,255,0.99); }
     </style>
 
@@ -625,8 +645,10 @@
                     <a class="kx-hp-btn-in" href="{{ route('login') }}"><i class="bi bi-box-arrow-in-right"></i>Login</a>
                     <a class="kx-hp-btn-reg" href="{{ route('register') }}"><i class="bi bi-rocket-takeoff-fill"></i>Get Started</a>
                     @endauth
-                    <button id="toggle-mode" class="kx-hp-theme" title="Toggle Dark Mode">
-                        <i class="bi bi-moon-stars-fill" id="mode-icon"></i>
+                    <button id="toggle-mode" class="kx-hp-theme" type="button" title="Switch color theme" aria-label="Switch to dark mode" aria-pressed="false">
+                        <span class="kx-theme-glyph"><i class="bi bi-moon-stars-fill" id="mode-icon" aria-hidden="true"></i></span>
+                        <span class="kx-theme-copy"><small>Appearance</small><strong id="mode-label">Dark mode</strong></span>
+                        <span class="kx-theme-track" aria-hidden="true"><span class="kx-theme-knob"></span></span>
                     </button>
                 </div>
             </div>
@@ -782,6 +804,18 @@
         background: rgba(0,204,0,0.05); transition: all 0.28s ease;
     }
     .kx-h-cta2:hover { background: rgba(0,204,0,0.12); border-color: #00cc00; transform: translateY(-2px); }
+    .kx-h-app-link {
+        display:inline-flex;align-items:center;gap:12px;min-height:58px;padding:8px 16px 8px 9px;
+        border:1px solid rgba(255,255,255,.16);border-radius:16px;background:rgba(14,22,19,.82);
+        color:#f1f8f3!important;text-decoration:none!important;backdrop-filter:blur(12px);
+        box-shadow:0 10px 30px rgba(0,0,0,.22);transition:transform .22s,border-color .22s,box-shadow .22s;
+    }
+    .kx-h-app-link:hover { transform:translateY(-2px);border-color:rgba(95,231,136,.55);box-shadow:0 14px 34px rgba(0,204,0,.16); }
+    .kx-play-icon { width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(145deg,#1c9a58,#00c851);color:#fff;font-size:1.22rem;box-shadow:0 5px 14px rgba(0,200,81,.25); }
+    .kx-h-app-copy { display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;text-align:left; }
+    .kx-h-app-copy strong { font-size:.83rem;font-weight:800; }
+    .kx-h-app-copy small { color:#aab7b0;font-size:.66rem;margin-top:4px; }
+    .kx-h-app-download { margin-left:5px;color:#75e897;font-size:.95rem; }
     .kx-h-trust { display: flex; flex-wrap: wrap; gap: 10px; }
     .kx-h-tbadge {
         background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
@@ -892,6 +926,7 @@
             justify-content: center; width: 100%;
             padding: 13px 18px; font-size: clamp(0.88rem, 3.8vw, 0.95rem);
         }
+        .kx-h-app-link { width:100%;justify-content:flex-start;min-height:62px;padding:9px 14px; }
 
         .kx-h-trust { gap: 8px; }
         .kx-h-tbadge { padding: 7px 11px; font-size: clamp(0.7rem, 3vw, 0.78rem); }
@@ -973,6 +1008,11 @@
                             <i class="bi bi-box-arrow-in-right"></i>Sign In
                         </a>
                         @endauth
+                        <a href="{{ route('app.android.download') }}" class="kx-h-app-link" aria-label="Download the KayXchange Android APK">
+                            <span class="kx-play-icon"><i class="bi bi-google-play" aria-hidden="true"></i></span>
+                            <span class="kx-h-app-copy"><strong>Get the Android app</strong><small>Direct APK download · Android</small></span>
+                            <i class="bi bi-download kx-h-app-download" aria-hidden="true"></i>
+                        </a>
                     </div>
                     <!-- Trust badges -->
                     <div class="kx-h-trust kx-hero-anim-5">
@@ -1941,6 +1981,7 @@
                         <li><a href="{{ url('/buy') }}"><i class="bi bi-chevron-right"></i>Buy Crypto</a></li>
                         <li><a href="{{ url('/sell') }}"><i class="bi bi-chevron-right"></i>Sell Crypto</a></li>
                         <li><a href="{{ url('/rate') }}"><i class="bi bi-chevron-right"></i>Live Rates</a></li>
+                        <li><a href="{{ route('app.android.download') }}"><i class="bi bi-google-play"></i>Android App</a></li>
                         <li><a href="{{ url('/referrals') }}"><i class="bi bi-chevron-right"></i>Referrals</a></li>
                     </ul>
                 </div>
