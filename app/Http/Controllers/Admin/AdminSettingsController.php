@@ -310,6 +310,39 @@ class AdminSettingsController extends Controller
         return trim((string) config('services.nowpayments.' . $configKey, '')) !== '' ? 'environment' : 'missing';
     }
 
+    public function clearNowPaymentsCredential(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
+    {
+        $data = $request->validate(['credential' => ['required', 'in:api_key,ipn_secret']]);
+        $keys = [
+            'api_key' => ['setting' => 'nowpayments_api_key', 'label' => 'NOWPayments API key', 'config' => 'api_key'],
+            'ipn_secret' => ['setting' => 'nowpayments_ipn_secret', 'label' => 'NOWPayments IPN secret', 'config' => 'ipn_secret'],
+        ];
+        $selected = $keys[$data['credential']];
+        $setting = AdminSetting::firstOrCreate(
+            ['key' => $selected['setting']],
+            ['group' => 'payment', 'is_encrypted' => true, 'label' => $selected['label']]
+        );
+
+        // Write NULL directly so the encrypted payload is physically removed
+        // even if this row was created by an older app version or has bad metadata.
+        $setting->value = null;
+        $setting->is_encrypted = true;
+        $setting->save();
+
+        $securityAlerts->credentialCleared($request->user(), [$selected['label']]);
+        $fallbackActive = trim((string) config('services.nowpayments.' . $selected['config'], '')) !== '';
+        $message = $selected['label'] . ' was erased from the database.';
+        $message .= $fallbackActive
+            ? ' An environment fallback remains active on this server.'
+            : ' No environment fallback is configured; this credential is now unset.';
+
+        return response()->json([
+            'ok' => true,
+            'message' => $message,
+            'source' => $fallbackActive ? 'environment' : 'missing',
+        ])->header('Cache-Control', 'private, no-store, max-age=0');
+    }
+
     public function testNowPayments(NowPaymentsService $provider)
     {
         try {

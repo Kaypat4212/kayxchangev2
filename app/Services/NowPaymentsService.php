@@ -230,6 +230,7 @@ class NowPaymentsService
     {
         if ($this->apiKey === '') throw new \RuntimeException('Enter and save a NOWPayments API key first.');
         $cacheKey = 'nowpayments_minimum_usd_' . $this->environment() . '_' . strtolower($payCurrency) . '_' . hash('sha256', implode('|', [
+            hash('sha256', $this->apiKey),
             AdminSetting::getSetting('nowpayments_fixed_rate', '0'),
             AdminSetting::getSetting('nowpayments_fee_paid_by_user', '0'),
         ]));

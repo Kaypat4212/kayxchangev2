@@ -344,7 +344,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <button type="button" class="btn btn-outline-info" onclick="copyNowPaymentsCredential('api_key','nowpayments-api-key-preview-status')"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copy</button>
                         </div>
                         <div id="nowpayments-api-key-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved key stays masked until you preview it.</div>
-                        <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved API key</label>
+                        <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="clearNowPaymentsCredential('api_key','nowpayments-api-key-preview-status')"><i class="bi bi-trash3 me-1"></i>Clear saved API key</button>
                     @elseif($row->key === 'nowpayments_ipn_secret')
                         <div class="input-group">
                             <input type="password" name="{{ $row->key }}" id="nowpayments-ipn-secret-field" placeholder="{{ $row->display_value ?: 'Enter IPN secret' }}" autocomplete="new-password" spellcheck="false" oninput="credentialReplacementTyped(this)">
@@ -354,7 +354,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <button type="button" class="btn btn-outline-info" onclick="copyNowPaymentsCredential('ipn_secret','nowpayments-ipn-secret-preview-status')"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copy</button>
                         </div>
                         <div id="nowpayments-ipn-secret-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved IPN secret stays masked until you preview it.</div>
-                        <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved IPN secret</label>
+                        <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="clearNowPaymentsCredential('ipn_secret','nowpayments-ipn-secret-preview-status')"><i class="bi bi-trash3 me-1"></i>Clear saved IPN secret</button>
                     @elseif($row->is_encrypted)
                         <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password" oninput="credentialReplacementTyped(this)">
                         <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved {{ strtolower($row->label ?? 'credential') }}</label>
@@ -373,7 +373,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 <div class="d-flex flex-wrap gap-2 mt-3" aria-label="Active NOWPayments credential sources">
                     @foreach(['api_key' => 'API key', 'ipn_secret' => 'IPN secret'] as $credentialName => $credentialLabel)
                         @php $credentialSource = $nowPaymentsCredentialStatus[$credentialName] ?? 'missing'; @endphp
-                        <span class="badge rounded-pill {{ $credentialSource === 'missing' ? 'text-bg-secondary' : ($credentialSource === 'database' ? 'text-bg-success' : 'text-bg-info') }}">
+                        <span id="nowpayments-{{ $credentialName }}-source" class="badge rounded-pill {{ $credentialSource === 'missing' ? 'text-bg-secondary' : ($credentialSource === 'database' ? 'text-bg-success' : 'text-bg-info') }}">
                             {{ $credentialLabel }}: {{ $credentialSource === 'database' ? 'Database' : ($credentialSource === 'environment' ? 'Environment fallback' : 'Not configured') }}
                         </span>
                     @endforeach
@@ -655,6 +655,58 @@ async function cfAction(action) {
                 status.textContent = error.message || 'Could not preview the saved key. Try again.';
             } finally {
                 button.disabled = false;
+            }
+        }
+
+        async function clearNowPaymentsCredential(credential, statusId) {
+            const isApiKey = credential === 'api_key';
+            const label = isApiKey ? 'NOWPayments API key' : 'NOWPayments IPN secret';
+            const status = document.getElementById(statusId);
+            const button = status?.parentElement?.querySelector('button.btn-outline-danger');
+            if (!status || !['api_key', 'ipn_secret'].includes(credential)) return;
+            if (!window.confirm(`Permanently erase the saved ${label} from the database?`)) return;
+
+            if (button) button.disabled = true;
+            status.style.color = '#fbbf24';
+            status.textContent = 'Erasing saved credential…';
+            try {
+                const response = await fetch(@json(route('admin.settings.nowpayments-credential-clear')), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({ credential })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error(data.message || 'The credential could not be cleared.');
+
+                const field = document.getElementById(isApiKey ? 'nowpayments-api-key-field' : 'nowpayments-ipn-secret-field');
+                const preview = document.getElementById(isApiKey ? 'nowpayments-api-key-preview' : 'nowpayments-ipn-secret-preview');
+                if (field) {
+                    field.value = '';
+                    field.type = 'password';
+                    delete field.dataset.loadedSavedKey;
+                    delete field.dataset.loadedSavedSecret;
+                }
+                if (preview) {
+                    preview.innerHTML = '<i class="bi bi-eye me-1" aria-hidden="true"></i>Preview';
+                    preview.setAttribute('aria-pressed', 'false');
+                }
+                const sourceBadge = document.getElementById(`nowpayments-${credential}-source`);
+                if (sourceBadge) {
+                    sourceBadge.className = `badge rounded-pill ${data.source === 'environment' ? 'text-bg-info' : 'text-bg-secondary'}`;
+                    sourceBadge.textContent = `${isApiKey ? 'API key' : 'IPN secret'}: ${data.source === 'environment' ? 'Environment fallback' : 'Not configured'}`;
+                }
+                status.style.color = data.source === 'environment' ? '#7dd3fc' : '#4ade80';
+                status.textContent = data.message;
+            } catch (error) {
+                status.style.color = '#f87171';
+                status.textContent = error.message || `Could not clear the ${label}. Please try again.`;
+            } finally {
+                if (button) button.disabled = false;
             }
         }
 
