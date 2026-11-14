@@ -221,48 +221,21 @@
     .kx-spin { display: none; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.3); border-top-color: #000; border-radius: 50%; animation: kxspin 0.7s linear infinite; flex-shrink: 0; }
     @keyframes kxspin { to { transform: rotate(360deg); } }
 
-    .kx-mode-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        cursor: pointer;
-        border: none;
-        transition: background 0.25s, box-shadow 0.25s, transform 0.15s;
-        white-space: nowrap;
-    }
-    .kx-mode-badge.mode-production {
-        background: rgba(0,204,0,0.15);
-        color: var(--kx-green);
-        border: 1px solid rgba(0,204,0,0.35);
-    }
-    .kx-mode-badge.mode-production:hover {
-        background: rgba(0,204,0,0.28);
-        box-shadow: 0 0 0 3px var(--kx-green-glow);
-        transform: translateY(-1px);
-    }
-    .kx-mode-badge.mode-developer {
-        background: rgba(251,191,36,0.15);
-        color: var(--kx-amber);
-        border: 1px solid rgba(251,191,36,0.35);
-    }
-    .kx-mode-badge.mode-developer:hover {
-        background: rgba(251,191,36,0.28);
-        box-shadow: 0 0 0 3px rgba(251,191,36,0.2);
-        transform: translateY(-1px);
-    }
-    .kx-mode-dot {
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-    .mode-production .kx-mode-dot { background: var(--kx-green); animation: pulse-dot 1.6s ease infinite; }
-    .mode-developer  .kx-mode-dot { background: var(--kx-amber); }
+    .kx-mode-badge { display:inline-flex;align-items:center;gap:10px;min-height:46px;padding:7px 10px 7px 13px;border-radius:999px;border:1px solid rgba(74,222,128,.3);background:linear-gradient(135deg,rgba(20,39,31,.98),rgba(10,24,19,.98));color:#e8fff0;font-size:.78rem;font-weight:750;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.08); }
+    .kx-mode-badge:hover { transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.32),0 0 0 4px rgba(34,197,94,.1); }
+    .kx-mode-badge:focus-visible { outline:3px solid rgba(134,239,172,.75);outline-offset:3px; }
+    .kx-mode-badge.mode-local { border-color:rgba(251,191,36,.42);background:linear-gradient(135deg,rgba(54,39,18,.98),rgba(30,23,13,.98));color:#fff3cf; }
+    .kx-mode-status { display:flex;align-items:center;gap:8px; }
+    .kx-mode-dot { width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.8); }
+    .mode-local .kx-mode-dot { background:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.8); }
+    .kx-mode-label { font-size:.72rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase; }
+    .kx-mode-switch { width:48px;height:27px;padding:3px;display:inline-flex;align-items:center;border-radius:999px;background:linear-gradient(135deg,#168447,#0c6335);box-shadow:inset 0 2px 5px rgba(0,0,0,.35);transition:background .25s;flex-shrink:0; }
+    .kx-mode-switch-knob { width:21px;height:21px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#fff,#dcefe3);color:#13743d;box-shadow:0 2px 7px rgba(0,0,0,.35);transition:transform .28s cubic-bezier(.2,.8,.2,1),color .2s; }
+    .mode-local .kx-mode-switch { background:linear-gradient(135deg,#e5a11b,#b66e0c); }
+    .mode-local .kx-mode-switch-knob { transform:translateX(21px);color:#9a5a08; }
+    .kx-mode-badge.mode-off { border-color:rgba(248,113,113,.4);background:linear-gradient(135deg,rgba(55,25,28,.98),rgba(30,17,20,.98));color:#ffe1e1; }
+    .mode-off .kx-mode-switch { background:linear-gradient(135deg,#c24141,#7f1d1d); }
+    .mode-off .kx-mode-switch-knob { transform:translateX(9px);color:#a52d2d; }
     .kx-mode-confirm-overlay {
         display: none;
         position: fixed; inset: 0;
@@ -309,7 +282,7 @@
         .kx-stat-val { font-size: 1.25rem; }
         .rate-row { grid-template-columns: 1fr 1fr; }
         .rate-row > div:first-child { grid-column: 1/-1; }
-        .kx-mode-badge span:not(.kx-mode-dot) { display: none; }
+        .kx-mode-label { display:none; }
     }
 </style>
 
@@ -343,12 +316,13 @@
         <div class="col-auto d-none d-md-flex gap-2 align-items-center">
             @php $siteMode = $siteMode ?? 'production'; @endphp
             <button id="kx-mode-toggle-btn"
-                class="kx-mode-badge {{ $siteMode === 'developer' ? 'mode-developer' : 'mode-production' }}"
+                class="kx-mode-badge {{ $siteMode === 'local' ? 'mode-local' : ($siteMode === 'off' ? 'mode-off' : 'mode-production') }}"
                 data-mode="{{ $siteMode }}"
-                title="Click to toggle site mode">
-                <span class="kx-mode-dot"></span>
-                <span>{{ $siteMode === 'developer' ? 'Developer Mode' : 'Production Mode' }}</span>
-                <i class="bi bi-arrow-repeat" style="font-size:0.7rem;opacity:0.7"></i>
+                role="switch" aria-checked="{{ $siteMode === 'local' ? 'true' : 'false' }}"
+                aria-label="Runtime mode. Click to switch between production and local mode."
+                title="Switch between production and local runtime mode">
+                <span class="kx-mode-status"><span class="kx-mode-dot"></span><span class="kx-mode-label">{{ $siteMode === 'local' ? 'Local Mode' : ($siteMode === 'off' ? 'Maintenance Mode' : 'Production Mode') }}</span></span>
+                <span class="kx-mode-switch" aria-hidden="true"><span class="kx-mode-switch-knob"><i class="bi {{ $siteMode === 'local' ? 'bi-code-slash' : ($siteMode === 'off' ? 'bi-pause-fill' : 'bi-shield-check') }}"></i></span></span>
             </button>
             <a href="{{ url('/') }}" target="_blank" class="btn-kx-outline">
                 <i class="bi bi-eye"></i> View Site
@@ -356,10 +330,13 @@
         </div>
         <div class="col-auto d-flex d-md-none">
             <button id="kx-mode-toggle-btn-sm"
-                class="kx-mode-badge {{ $siteMode === 'developer' ? 'mode-developer' : 'mode-production' }}"
+                class="kx-mode-badge {{ $siteMode === 'local' ? 'mode-local' : ($siteMode === 'off' ? 'mode-off' : 'mode-production') }}"
                 data-mode="{{ $siteMode }}"
-                title="Toggle site mode">
-                <span class="kx-mode-dot"></span>
+                role="switch" aria-checked="{{ $siteMode === 'local' ? 'true' : 'false' }}"
+                aria-label="Runtime mode. Click to switch between production and local mode."
+                title="Switch between production and local runtime mode">
+                <span class="kx-mode-status"><span class="kx-mode-dot"></span><span class="kx-mode-label">{{ $siteMode === 'local' ? 'Local Mode' : ($siteMode === 'off' ? 'Maintenance Mode' : 'Production Mode') }}</span></span>
+                <span class="kx-mode-switch" aria-hidden="true"><span class="kx-mode-switch-knob"><i class="bi {{ $siteMode === 'local' ? 'bi-code-slash' : ($siteMode === 'off' ? 'bi-pause-fill' : 'bi-shield-check') }}"></i></span></span>
             </button>
         </div>
     </div>
@@ -737,11 +714,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Site Mode Toggle ──────────────────────────────────────────────────────
     const modeMessages = {
-        developer: {
+        local: {
             icon: '🛠️',
-            title: 'Switch to Developer Mode?',
-            text: 'Developer mode enables detailed error output and debug tools. <strong>Do not enable this on a live user-facing site.</strong> All admin actions are still fully functional.',
-            btnLabel: 'Yes, enable Developer Mode',
+            title: 'Switch to Local Mode?',
+            text: 'Local mode shows detailed diagnostics to administrators only. Public visitors continue to receive safe error pages. Use this briefly while troubleshooting.',
+            btnLabel: 'Yes, switch to Local Mode',
         },
         production: {
             icon: '🚀',
@@ -755,14 +732,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!btn) return;
         btn.addEventListener('click', () => {
             const current = btn.dataset.mode;
-            const next    = current === 'production' ? 'developer' : 'production';
+            const next    = current === 'local' ? 'production' : 'local';
             const cfg     = modeMessages[next];
             document.getElementById('kx-mode-confirm-icon').textContent  = cfg.icon;
             document.getElementById('kx-mode-confirm-title').textContent = cfg.title;
             document.getElementById('kx-mode-confirm-text').innerHTML    = cfg.text;
             const confirmBtn = document.getElementById('kx-mode-confirm-btn');
             confirmBtn.textContent = cfg.btnLabel;
-            confirmBtn.className   = next === 'developer' ? 'btn-kx-amber' : 'btn-kx-green';
+            confirmBtn.className   = next === 'local' ? 'btn-kx-amber' : 'btn-kx-green';
             document.getElementById('kx-mode-post-msg').style.display = 'none';
             document.getElementById('kx-mode-overlay').classList.add('active');
         });
@@ -773,7 +750,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('kx-mode-confirm-btn').addEventListener('click', function () {
         const desktopBtn = document.getElementById('kx-mode-toggle-btn');
         const current    = desktopBtn ? desktopBtn.dataset.mode : 'production';
-        const next       = current === 'production' ? 'developer' : 'production';
+        const next       = current === 'local' ? 'production' : 'local';
         const msgEl      = document.getElementById('kx-mode-post-msg');
         this.disabled    = true;
         this.textContent = 'Switching…';
@@ -785,18 +762,22 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(data => {
             const newMode  = data.mode;
-            const isDevMode = newMode === 'developer';
-            const cssClass = isDevMode ? 'mode-developer' : 'mode-production';
-            const label    = isDevMode ? 'Developer Mode' : 'Production Mode';
+            const isLocal = newMode === 'local';
+            const cssClass = isLocal ? 'mode-local' : 'mode-production';
+            const label    = isLocal ? 'Local Mode' : 'Production Mode';
             [document.getElementById('kx-mode-toggle-btn'), document.getElementById('kx-mode-toggle-btn-sm')].forEach(b => {
                 if (!b) return;
                 b.dataset.mode  = newMode;
                 b.className     = 'kx-mode-badge ' + cssClass;
-                const textSpan = b.querySelector('span:not(.kx-mode-dot)');
+                b.classList.remove('mode-off');
+                b.setAttribute('aria-checked', isLocal ? 'true' : 'false');
+                const textSpan = b.querySelector('.kx-mode-label');
                 if (textSpan) textSpan.textContent = label;
+                const icon = b.querySelector('.kx-mode-switch-knob i');
+                if (icon) icon.className = 'bi ' + (isLocal ? 'bi-code-slash' : 'bi-shield-check');
             });
             msgEl.style.display = 'block';
-            msgEl.style.color   = isDevMode ? 'var(--kx-amber)' : 'var(--kx-green)';
+            msgEl.style.color   = isLocal ? 'var(--kx-amber)' : 'var(--kx-green)';
             msgEl.textContent   = '✓ Switched to ' + label;
             setTimeout(() => document.getElementById('kx-mode-overlay').classList.remove('active'), 1200);
         })

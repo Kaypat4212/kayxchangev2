@@ -185,8 +185,8 @@ class EnvEditorController extends Controller
             'groupMeta'      => self::GROUP_META,
             'enabledMethods' => $enabledMethods,
             'keysConfigured' => $keysConfigured,
-            'siteMode' => in_array(\App\Models\SiteContent::get('site_mode', 'production'), ['production', 'developer'], true)
-                ? \App\Models\SiteContent::get('site_mode', 'production') : 'production',
+            'siteMode' => in_array(\App\Models\AdminSetting::getSetting('runtime_mode', 'production'), ['production', 'local', 'off'], true)
+                ? \App\Models\AdminSetting::getSetting('runtime_mode', 'production') : 'production',
             'configuredSecretCount' => collect($current)->filter(fn ($value, $key) => isset(self::ALLOWED[$key]) && self::ALLOWED[$key]['type'] === 'password' && trim((string)$value) !== '')->count(),
         ]);
     }

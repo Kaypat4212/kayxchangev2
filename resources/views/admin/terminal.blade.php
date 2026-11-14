@@ -9,49 +9,16 @@
     --kx-orange:#f97316;--kx-red:#ef4444;
 }
 
-/* Site mode toggle styling (matches admin dashboard) */
-.kx-mode-badge{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:6px 14px;
-    border-radius:999px;
-    font-size:0.78rem;
-    font-weight:700;
-    letter-spacing:0.04em;
-    text-transform:uppercase;
-    cursor:pointer;
-    border:none;
-    transition:background 0.25s, box-shadow 0.25s, transform 0.15s;
-    white-space:nowrap;
-}
-.kx-mode-badge.mode-production{
-    background:rgba(0,204,0,0.15);
-    color:var(--kx-green);
-    border:1px solid rgba(0,204,0,0.35);
-}
-.kx-mode-badge.mode-production:hover{
-    background:rgba(0,204,0,0.28);
-    box-shadow:0 0 0 3px rgba(0,204,0,0.25);
-    transform:translateY(-1px);
-}
-.kx-mode-badge.mode-developer{
-    background:rgba(251,191,36,0.15);
-    color:#fbbf24;
-    border:1px solid rgba(251,191,36,0.35);
-}
-.kx-mode-badge.mode-developer:hover{
-    background:rgba(251,191,36,0.28);
-    box-shadow:0 0 0 3px rgba(251,191,36,0.2);
-    transform:translateY(-1px);
-}
-.kx-mode-dot{
-    width:7px;height:7px;border-radius:50%;
-    flex-shrink:0;
-    background:#999;
-}
-.mode-production .kx-mode-dot{ background:var(--kx-green); animation:pulse-dot 1.6s ease infinite; }
-.mode-developer  .kx-mode-dot{ background:var(--kx-amber, #fbbf24); }
+.kx-mode-badge{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:7px 10px 7px 13px;border-radius:999px;border:1px solid rgba(74,222,128,.3);background:linear-gradient(135deg,rgba(20,39,31,.98),rgba(10,24,19,.98));color:#e8fff0;font-size:.76rem;font-weight:750;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.08)}
+.kx-mode-badge:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.32),0 0 0 4px rgba(34,197,94,.1)}
+.kx-mode-badge:focus-visible{outline:3px solid rgba(134,239,172,.75);outline-offset:3px}
+.kx-mode-badge.mode-local{border-color:rgba(251,191,36,.42);background:linear-gradient(135deg,rgba(54,39,18,.98),rgba(30,23,13,.98));color:#fff3cf}
+.kx-mode-status{display:flex;align-items:center;gap:8px}.kx-mode-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.8)}
+.mode-local .kx-mode-dot{background:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.8)}.kx-mode-label{font-size:.7rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.kx-mode-switch{width:46px;height:26px;padding:3px;display:inline-flex;align-items:center;border-radius:999px;background:linear-gradient(135deg,#168447,#0c6335);box-shadow:inset 0 2px 5px rgba(0,0,0,.35);transition:background .25s;flex-shrink:0}
+.kx-mode-switch-knob{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#fff,#dcefe3);color:#13743d;box-shadow:0 2px 7px rgba(0,0,0,.35);transition:transform .28s cubic-bezier(.2,.8,.2,1),color .2s}
+.mode-local .kx-mode-switch{background:linear-gradient(135deg,#e5a11b,#b66e0c)}.mode-local .kx-mode-switch-knob{transform:translateX(20px);color:#9a5a08}
+.kx-mode-badge.mode-off{border-color:rgba(248,113,113,.4);background:linear-gradient(135deg,rgba(55,25,28,.98),rgba(30,17,20,.98));color:#ffe1e1}.mode-off .kx-mode-switch{background:linear-gradient(135deg,#c24141,#7f1d1d)}.mode-off .kx-mode-switch-knob{transform:translateX(8px);color:#a52d2d}
 @keyframes pulse-dot{
     0%,100% { box-shadow: 0 0 0 0 rgba(0,204,0,0.25); }
     50%      { box-shadow: 0 0 0 6px transparent; }
@@ -225,12 +192,13 @@ body{background:var(--kx-dark);color:var(--kx-text);font-family:'Poppins',sans-s
 
         @php $siteMode = $siteMode ?? 'production'; @endphp
         <button id="kx-mode-toggle-btn-terminal"
-            class="kx-mode-badge {{ $siteMode === 'developer' ? 'mode-developer' : 'mode-production' }}"
+            class="kx-mode-badge {{ $siteMode === 'local' ? 'mode-local' : ($siteMode === 'off' ? 'mode-off' : 'mode-production') }}"
             data-mode="{{ $siteMode }}"
-            title="Toggle site mode">
-            <span class="kx-mode-dot"></span>
-            <span>{{ $siteMode === 'developer' ? 'Developer Mode' : 'Production Mode' }}</span>
-            <i class="bi bi-arrow-repeat" style="font-size:0.7rem;opacity:0.7"></i>
+            role="switch" aria-checked="{{ $siteMode === 'local' ? 'true' : 'false' }}"
+            aria-label="Runtime mode. Click to switch between production and local mode."
+            title="Switch between production and local runtime mode">
+            <span class="kx-mode-status"><span class="kx-mode-dot"></span><span class="kx-mode-label">{{ $siteMode === 'local' ? 'Local Mode' : ($siteMode === 'off' ? 'Maintenance Mode' : 'Production Mode') }}</span></span>
+            <span class="kx-mode-switch" aria-hidden="true"><span class="kx-mode-switch-knob"><i class="bi {{ $siteMode === 'local' ? 'bi-code-slash' : ($siteMode === 'off' ? 'bi-pause-fill' : 'bi-shield-check') }}"></i></span></span>
         </button>
 
         <form method="POST" action="{{ route('admin.terminal.lock') }}" style="margin:0;">
@@ -316,19 +284,22 @@ function kxSetSiteModeUI(mode) {
     const btn = document.getElementById('kx-mode-toggle-btn-terminal');
     if (!btn) return;
 
-    const nextMode = mode === 'developer' ? 'developer' : 'production';
+    const nextMode = mode === 'local' ? 'local' : 'production';
     btn.dataset.mode = nextMode;
-    btn.classList.remove('mode-production', 'mode-developer');
-    btn.classList.add(nextMode === 'developer' ? 'mode-developer' : 'mode-production');
+    btn.classList.remove('mode-production', 'mode-local', 'mode-off');
+    btn.classList.add(nextMode === 'local' ? 'mode-local' : 'mode-production');
+    btn.setAttribute('aria-checked', nextMode === 'local' ? 'true' : 'false');
 
     const labelEl = btn.querySelector('span.kx-mode-label');
     // If label span doesn't exist, update by matching the second span
     if (labelEl) {
-        labelEl.textContent = nextMode === 'developer' ? 'Developer Mode' : 'Production Mode';
+        labelEl.textContent = nextMode === 'local' ? 'Local Mode' : 'Production Mode';
+        const icon = btn.querySelector('.kx-mode-switch-knob i');
+        if (icon) icon.className = 'bi ' + (nextMode === 'local' ? 'bi-code-slash' : 'bi-shield-check');
     } else {
         const spans = btn.querySelectorAll('span');
         if (spans && spans.length >= 2) {
-            spans[1].textContent = nextMode === 'developer' ? 'Developer Mode' : 'Production Mode';
+            spans[1].textContent = nextMode === 'local' ? 'Local Mode' : 'Production Mode';
         }
     }
 }
@@ -396,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (postMsg) {
                     postMsg.style.display = 'block';
                     postMsg.style.color = '#00cc00';
-                    postMsg.textContent = 'Mode updated to ' + (data.mode === 'developer' ? 'Developer' : 'Production') + '.';
+                    postMsg.textContent = 'Runtime mode updated to ' + (data.mode === 'local' ? 'Local' : 'Production') + '.';
                 }
 
                 setTimeout(function () {

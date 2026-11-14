@@ -143,7 +143,7 @@ select.gc-mini-input option{background:var(--kx-card);}
 <div class="container-xl">
 
     <h1 class="gc-page-title"><i class="bi bi-gift-fill me-2" style="color:#00cc00"></i>Gift Card Rates</h1>
-    <p class="gc-page-sub">Set buy &amp; sell rates (₦) for each gift card country. Customer purchases use the <strong>Sell Rate</strong>; customer sales use the <strong>Buy Rate</strong> and require admin review.</p>
+    <p class="gc-page-sub">Set the customer exchange rate, USD conversion, and editable per-order service fee. The customer price is card value × exchange rate + service fee. Customer sales use the buy rate and require admin review.</p>
 
     {{-- Alerts --}}
     @if(session('success'))
@@ -204,7 +204,7 @@ select.gc-mini-input option{background:var(--kx-card);}
                     <label class="form-label" style="font-size:.75rem;color:var(--kx-muted);font-weight:600;">Card Name</label>
                     <input type="text" name="name" class="gc-mini-input" placeholder="e.g. Amazon" required>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <label class="form-label" style="font-size:.75rem;color:var(--kx-muted);font-weight:600;">Country</label>
                     <select name="country" class="gc-mini-input" required>
                         <option value="US">US</option>
@@ -217,7 +217,7 @@ select.gc-mini-input option{background:var(--kx-card);}
                         <option value="OTHER">Other</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <label class="form-label" style="font-size:.75rem;color:var(--kx-muted);font-weight:600;">Currency</label>
                     <select name="currency" class="gc-mini-input" required>
                         <option value="USD">USD</option>
@@ -242,8 +242,16 @@ select.gc-mini-input option{background:var(--kx-card);}
                     <input type="number" name="buy_rate" class="gc-mini-input" placeholder="0" min="0" step="0.01" required>
                 </div>
                 <div class="col-md-1">
-                    <label class="form-label" style="font-size:.75rem;color:var(--kx-muted);font-weight:600;">Sell Rate ₦</label>
+                    <label class="form-label" style="font-size:.75rem;color:var(--kx-muted);font-weight:600;">Base rate ₦</label>
                     <input type="number" name="sell_rate" class="gc-mini-input" placeholder="0" min="0" step="0.01" required>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label" style="font-size:.75rem;color:var(--kx-muted);font-weight:600;">USD / unit</label>
+                    <input type="number" name="usd_exchange_rate" class="gc-mini-input" placeholder="USD per unit" min="0.000001" step="0.000001">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label" style="font-size:.75rem;color:var(--kx-muted);font-weight:600;">Service fee ₦ / order</label>
+                    <input type="number" name="purchase_markup_ngn" class="gc-mini-input" value="3000" min="0" step="0.01" required>
                 </div>
                 <div class="col-md-1">
                     <button type="submit" class="gc-save-btn w-100" style="padding:10px 0;font-size:.8rem;">
@@ -285,7 +293,9 @@ select.gc-mini-input option{background:var(--kx-card);}
                                 <th>Country</th>
                                 <th>Currency</th>
                                 <th>Buy Rate (₦)</th>
-                                <th>Sell Rate (₦)</th>
+                                <th>Base Sell Rate (₦ / unit)</th>
+                                <th>USD / Unit</th>
+                                <th>Service fee (₦ / order)</th>
                                 <th>Active</th>
                                 <th></th>
                             </tr>
@@ -311,6 +321,23 @@ select.gc-mini-input option{background:var(--kx-card);}
                                         class="gc-rate-input"
                                         min="0" step="0.01"
                                         placeholder="0">
+                                </td>
+                                <td>
+                                    <input type="number"
+                                        name="rates[{{ $card->id }}][usd_exchange_rate]"
+                                        value="{{ $card->currency === 'USD' ? '1' : $card->usd_exchange_rate }}"
+                                        class="gc-rate-input"
+                                        min="0.000001" step="0.000001"
+                                        placeholder="Set USD value per unit"
+                                        {{ $card->currency === 'USD' ? 'readonly title=USD-per-USD-is-always-1' : '' }}>
+                                </td>
+                                <td>
+                                    <input type="number"
+                                        name="rates[{{ $card->id }}][purchase_markup_ngn]"
+                                        value="{{ number_format((float) ($card->purchase_markup_ngn ?? 3000), 2, '.', '') }}"
+                                        class="gc-rate-input"
+                                        min="0" step="0.01"
+                                        placeholder="3000">
                                 </td>
                                 <td>
                                     <label class="gc-switch">

@@ -35,7 +35,44 @@ class TrackAdminAudit
                 ]);
             }
         }
+
+        $successfulMutation = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
+        if ($response->getStatusCode() >= 300 && $response->getStatusCode() < 400) {
+            $successfulMutation = $request->session()->has('success') && !$request->session()->has('errors');
+        }
+        if ($admin?->is_admin && $successfulMutation && $this->isSensitiveAdminMutation($request)) {
+            try {
+                app(\App\Services\AdminSecurityAlertService::class)->criticalAdminChange(
+                    $admin,
+                    $this->sensitiveArea($request),
+                    strtoupper($request->method()) . ' /' . ltrim($request->path(), '/')
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
         return $response;
+    }
+
+    private function isSensitiveAdminMutation(Request $request): bool
+    {
+        if ($request->isMethod('GET') || $request->isMethod('HEAD') || $request->isMethod('OPTIONS')) return false;
+
+        // General settings changes are reported by AdminSettingsController with
+        // the exact changed setting names; avoid duplicate notifications here.
+        if (preg_match('#^admin/settings(?:/|$)#', $request->path())) return false;
+
+        return (bool) preg_match(
+            '#^admin/(wallet-rates|bill-providers|features|crypto-deposit-settings|env-editor|profile/(?:password|email|2fa)|users(?:/|$)|gift-card-rates|manual-crypto-deposits|trades(?:/|$)|buy-trades(?:/|$)|sell-trades(?:/|$)|withdrawals(?:/|$)|deposits(?:/|$)|crypto-withdrawals(?:/|$))#',
+            $request->path()
+        );
+    }
+
+    private function sensitiveArea(Request $request): string
+    {
+        $parts = explode('/', trim($request->path(), '/'));
+        $area = $parts[1] ?? 'admin';
+        return ucwords(str_replace(['-', '_'], ' ', $area));
     }
 
     private function safeInput(array $input): array

@@ -7,49 +7,22 @@
     --kx-border:rgba(255,255,255,0.07);--kx-text:#e4e8f0;--kx-muted:#7a8599;
 }
 
-/* Site mode toggle styling (matches admin dashboard) */
-.kx-mode-badge{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:6px 14px;
-    border-radius:999px;
-    font-size:0.78rem;
-    font-weight:700;
-    letter-spacing:0.04em;
-    text-transform:uppercase;
-    cursor:pointer;
-    border:none;
-    transition:background 0.25s, box-shadow 0.25s, transform 0.15s;
-    white-space:nowrap;
-}
-.kx-mode-badge.mode-production{
-    background:rgba(0,204,0,0.15);
-    color:var(--kx-green);
-    border:1px solid rgba(0,204,0,0.35);
-}
-.kx-mode-badge.mode-production:hover{
-    background:rgba(0,204,0,0.28);
-    box-shadow:0 0 0 3px rgba(0,204,0,0.25);
-    transform:translateY(-1px);
-}
-.kx-mode-badge.mode-developer{
-    background:rgba(251,191,36,0.15);
-    color:#fbbf24;
-    border:1px solid rgba(251,191,36,0.35);
-}
-.kx-mode-badge.mode-developer:hover{
-    background:rgba(251,191,36,0.28);
-    box-shadow:0 0 0 3px rgba(251,191,36,0.2);
-    transform:translateY(-1px);
-}
-.kx-mode-dot{
-    width:7px;height:7px;border-radius:50%;
-    flex-shrink:0;
-    background:#999;
-}
-.mode-production .kx-mode-dot{ background:var(--kx-green); animation:pulse-dot 1.6s ease infinite; }
-.mode-developer  .kx-mode-dot{ background:var(--kx-amber, #fbbf24); }
+/* Runtime mode: a visible, responsive production/local switch. */
+.kx-mode-badge{display:inline-flex;align-items:center;gap:11px;min-height:54px;padding:8px 12px 8px 15px;border:1px solid rgba(74,222,128,.28);border-radius:999px;background:linear-gradient(135deg,rgba(20,39,31,.98),rgba(10,24,19,.98));color:#e8fff0;box-shadow:0 8px 28px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.08);cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s;white-space:nowrap}
+.kx-mode-badge:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,.3),0 0 0 4px rgba(34,197,94,.1)}
+.kx-mode-badge:focus-visible{outline:3px solid rgba(134,239,172,.75);outline-offset:3px}
+.kx-mode-badge.mode-local{border-color:rgba(251,191,36,.42);background:linear-gradient(135deg,rgba(54,39,18,.98),rgba(30,23,13,.98));color:#fff3cf}
+.kx-mode-status{display:flex;align-items:center;gap:9px}
+.kx-mode-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.8)}
+.mode-local .kx-mode-dot{background:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.8)}
+.kx-mode-label{font-size:.78rem;font-weight:800;letter-spacing:.045em;text-transform:uppercase}
+.kx-mode-switch{width:52px;height:29px;padding:3px;display:inline-flex;align-items:center;border-radius:999px;background:linear-gradient(135deg,#168447,#0c6335);box-shadow:inset 0 2px 5px rgba(0,0,0,.35);transition:background .25s;flex-shrink:0}
+.kx-mode-switch-knob{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#fff,#dcefe3);color:#13743d;box-shadow:0 2px 7px rgba(0,0,0,.35);transition:transform .28s cubic-bezier(.2,.8,.2,1),color .2s}
+.mode-local .kx-mode-switch{background:linear-gradient(135deg,#e5a11b,#b66e0c)}
+.mode-local .kx-mode-switch-knob{transform:translateX(23px);color:#9a5a08}
+.kx-mode-badge.mode-off{border-color:rgba(248,113,113,.4);background:linear-gradient(135deg,rgba(55,25,28,.98),rgba(30,17,20,.98));color:#ffe1e1}
+.mode-off .kx-mode-switch{background:linear-gradient(135deg,#c24141,#7f1d1d)}
+.mode-off .kx-mode-switch-knob{transform:translateX(9px);color:#a52d2d}
 @keyframes pulse-dot{
     0%,100% { box-shadow: 0 0 0 0 rgba(0,204,0,0.25); }
     50%      { box-shadow: 0 0 0 6px transparent; }
@@ -186,12 +159,12 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 .env-hero{position:relative;overflow:hidden;border:1px solid rgba(148,163,184,.18);border-radius:24px;padding:clamp(22px,4vw,34px);margin-bottom:22px;background:radial-gradient(circle at 85% 0%,rgba(34,197,94,.17),transparent 32%),linear-gradient(135deg,#111a27,#10151e 62%,#102019);box-shadow:0 20px 55px rgba(0,0,0,.2)}
 .env-hero:after{content:'';position:absolute;width:200px;height:200px;border:1px solid rgba(255,255,255,.05);border-radius:50%;right:-55px;bottom:-125px;box-shadow:0 0 0 28px rgba(255,255,255,.018),0 0 0 58px rgba(255,255,255,.012)}
 .env-hero-copy{position:relative;z-index:1;max-width:700px}.env-eyebrow{display:inline-flex;align-items:center;gap:8px;color:#86efac;font-size:.7rem;letter-spacing:.13em;text-transform:uppercase;font-weight:800}.env-page-title{font-size:clamp(1.5rem,3vw,2.15rem);letter-spacing:-.04em;margin-top:10px}.env-page-sub{line-height:1.65;max-width:650px;margin-bottom:0}
-.env-hero-side{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-end;gap:12px}.env-mode-caption{color:var(--kx-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;font-weight:800}.env-mode-warning{display:flex;align-items:flex-start;gap:9px;border:1px solid rgba(245,158,11,.2);background:rgba(245,158,11,.07);color:#f6d893;border-radius:12px;padding:11px 13px;font-size:.76rem;line-height:1.5;margin:0}
+.env-hero-side{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-end;gap:12px}.env-mode-caption{color:var(--kx-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;font-weight:800}.env-mode-warning{display:flex;align-items:flex-start;gap:9px;border:1px solid rgba(34,197,94,.2);background:rgba(34,197,94,.07);color:#b5f5c5;border-radius:12px;padding:11px 13px;font-size:.76rem;line-height:1.5;margin:0}.env-mode-warning.mode-local-warning{border-color:rgba(245,158,11,.28);background:rgba(127,72,7,.16);color:#ffe3a0}.env-mode-warning.mode-off-warning{border-color:rgba(248,113,113,.32);background:rgba(127,29,29,.18);color:#fecaca}
 .env-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}.env-overview-card{display:flex;align-items:center;gap:12px;background:#141c28;border:1px solid var(--kx-border);border-radius:15px;padding:14px 16px}.env-overview-icon{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:rgba(34,197,94,.1);color:#86efac;font-size:1.1rem}.env-overview-label{font-size:.68rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.08em;font-weight:750}.env-overview-value{font-size:.9rem;color:#f7fafc;font-weight:800;margin-top:2px}
 .env-nav{display:flex;gap:8px;overflow:auto;padding:3px 1px 13px;margin-bottom:6px;scrollbar-width:thin}.env-nav a{white-space:nowrap;display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid var(--kx-border);background:rgba(22,27,39,.86);border-radius:999px;text-decoration:none;color:#b7c2ce;font-size:.73rem;font-weight:700}.env-nav a:hover{border-color:rgba(34,197,94,.4);color:#a7f3b7}
 .env-secret-state{display:flex;align-items:center;gap:6px;color:#86efac;font-size:.68rem;font-weight:750;margin-top:6px}.env-secret-state.empty{color:#fbbf24}.env-secret-clear{display:flex;align-items:center;gap:7px;color:#fca5a5;font-size:.7rem;margin-top:8px}.env-secret-clear input{accent-color:#ef4444}
 .kx-mode-confirm-overlay{position:fixed;inset:0;z-index:12000;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,7,12,.78);backdrop-filter:blur(10px)}.kx-mode-confirm-overlay.active{display:flex}.kx-mode-confirm-box{width:min(100%,440px);padding:26px;border:1px solid rgba(255,255,255,.12);border-radius:22px;background:linear-gradient(145deg,#17212d,#101720);box-shadow:0 28px 90px rgba(0,0,0,.55);text-align:center}.kx-mode-confirm-icon{width:54px;height:54px;display:grid;place-items:center;border-radius:17px;margin:0 auto 14px;background:rgba(34,197,94,.1);font-size:1.5rem}.kx-mode-confirm-title{color:#f8fafc;font-weight:850;font-size:1.15rem;margin-bottom:8px}.kx-mode-confirm-text{color:#aab6c3;font-size:.84rem;line-height:1.65;margin-bottom:20px}.kx-mode-confirm-btns{display:flex;justify-content:center;gap:10px}.btn-kx-cancel,.btn-kx-amber,.btn-kx-green{border-radius:11px;padding:10px 15px;border:1px solid rgba(255,255,255,.12);font-weight:750;color:#edf3f7;background:#202b37}.btn-kx-amber{background:#f59e0b;border-color:#f59e0b;color:#211300}.btn-kx-green{background:#22c55e;border-color:#22c55e;color:#06150a}.btn-kx-cancel:hover,.btn-kx-amber:hover,.btn-kx-green:hover{filter:brightness(1.08)}
-@media(max-width:767px){.env-hero-side{align-items:flex-start;width:100%}.env-overview{grid-template-columns:1fr}.env-card{padding:20px 17px}.env-save-bar .container-xl{flex-wrap:wrap}.env-save-btn{width:100%}}
+@media(max-width:767px){.env-hero-side{align-items:flex-start;width:100%}.env-mode-warning{max-width:100%}.env-overview{grid-template-columns:1fr}.env-card{padding:20px 17px}.env-save-bar .container-xl{flex-wrap:wrap}.env-save-btn{width:100%}}
 body.kx-light .env-hero{background:radial-gradient(circle at 85% 0%,rgba(34,197,94,.14),transparent 32%),linear-gradient(135deg,#fff,#f1f6f3);border-color:rgba(15,23,42,.12);box-shadow:0 14px 38px rgba(15,23,42,.08)}body.kx-light .env-page-title,body.kx-light .env-overview-value,body.kx-light .env-tc-name{color:#16202c}body.kx-light .env-card,body.kx-light .env-overview-card{background:#fff;border-color:rgba(15,23,42,.11);box-shadow:0 8px 24px rgba(15,23,42,.04)}body.kx-light .env-nav a{background:#fff;color:#354256;border-color:rgba(15,23,42,.12)}body.kx-light .env-input{background:#f8fafc;color:#17212d;border-color:rgba(15,23,42,.16)}body.kx-light .env-save-bar{background:rgba(240,244,248,.94)}
 </style>
 @endpush
@@ -211,17 +184,18 @@ body.kx-light .env-hero{background:radial-gradient(circle at 85% 0%,rgba(34,197,
         <div class="env-hero-side">
             <span class="env-mode-caption">Current site mode</span>
             <button id="kx-mode-toggle-btn-env"
-                class="kx-mode-badge {{ $siteMode === 'developer' ? 'mode-developer' : 'mode-production' }}"
+                class="kx-mode-badge {{ $siteMode === 'local' ? 'mode-local' : ($siteMode === 'off' ? 'mode-off' : 'mode-production') }}"
                 data-mode="{{ $siteMode }}"
+                role="switch" aria-checked="{{ $siteMode === 'local' ? 'true' : 'false' }}"
+                aria-label="Runtime mode. Click to switch between production and local mode."
                 title="Toggle site mode">
-                <span class="kx-mode-dot"></span>
-                <span>{{ $siteMode === 'developer' ? 'Developer Mode' : 'Production Mode' }}</span>
-                <i class="bi bi-arrow-repeat" style="font-size:0.7rem;opacity:0.7"></i>
+                <span class="kx-mode-status"><span class="kx-mode-dot"></span><span class="kx-mode-label">{{ $siteMode === 'local' ? 'Local Mode' : ($siteMode === 'off' ? 'Maintenance Mode' : 'Production Mode') }}</span></span>
+                <span class="kx-mode-switch" aria-hidden="true"><span class="kx-mode-switch-knob"><i class="bi {{ $siteMode === 'local' ? 'bi-code-slash' : ($siteMode === 'off' ? 'bi-pause-fill' : 'bi-shield-check') }}"></i></span></span>
             </button>
             @if($siteMode === 'production')
-                <p class="env-mode-warning"><i class="bi bi-shield-check mt-1"></i><span>Production mode is active. Developer mode can reveal technical error details to users.</span></p>
+                <p class="env-mode-warning"><i class="bi bi-shield-check mt-1"></i><span>Production mode is active. Technical diagnostics are hidden from users; local mode reveals them only to administrators.</span></p>
             @else
-                <p class="env-mode-warning" style="border-color:rgba(248,113,113,.28);background:rgba(127,29,29,.18);color:#fecaca"><i class="bi bi-exclamation-triangle-fill mt-1"></i><span>Developer mode is active. Switch back to production before serving real users.</span></p>
+                <p class="env-mode-warning {{ $siteMode === 'off' ? 'mode-off-warning' : 'mode-local-warning' }}"><i class="bi {{ $siteMode === 'off' ? 'bi-pause-circle-fill' : 'bi-exclamation-triangle-fill' }} mt-1"></i><span>{{ $siteMode === 'off' ? 'Maintenance mode is active. Customers cannot use the platform. Use the switch to return to local or production.' : 'Local mode is active. Detailed diagnostics are visible to admins only. Return to production after troubleshooting.' }}</span></p>
             @endif
         </div>
     </section>
@@ -479,17 +453,17 @@ body.kx-light .env-hero{background:radial-gradient(circle at 85% 0%,rgba(34,197,
     const modeEndpoint = @json(route('admin.site-mode.toggle'));
     let requestedMode = null;
     const modeCopy = {
-        developer: {icon:'🛠️', title:'Enable Developer Mode?', text:'Developer mode can expose detailed errors and debug output. <strong>Do not enable it while real users are using the live site.</strong>', button:'Enable Developer Mode'},
+        local: {icon:'🛠️', title:'Switch to Local Mode?', text:'Local mode shows detailed diagnostics to administrators only. Public visitors continue to receive safe error pages. Use it briefly while troubleshooting.', button:'Switch to Local Mode'},
         production: {icon:'🚀', title:'Switch to Production Mode?', text:'Production mode hides technical errors from users and restores the normal live experience.', button:'Switch to Production'}
     };
     modeButton?.addEventListener('click', () => {
-        requestedMode = modeButton.dataset.mode === 'production' ? 'developer' : 'production';
+        requestedMode = modeButton.dataset.mode === 'local' ? 'production' : 'local';
         const copy = modeCopy[requestedMode];
         document.getElementById('kx-mode-confirm-icon-env').textContent = copy.icon;
         document.getElementById('kx-mode-confirm-title-env').textContent = copy.title;
         modeText.innerHTML = copy.text;
         modeConfirm.textContent = copy.button;
-        modeConfirm.className = requestedMode === 'developer' ? 'btn-kx-amber' : 'btn-kx-green';
+        modeConfirm.className = requestedMode === 'local' ? 'btn-kx-amber' : 'btn-kx-green';
         modeMessage.style.display = 'none';
         modeOverlay.classList.add('active');
         modeConfirm.focus();
@@ -505,14 +479,25 @@ body.kx-light .env-hero{background:radial-gradient(circle at 85% 0%,rgba(34,197,
             const response = await fetch(modeEndpoint, {method:'POST',headers:{'Accept':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content}});
             const result = await response.json();
             if (!response.ok || !result.mode) throw new Error(result.message || 'The site mode could not be changed.');
-            const isDeveloper = result.mode === 'developer';
+            const isLocal = result.mode === 'local';
             modeButton.dataset.mode = result.mode;
-            modeButton.classList.toggle('mode-developer', isDeveloper);
-            modeButton.classList.toggle('mode-production', !isDeveloper);
-            modeButton.querySelector('span:not(.kx-mode-dot)').textContent = isDeveloper ? 'Developer Mode' : 'Production Mode';
+            modeButton.setAttribute('aria-checked', isLocal ? 'true' : 'false');
+            modeButton.classList.toggle('mode-local', isLocal);
+            modeButton.classList.toggle('mode-production', !isLocal);
+            modeButton.classList.remove('mode-off');
+            modeButton.querySelector('.kx-mode-label').textContent = isLocal ? 'Local Mode' : 'Production Mode';
+            modeButton.querySelector('.kx-mode-switch-knob i').className = 'bi ' + (isLocal ? 'bi-code-slash' : 'bi-shield-check');
+            const warning = document.querySelector('.env-mode-warning');
+            if (warning) {
+                warning.classList.toggle('mode-local-warning', isLocal);
+                warning.classList.remove('mode-off-warning');
+                warning.innerHTML = isLocal
+                    ? '<i class="bi bi-exclamation-triangle-fill mt-1"></i><span>Local mode is active. Detailed diagnostics are visible to admins only. Return to production after troubleshooting.</span>'
+                    : '<i class="bi bi-shield-check mt-1"></i><span>Production mode is active. Technical error details are hidden from users.</span>';
+            }
             modeMessage.style.display = 'block';
-            modeMessage.style.color = isDeveloper ? '#fbbf24' : '#86efac';
-            modeMessage.textContent = '✓ Site switched to ' + (isDeveloper ? 'Developer Mode' : 'Production Mode');
+            modeMessage.style.color = isLocal ? '#fbbf24' : '#86efac';
+            modeMessage.textContent = '✓ Runtime switched to ' + (isLocal ? 'Local Mode' : 'Production Mode');
             setTimeout(() => modeOverlay.classList.remove('active'), 1000);
         } catch (error) {
             modeMessage.style.display = 'block';

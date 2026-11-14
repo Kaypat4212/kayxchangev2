@@ -52,7 +52,7 @@ class AdminTerminalController extends Controller
         $unlocked = $this->isPinUnlocked();
         $terminalPinConfigured = (string) config('admin.terminal_pin', '') !== '';
         try {
-            $siteMode = \App\Models\SiteContent::get('site_mode', 'production');
+            $siteMode = \App\Models\AdminSetting::getSetting('runtime_mode', 'production');
         } catch (\Throwable $e) {
             report($e);
             $siteMode = 'production';

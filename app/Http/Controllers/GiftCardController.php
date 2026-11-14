@@ -19,8 +19,14 @@ class GiftCardController extends Controller
     public function index()
     {
         $enabled = filter_var(AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        GiftCardRate::firstOrCreate([
+            'name' => 'iTunes / Apple', 'country' => 'US', 'currency' => 'USD',
+        ], [
+            'category' => 'gaming', 'buy_rate' => 0, 'sell_rate' => 1590,
+            'purchase_markup_ngn' => 3000, 'usd_exchange_rate' => 1, 'is_active' => true,
+        ]);
         $rates = GiftCardRate::query()->where('is_active', true)->whereIn('country', ['US', 'UK'])
-            ->where('sell_rate', '>', 0)->orderBy('category')->orderBy('name')->get();
+            ->where('sell_rate', '>', 0)->where('usd_exchange_rate', '>', 0)->orderBy('category')->orderBy('name')->get();
         $orders = GiftCardOrder::where('user_id', auth()->id())->latest()->paginate(10);
         $salesEnabled = filter_var(AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
         $saleRates = GiftCardRate::query()->where('is_active', true)->whereIn('country', ['US', 'UK'])
@@ -89,12 +95,18 @@ class GiftCardController extends Controller
         ]);
 
         $rate = GiftCardRate::query()->whereKey($data['gift_card_rate_id'])->where('is_active', true)
-            ->whereIn('country', ['US', 'UK'])->where('sell_rate', '>', 0)->firstOrFail();
-        $amount = round((float) $data['face_value'] * (float) $rate->sell_rate, 2);
+            ->whereIn('country', ['US', 'UK'])->where('sell_rate', '>', 0)
+            ->where('usd_exchange_rate', '>', 0)->firstOrFail();
+        $baseAmount = round((float) $data['face_value'] * (float) $rate->sell_rate, 2);
+        $purchaseMarkup = max(0, (float) ($rate->purchase_markup_ngn ?? 3000));
+        $amount = round($baseAmount + $purchaseMarkup, 2);
+        $usdExchangeRate = (float) $rate->usd_exchange_rate;
+        $usdFaceValue = round((float) $data['face_value'] * $usdExchangeRate, 2);
+        $ngnPerUsd = round((float) $rate->sell_rate / $usdExchangeRate, 2);
         $reference = 'GC-' . now()->format('ymd') . '-' . Str::upper(Str::random(8));
 
         try {
-            $result = DB::transaction(function () use ($request, $rate, $data, $amount, $reference) {
+            $result = DB::transaction(function () use ($request, $rate, $data, $amount, $baseAmount, $purchaseMarkup, $usdExchangeRate, $usdFaceValue, $ngnPerUsd, $reference) {
                 if (!filter_var(AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN)) {
                     abort(404);
                 }
@@ -130,7 +142,10 @@ class GiftCardController extends Controller
                     'user_id' => $user->id, 'gift_card_rate_id' => $rate->id, 'reference' => $reference,
                     'card_name' => $rate->name, 'country' => $rate->country, 'currency' => $rate->currency,
                     'face_value' => $data['face_value'], 'unit_rate_ngn' => $rate->sell_rate,
-                    'total_ngn' => $amount, 'recipient_email' => $data['recipient_email'],
+                    'total_ngn' => $amount, 'usd_exchange_rate' => $usdExchangeRate,
+                    'base_total_ngn' => $baseAmount, 'purchase_markup_ngn' => $purchaseMarkup,
+                    'usd_face_value' => $usdFaceValue, 'effective_ngn_per_usd' => $ngnPerUsd,
+                    'recipient_email' => $data['recipient_email'],
                     'customer_note' => $data['customer_note'] ?? null, 'status' => 'pending',
                 ]);
                 app(BalanceSettlementService::class)->adjustNgnBalance((int) $user->id, -$amount, 'gift_card.purchase', $reference);

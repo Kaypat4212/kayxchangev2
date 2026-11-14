@@ -15,6 +15,8 @@ class GiftCardRate extends Model
         'category',
         'buy_rate',
         'sell_rate',
+        'purchase_markup_ngn',
+        'usd_exchange_rate',
         'is_active',
     ];
 
@@ -22,6 +24,8 @@ class GiftCardRate extends Model
         'is_active' => 'boolean',
         'buy_rate'  => 'float',
         'sell_rate' => 'float',
+        'purchase_markup_ngn' => 'float',
+        'usd_exchange_rate' => 'float',
     ];
 
     /** Default gift cards seeded on first setup */

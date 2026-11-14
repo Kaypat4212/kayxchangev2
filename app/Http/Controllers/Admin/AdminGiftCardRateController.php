@@ -17,9 +17,24 @@ class AdminGiftCardRateController extends Controller
         // Auto-seed defaults if table is empty
         if (GiftCardRate::count() === 0) {
             foreach (GiftCardRate::defaultCards() as $card) {
-                GiftCardRate::create(array_merge($card, ['buy_rate' => 0, 'sell_rate' => 0, 'is_active' => true]));
+                GiftCardRate::create(array_merge($card, [
+                    'buy_rate' => 0,
+                    'sell_rate' => $card['name'] === 'iTunes / Apple' && $card['country'] === 'US' ? 1590 : 0,
+                    'purchase_markup_ngn' => 3000,
+                    'usd_exchange_rate' => $card['currency'] === 'USD' ? 1 : null,
+                    'is_active' => true,
+                ]));
             }
         }
+
+        // Keep a dedicated Apple USA iTunes option available even when an older
+        // populated rates table predates the platform's default-card list.
+        GiftCardRate::firstOrCreate([
+            'name' => 'iTunes / Apple', 'country' => 'US', 'currency' => 'USD',
+        ], [
+            'category' => 'gaming', 'buy_rate' => 0, 'sell_rate' => 1590,
+            'purchase_markup_ngn' => 3000, 'usd_exchange_rate' => 1, 'is_active' => true,
+        ]);
 
         $rates = GiftCardRate::orderBy('category')->orderBy('name')->orderBy('country')->get();
         $grouped = $rates->groupBy('category');
@@ -64,13 +79,19 @@ class AdminGiftCardRateController extends Controller
             'rates'              => 'required|array',
             'rates.*.buy_rate'   => 'required|numeric|min:0',
             'rates.*.sell_rate'  => 'required|numeric|min:0',
+            'rates.*.purchase_markup_ngn' => 'required|numeric|min:0|max:10000000',
+            'rates.*.usd_exchange_rate' => 'nullable|numeric|min:0.000001|max:1000000',
             'rates.*.is_active'  => 'nullable|boolean',
         ]);
 
         foreach ($request->input('rates') as $id => $row) {
-            GiftCardRate::where('id', $id)->update([
+            $rate = GiftCardRate::find($id);
+            if (!$rate) continue;
+            $rate->update([
                 'buy_rate'  => $row['buy_rate'],
                 'sell_rate' => $row['sell_rate'],
+                'purchase_markup_ngn' => $row['purchase_markup_ngn'],
+                'usd_exchange_rate' => $rate->currency === 'USD' ? 1 : ($row['usd_exchange_rate'] ?? null),
                 'is_active' => isset($row['is_active']) ? 1 : 0,
             ]);
         }
@@ -103,8 +124,12 @@ class AdminGiftCardRateController extends Controller
             'category'  => 'required|string|max:50',
             'buy_rate'  => 'required|numeric|min:0',
             'sell_rate' => 'required|numeric|min:0',
+            'purchase_markup_ngn' => 'nullable|numeric|min:0|max:10000000',
+            'usd_exchange_rate' => 'nullable|numeric|min:0.000001|max:1000000',
         ]);
 
+        $data['purchase_markup_ngn'] = $data['purchase_markup_ngn'] ?? 3000;
+        $data['usd_exchange_rate'] = $data['currency'] === 'USD' ? 1 : ($data['usd_exchange_rate'] ?? null);
         GiftCardRate::create(array_merge($data, ['is_active' => true]));
 
         return back()->with('success', 'Gift card added successfully.');
@@ -117,14 +142,20 @@ class AdminGiftCardRateController extends Controller
         $data = $request->validate([
             'buy_rate'  => 'required|numeric|min:0',
             'sell_rate' => 'required|numeric|min:0',
+            'purchase_markup_ngn' => 'sometimes|required|numeric|min:0|max:10000000',
+            'usd_exchange_rate' => 'nullable|numeric|min:0.000001|max:1000000',
             'is_active' => 'nullable|boolean',
         ]);
 
-        $rate->update([
+        $update = [
             'buy_rate'  => $data['buy_rate'],
             'sell_rate' => $data['sell_rate'],
             'is_active' => isset($data['is_active']) ? 1 : 0,
-        ]);
+        ];
+        if (array_key_exists('purchase_markup_ngn', $data)) $update['purchase_markup_ngn'] = $data['purchase_markup_ngn'];
+        if ($rate->currency === 'USD') $update['usd_exchange_rate'] = 1;
+        elseif (array_key_exists('usd_exchange_rate', $data)) $update['usd_exchange_rate'] = $data['usd_exchange_rate'];
+        $rate->update($update);
 
         return response()->json(['success' => true]);
     }

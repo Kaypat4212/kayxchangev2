@@ -341,6 +341,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <button type="button" class="btn btn-outline-secondary" id="nowpayments-api-key-preview" onclick="previewNowPaymentsApiKey()" aria-label="Preview saved NOWPayments API key" aria-pressed="false">
                                 <i class="bi bi-eye me-1" aria-hidden="true"></i>Preview
                             </button>
+                            <button type="button" class="btn btn-outline-info" onclick="copyNowPaymentsCredential('api_key','nowpayments-api-key-preview-status')"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copy</button>
                         </div>
                         <div id="nowpayments-api-key-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved key stays masked until you preview it.</div>
                     @elseif($row->key === 'nowpayments_ipn_secret')
@@ -349,6 +350,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <button type="button" class="btn btn-outline-secondary" id="nowpayments-ipn-secret-preview" onclick="previewNowPaymentsIpnSecret()" aria-label="Preview saved NOWPayments IPN secret" aria-pressed="false">
                                 <i class="bi bi-eye me-1" aria-hidden="true"></i>Preview
                             </button>
+                            <button type="button" class="btn btn-outline-info" onclick="copyNowPaymentsCredential('ipn_secret','nowpayments-ipn-secret-preview-status')"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copy</button>
                         </div>
                         <div id="nowpayments-ipn-secret-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved IPN secret stays masked until you preview it.</div>
                     @elseif($row->is_encrypted)
@@ -521,6 +523,41 @@ async function cfAction(action) {
                 result.textContent = 'Could not reach the server. Save settings and try again.';
                 result.className = 'small text-warning';
             } finally { button.disabled = false; }
+        }
+
+        async function copyNowPaymentsCredential(credential, statusId) {
+            const status = document.getElementById(statusId);
+            if (!status) return;
+            status.textContent = 'Requesting a secure copy…';
+            try {
+                const response = await fetch(@json(route('admin.settings.nowpayments-credential-copy')), {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json', 'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({credential})
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok || !data.value) throw new Error(data.message || 'Could not copy the saved credential.');
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(data.value);
+                } else {
+                    const temporaryField = document.createElement('textarea');
+                    temporaryField.value = data.value;
+                    temporaryField.setAttribute('readonly', '');
+                    temporaryField.style.position = 'fixed';
+                    temporaryField.style.opacity = '0';
+                    document.body.appendChild(temporaryField);
+                    temporaryField.select();
+                    const copied = document.execCommand('copy');
+                    temporaryField.remove();
+                    if (!copied) throw new Error('Clipboard access was blocked. Use Preview to copy manually.');
+                }
+                status.textContent = 'Copied. Admin security alerts were sent.';
+            } catch (error) {
+                status.textContent = error.message || 'Copy failed. Use Preview to reveal the saved value.';
+            }
         }
 
         async function previewNowPaymentsApiKey() {

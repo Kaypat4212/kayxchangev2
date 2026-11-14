@@ -168,7 +168,7 @@ class AdminController extends Controller
         $totalUsers = User::count();
         $totalReferrals = Referral::count();
         $totalReferralRewards = Referral::where('status', 'completed')->sum('reward_amount');
-        $siteMode = SiteContent::get('site_mode', 'production');
+        $siteMode = AdminSetting::getSetting('runtime_mode', 'production');
 
         // Cryptomus statistics
         $cryptomusEnabled = AdminSetting::getSetting('cryptomus_enabled', '0') === '1';
@@ -195,12 +195,16 @@ class AdminController extends Controller
 
     public function toggleSiteMode(Request $request)
     {
-        $current = SiteContent::get('site_mode', 'production');
-        $next    = $current === 'production' ? 'developer' : 'production';
+        $current = (string) AdminSetting::getSetting('runtime_mode', 'production');
+        $next = $current === 'local' ? 'production' : 'local';
 
+        AdminSetting::seedDefaults();
+        AdminSetting::set('runtime_mode', $next);
+
+        // Keep the legacy mode key aligned for existing diagnostics and integrations.
         SiteContent::updateOrCreate(
             ['key' => 'site_mode'],
-            ['group' => 'system', 'label' => 'Site Mode', 'value' => $next]
+            ['group' => 'system', 'label' => 'Site Mode', 'value' => $next === 'local' ? 'developer' : 'production']
         );
 
         Log::info('Site mode changed', [
@@ -210,10 +214,10 @@ class AdminController extends Controller
         ]);
 
         if ($request->wantsJson()) {
-            return response()->json(['mode' => $next, 'message' => 'Mode switched to ' . ucfirst($next)]);
+            return response()->json(['mode' => $next, 'message' => 'Runtime mode switched to ' . ucfirst($next)]);
         }
 
-        return back()->with('success', 'Site mode switched to ' . ucfirst($next) . '.');
+        return back()->with('success', 'Runtime mode switched to ' . ucfirst($next) . '.');
     }
 
     public function getPendingCounts()

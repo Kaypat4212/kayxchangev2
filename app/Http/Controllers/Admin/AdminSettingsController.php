@@ -181,7 +181,7 @@ class AdminSettingsController extends Controller
         }
     }
 
-    public function update(Request $request)
+    public function update(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
     {
         $data = $request->except(['_token', '_method', 'action']);
 
@@ -217,20 +217,44 @@ class AdminSettingsController extends Controller
             return back()->with('error', 'Choose Off, Custom CAPTCHA, or Cloudflare Turnstile.');
         }
 
+        $changedCredentials = [];
+        $changedCriticalSettings = [];
+        $criticalKeys = [
+            'runtime_mode', 'site_maintenance', 'nowpayments_enabled', 'nowpayments_sandbox',
+            'crypto_deposit_provider', 'convert_mode', 'blocked_countries', 'homepage_captcha_mode',
+            'cf_enabled', 'cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_conversion_enabled',
+        ];
+
         foreach ($data as $key => $value) {
             $row = AdminSetting::where('key', $key)->first();
             if (! $row) continue;
 
-            // Skip blank submissions for encrypted fields (don't overwrite existing secret)
-            if ($row->is_encrypted && ($value === null || $value === '')) continue;
+            // Keep credential rows encrypted even when older database metadata is wrong.
+            $isCredential = $row->is_encrypted || preg_match('/api.?key|secret|password|token|credential/i', (string) $key);
+            if ($isCredential) {
+                if ($value === null || trim((string) $value) === '') continue;
 
-            if ($row->is_encrypted && $value !== null && $value !== '') {
-                $row->value = Crypt::encryptString((string) $value);
-            } else {
-                $row->value = $value;
+                $plainValue = trim((string) $value);
+                $previousValue = (string) AdminSetting::getSetting((string) $key, '');
+                $changed = !hash_equals($previousValue, $plainValue);
+                $row->is_encrypted = true;
+                $row->value = Crypt::encryptString($plainValue);
+                $row->save();
+
+                if ($changed) $changedCredentials[] = $row->label ?: $key;
+                continue;
             }
+
+            $previousValue = $row->value;
+            $row->value = $value;
             $row->save();
+            if (in_array($key, $criticalKeys, true) && (string) $previousValue !== (string) $value) {
+                $changedCriticalSettings[] = $row->label ?: $key;
+            }
         }
+
+        if ($changedCredentials) $securityAlerts->credentialChanged($request->user(), array_values(array_unique($changedCredentials)));
+        if ($changedCriticalSettings) $securityAlerts->criticalAdminChange($request->user(), implode(', ', array_unique($changedCriticalSettings)), 'Admin Settings');
 
         return back()->with('success', 'Settings saved successfully.');
     }
@@ -271,7 +295,7 @@ class AdminSettingsController extends Controller
     }
 
     /** Reveal the encrypted NOWPayments API key only after an explicit admin request. */
-    public function previewNowPaymentsApiKey()
+    public function previewNowPaymentsApiKey(\App\Services\AdminSecurityAlertService $securityAlerts, Request $request)
     {
         $apiKey = (string) AdminSetting::getSetting('nowpayments_api_key', '');
         if ($apiKey === '') {
@@ -280,13 +304,15 @@ class AdminSettingsController extends Controller
                 ->header('Pragma', 'no-cache');
         }
 
+        $securityAlerts->credentialRevealed($request->user(), 'NOWPayments API key');
+
         return response()->json(['ok' => true, 'api_key' => $apiKey])
             ->header('Cache-Control', 'private, no-store, max-age=0')
             ->header('Pragma', 'no-cache');
     }
 
     /** Reveal the encrypted NOWPayments IPN secret after an explicit admin request. */
-    public function previewNowPaymentsIpnSecret()
+    public function previewNowPaymentsIpnSecret(\App\Services\AdminSecurityAlertService $securityAlerts, Request $request)
     {
         $ipnSecret = (string) AdminSetting::getSetting('nowpayments_ipn_secret', '');
         if ($ipnSecret === '') {
@@ -295,7 +321,29 @@ class AdminSettingsController extends Controller
                 ->header('Pragma', 'no-cache');
         }
 
+        $securityAlerts->credentialRevealed($request->user(), 'NOWPayments IPN secret');
+
         return response()->json(['ok' => true, 'ipn_secret' => $ipnSecret])
+            ->header('Cache-Control', 'private, no-store, max-age=0')
+            ->header('Pragma', 'no-cache');
+    }
+
+    public function copyNowPaymentsCredential(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
+    {
+        $data = $request->validate(['credential' => ['required', 'in:api_key,ipn_secret']]);
+        $credentials = [
+            'api_key' => ['setting' => 'nowpayments_api_key', 'label' => 'NOWPayments API key'],
+            'ipn_secret' => ['setting' => 'nowpayments_ipn_secret', 'label' => 'NOWPayments IPN secret'],
+        ];
+        $selected = $credentials[$data['credential']];
+        $value = (string) AdminSetting::getSetting($selected['setting'], '');
+        if ($value === '') {
+            return response()->json(['ok' => false, 'message' => 'No saved credential is available to copy.'], 404)
+                ->header('Cache-Control', 'private, no-store, max-age=0');
+        }
+
+        $securityAlerts->credentialCopied($request->user(), $selected['label']);
+        return response()->json(['ok' => true, 'value' => $value])
             ->header('Cache-Control', 'private, no-store, max-age=0')
             ->header('Pragma', 'no-cache');
     }
