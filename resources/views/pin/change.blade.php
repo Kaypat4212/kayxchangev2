@@ -114,7 +114,7 @@
 
         <!-- Step label -->
         <span class="chpin-label" id="cpStepLabel">
-            @if($hasPin)Enter current PIN@else Enter new PIN@endif
+            {{ $hasPin ? 'Enter current PIN' : 'Enter new PIN' }}
         </span>
 
         <!-- Dots -->
