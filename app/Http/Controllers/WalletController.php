@@ -423,7 +423,10 @@ class WalletController extends Controller
         $depositInput = $paymentData['deposit_input'] ?? [];
         $depositValuation = $paymentData['deposit_valuation'] ?? [];
 
-        return view('wallet.deposit-success', compact('deposit', 'depositInput', 'depositValuation', 'currentMarketValue'));
+        return response()->view('wallet.deposit-success', compact('deposit', 'depositInput', 'depositValuation', 'currentMarketValue'))
+            ->header('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**
@@ -509,7 +512,9 @@ class WalletController extends Controller
             'deposit_valuation' => data_get($deposit->payment_data, 'deposit_valuation', []),
             'current_market_value_usd' => $currentMarketValue,
             'currency' => $deposit->currency,
-        ]);
+        ])->header('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**

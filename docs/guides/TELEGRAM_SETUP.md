@@ -1,7 +1,7 @@
 # Telegram Bot Setup Guide for KayXchange
 
 ## Overview
-This guide will help you set up the Telegram notification system using your bot token: `6249943820:AAEGJ2Oc7XJLtPGFBx8-rbPUuXZtgBvQ7hI`
+This guide will help you set up the Telegram notification system using your bot token: `<YOUR_TELEGRAM_BOT_TOKEN>`
 
 ## Prerequisites
 1. Laravel application running on a publicly accessible domain (for webhooks)
@@ -12,7 +12,7 @@ This guide will help you set up the Telegram notification system using your bot 
 ## Step 1: Environment Configuration
 The bot token has already been added to your `.env` file:
 ```
-KAYXCHANGE_TELEGRAM_BOT_TOKEN=6249943820:AAEGJ2Oc7XJLtPGFBx8-rbPUuXZtgBvQ7hI
+KAYXCHANGE_TELEGRAM_BOT_TOKEN=<YOUR_TELEGRAM_BOT_TOKEN>
 ```
 
 ## Step 2: Database Migration
