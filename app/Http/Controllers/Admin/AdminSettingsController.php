@@ -147,13 +147,20 @@ class AdminSettingsController extends Controller
                 $q = AdminSetting::where('group', $g)->orderBy('id');
                 $grouped[$g] = $q->get()->map(function ($row) {
                     $display = '';
-                    if ($row->value && $row->is_encrypted) {
+                    $isCredential = $row->is_encrypted || AdminSetting::isSensitiveKey((string) $row->key);
+                    if ($row->value && $isCredential) {
+                        $plain = null;
                         try {
                             $plain = Crypt::decryptString($row->value);
-                            $display = $plain ? str_repeat('•', min(8, strlen($plain) - 4)) . substr($plain, -4) : '';
                         } catch (\Exception $e) {
-                            $display = '(encrypted)';
+                            if (!AdminSetting::looksLikeCiphertext((string) $row->value)) $plain = (string) $row->value;
                         }
+                        $display = $plain
+                            ? (strlen($plain) <= 4 ? str_repeat('•', strlen($plain)) : str_repeat('•', min(8, strlen($plain) - 4)) . substr($plain, -4))
+                            : '(encrypted; re-enter to replace)';
+                        // Treat old sensitive settings as encrypted in this form
+                        // even if a prior version saved a bad metadata flag.
+                        $row->is_encrypted = true;
                     } elseif ($row->value) {
                         $display = $row->value;
                     }
@@ -183,7 +190,8 @@ class AdminSettingsController extends Controller
 
     public function update(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
     {
-        $data = $request->except(['_token', '_method', 'action']);
+        $data = $request->except(['_token', '_method', 'action', 'clear_settings']);
+        $requestedCredentialClears = array_values(array_unique((array) $request->input('clear_settings', [])));
 
         if (isset($data['runtime_mode']) && !in_array($data['runtime_mode'], ['production', 'local', 'off'], true)) {
             return back()->with('error', 'Choose Production, Local diagnostics, or Off.');
@@ -192,6 +200,8 @@ class AdminSettingsController extends Controller
             'blocked_countries' => ['sometimes', 'array'],
             'blocked_countries.*' => ['string', 'regex:/^[A-Za-z]{2}$/'],
             'blocked_country_codes' => ['nullable', 'string', 'max:500'],
+            'clear_settings' => ['sometimes', 'array'],
+            'clear_settings.*' => ['string', 'max:100'],
         ]);
         if (array_key_exists('blocked_country_codes', $data) || array_key_exists('blocked_countries', $data)) {
             $selected = (array) ($data['blocked_countries'] ?? []);
@@ -218,6 +228,7 @@ class AdminSettingsController extends Controller
         }
 
         $changedCredentials = [];
+        $clearedCredentials = [];
         $changedCriticalSettings = [];
         $criticalKeys = [
             'runtime_mode', 'site_maintenance', 'nowpayments_enabled', 'nowpayments_sandbox',
@@ -253,10 +264,32 @@ class AdminSettingsController extends Controller
             }
         }
 
+        foreach ($requestedCredentialClears as $key) {
+            $row = AdminSetting::where('key', $key)->first();
+            if (!$row) continue;
+            $isCredential = $row->is_encrypted || preg_match('/api.?key|secret|password|token|credential/i', (string) $key);
+            if (!$isCredential) continue;
+
+            // Saving a replacement takes precedence if both a new value and
+            // the clear checkbox are submitted for the same credential.
+            if (array_key_exists($key, $data) && trim((string) $data[$key]) !== '') continue;
+
+            $previousValue = (string) AdminSetting::getSetting((string) $key, '');
+            if ($previousValue === '') continue;
+            $row->is_encrypted = true;
+            $row->value = '';
+            $row->save();
+            $clearedCredentials[] = $row->label ?: $key;
+        }
+
         if ($changedCredentials) $securityAlerts->credentialChanged($request->user(), array_values(array_unique($changedCredentials)));
+        if ($clearedCredentials) $securityAlerts->credentialCleared($request->user(), array_values(array_unique($clearedCredentials)));
         if ($changedCriticalSettings) $securityAlerts->criticalAdminChange($request->user(), implode(', ', array_unique($changedCriticalSettings)), 'Admin Settings');
 
-        return back()->with('success', 'Settings saved successfully.');
+        $successMessage = $clearedCredentials
+            ? 'Saved credential(s) cleared: ' . implode(', ', array_unique($clearedCredentials)) . '. Enter a replacement key and save when ready.'
+            : ($changedCredentials ? 'Settings saved. Updated credentials are encrypted and ready to use.' : 'Settings saved successfully.');
+        return back()->with('success', $successMessage);
     }
 
     public function testNowPayments(NowPaymentsService $provider)

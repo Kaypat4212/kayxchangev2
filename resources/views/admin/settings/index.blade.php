@@ -344,6 +344,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <button type="button" class="btn btn-outline-info" onclick="copyNowPaymentsCredential('api_key','nowpayments-api-key-preview-status')"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copy</button>
                         </div>
                         <div id="nowpayments-api-key-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved key stays masked until you preview it.</div>
+                        <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved API key</label>
                     @elseif($row->key === 'nowpayments_ipn_secret')
                         <div class="input-group">
                             <input type="password" name="{{ $row->key }}" id="nowpayments-ipn-secret-field" placeholder="{{ $row->display_value ?: 'Enter IPN secret' }}" autocomplete="new-password" spellcheck="false">
@@ -353,8 +354,10 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <button type="button" class="btn btn-outline-info" onclick="copyNowPaymentsCredential('ipn_secret','nowpayments-ipn-secret-preview-status')"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copy</button>
                         </div>
                         <div id="nowpayments-ipn-secret-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved IPN secret stays masked until you preview it.</div>
+                        <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved IPN secret</label>
                     @elseif($row->is_encrypted)
                         <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password">
+                        <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved {{ strtolower($row->label ?? 'credential') }}</label>
                     @else
                         <input type="text" name="{{ $row->key }}" value="{{ $row->value ?? '' }}" placeholder="{{ $row->label }}">
                     @endif
@@ -464,6 +467,13 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 </div>
 
 <script>
+function confirmCredentialClear(checkbox) {
+    if (!checkbox.checked) return;
+    if (!window.confirm('Clear this saved credential? Any feature using it may stop working until you save a replacement.')) {
+        checkbox.checked = false;
+    }
+}
+
 function showGroup(name, el) {
     document.querySelectorAll('.group-section').forEach(s => s.style.display = 'none');
     document.querySelectorAll('.group-tab a').forEach(a => a.classList.remove('active'));

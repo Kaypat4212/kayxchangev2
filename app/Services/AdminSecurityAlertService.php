@@ -13,7 +13,7 @@ class AdminSecurityAlertService
     public function credentialChanged(User $actor, array $labels): void
     {
         $this->notify(
-            'Payment credentials changed',
+            'Admin integration credentials changed',
             'The following encrypted integration credential(s) were changed: ' . implode(', ', $labels),
             $actor
         );
@@ -24,6 +24,15 @@ class AdminSecurityAlertService
         $this->notify(
             'Payment credential copied',
             'An administrator requested a copy of the saved ' . $label . '.',
+            $actor
+        );
+    }
+
+    public function credentialCleared(User $actor, array $labels): void
+    {
+        $this->notify(
+            'Admin integration credentials cleared',
+            'Saved encrypted credential(s) were cleared: ' . implode(', ', $labels),
             $actor
         );
     }

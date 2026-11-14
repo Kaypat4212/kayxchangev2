@@ -19,11 +19,17 @@ class AdminSetting extends Model
         try {
             $row = static::where('key', $key)->first();
             if (! $row) return $default;
-            if ($row->is_encrypted) {
+            if ($row->is_encrypted || static::isSensitiveKey($key)) {
                 try {
                     return Crypt::decryptString($row->value ?? '');
                 } catch (\Exception $e) {
-                    return $default;
+                    // Older settings rows may contain ciphertext while their
+                    // is_encrypted flag is false. Never pass that payload to a
+                    // provider as though it were the original API credential.
+                    if ($row->is_encrypted || static::looksLikeCiphertext((string) ($row->value ?? ''))) {
+                        return $default;
+                    }
+                    return $row->value ?? $default;
                 }
             }
             return $row->value;
@@ -37,10 +43,24 @@ class AdminSetting extends Model
     public static function set(string $key, mixed $value, bool $encrypt = false): void
     {
         $row = static::firstOrNew(['key' => $key]);
-        $shouldEncrypt = $encrypt || $row->is_encrypted;
+        $shouldEncrypt = $encrypt || $row->is_encrypted || static::isSensitiveKey($key);
         $row->value = ($shouldEncrypt && $value !== null && $value !== '') ? Crypt::encryptString((string) $value) : $value;
         $row->is_encrypted = $shouldEncrypt;
         $row->save();
+    }
+
+    public static function isSensitiveKey(string $key): bool
+    {
+        return (bool) preg_match('/api.?key|secret|password|token|credential|private.?key/i', $key);
+    }
+
+    public static function looksLikeCiphertext(string $value): bool
+    {
+        $decoded = base64_decode($value, true);
+        if ($decoded === false) return false;
+        $payload = json_decode($decoded, true);
+        return is_array($payload)
+            && isset($payload['iv'], $payload['value'], $payload['mac']);
     }
 
     /** Get all settings for a group, keyed by setting key. Values auto-decrypted. */
@@ -48,11 +68,11 @@ class AdminSetting extends Model
     {
         return static::where('group', $group)->get()
             ->mapWithKeys(function ($row) {
-                if ($row->is_encrypted) {
+                if ($row->is_encrypted || static::isSensitiveKey((string) $row->key)) {
                     try {
                         $val = ($row->value && $row->value !== '') ? Crypt::decryptString($row->value) : '';
                     } catch (\Exception $e) {
-                        $val = '';
+                        $val = $row->is_encrypted || static::looksLikeCiphertext((string) ($row->value ?? '')) ? '' : $row->value;
                     }
                 } else {
                     $val = $row->value;
