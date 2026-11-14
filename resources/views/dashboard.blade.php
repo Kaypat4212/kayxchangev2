@@ -962,17 +962,34 @@ document.querySelectorAll('[data-coming-soon]').forEach(button=>button.addEventL
     });
 
     // ---- Rates ----
+    const dashboardRateFallback = @json($rates ?? []);
+
+    function rateRowsFromMap(rateMap) {
+        if (!rateMap || typeof rateMap !== 'object') return [];
+        return Object.entries(rateMap).map(([coin, rates]) => ({
+            coin,
+            buy_rate: rates?.buy_rate,
+            sell_rate: rates?.sell_rate
+        }));
+    }
+
     function fetchRates() {
         const c = document.getElementById('rates-container');
-        c.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="kx-skel" style="height:14px;width:55%;margin:0 auto 6px"></div><div class="kx-skel" style="height:14px;width:40%;margin:0 auto"></div></td></tr>';
+        if (!c) return;
+        // Show the controller's current rates right away while the live refresh runs.
+        const fallbackRows = rateRowsFromMap(dashboardRateFallback);
+        if (fallbackRows.length) renderRates(fallbackRows);
+        else c.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="kx-skel" style="height:14px;width:55%;margin:0 auto 6px"></div><div class="kx-skel" style="height:14px;width:40%;margin:0 auto"></div></td></tr>';
+
         fetch('{{ route('calc.rates') }}', { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-            .then(data => renderRates(Object.entries(data).map(([coin, rates]) => ({ coin, buy_rate: rates.buy_rate, sell_rate: rates.sell_rate })))
+            .then(data => {
+                const liveRows = rateRowsFromMap(data);
+                if (!liveRows.length) throw new Error('No live trade rates returned.');
+                renderRates(liveRows);
+            })
             .catch(() => {
-                const fb = @json($rates);
-                if (Object.keys(fb).length) {
-                    renderRates(Object.entries(fb).map(([coin, rates]) => ({ coin, buy_rate: rates.buy_rate, sell_rate: rates.sell_rate })));
-                } else {
+                if (!fallbackRows.length) {
                     c.innerHTML = '<tr><td colspan="3" class="text-center py-4" style="color:rgba(255,255,255,0.3)"><i class="bi bi-wifi-off me-2"></i>Unable to load rates</td></tr>';
                 }
             });
@@ -980,12 +997,16 @@ document.querySelectorAll('[data-coming-soon]').forEach(button=>button.addEventL
 
     function renderRates(rates) {
         const c = document.getElementById('rates-container');
+        if (!c) return;
         if (!rates || !rates.length) { c.innerHTML = '<tr><td colspan="3" class="text-center py-4" style="color:rgba(255,255,255,0.3)">No rates available</td></tr>'; return; }
+        const formatRate = value => Number.isFinite(Number(value)) && Number(value) > 0
+            ? '₦' + Number(value).toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2})
+            : '—';
         c.innerHTML = rates.map(r => `
             <tr>
                 <td><div class="kx-coin-row"><span style="font-weight:600">${r.coin}</span></div></td>
-                <td class="kx-rate-buy">₦${parseFloat(r.buy_rate).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-                <td class="kx-rate-sell">₦${parseFloat(r.sell_rate).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                <td class="kx-rate-buy">${formatRate(r.buy_rate)}</td>
+                <td class="kx-rate-sell">${formatRate(r.sell_rate)}</td>
             </tr>`).join('');
     }
 
