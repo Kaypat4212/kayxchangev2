@@ -11,6 +11,9 @@ use App\Models\CryptoWithdrawal;
 use App\Models\Deposit;
 use App\Models\Withdrawal;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 
 class AdminOperationsController extends Controller
 {
@@ -37,14 +40,30 @@ class AdminOperationsController extends Controller
             'nowpayments_last_success' => Cache::get('provider_health.nowpayments.last_success_at'),
             'nowpayments_last_error' => Cache::get('provider_health.nowpayments.last_error'),
         ];
-        $ledger = \App\Models\WalletLedgerEntry::with('user')->latest()->paginate(20, ['*'], 'ledger_page');
-        $auditLogs = AdminAuditLog::with('admin')->latest()->paginate(20, ['*'], 'audit_page');
-        return view('admin.operations', compact('stuck', 'providerHealth', 'ledger', 'auditLogs'));
+        $ledgerReady = Schema::hasTable('wallet_ledger_entries');
+        $auditReady = Schema::hasTable('admin_audit_logs');
+        $ledger = $ledgerReady
+            ? \App\Models\WalletLedgerEntry::with('user')->latest()->paginate(20, ['*'], 'ledger_page')
+            : $this->emptyPaginator('ledger_page');
+        $auditLogs = $auditReady
+            ? AdminAuditLog::with('admin')->latest()->paginate(20, ['*'], 'audit_page')
+            : $this->emptyPaginator('audit_page');
+        return view('admin.operations', compact('stuck', 'providerHealth', 'ledger', 'auditLogs', 'ledgerReady', 'auditReady'));
     }
 
     public function audit()
     {
-        $logs = AdminAuditLog::with('admin')->latest()->paginate(50);
+        $logs = Schema::hasTable('admin_audit_logs')
+            ? AdminAuditLog::with('admin')->latest()->paginate(50)
+            : $this->emptyPaginator('page', 50);
         return view('admin.audit-log', compact('logs'));
+    }
+
+    private function emptyPaginator(string $pageName, int $perPage = 20): LengthAwarePaginator
+    {
+        return new LengthAwarePaginator([], 0, $perPage, Paginator::resolveCurrentPage($pageName), [
+            'path' => Paginator::resolveCurrentPath(),
+            'pageName' => $pageName,
+        ]);
     }
 }

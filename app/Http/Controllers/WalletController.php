@@ -461,12 +461,16 @@ class WalletController extends Controller
             ->latest()
             ->paginate(10, ['*'], 'withdrawals_page');
 
-        $ledgerEntries = \App\Models\WalletLedgerEntry::where('user_id', $user->id)
-            ->latest()->paginate(20, ['*'], 'ledger_page');
+        $ledgerReady = \Illuminate\Support\Facades\Schema::hasTable('wallet_ledger_entries');
+        $ledgerEntries = $ledgerReady
+            ? \App\Models\WalletLedgerEntry::where('user_id', $user->id)->latest()->paginate(20, ['*'], 'ledger_page')
+            : new \Illuminate\Pagination\LengthAwarePaginator([], 0, 20, \Illuminate\Pagination\Paginator::resolveCurrentPage('ledger_page'), [
+                'path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(), 'pageName' => 'ledger_page',
+            ]);
 
         $awaitingCount = CryptoDeposit::where('user_id', $user->id)->whereIn('status', ['pending', 'awaiting_admin_review'])->count()
             + \App\Models\CryptoWithdrawal::where('user_id', $user->id)->whereIn('status', ['pending', 'processing'])->count();
 
-        return view('wallet.history', compact('deposits', 'withdrawals', 'awaitingCount', 'ledgerEntries'));
+        return view('wallet.history', compact('deposits', 'withdrawals', 'awaitingCount', 'ledgerEntries', 'ledgerReady'));
     }
 }

@@ -118,6 +118,27 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <option value="custom" {{ ($row->value ?? 'custom') === 'custom' ? 'selected' : '' }}>Custom challenge</option>
                             <option value="turnstile" {{ ($row->value ?? 'custom') === 'turnstile' ? 'selected' : '' }}>Cloudflare Turnstile</option>
                         </select>
+                    @elseif($row->key === 'runtime_mode')
+                        <select name="{{ $row->key }}">
+                            <option value="production" {{ ($row->value ?? 'production') === 'production' ? 'selected' : '' }}>Production · safe errors for customers</option>
+                            <option value="local" {{ ($row->value ?? '') === 'local' ? 'selected' : '' }}>Local · detailed diagnostics for admins only</option>
+                            <option value="off" {{ ($row->value ?? '') === 'off' ? 'selected' : '' }}>Off · maintenance page for customers</option>
+                        </select>
+                    @elseif($row->key === 'site_maintenance')
+                        <select name="{{ $row->key }}">
+                            <option value="0" {{ ($row->value ?? '0') !== '1' ? 'selected' : '' }}>Live</option>
+                            <option value="1" {{ ($row->value ?? '0') === '1' ? 'selected' : '' }}>Maintenance</option>
+                        </select>
+                    @elseif($row->key === 'blocked_countries')
+                        @php($decodedCountries = json_decode((string) $row->value, true))
+                        @php($selectedCountries = is_array($decodedCountries) ? $decodedCountries : [])
+                        @php($extraCountries = array_values(array_diff($selectedCountries, array_keys($countryOptions))) )
+                        <select name="blocked_countries[]" multiple size="7" aria-label="Countries to block">
+                            @foreach($countryOptions as $code => $countryName)
+                                <option value="{{ $code }}" {{ in_array($code, $selectedCountries, true) ? 'selected' : '' }}>{{ $countryName }} ({{ $code }})</option>
+                            @endforeach
+                        </select>
+                        <input type="text" name="blocked_country_codes" class="mt-2" value="{{ implode(', ', $extraCountries) }}" placeholder="Other ISO codes: RU, KP, BY">
                     @elseif($row->key === 'cf_enabled')
                         <select name="{{ $row->key }}">
                             <option value="1" {{ ($row->value ?? '') == '1' ? 'selected' : '' }}>✅ Enabled</option>

@@ -14,6 +14,17 @@ use Illuminate\Support\Facades\Http;
 class AdminSettingsController extends Controller
 {
     private const GROUPS = ['cloudflare', 'ai', 'payment', 'telegram', 'general'];
+    private const COUNTRY_OPTIONS = [
+        'US' => 'United States', 'CA' => 'Canada', 'GB' => 'United Kingdom', 'NG' => 'Nigeria', 'GH' => 'Ghana',
+        'KE' => 'Kenya', 'ZA' => 'South Africa', 'EG' => 'Egypt', 'AE' => 'United Arab Emirates', 'SA' => 'Saudi Arabia',
+        'IN' => 'India', 'PK' => 'Pakistan', 'BD' => 'Bangladesh', 'CN' => 'China', 'HK' => 'Hong Kong',
+        'JP' => 'Japan', 'KR' => 'South Korea', 'SG' => 'Singapore', 'MY' => 'Malaysia', 'ID' => 'Indonesia',
+        'PH' => 'Philippines', 'TH' => 'Thailand', 'VN' => 'Vietnam', 'AU' => 'Australia', 'NZ' => 'New Zealand',
+        'DE' => 'Germany', 'FR' => 'France', 'ES' => 'Spain', 'IT' => 'Italy', 'NL' => 'Netherlands',
+        'BE' => 'Belgium', 'PL' => 'Poland', 'SE' => 'Sweden', 'NO' => 'Norway', 'CH' => 'Switzerland',
+        'TR' => 'Turkey', 'RU' => 'Russia', 'UA' => 'Ukraine', 'BR' => 'Brazil', 'MX' => 'Mexico',
+        'AR' => 'Argentina', 'CO' => 'Colombia', 'CL' => 'Chile', 'IR' => 'Iran', 'IL' => 'Israel',
+    ];
 
     // ── Token limits & pricing per model (as of 2025) ──────────────────────────
     public const MODEL_INFO = [
@@ -160,12 +171,32 @@ class AdminSettingsController extends Controller
             }
         }
 
-        return view('admin.settings.index', compact('grouped', 'cfStatus'));
+        $countryOptions = self::COUNTRY_OPTIONS;
+        return view('admin.settings.index', compact('grouped', 'cfStatus', 'countryOptions'));
     }
 
     public function update(Request $request)
     {
         $data = $request->except(['_token', '_method', 'action']);
+
+        if (isset($data['runtime_mode']) && !in_array($data['runtime_mode'], ['production', 'local', 'off'], true)) {
+            return back()->with('error', 'Choose Production, Local diagnostics, or Off.');
+        }
+        $request->validate([
+            'blocked_countries' => ['sometimes', 'array'],
+            'blocked_countries.*' => ['string', 'regex:/^[A-Za-z]{2}$/'],
+            'blocked_country_codes' => ['nullable', 'string', 'max:500'],
+        ]);
+        if (array_key_exists('blocked_country_codes', $data) || array_key_exists('blocked_countries', $data)) {
+            $selected = (array) ($data['blocked_countries'] ?? []);
+            $customCodes = preg_split('/[,\s]+/', strtoupper((string) ($data['blocked_country_codes'] ?? '')), -1, PREG_SPLIT_NO_EMPTY);
+            foreach ($customCodes as $code) {
+                if (!preg_match('/^[A-Z]{2}$/', $code)) return back()->with('error', 'Use two-letter ISO country codes such as US, NG, or GB.');
+            }
+            $codes = array_values(array_unique(array_map('strtoupper', array_merge($selected, $customCodes))));
+            $data['blocked_countries'] = json_encode($codes);
+            unset($data['blocked_country_codes']);
+        }
 
         if (isset($data['crypto_deposit_provider']) && !in_array($data['crypto_deposit_provider'], ['auto', 'cryptomus', 'nowpayments'], true)) {
             return back()->with('error', 'Choose a supported crypto deposit provider.');

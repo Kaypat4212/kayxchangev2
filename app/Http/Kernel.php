@@ -41,6 +41,8 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\TrackAdminAudit::class,
             // Visitor logging + Telegram notification
             \App\Http\Middleware\LogVisitor::class,
+            // Country restrictions and admin-controlled maintenance mode.
+            \App\Http\Middleware\PlatformAccessMiddleware::class,
             // Blacklist check — block banned IPs and suspended users
             \App\Http\Middleware\CheckBlacklist::class,
             // Global web rate limit (120 req/min per IP)

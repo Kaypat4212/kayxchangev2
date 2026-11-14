@@ -117,6 +117,8 @@ class AdminSetting extends Model
 
             // ── General ────────────────────────────────────────────────────
             ['key' => 'site_maintenance',  'group' => 'general', 'is_encrypted' => false, 'label' => 'Maintenance Mode', 'description' => '1 = maintenance, 0 = live'],
+            ['key' => 'runtime_mode', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Platform runtime mode', 'description' => 'Production hides debug details, Local shows diagnostics to admins only, Off displays maintenance to customers while preserving admin access and payment webhooks.'],
+            ['key' => 'blocked_countries', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Blocked countries', 'description' => 'Choose countries to restrict, then add any other two-letter ISO country codes if needed. Uses Cloudflare country headers or IP geolocation.'],
             ['key' => 'support_whatsapp',  'group' => 'general', 'is_encrypted' => false, 'label' => 'Support WhatsApp', 'description' => 'Phone number for support WhatsApp button'],
         ];
 
