@@ -24,20 +24,16 @@ class HomeController extends Controller
         $mode = $this->captchaMode();
         if ($mode !== 'off' && !$this->isHumanVerified($request, $mode)) {
             $request->session()->put('homepage_captcha_redirect', $view === 'home' ? '/home' : '/');
-            if ($mode === 'custom' && !$request->session()->has('homepage_captcha')) {
-                $left = random_int(3, 9);
-                $right = random_int(2, 8);
-                $request->session()->put('homepage_captcha', [
-                    'question' => "What is {$left} + {$right}?",
-                    'answer' => (string) ($left + $right),
-                ]);
+            $existingChallenge = $request->session()->get('homepage_captcha', []);
+            if ($mode === 'custom' && !in_array($existingChallenge['type'] ?? '', ['math', 'symbol', 'sequence'], true)) {
+                $request->session()->put('homepage_captcha', $this->makeCustomCaptcha());
             }
 
             $siteKey = (string) AdminSetting::getSetting('turnstile_site_key', '');
             $secret = (string) AdminSetting::getSetting('turnstile_secret_key', '');
             return response()->view('captcha.homepage', [
                 'mode' => $mode,
-                'question' => $request->session()->get('homepage_captcha.question'),
+                'challenge' => $request->session()->get('homepage_captcha', []),
                 'siteKey' => $siteKey,
                 'providerConfigured' => $mode !== 'turnstile' || ($siteKey !== '' && $secret !== ''),
             ], 200)->header('Cache-Control', 'private, no-store, max-age=0');
@@ -95,6 +91,49 @@ class HomeController extends Controller
     {
         $mode = (string) AdminSetting::getSetting('homepage_captcha_mode', 'custom');
         return in_array($mode, ['off', 'custom', 'turnstile'], true) ? $mode : 'custom';
+    }
+
+    private function makeCustomCaptcha(): array
+    {
+        $type = random_int(0, 2);
+        if ($type === 0) {
+            $left = random_int(4, 18);
+            $right = random_int(2, 9);
+            $operation = random_int(0, 1) === 1 && $left > $right ? '-' : '+';
+            return [
+                'type' => 'math',
+                'prompt' => 'Solve this quick number check',
+                'question' => "{$left} {$operation} {$right} = ?",
+                'answer' => (string) ($operation === '+' ? $left + $right : $left - $right),
+            ];
+        }
+
+        if ($type === 1) {
+            $icons = ['🍋', '🍀', '🪙', '🌙', '🔷', '⚡', '🍉', '⭐', '🧊', '🎈', '🪴', '🧿'];
+            $target = $icons[array_rand($icons)];
+            $choices = array_merge([$target], array_values(array_diff($icons, [$target])));
+            $choices = array_slice($choices, 0, 6);
+            shuffle($choices);
+            return [
+                'type' => 'symbol',
+                'prompt' => 'Tap the matching symbol',
+                'instruction' => "Select the {$target} symbol below.",
+                'target' => $target,
+                'choices' => $choices,
+                'answer' => (string) array_search($target, $choices, true),
+            ];
+        }
+
+        $start = random_int(2, 9);
+        $step = random_int(2, 7);
+        $sequence = [];
+        for ($i = 0; $i < 5; $i++) $sequence[] = $start + ($step * $i);
+        return [
+            'type' => 'sequence',
+            'prompt' => 'Find the next number',
+            'sequence' => $sequence,
+            'answer' => (string) ($start + ($step * 5)),
+        ];
     }
 
     private function isHumanVerified(Request $request, string $mode): bool
