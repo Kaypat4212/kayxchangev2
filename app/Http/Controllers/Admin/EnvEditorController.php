@@ -156,7 +156,8 @@ class EnvEditorController extends Controller
                 'key'   => $key,
                 'label' => $meta['label'],
                 'type'  => $meta['type'],
-                'value' => $current[$key] ?? '',
+                'value' => $meta['type'] === 'password' ? '' : ($current[$key] ?? ''),
+                'configured' => $meta['type'] === 'password' ? !empty($current[$key]) : null,
             ];
         }
 
@@ -184,6 +185,9 @@ class EnvEditorController extends Controller
             'groupMeta'      => self::GROUP_META,
             'enabledMethods' => $enabledMethods,
             'keysConfigured' => $keysConfigured,
+            'siteMode' => in_array(\App\Models\SiteContent::get('site_mode', 'production'), ['production', 'developer'], true)
+                ? \App\Models\SiteContent::get('site_mode', 'production') : 'production',
+            'configuredSecretCount' => collect($current)->filter(fn ($value, $key) => isset(self::ALLOWED[$key]) && self::ALLOWED[$key]['type'] === 'password' && trim((string)$value) !== '')->count(),
         ]);
     }
 
@@ -192,6 +196,8 @@ class EnvEditorController extends Controller
         $request->validate([
             'env'   => 'required|array',
             'env.*' => 'nullable|string|max:500',
+            'env_clear' => 'nullable|array',
+            'env_clear.*' => 'nullable|boolean',
             'wallet_change_pin' => 'nullable|digits:4',
         ]);
 
@@ -202,11 +208,19 @@ class EnvEditorController extends Controller
         foreach ($submitted as $key => $value) {
             $key = strtoupper($key);
             if (!array_key_exists($key, self::ALLOWED)) continue;
+            if (self::ALLOWED[$key]['type'] === 'password') {
+                if ($request->boolean('env_clear.' . $key)) {
+                    $toWrite[$key] = '';
+                } elseif (trim((string)$value) !== '') {
+                    $toWrite[$key] = $value;
+                }
+                continue;
+            }
             $toWrite[$key] = $value ?? '';
         }
 
         // Keep legacy token alias in sync so any code paths reading TELEGRAM_BOT_TOKEN continue working.
-        if (isset($toWrite['KAYXCHANGE_TELEGRAM_BOT_TOKEN'])) {
+        if (array_key_exists('KAYXCHANGE_TELEGRAM_BOT_TOKEN', $toWrite)) {
             $toWrite['TELEGRAM_BOT_TOKEN'] = $toWrite['KAYXCHANGE_TELEGRAM_BOT_TOKEN'];
         }
 

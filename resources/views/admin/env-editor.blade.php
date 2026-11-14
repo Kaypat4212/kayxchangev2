@@ -183,6 +183,16 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     background:none;border:none;color:#a78bfa;font-size:.78rem;font-weight:600;
     cursor:pointer;padding:0;margin-top:12px;display:flex;align-items:center;gap:.4rem;
 }
+.env-hero{position:relative;overflow:hidden;border:1px solid rgba(148,163,184,.18);border-radius:24px;padding:clamp(22px,4vw,34px);margin-bottom:22px;background:radial-gradient(circle at 85% 0%,rgba(34,197,94,.17),transparent 32%),linear-gradient(135deg,#111a27,#10151e 62%,#102019);box-shadow:0 20px 55px rgba(0,0,0,.2)}
+.env-hero:after{content:'';position:absolute;width:200px;height:200px;border:1px solid rgba(255,255,255,.05);border-radius:50%;right:-55px;bottom:-125px;box-shadow:0 0 0 28px rgba(255,255,255,.018),0 0 0 58px rgba(255,255,255,.012)}
+.env-hero-copy{position:relative;z-index:1;max-width:700px}.env-eyebrow{display:inline-flex;align-items:center;gap:8px;color:#86efac;font-size:.7rem;letter-spacing:.13em;text-transform:uppercase;font-weight:800}.env-page-title{font-size:clamp(1.5rem,3vw,2.15rem);letter-spacing:-.04em;margin-top:10px}.env-page-sub{line-height:1.65;max-width:650px;margin-bottom:0}
+.env-hero-side{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-end;gap:12px}.env-mode-caption{color:var(--kx-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;font-weight:800}.env-mode-warning{display:flex;align-items:flex-start;gap:9px;border:1px solid rgba(245,158,11,.2);background:rgba(245,158,11,.07);color:#f6d893;border-radius:12px;padding:11px 13px;font-size:.76rem;line-height:1.5;margin:0}
+.env-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}.env-overview-card{display:flex;align-items:center;gap:12px;background:#141c28;border:1px solid var(--kx-border);border-radius:15px;padding:14px 16px}.env-overview-icon{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:rgba(34,197,94,.1);color:#86efac;font-size:1.1rem}.env-overview-label{font-size:.68rem;color:var(--kx-muted);text-transform:uppercase;letter-spacing:.08em;font-weight:750}.env-overview-value{font-size:.9rem;color:#f7fafc;font-weight:800;margin-top:2px}
+.env-nav{display:flex;gap:8px;overflow:auto;padding:3px 1px 13px;margin-bottom:6px;scrollbar-width:thin}.env-nav a{white-space:nowrap;display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid var(--kx-border);background:rgba(22,27,39,.86);border-radius:999px;text-decoration:none;color:#b7c2ce;font-size:.73rem;font-weight:700}.env-nav a:hover{border-color:rgba(34,197,94,.4);color:#a7f3b7}
+.env-secret-state{display:flex;align-items:center;gap:6px;color:#86efac;font-size:.68rem;font-weight:750;margin-top:6px}.env-secret-state.empty{color:#fbbf24}.env-secret-clear{display:flex;align-items:center;gap:7px;color:#fca5a5;font-size:.7rem;margin-top:8px}.env-secret-clear input{accent-color:#ef4444}
+.kx-mode-confirm-overlay{position:fixed;inset:0;z-index:12000;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,7,12,.78);backdrop-filter:blur(10px)}.kx-mode-confirm-overlay.active{display:flex}.kx-mode-confirm-box{width:min(100%,440px);padding:26px;border:1px solid rgba(255,255,255,.12);border-radius:22px;background:linear-gradient(145deg,#17212d,#101720);box-shadow:0 28px 90px rgba(0,0,0,.55);text-align:center}.kx-mode-confirm-icon{width:54px;height:54px;display:grid;place-items:center;border-radius:17px;margin:0 auto 14px;background:rgba(34,197,94,.1);font-size:1.5rem}.kx-mode-confirm-title{color:#f8fafc;font-weight:850;font-size:1.15rem;margin-bottom:8px}.kx-mode-confirm-text{color:#aab6c3;font-size:.84rem;line-height:1.65;margin-bottom:20px}.kx-mode-confirm-btns{display:flex;justify-content:center;gap:10px}.btn-kx-cancel,.btn-kx-amber,.btn-kx-green{border-radius:11px;padding:10px 15px;border:1px solid rgba(255,255,255,.12);font-weight:750;color:#edf3f7;background:#202b37}.btn-kx-amber{background:#f59e0b;border-color:#f59e0b;color:#211300}.btn-kx-green{background:#22c55e;border-color:#22c55e;color:#06150a}.btn-kx-cancel:hover,.btn-kx-amber:hover,.btn-kx-green:hover{filter:brightness(1.08)}
+@media(max-width:767px){.env-hero-side{align-items:flex-start;width:100%}.env-overview{grid-template-columns:1fr}.env-card{padding:20px 17px}.env-save-bar .container-xl{flex-wrap:wrap}.env-save-btn{width:100%}}
+body.kx-light .env-hero{background:radial-gradient(circle at 85% 0%,rgba(34,197,94,.14),transparent 32%),linear-gradient(135deg,#fff,#f1f6f3);border-color:rgba(15,23,42,.12);box-shadow:0 14px 38px rgba(15,23,42,.08)}body.kx-light .env-page-title,body.kx-light .env-overview-value,body.kx-light .env-tc-name{color:#16202c}body.kx-light .env-card,body.kx-light .env-overview-card{background:#fff;border-color:rgba(15,23,42,.11);box-shadow:0 8px 24px rgba(15,23,42,.04)}body.kx-light .env-nav a{background:#fff;color:#354256;border-color:rgba(15,23,42,.12)}body.kx-light .env-input{background:#f8fafc;color:#17212d;border-color:rgba(15,23,42,.16)}body.kx-light .env-save-bar{background:rgba(240,244,248,.94)}
 </style>
 @endpush
 
@@ -192,14 +202,14 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
     @php $siteMode = $siteMode ?? 'production'; @endphp
 
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-        <div>
+    <section class="env-hero d-flex justify-content-between align-items-center flex-wrap gap-4">
+        <div class="env-hero-copy">
+            <div class="env-eyebrow"><i class="bi bi-shield-lock-fill"></i>Platform configuration</div>
             <h1 class="env-page-title"><i class="bi bi-sliders me-2" style="color:#00cc00"></i>API Keys & Environment</h1>
-            <p class="env-page-sub">Set payment gateway credentials, Telegram bot, and mail settings. Sensitive fields are masked.</p>
+            <p class="env-page-sub">Manage service credentials, wallet endpoints, messaging, and platform behavior in one secure control room. Saved secrets stay hidden unless you replace or remove them.</p>
         </div>
-
-        {{-- MODE TOGGLE (Production <-> Developer) --}}
-        <div>
+        <div class="env-hero-side">
+            <span class="env-mode-caption">Current site mode</span>
             <button id="kx-mode-toggle-btn-env"
                 class="kx-mode-badge {{ $siteMode === 'developer' ? 'mode-developer' : 'mode-production' }}"
                 data-mode="{{ $siteMode }}"
@@ -208,12 +218,26 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 <span>{{ $siteMode === 'developer' ? 'Developer Mode' : 'Production Mode' }}</span>
                 <i class="bi bi-arrow-repeat" style="font-size:0.7rem;opacity:0.7"></i>
             </button>
-            <div style="height:10px"></div>
-            <div style="font-size:.78rem;color:var(--kx-muted);">
-                Warning: Developer Mode may expose extra debug info.
-            </div>
+            @if($siteMode === 'production')
+                <p class="env-mode-warning"><i class="bi bi-shield-check mt-1"></i><span>Production mode is active. Developer mode can reveal technical error details to users.</span></p>
+            @else
+                <p class="env-mode-warning" style="border-color:rgba(248,113,113,.28);background:rgba(127,29,29,.18);color:#fecaca"><i class="bi bi-exclamation-triangle-fill mt-1"></i><span>Developer mode is active. Switch back to production before serving real users.</span></p>
+            @endif
         </div>
+    </section>
+
+    <div class="env-overview">
+        <div class="env-overview-card"><span class="env-overview-icon"><i class="bi bi-key-fill"></i></span><div><div class="env-overview-label">Saved secrets</div><div class="env-overview-value">{{ $configuredSecretCount }} configured</div></div></div>
+        <div class="env-overview-card"><span class="env-overview-icon" style="background:rgba(56,189,248,.1);color:#7dd3fc"><i class="bi bi-grid-1x2-fill"></i></span><div><div class="env-overview-label">Configuration groups</div><div class="env-overview-value">{{ count($groups) }} areas</div></div></div>
+        <div class="env-overview-card"><span class="env-overview-icon" style="background:rgba(167,139,250,.1);color:#c4b5fd"><i class="bi bi-arrow-repeat"></i></span><div><div class="env-overview-label">Credential handling</div><div class="env-overview-value">Masked by default</div></div></div>
     </div>
+
+    <nav class="env-nav" aria-label="Environment settings sections">
+        @foreach($groups as $groupKey=>$fields)
+            @php $navMeta=$groupMeta[$groupKey] ?? ['label'=>ucfirst($groupKey),'icon'=>'bi-key']; @endphp
+            <a href="#env-group-{{ $groupKey }}"><i class="bi {{ $navMeta['icon'] }}"></i>{{ $navMeta['label'] }}</a>
+        @endforeach
+    </nav>
 
     <!-- MODE CONFIRM OVERLAY (Env Editor) -->
     <div id="kx-mode-overlay-env" class="kx-mode-confirm-overlay">
@@ -309,7 +333,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
         @foreach($groups as $groupKey => $fields)
         @php $meta = $groupMeta[$groupKey] ?? ['label' => ucfirst($groupKey), 'icon' => 'bi-key', 'color' => '#00cc00']; @endphp
-        <div class="env-card" style="--env-accent:{{ $meta['color'] }}">
+        <div class="env-card" id="env-group-{{ $groupKey }}" style="--env-accent:{{ $meta['color'] }}">
             <div class="env-group-label" style="color:{{ $meta['color'] }}">
                 <i class="bi {{ $meta['icon'] }}"></i>{{ $meta['label'] }}
             </div>
@@ -325,7 +349,8 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <input
                                 type="{{ $field['type'] === 'password' ? 'password' : ($field['type'] === 'email' ? 'email' : ($field['type'] === 'url' ? 'url' : 'text')) }}"
                                 name="env[{{ $field['key'] }}]"
-                                value="{{ old('env.'.$field['key'], $field['value']) }}"
+                                value="{{ $field['type'] === 'password' ? '' : old('env.'.$field['key'], $field['value']) }}"
+                                placeholder="{{ $field['type'] === 'password' ? ($field['configured'] ? 'Saved securely · enter a new value to replace' : 'Not configured · enter to add') : '' }}"
                                 class="env-input"
                                 autocomplete="off"
                                 data-type="{{ $field['type'] }}"
@@ -337,6 +362,12 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             </button>
                             @endif
                         </div>
+                        @if($field['type'] === 'password')
+                        <div class="env-secret-state {{ $field['configured'] ? '' : 'empty' }}"><i class="bi {{ $field['configured'] ? 'bi-shield-lock-fill' : 'bi-exclamation-circle' }}"></i>{{ $field['configured'] ? 'Saved and masked' : 'Not configured' }}</div>
+                        @endif
+                        @if($field['type'] === 'password' && $field['configured'])
+                        <label class="env-secret-clear"><input type="checkbox" name="env_clear[{{ $field['key'] }}]" value="1">Remove this saved secret</label>
+                        @endif
                     </div>
                 </div>
                 @endforeach
@@ -438,6 +469,60 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
     // ── Payment method toggles ──
     const pmToast = document.getElementById('pm-toast');
+
+    // Site mode confirmation and update. Keep the mode label synced with the server response.
+    const modeButton = document.getElementById('kx-mode-toggle-btn-env');
+    const modeOverlay = document.getElementById('kx-mode-overlay-env');
+    const modeConfirm = document.getElementById('kx-mode-confirm-btn-env');
+    const modeText = document.getElementById('kx-mode-confirm-text-env');
+    const modeMessage = document.getElementById('kx-mode-post-msg-env');
+    const modeEndpoint = @json(route('admin.site-mode.toggle'));
+    let requestedMode = null;
+    const modeCopy = {
+        developer: {icon:'🛠️', title:'Enable Developer Mode?', text:'Developer mode can expose detailed errors and debug output. <strong>Do not enable it while real users are using the live site.</strong>', button:'Enable Developer Mode'},
+        production: {icon:'🚀', title:'Switch to Production Mode?', text:'Production mode hides technical errors from users and restores the normal live experience.', button:'Switch to Production'}
+    };
+    modeButton?.addEventListener('click', () => {
+        requestedMode = modeButton.dataset.mode === 'production' ? 'developer' : 'production';
+        const copy = modeCopy[requestedMode];
+        document.getElementById('kx-mode-confirm-icon-env').textContent = copy.icon;
+        document.getElementById('kx-mode-confirm-title-env').textContent = copy.title;
+        modeText.innerHTML = copy.text;
+        modeConfirm.textContent = copy.button;
+        modeConfirm.className = requestedMode === 'developer' ? 'btn-kx-amber' : 'btn-kx-green';
+        modeMessage.style.display = 'none';
+        modeOverlay.classList.add('active');
+        modeConfirm.focus();
+    });
+    modeOverlay?.addEventListener('click', event => { if (event.target === modeOverlay) modeOverlay.classList.remove('active'); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') modeOverlay?.classList.remove('active'); });
+    modeConfirm?.addEventListener('click', async () => {
+        if (!requestedMode) return;
+        const originalText = modeConfirm.textContent;
+        modeConfirm.disabled = true;
+        modeConfirm.textContent = 'Switching…';
+        try {
+            const response = await fetch(modeEndpoint, {method:'POST',headers:{'Accept':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content}});
+            const result = await response.json();
+            if (!response.ok || !result.mode) throw new Error(result.message || 'The site mode could not be changed.');
+            const isDeveloper = result.mode === 'developer';
+            modeButton.dataset.mode = result.mode;
+            modeButton.classList.toggle('mode-developer', isDeveloper);
+            modeButton.classList.toggle('mode-production', !isDeveloper);
+            modeButton.querySelector('span:not(.kx-mode-dot)').textContent = isDeveloper ? 'Developer Mode' : 'Production Mode';
+            modeMessage.style.display = 'block';
+            modeMessage.style.color = isDeveloper ? '#fbbf24' : '#86efac';
+            modeMessage.textContent = '✓ Site switched to ' + (isDeveloper ? 'Developer Mode' : 'Production Mode');
+            setTimeout(() => modeOverlay.classList.remove('active'), 1000);
+        } catch (error) {
+            modeMessage.style.display = 'block';
+            modeMessage.style.color = '#fca5a5';
+            modeMessage.textContent = error.message || 'Could not switch modes. Please try again.';
+        } finally {
+            modeConfirm.disabled = false;
+            modeConfirm.textContent = originalText;
+        }
+    });
 
     function showPmToast(msg, ok) {
         pmToast.textContent = msg;
