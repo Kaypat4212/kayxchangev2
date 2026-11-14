@@ -410,6 +410,7 @@ class WalletController extends Controller
         $deposit = CryptoDeposit::where('id', $id)
             ->where('user_id', Auth::id())
             ->firstOrFail();
+        $deposit = $this->cryptoWalletService->refreshDepositStatus($deposit);
 
         $market = app(ExchangeRateService::class)->getUsdRates();
         $symbol = strtoupper($deposit->currency);
@@ -486,6 +487,7 @@ class WalletController extends Controller
 
         return response()->json([
             'status' => $deposit->status,
+            'wallet_credited' => $deposit->status === 'completed',
             'expires_at' => optional($deposit->expires_at)->toIso8601String(),
             'local_window_expired' => (bool)data_get($paymentData, 'local_window_expired', false),
             'provider_status' => $paymentData['provider_status'] ?? 'waiting',

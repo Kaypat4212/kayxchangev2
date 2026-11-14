@@ -14,6 +14,14 @@ class SupportCaseController extends Controller
     public function createDeposit(CryptoDeposit $deposit)
     {
         if ((int) $deposit->user_id !== (int) auth()->id()) abort(404);
+        try {
+            $deposit = app(\App\Services\CryptoWalletService::class)->refreshDepositStatus($deposit);
+        } catch (\Throwable $exception) {
+            Log::warning('Could not refresh crypto deposit before showing its support form.', [
+                'deposit_id' => $deposit->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
         return view('support.deposit-case', compact('deposit'));
     }
 

@@ -8,10 +8,12 @@ use App\Models\Wallet;
 use App\Models\User;
 use App\Models\CryptoDeposit;
 use App\Models\AdminSetting;
+use App\Models\WalletLedgerEntry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 class CryptoWalletService
 {
@@ -496,6 +498,8 @@ class CryptoWalletService
     /** Refresh provider status and public Bitcoin confirmation progress for an owned deposit. */
     public function refreshDepositStatus(CryptoDeposit $deposit, bool $force = false): CryptoDeposit
     {
+        $deposit = $this->reconcileCreditedDeposit($deposit);
+        if ($deposit->status === 'completed') return $deposit;
         $paymentData = $deposit->payment_data ?? [];
         $provider = strtolower((string)($paymentData['provider'] ?? 'cryptomus'));
         if (in_array($deposit->status, ['pending', 'expired', 'awaiting_admin_review'], true) && $provider === 'nowpayments' && !empty($paymentData['provider_payment_id'])) {
@@ -569,7 +573,48 @@ class CryptoWalletService
             }
         }
 
-        return $deposit->fresh();
+        return $this->reconcileCreditedDeposit($deposit->fresh());
+    }
+
+    /** Repair a stale deposit status only when its own immutable credit entry exists. */
+    private function reconcileCreditedDeposit(CryptoDeposit $deposit): CryptoDeposit
+    {
+        if ($deposit->status === 'completed' || !Schema::hasTable('wallet_ledger_entries')) return $deposit;
+
+        return DB::transaction(function () use ($deposit): CryptoDeposit {
+            $locked = CryptoDeposit::query()->lockForUpdate()->find($deposit->id);
+            if (!$locked || $locked->status === 'completed') return $locked ?? $deposit;
+
+            $entry = WalletLedgerEntry::query()
+                ->where('user_id', $locked->user_id)
+                ->where('reference', 'crypto-deposit:' . $locked->id)
+                ->where('source', 'crypto_deposit.completed')
+                ->where('entry_type', 'credit')
+                ->where('amount', '>', 0)
+                ->latest('id')
+                ->first();
+            if (!$entry) return $locked;
+
+            if (strtoupper((string)$entry->currency) === strtoupper((string)$locked->currency)) {
+                $locked->received_amount = (float)$entry->amount;
+            } elseif (strtoupper((string)$entry->currency) === 'NGN') {
+                $locked->ngn_credited_amount = (float)$entry->amount;
+            }
+            $locked->status = 'completed';
+            $locked->completed_at = $locked->completed_at ?: $entry->created_at ?: now();
+            $locked->payment_data = array_merge($locked->payment_data ?? [], [
+                'wallet_credit_reconciled' => true,
+                'wallet_credit_reconciled_at' => now()->toIso8601String(),
+            ]);
+            $locked->save();
+
+            Log::warning('Reconciled crypto deposit status from its matching wallet ledger credit.', [
+                'deposit_id' => $locked->id,
+                'user_id' => $locked->user_id,
+                'ledger_entry_id' => $entry->id,
+            ]);
+            return $locked->fresh();
+        });
     }
 
     /**
