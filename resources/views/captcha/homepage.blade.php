@@ -19,6 +19,7 @@
     <div class="eyebrow">Security check</div>
     <h1>One quick check, then you’re in.</h1>
     <p class="intro">This lightweight security step helps protect KayXchange and keeps automated traffic out of our visitor alerts.</p>
+    @if(!empty($ipChanged))<p class="error" role="status">Your network address changed since your last check. Please verify again; this check will stay valid for this IP for 24 hours.</p>@endif
 
     <form method="POST" action="{{ route('home.captcha.verify') }}" class="captcha-box">
         @csrf

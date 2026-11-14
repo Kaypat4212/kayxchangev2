@@ -97,9 +97,7 @@ class LogVisitor
     {
         $mode = (string) \App\Models\AdminSetting::getSetting('homepage_captcha_mode', 'custom');
         if (!in_array($mode, ['custom', 'turnstile'], true)) return false;
-        $verifiedMode = (string) $request->session()->get('homepage_human_verified_mode', '');
-        $verifiedAt = (int) $request->session()->get('homepage_human_verified_at', 0);
-        return $verifiedMode === $mode && $verifiedAt > 0 && now()->timestamp - $verifiedAt <= 43200;
+        return app(\App\Services\HomepageCaptchaVerification::class)->isVerified($request, $mode);
     }
 
     /**

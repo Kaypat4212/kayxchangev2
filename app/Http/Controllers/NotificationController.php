@@ -181,15 +181,6 @@ class NotificationController extends Controller
             $data['user_id'] = $request->user_id;
             $data['is_broadcast'] = false;
             $notification = Notification::create($data);
-
-            $user = User::find($request->user_id);
-            if ($user) {
-                $this->expoPush->sendToUser($user, $notification->title, $notification->message, [
-                    'url' => route('notifications.show', $notification->id),
-                    'notification_id' => $notification->id,
-                    'type' => $notification->type,
-                ]);
-            }
         } else {
             $data['is_broadcast'] = true;
             $notification = Notification::create($data);

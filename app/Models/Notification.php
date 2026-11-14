@@ -10,6 +10,49 @@ class Notification extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::created(function (self $notification): void {
+            if (!$notification->user_id) {
+                return; // Admin-only broadcasts must never fan out to every customer.
+            }
+
+            $scheduleDelivery = static function () use ($notification): void {
+                // Send after the HTTP response so a provider delay cannot stall a
+                // wallet or trade request. Transactional notifications are only
+                // scheduled once their database transaction commits.
+                app()->terminating(static function () use ($notification): void {
+                    try {
+                        $user = $notification->user;
+                        if (!$user) return;
+                        app(\App\Services\ExpoPushNotificationService::class)->sendToUser(
+                            $user,
+                            $notification->title,
+                            $notification->message,
+                            [
+                                'url' => route('notifications.show', $notification->id),
+                                'notification_id' => $notification->id,
+                                'type' => $notification->type,
+                            ]
+                        );
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('Could not deliver mobile notification', [
+                            'notification_id' => $notification->id,
+                            'user_id' => $notification->user_id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                });
+            };
+
+            if (\Illuminate\Support\Facades\DB::transactionLevel() > 0) {
+                \Illuminate\Support\Facades\DB::afterCommit($scheduleDelivery);
+            } else {
+                $scheduleDelivery();
+            }
+        });
+    }
+
     protected $fillable = [
         'type',
         'title',

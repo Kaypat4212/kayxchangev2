@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdminSetting;
+use App\Services\HomepageCaptchaVerification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +23,7 @@ class HomeController extends Controller
     private function showLanding(Request $request, string $view)
     {
         $mode = $this->captchaMode();
-        if ($mode !== 'off' && !$this->isHumanVerified($request, $mode)) {
+        if ($mode !== 'off' && !app(HomepageCaptchaVerification::class)->isVerified($request, $mode)) {
             $request->session()->put('homepage_captcha_redirect', $view === 'home' ? '/home' : '/');
             $existingChallenge = $request->session()->get('homepage_captcha', []);
             if ($mode === 'custom' && !in_array($existingChallenge['type'] ?? '', ['math', 'symbol', 'sequence'], true)) {
@@ -31,10 +32,12 @@ class HomeController extends Controller
 
             $siteKey = (string) AdminSetting::getSetting('turnstile_site_key', '');
             $secret = (string) AdminSetting::getSetting('turnstile_secret_key', '');
+            $ipChanged = (bool) $request->session()->pull('homepage_captcha_ip_changed', false);
             return response()->view('captcha.homepage', [
                 'mode' => $mode,
                 'challenge' => $request->session()->get('homepage_captcha', []),
                 'siteKey' => $siteKey,
+                'ipChanged' => $ipChanged,
                 'providerConfigured' => $mode !== 'turnstile' || ($siteKey !== '' && $secret !== ''),
             ], 200)->header('Cache-Control', 'private, no-store, max-age=0');
         }
@@ -81,8 +84,7 @@ class HomeController extends Controller
         }
 
         $request->session()->forget('homepage_captcha');
-        $request->session()->put('homepage_human_verified_at', now()->timestamp);
-        $request->session()->put('homepage_human_verified_mode', $mode);
+        app(HomepageCaptchaVerification::class)->markVerified($request, $mode);
         $target = $request->session()->pull('homepage_captcha_redirect', '/');
         return redirect(in_array($target, ['/', '/home'], true) ? $target : '/');
     }
@@ -136,14 +138,4 @@ class HomeController extends Controller
         ];
     }
 
-    private function isHumanVerified(Request $request, string $mode): bool
-    {
-        $verifiedAt = (int) $request->session()->get('homepage_human_verified_at', 0);
-        $verifiedMode = (string) $request->session()->get('homepage_human_verified_mode', '');
-        if ($verifiedAt <= 0 || $verifiedMode !== $mode || now()->timestamp - $verifiedAt > 43200) {
-            $request->session()->forget(['homepage_human_verified_at', 'homepage_human_verified_mode']);
-            return false;
-        }
-        return true;
-    }
 }

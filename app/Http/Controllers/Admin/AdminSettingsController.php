@@ -138,14 +138,14 @@ class AdminSettingsController extends Controller
 
     public function index()
     {
-        AdminSetting::seedDefaults();
+        try {
+            AdminSetting::seedDefaults();
 
-        $grouped = [];
-        foreach (self::GROUPS as $g) {
-            /** @var \Illuminate\Database\Eloquent\Builder $q */
-            $q = AdminSetting::where('group', $g)->orderBy('id');
-            $grouped[$g] = $q->get()->map(function ($row) {
-                    // Return masked display value for encrypted fields
+            $grouped = [];
+            foreach (self::GROUPS as $g) {
+                /** @var \Illuminate\Database\Eloquent\Builder $q */
+                $q = AdminSetting::where('group', $g)->orderBy('id');
+                $grouped[$g] = $q->get()->map(function ($row) {
                     $display = '';
                     if ($row->value && $row->is_encrypted) {
                         try {
@@ -160,19 +160,25 @@ class AdminSettingsController extends Controller
                     $row->display_value = $display;
                     return $row;
                 });
-        }
-
-        $cfStatus = null;
-        if (AdminSetting::getSetting('cf_enabled') == '1') {
-            try {
-                $cfStatus = app(CloudflareService::class)->getZoneDetails();
-            } catch (\Exception $e) {
-                $cfStatus = ['error' => $e->getMessage()];
             }
-        }
 
-        $countryOptions = self::COUNTRY_OPTIONS;
-        return view('admin.settings.index', compact('grouped', 'cfStatus', 'countryOptions'));
+            $cfStatus = null;
+            if (AdminSetting::getSetting('cf_enabled') == '1') {
+                try {
+                    $cfStatus = app(CloudflareService::class)->getZoneDetails();
+                } catch (\Exception $e) {
+                    $cfStatus = ['error' => 'Cloudflare status could not be loaded. Check the saved credentials and try again.'];
+                }
+            }
+
+            $countryOptions = self::COUNTRY_OPTIONS;
+            return view('admin.settings.index', compact('grouped', 'cfStatus', 'countryOptions'));
+        } catch (\Throwable $e) {
+            // A missing settings migration or a temporary database outage should
+            // give administrators recovery guidance instead of a raw 500 page.
+            report($e);
+            return response()->view('admin.settings.unavailable', [], 200);
+        }
     }
 
     public function update(Request $request)

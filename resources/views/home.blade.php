@@ -926,7 +926,11 @@
             justify-content: center; width: 100%;
             padding: 13px 18px; font-size: clamp(0.88rem, 3.8vw, 0.95rem);
         }
-        .kx-h-app-link { width:100%;justify-content:flex-start;min-height:62px;padding:9px 14px; }
+        .kx-h-app-link { width:fit-content;max-width:100%;align-self:flex-start;justify-content:flex-start;gap:8px;min-height:46px;padding:6px 10px 6px 7px;border-radius:13px; }
+        .kx-play-icon { width:33px;height:33px;flex-basis:33px;border-radius:10px;font-size:.98rem; }
+        .kx-h-app-copy strong { font-size:.71rem; }
+        .kx-h-app-copy small { font-size:.57rem;margin-top:3px; }
+        .kx-h-app-download { font-size:.82rem;margin-left:2px; }
 
         .kx-h-trust { gap: 8px; }
         .kx-h-tbadge { padding: 7px 11px; font-size: clamp(0.7rem, 3vw, 0.78rem); }

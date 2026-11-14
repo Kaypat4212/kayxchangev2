@@ -34,7 +34,7 @@ class AdminTerminalController extends Controller
      */
     private function checkPin(string $pin): bool
     {
-        $stored = env('ADMIN_TERMINAL_PIN', '');
+        $stored = (string) config('admin.terminal_pin', '');
         if (empty($stored)) {
             return false; // PIN not configured — disallow all access
         }
@@ -50,7 +50,14 @@ class AdminTerminalController extends Controller
     public function index()
     {
         $unlocked = $this->isPinUnlocked();
-        return view('admin.terminal', compact('unlocked'));
+        $terminalPinConfigured = (string) config('admin.terminal_pin', '') !== '';
+        try {
+            $siteMode = \App\Models\SiteContent::get('site_mode', 'production');
+        } catch (\Throwable $e) {
+            report($e);
+            $siteMode = 'production';
+        }
+        return view('admin.terminal', compact('unlocked', 'terminalPinConfigured', 'siteMode'));
     }
 
     // ─────────────────────────── PIN unlock ───────────────────────────────────

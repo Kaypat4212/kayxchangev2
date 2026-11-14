@@ -307,7 +307,8 @@
         <!-- ===== Balance + Stats Row ===== -->
         <div class="row g-4 mb-4">
             <div class="col-12 col-md-5 col-lg-4">
-                <div class="kx-balance-card">
+                <div class="d-grid gap-3">
+                <div class="kx-balance-card" style="height:auto">
                     <div class="kx-balance-label">Available Balance</div>
                     <div class="kx-balance-amount">₦{{ number_format(Auth::user()->balance, 2) }}</div>
                     @php
@@ -332,6 +333,23 @@
                             <i class="bi bi-send-fill"></i>Send
                         </a>
                     </div>
+                </div>
+                <div class="kx-balance-card" style="height:auto;min-height:0;padding:22px 26px">
+                    <div class="kx-balance-label">USD Wallet Balance</div>
+                    <div class="kx-balance-amount">${{ number_format($usdWalletBalance ?? 0, 2) }}</div>
+                    <div class="kx-balance-sub">KayXchange USD Wallet</div>
+                    <div class="kx-bal-actions" style="grid-template-columns:1fr;margin-top:.75rem">
+                        <a href="{{ route('wallet.usd') }}" class="kx-bal-btn kx-bal-send"><i class="bi bi-wallet2"></i>Open USD Wallet</a>
+                    </div>
+                </div>
+                <div class="kx-balance-card" style="height:auto;min-height:0;padding:22px 26px">
+                    <div class="kx-balance-label">Combined Wallet Value</div>
+                    <div class="kx-balance-amount" style="font-size:clamp(1.45rem,3vw,2.15rem)">{{ $totalWalletUsd !== null ? '$'.number_format($totalWalletUsd, 2) : '—' }} <span style="font-size:.48em">USD</span></div>
+                    <div class="kx-balance-sub">Estimated value across your active Naira, USD and crypto wallets</div>
+                    <div class="kx-bal-actions" style="grid-template-columns:1fr;margin-top:.75rem">
+                        <a href="{{ route('wallet.index') }}" class="kx-bal-btn kx-bal-dep"><i class="bi bi-pie-chart"></i>View Wallet Breakdown</a>
+                    </div>
+                </div>
                 </div>
             </div>
             <div class="col-12 col-md-7 col-lg-8">
@@ -470,13 +488,6 @@
                 <a href="{{ route('wallet.crypto') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-currency-bitcoin"></i></div>Crypto Wallets</a>
                 <a href="{{ route('wallet.index') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-wallet-fill"></i></div>Wallet Overview</a>
                 <a href="{{ route('portfolio.index') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-pie-chart-fill"></i></div>Crypto Portfolio</a>
-            </div>
-            <div class="mt-3 rounded-3 p-3" style="background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)">
-                <div class="small text-secondary">USD wallet balance</div>
-                <div class="fs-4 fw-bold text-white">${{ number_format($usdWalletBalance ?? 0, 2) }} <span class="small fw-normal text-secondary">USD</span></div>
-                <div class="small text-secondary mt-2">Combined wallet value</div>
-                <div class="fw-semibold text-white">{{ $totalWalletUsd !== null ? '$'.number_format($totalWalletUsd, 2).' USD' : 'Live valuation unavailable' }}</div>
-                <a class="small text-success" href="{{ route('wallet.index') }}">View wallet breakdown <i class="bi bi-arrow-right"></i></a>
             </div>
         </div>
 

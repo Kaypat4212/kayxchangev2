@@ -79,7 +79,7 @@ Route::get('/install-app', fn() => view('install-app'))->name('install.app.publi
 Route::get('/app/android.apk', function () {
     $apk = public_path('downloads/kayxchange-android.apk');
     abort_unless(is_file($apk), 404, 'The Android app installer is not available yet.');
-    return response()->download($apk, 'KayXchange.apk', ['Content-Type' => 'application/vnd.android.package-archive']);
+    return response()->download($apk, 'Tradewithkay.apk', ['Content-Type' => 'application/vnd.android.package-archive']);
 })->name('app.android.download');
 
 // Secure file serving — serves files from storage/app/public without requiring a symlink
@@ -327,9 +327,10 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('profile',                  [AdminProfileController::class, 'index'])->name('admin.profile.index');
     Route::post('profile/email',           [AdminProfileController::class, 'updateEmail'])->name('admin.profile.email');
     Route::post('profile/password',        [AdminProfileController::class, 'updatePassword'])->name('admin.profile.password');
-    Route::post('profile/2fa/setup',       [AdminProfileController::class, 'setup2fa'])->name('admin.profile.2fa.setup');
-    Route::post('profile/2fa/confirm',     [AdminProfileController::class, 'confirm2fa'])->name('admin.profile.2fa.confirm');
-    Route::post('profile/2fa/disable',     [AdminProfileController::class, 'disable2fa'])->name('admin.profile.2fa.disable');
+    Route::post('profile/2fa/setup',       [AdminProfileController::class, 'setup2fa'])->middleware('throttle:5,1')->name('admin.profile.2fa.setup');
+    Route::post('profile/2fa/cancel',      [AdminProfileController::class, 'cancel2faSetup'])->name('admin.profile.2fa.cancel');
+    Route::post('profile/2fa/confirm',     [AdminProfileController::class, 'confirm2fa'])->middleware('throttle:5,1')->name('admin.profile.2fa.confirm');
+    Route::post('profile/2fa/disable',     [AdminProfileController::class, 'disable2fa'])->middleware('throttle:5,1')->name('admin.profile.2fa.disable');
 
     // Auto-payout settings toggle
     Route::post('withdrawals/auto-payout/toggle', [WithdrawalController::class, 'toggleAutoPayout'])

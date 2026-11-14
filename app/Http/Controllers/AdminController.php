@@ -86,17 +86,28 @@ class AdminController extends Controller
 
     public function login(Request $request)
     {
+        $request->session()->forget(['2fa_admin_user_id', '2fa_admin_started_at']);
         $credentials = $request->only('email', 'password');
 
         if (Auth::attempt($credentials)) {
             if (Auth::user()->is_admin) {
                 $admin = Auth::user();
-                // If 2FA is enabled, redirect to challenge instead of dashboard
-                if ($admin->two_factor_enabled && $admin->two_factor_secret) {
+                // Fail closed if an admin has 2FA flagged on but their secret is missing.
+                if ($admin->two_factor_enabled) {
+                    if (!$admin->two_factor_secret) {
+                        Auth::logout();
+                        $request->session()->regenerateToken();
+                        return redirect()->route('admin.login')->withErrors([
+                            'email' => 'Two-factor protection is enabled but its authenticator setup is incomplete. Contact a platform owner to recover this admin account.',
+                        ]);
+                    }
+                    $request->session()->regenerate();
                     $request->session()->put('2fa_admin_user_id', $admin->id);
+                    $request->session()->put('2fa_admin_started_at', now()->timestamp);
                     Auth::logout();
                     return redirect()->route('admin.2fa.challenge');
                 }
+                $request->session()->regenerate();
                 return redirect()->route('admin.dashboard');
             } else {
                 Auth::logout();
@@ -109,7 +120,9 @@ class AdminController extends Controller
 
     public function show2faChallenge(Request $request)
     {
-        if (!$request->session()->has('2fa_admin_user_id')) {
+        $startedAt = (int) $request->session()->get('2fa_admin_started_at', 0);
+        if (!$request->session()->has('2fa_admin_user_id') || !$startedAt || now()->timestamp - $startedAt > 600) {
+            $request->session()->forget(['2fa_admin_user_id', '2fa_admin_started_at']);
             return redirect()->route('admin.login');
         }
         return view('admin.2fa-challenge');
@@ -120,13 +133,15 @@ class AdminController extends Controller
         $request->validate(['code' => 'required|digits:6']);
 
         $userId = $request->session()->get('2fa_admin_user_id');
-        if (!$userId) {
+        $startedAt = (int) $request->session()->get('2fa_admin_started_at', 0);
+        if (!$userId || !$startedAt || now()->timestamp - $startedAt > 600) {
+            $request->session()->forget(['2fa_admin_user_id', '2fa_admin_started_at']);
             return redirect()->route('admin.login');
         }
 
         $admin = User::find($userId);
-        if (!$admin || !$admin->is_admin) {
-            $request->session()->forget('2fa_admin_user_id');
+        if (!$admin || !$admin->is_admin || !$admin->two_factor_enabled || !$admin->two_factor_secret) {
+            $request->session()->forget(['2fa_admin_user_id', '2fa_admin_started_at']);
             return redirect()->route('admin.login')->withErrors(['code' => 'Session expired.']);
         }
 
@@ -142,8 +157,9 @@ class AdminController extends Controller
             return back()->withErrors(['code' => 'Invalid or expired authentication code.']);
         }
 
-        $request->session()->forget('2fa_admin_user_id');
+        $request->session()->forget(['2fa_admin_user_id', '2fa_admin_started_at']);
         Auth::login($admin);
+        $request->session()->regenerate();
         return redirect()->route('admin.dashboard');
     }
 

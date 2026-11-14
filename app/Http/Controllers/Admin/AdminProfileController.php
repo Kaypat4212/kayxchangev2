@@ -14,7 +14,10 @@ class AdminProfileController extends Controller
     {
         $admin = Auth::user();
         $twoFactorEnabled = (bool) $admin->two_factor_enabled;
-        return view('admin.profile', compact('admin', 'twoFactorEnabled'));
+        $pendingSetup = session('2fa_pending_secret')
+            ? $this->setupPayload($admin, session('2fa_pending_secret'))
+            : null;
+        return view('admin.profile', compact('admin', 'twoFactorEnabled', 'pendingSetup'));
     }
 
     // ── Update email ──────────────────────────────────────────────────────
@@ -56,26 +59,27 @@ class AdminProfileController extends Controller
     // ── 2FA: generate secret + show QR ───────────────────────────────────
     public function setup2fa()
     {
+        abort_if(Auth::user()->two_factor_enabled, 409, 'Two-factor authentication is already enabled.');
         try {
             $admin  = Auth::user();
-            $secret = $this->generateTotpSecret();
+
+            // Keep one pending secret for the whole setup attempt. Regenerating it
+            // after a bad code made every subsequent authenticator code unusable.
+            $secret = session('2fa_pending_secret') ?: app(\PragmaRX\Google2FAQRCode\Google2FA::class)->generateSecretKey(32);
 
             // Store temporarily in session — only persisted after verification
             session(['2fa_pending_secret' => $secret]);
-
-            $appName = config('app.name', 'KayXchange');
-
-            // Build a standards-compliant otpauth URI (RFC 6238 / Google Key URI Format)
-            $label  = rawurlencode($appName) . ':' . $admin->email;
-            $otpUri = "otpauth://totp/{$label}?secret={$secret}&issuer=" . rawurlencode($appName);
-
-            return response()->json([
-                'secret'  => $secret,
-                'otp_uri' => $otpUri,
-            ]);
+            return response()->json($this->setupPayload($admin, $secret));
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            report($e);
+            return response()->json(['error' => 'Unable to start authenticator setup. Please refresh and try again.'], 500);
         }
+    }
+
+    public function cancel2faSetup()
+    {
+        session()->forget('2fa_pending_secret');
+        return redirect()->route('admin.profile.index', ['tab' => '2fa'])->with('success_2fa', 'Authenticator setup was cancelled.');
     }
 
     // ── 2FA: confirm + enable ─────────────────────────────────────────────
@@ -85,11 +89,15 @@ class AdminProfileController extends Controller
 
         $secret = session('2fa_pending_secret');
         if (!$secret) {
-            return back()->withErrors(['code' => 'Session expired. Please restart 2FA setup.']);
+            return redirect()->route('admin.profile.index', ['tab' => '2fa'])
+                ->withErrors(['code' => 'Setup expired. Start authenticator setup again.'])
+                ->with('show_2fa_settings', true);
         }
 
         if (!$this->verifyTotp($secret, $request->code)) {
-            return back()->withErrors(['code' => 'Invalid code. Please try again.'])->with('show_2fa_setup', true);
+            return redirect()->route('admin.profile.index', ['tab' => '2fa'])
+                ->withErrors(['code' => 'That code is invalid or expired. Check your device time and try the current six-digit code.'])
+                ->with('show_2fa_setup', true);
         }
 
         Auth::user()->update([
@@ -99,16 +107,36 @@ class AdminProfileController extends Controller
         ]);
 
         session()->forget('2fa_pending_secret');
-        return back()->with('success_2fa', '2FA enabled successfully. Your account is now protected.');
+        return redirect()->route('admin.profile.index', ['tab' => '2fa'])
+            ->with('success_2fa', 'Two-factor authentication is enabled. The next admin sign-in will require an authenticator code.')
+            ->with('show_2fa_settings', true);
     }
 
     // ── 2FA: disable ──────────────────────────────────────────────────────
     public function disable2fa(Request $request)
     {
-        $request->validate(['current_password' => 'required|string']);
+        $request->validate([
+            'current_password' => 'required|string',
+            'code' => 'required|digits:6',
+        ]);
 
         if (!Hash::check($request->current_password, Auth::user()->password)) {
-            return back()->withErrors(['current_password' => 'Current password is incorrect.']);
+            return redirect()->route('admin.profile.index', ['tab' => '2fa'])
+                ->withErrors(['current_password' => 'Current password is incorrect.'])
+                ->with('show_2fa_settings', true);
+        }
+
+        try {
+            $secret = Auth::user()->two_factor_secret ? decrypt(Auth::user()->two_factor_secret) : null;
+        } catch (\Throwable $e) {
+            report($e);
+            $secret = null;
+        }
+
+        if (!$secret || !$this->verifyTotp($secret, $request->code)) {
+            return redirect()->route('admin.profile.index', ['tab' => '2fa'])
+                ->withErrors(['code' => 'The authenticator code is invalid or expired.'])
+                ->with('show_2fa_settings', true);
         }
 
         Auth::user()->update([
@@ -117,82 +145,42 @@ class AdminProfileController extends Controller
             'two_factor_confirmed_at' => null,
         ]);
 
-        return back()->with('success_2fa', '2FA has been disabled.');
+        return redirect()->route('admin.profile.index', ['tab' => '2fa'])
+            ->with('success_2fa', 'Two-factor authentication has been disabled.')
+            ->with('show_2fa_settings', true);
+    }
+
+    private function setupPayload($admin, string $secret): array
+    {
+        $appName = config('app.name', 'KayXchange');
+        $google2fa = app(\PragmaRX\Google2FAQRCode\Google2FA::class);
+        $otpUri = $google2fa->getQRCodeUrl($appName, $admin->email, $secret);
+        $qrDataUri = null;
+        try {
+            $qr = $google2fa->getQRCodeInline($appName, $admin->email, $secret, 220);
+            // BaconQrCode returns inline SVG on shared hosting without Imagick.
+            // Encode locally so the authenticator secret never reaches a QR CDN.
+            if (str_contains($qr, '<svg')) {
+                $qrDataUri = 'data:image/svg+xml;base64,' . base64_encode($qr);
+            } elseif (str_starts_with($qr, 'data:image/')) {
+                $qrDataUri = $qr;
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return [
+            'secret' => $secret,
+            'otp_uri' => $otpUri,
+            'qr_data_uri' => $qrDataUri,
+        ];
     }
 
     // ── TOTP helpers ──────────────────────────────────────────────────────
 
-    /**
-     * Generate a cryptographically random Base32 secret (32 chars = 160 bits).
-     * Properly encodes 20 random bytes as Base32 per RFC 4648.
-     */
-    private function generateTotpSecret(): string
-    {
-        $chars    = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        $secret   = '';
-        $bytes    = random_bytes(20); // 160 bits → 32 Base32 chars
-        $buffer   = 0;
-        $bitsLeft = 0;
-        foreach (str_split($bytes) as $byte) {
-            $buffer    = ($buffer << 8) | ord($byte);
-            $bitsLeft += 8;
-            while ($bitsLeft >= 5) {
-                $bitsLeft -= 5;
-                $secret   .= $chars[($buffer >> $bitsLeft) & 0x1F];
-            }
-        }
-        return $secret;
-    }
-
-    /**
-     * Verify a 6-digit TOTP code against a Base32 secret.
-     * Accepts ±1 time-step (30s window) to allow for clock drift.
-     */
+    /** Verify a six-digit authenticator code using the same RFC-compliant library as admin login. */
     private function verifyTotp(string $secret, string $code): bool
     {
-        $key = $this->base32Decode($secret);
-        $time = (int) floor(time() / 30);
-
-        foreach ([-1, 0, 1] as $offset) {
-            $computed = $this->computeHotp($key, $time + $offset);
-            if (hash_equals((string) $computed, (string) $code)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private function computeHotp(string $key, int $counter): string
-    {
-        $data = pack('J', $counter); // 8-byte big-endian
-        $hmac = hash_hmac('sha1', $data, $key, true);
-        $offset = ord($hmac[strlen($hmac) - 1]) & 0x0F;
-        $code = (
-            ((ord($hmac[$offset])     & 0x7F) << 24) |
-            ((ord($hmac[$offset + 1]) & 0xFF) << 16) |
-            ((ord($hmac[$offset + 2]) & 0xFF) <<  8) |
-             (ord($hmac[$offset + 3]) & 0xFF)
-        ) % 1_000_000;
-        return str_pad((string) $code, 6, '0', STR_PAD_LEFT);
-    }
-
-    private function base32Decode(string $b32): string
-    {
-        $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        $output   = '';
-        $b32      = strtoupper(rtrim($b32, '='));
-        $buffer   = 0;
-        $bits     = 0;
-        foreach (str_split($b32) as $char) {
-            $val = strpos($alphabet, $char);
-            if ($val === false) continue;
-            $buffer = ($buffer << 5) | $val;
-            $bits  += 5;
-            if ($bits >= 8) {
-                $bits  -= 8;
-                $output .= chr(($buffer >> $bits) & 0xFF);
-            }
-        }
-        return $output;
+        return app(\PragmaRX\Google2FAQRCode\Google2FA::class)->verifyKey($secret, $code);
     }
 }

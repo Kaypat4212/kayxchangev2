@@ -3,33 +3,49 @@
 @section('title', 'Admin Profile')
 
 @section('content')
-<div class="container-fluid px-4 py-4" style="max-width: 860px;">
+@php
+    $show2faTab = session('show_2fa_setup') || session('show_2fa_settings') || session('success_2fa') || $errors->has('code') || request('tab') === '2fa';
+    $showPasswordTab = session('success_password') || ($errors->has('current_password') && !session('success_email') && !session('show_2fa_settings'));
+@endphp
+<style>
+.admin-profile-page{max-width:1100px;margin-inline:auto;padding:1.5rem;color:var(--bs-body-color)}
+.admin-profile-hero{position:relative;overflow:hidden;border:1px solid rgba(148,163,184,.2);border-radius:24px;padding:clamp(1.25rem,3vw,2.25rem);margin-bottom:1.4rem;background:radial-gradient(ellipse at 92% 0,rgba(37,211,102,.15),transparent 38%),linear-gradient(135deg,rgba(15,23,42,.96),rgba(17,31,40,.96));color:#f8fafc;box-shadow:0 18px 55px rgba(2,8,23,.18)}
+.admin-profile-hero-row{display:flex;align-items:center;gap:1rem}.admin-profile-avatar{width:62px;height:62px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(145deg,#25d366,#14a44d);color:#07150c;font-weight:900;font-size:1.55rem;box-shadow:0 8px 24px rgba(37,211,102,.2)}
+.admin-profile-eyebrow{color:#7ee6a3;font-size:.72rem;font-weight:800;letter-spacing:.14em;margin-bottom:.3rem}.admin-profile-heading{color:#fff;font-weight:800;letter-spacing:-.03em;margin:0}.admin-profile-subtitle{color:#afbdc8;margin:.35rem 0 0;font-size:.92rem}
+.admin-profile-card{border:1px solid rgba(148,163,184,.2)!important;border-radius:19px!important;overflow:hidden;box-shadow:0 12px 38px rgba(2,8,23,.08)!important}.admin-profile-card>.card-header{padding:1.15rem 1.35rem!important;border-bottom:1px solid rgba(148,163,184,.14)!important}.admin-profile-card>.card-body{padding:clamp(1rem,3vw,1.7rem)!important}
+.admin-profile-tabs{gap:.45rem;border:0!important;overflow-x:auto;flex-wrap:nowrap;padding:.2rem}.admin-profile-tabs .nav-link{white-space:nowrap;border:1px solid rgba(148,163,184,.22)!important;border-radius:12px!important;color:var(--bs-secondary-color);font-weight:700;padding:.72rem 1rem}.admin-profile-tabs .nav-link.active{background:#10271a!important;border-color:rgba(37,211,102,.45)!important;color:#40d978!important}
+.twofa-status{border:1px solid rgba(37,211,102,.25);border-radius:16px;background:rgba(37,211,102,.08);padding:1rem 1.1rem}.twofa-step-card{border:1px solid rgba(148,163,184,.2);border-radius:16px;padding:1rem;background:rgba(148,163,184,.055)}.twofa-qr{width:190px;height:190px;object-fit:contain;background:#fff;border:1px solid #dbe3ea;border-radius:12px;padding:8px}
+@media(max-width:575px){.admin-profile-page{padding:1rem .8rem}.admin-profile-hero{border-radius:19px}.admin-profile-avatar{width:52px;height:52px;border-radius:17px}}
+</style>
+<div class="admin-profile-page">
 
-    <div class="d-flex align-items-center mb-4 gap-3">
-        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold fs-4"
-             style="width:52px;height:52px;">
+    <div class="admin-profile-hero">
+      <div class="admin-profile-hero-row">
+        <div class="admin-profile-avatar">
             {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
         </div>
         <div>
-            <h4 class="fw-bold mb-0">Admin Profile</h4>
-            <p class="text-muted small mb-0">{{ auth()->user()->email }}</p>
+            <div class="admin-profile-eyebrow">ACCOUNT SECURITY</div>
+            <h1 class="admin-profile-heading h3">Admin profile</h1>
+            <p class="admin-profile-subtitle">Manage your sign-in details and protect administrator access.</p>
         </div>
+      </div>
     </div>
 
     {{-- Tab Nav --}}
-    <ul class="nav nav-tabs mb-4" id="profileTabs">
+    <ul class="nav nav-tabs admin-profile-tabs mb-4" id="profileTabs" role="tablist">
         <li class="nav-item">
-            <a class="nav-link {{ !session('show_2fa_setup') && !session('success_password') ? 'active' : '' }}" data-bs-toggle="tab" href="#tab-email">
+            <a class="nav-link {{ !$show2faTab && !$showPasswordTab ? 'active' : '' }}" data-bs-toggle="tab" href="#tab-email" role="tab">
                 <i class="bi bi-envelope me-1"></i> Email
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link {{ session('success_password') || $errors->has('current_password') && !session('success_email') ? 'active' : '' }}" data-bs-toggle="tab" href="#tab-password">
+            <a class="nav-link {{ $showPasswordTab ? 'active' : '' }}" data-bs-toggle="tab" href="#tab-password" role="tab">
                 <i class="bi bi-key me-1"></i> Password
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link {{ session('success_2fa') || session('show_2fa_setup') || $errors->has('code') ? 'active' : '' }}" data-bs-toggle="tab" href="#tab-2fa">
+            <a class="nav-link {{ $show2faTab ? 'active' : '' }}" data-bs-toggle="tab" href="#tab-2fa" role="tab">
                 <i class="bi bi-shield-lock me-1"></i> Two-Factor Auth
             </a>
         </li>
@@ -38,8 +54,8 @@
     <div class="tab-content">
 
         {{-- ── Tab 1: Email ──────────────────────────────────────────── --}}
-        <div class="tab-pane fade {{ !session('show_2fa_setup') && !session('success_password') && !$errors->has('code') ? 'show active' : '' }}" id="tab-email">
-            <div class="card border-0 shadow-sm">
+        <div class="tab-pane fade {{ !$show2faTab && !$showPasswordTab ? 'show active' : '' }}" id="tab-email" role="tabpanel">
+            <div class="card admin-profile-card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-0 fw-semibold">
                     <i class="bi bi-envelope text-primary me-1"></i> Change Email Address
                 </div>
@@ -73,8 +89,8 @@
         </div>
 
         {{-- ── Tab 2: Password ───────────────────────────────────────── --}}
-        <div class="tab-pane fade {{ session('success_password') ? 'show active' : '' }}" id="tab-password">
-            <div class="card border-0 shadow-sm">
+        <div class="tab-pane fade {{ $showPasswordTab ? 'show active' : '' }}" id="tab-password" role="tabpanel">
+            <div class="card admin-profile-card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-0 fw-semibold">
                     <i class="bi bi-key text-primary me-1"></i> Change Password
                 </div>
@@ -108,8 +124,8 @@
         </div>
 
         {{-- ── Tab 3: 2FA ────────────────────────────────────────────── --}}
-        <div class="tab-pane fade {{ session('success_2fa') || session('show_2fa_setup') || $errors->has('code') ? 'show active' : '' }}" id="tab-2fa">
-            <div class="card border-0 shadow-sm">
+        <div class="tab-pane fade {{ $show2faTab ? 'show active' : '' }}" id="tab-2fa" role="tabpanel">
+            <div class="card admin-profile-card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-0 fw-semibold">
                     <i class="bi bi-shield-lock text-primary me-1"></i> Two-Factor Authentication (TOTP)
                 </div>
@@ -124,24 +140,29 @@
 
                     @if($twoFactorEnabled)
                         {{-- ── 2FA is ON ── --}}
-                        <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
+                        <div class="twofa-status d-flex align-items-center gap-3 mb-4">
                             <i class="bi bi-shield-fill-check fs-4"></i>
                             <div>
                                 <strong>2FA is enabled</strong> on your account.<br>
-                                <small class="text-muted">Enabled on {{ auth()->user()->two_factor_confirmed_at?->format('d M Y, H:i') }}</small>
+                                <small class="text-muted">Enabled on {{ auth()->user()->two_factor_confirmed_at?->format('d M Y, H:i') ?? 'date unavailable' }}</small>
                             </div>
                         </div>
 
                         <p class="text-muted small mb-3">
-                            To disable 2FA, enter your current password below.
+                            To disable 2FA, confirm both your current password and a fresh authenticator code.
                         </p>
 
-                        <form method="POST" action="{{ route('admin.profile.2fa.disable') }}" onsubmit="return confirm('Are you sure you want to disable 2FA? This will reduce your account security.')">
+                        <form method="POST" action="{{ route('admin.profile.2fa.disable') }}" onsubmit="return confirm('Disable two-factor protection for this admin account?')">
                             @csrf
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Confirm Password to Disable</label>
                                 <input type="password" name="current_password" class="form-control @error('current_password') is-invalid @enderror" required>
                                 @error('current_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Authenticator code</label>
+                                <input type="text" name="code" class="form-control @error('code') is-invalid @enderror" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required style="max-width:220px;letter-spacing:.22em;font-size:1.2rem">
+                                @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <button type="submit" class="btn btn-danger">
                                 <i class="bi bi-shield-x me-1"></i> Disable 2FA
@@ -156,26 +177,28 @@
                         </p>
 
                         {{-- Step 1: Generate QR --}}
-                        <div id="step1">
-                            <button type="button" class="btn btn-primary" id="startSetupBtn">
+                        <div id="step1" class="{{ $pendingSetup ? 'd-none' : '' }}">
+                            <button type="button" class="btn btn-success" id="startSetupBtn">
                                 <i class="bi bi-qr-code me-1"></i> Set Up Two-Factor Auth
                             </button>
+                            <div id="setupError" class="alert alert-danger mt-3 d-none" role="alert"></div>
                         </div>
 
                         {{-- Step 2: Scan QR + verify --}}
-                        <div id="step2" class="d-none mt-3">
-                            <div class="card bg-light border-0 p-3 mb-3">
+                        <div id="step2" class="{{ $pendingSetup ? '' : 'd-none' }} mt-3">
+                            <div class="twofa-step-card mb-3">
                                 <div class="row align-items-center g-3">
                                     <div class="col-auto text-center">
-                                        <canvas id="qrCanvas" class="border rounded p-1 bg-white d-block" style="width:180px;height:180px;"></canvas>
+                                        <img id="qrImage" class="twofa-qr" src="{{ $pendingSetup['qr_data_uri'] ?? '' }}" alt="Authenticator setup QR code" @if(!$pendingSetup) hidden @endif>
+                                        <div id="qrUnavailable" class="small text-muted" @if($pendingSetup && $pendingSetup['qr_data_uri']) hidden @endif>QR preview unavailable. Enter the setup key manually.</div>
                                     </div>
                                     <div class="col">
                                         <p class="fw-semibold mb-1">1. Open Authy or Google Authenticator</p>
-                                        <p class="text-muted small mb-2">Scan the QR code with your app.</p>
-                                        <p class="fw-semibold mb-1">2. Or enter this secret manually:</p>
+                                        <p class="text-muted small mb-2">Scan this QR code. The code is generated on this KayXchange server.</p>
+                                        <p class="fw-semibold mb-1">2. Manual setup key</p>
                                         <div class="d-flex align-items-center gap-2">
-                                            <code id="secretDisplay" class="fs-6 bg-white border rounded px-2 py-1 user-select-all"></code>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copySecret()">
+                                            <code id="secretDisplay" class="fs-6 bg-body border rounded px-2 py-1 user-select-all">{{ $pendingSetup['secret'] ?? '' }}</code>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copySecret(this)" aria-label="Copy setup key">
                                                 <i class="bi bi-clipboard"></i>
                                             </button>
                                         </div>
@@ -183,12 +206,14 @@
                                 </div>
                             </div>
 
+                            <div class="alert alert-info small" role="note">Keep this setup key private. KayXchange staff will never ask you to share your authenticator code.</div>
+
                             <form method="POST" action="{{ route('admin.profile.2fa.confirm') }}">
                                 @csrf
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">3. Enter the 6-digit code from your app</label>
                                     <input type="text" name="code" class="form-control @error('code') is-invalid @enderror"
-                                           pattern="\d{6}" maxlength="6" inputmode="numeric" placeholder="000000"
+                                           pattern="[0-9]{6}" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000"
                                            style="max-width:180px;font-size:1.3rem;letter-spacing:0.2em;" required
                                            value="{{ old('code') }}">
                                     @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -196,7 +221,10 @@
                                 <button type="submit" class="btn btn-success">
                                     <i class="bi bi-check-circle me-1"></i> Verify &amp; Enable 2FA
                                 </button>
-                                <button type="button" class="btn btn-link text-muted ms-2" onclick="cancelSetup()">Cancel</button>
+                            </form>
+                            <form method="POST" action="{{ route('admin.profile.2fa.cancel') }}" class="mt-2">
+                                @csrf
+                                <button type="submit" class="btn btn-link text-muted px-0">Cancel setup</button>
                             </form>
                         </div>
                     @endif
@@ -209,92 +237,70 @@
 </div>
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <script>
-function renderQR(otpUri) {
-    if (typeof QRCode === 'undefined') {
-        document.getElementById('qrCanvas').insertAdjacentHTML('afterend',
-            '<p class="text-warning small mt-1">QR library not loaded. Enter the secret manually below.</p>');
-        return;
-    }
-    QRCode.toCanvas(document.getElementById('qrCanvas'), otpUri, {
-        width: 180,
-        margin: 2,
-        errorCorrectionLevel: 'M',
-        color: { dark: '#000000', light: '#ffffff' }
-    }, function (err) {
-        if (err) {
-            document.getElementById('qrCanvas').insertAdjacentHTML('afterend',
-                '<p class="text-danger small mt-1">QR error: ' + err.message + '</p>');
-        }
-    });
+function showSetupError(message) {
+    const errorBox = document.getElementById('setupError');
+    if (!errorBox) return;
+    errorBox.textContent = message;
+    errorBox.classList.remove('d-none');
 }
 
-document.getElementById('startSetupBtn')?.addEventListener('click', function () {
+function renderSetup(data) {
+    document.getElementById('secretDisplay').textContent = data.secret || '';
+    const image = document.getElementById('qrImage');
+    if (data.qr_data_uri) {
+        image.src = data.qr_data_uri;
+        image.hidden = false;
+        document.getElementById('qrUnavailable').hidden = true;
+    } else {
+        image.hidden = true;
+        document.getElementById('qrUnavailable').hidden = false;
+    }
+    document.getElementById('step1').classList.add('d-none');
+    document.getElementById('step2').classList.remove('d-none');
+    document.querySelector('#step2 input[name="code"]')?.focus();
+}
+
+document.getElementById('startSetupBtn')?.addEventListener('click', async function () {
+    const button = this;
     this.disabled = true;
     this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generating…';
-
-    fetch('{{ route("admin.profile.2fa.setup") }}', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json',
-        }
-    })
-    .then(r => {
-        if (!r.ok) {
-            return r.text().then(text => {
-                let msg = 'Server error ' + r.status;
-                try { const j = JSON.parse(text); msg = j.error || j.message || msg; } catch(e) {}
-                throw new Error(msg);
-            });
-        }
-        return r.json();
-    })
-    .then(data => {
-        document.getElementById('secretDisplay').textContent = data.secret;
-        document.getElementById('step1').classList.add('d-none');
-        document.getElementById('step2').classList.remove('d-none');
-        renderQR(data.otp_uri);
-    })
-    .catch(err => {
-        alert('Failed to start 2FA setup: ' + err.message);
-        this.disabled = false;
-        this.innerHTML = '<i class="bi bi-qr-code me-1"></i> Set Up Two-Factor Auth';
-    });
+    document.getElementById('setupError')?.classList.add('d-none');
+    try {
+        const response = await fetch('{{ route("admin.profile.2fa.setup") }}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || data.message || 'Could not start setup. Refresh and try again.');
+        renderSetup(data);
+    } catch (error) {
+        showSetupError(error instanceof Error ? error.message : 'Could not start setup. Please try again.');
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-qr-code me-1"></i> Set Up Two-Factor Auth';
+    }
 });
 
-function cancelSetup() {
-    document.getElementById('step1').classList.remove('d-none');
-    document.getElementById('step2').classList.add('d-none');
-    document.getElementById('startSetupBtn').disabled = false;
-    document.getElementById('startSetupBtn').innerHTML = '<i class="bi bi-qr-code me-1"></i> Set Up Two-Factor Auth';
-}
-
-function copySecret() {
+function copySecret(button) {
     const secret = document.getElementById('secretDisplay').textContent;
-    navigator.clipboard.writeText(secret).then(() => {
-        const btn = event.target.closest('button');
-        btn.innerHTML = '<i class="bi bi-check"></i>';
-        setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard"></i>', 1500);
-    });
+    navigator.clipboard?.writeText(secret).then(() => {
+        button.innerHTML = '<i class="bi bi-check"></i>';
+        setTimeout(() => button.innerHTML = '<i class="bi bi-clipboard"></i>', 1500);
+    }).catch(() => alert('Copy failed. Select and copy the setup key manually.'));
 }
 
-// Auto-show step2 if there was a validation error on code
-@if($errors->has('code'))
-(function() {
-    fetch('{{ route("admin.profile.2fa.setup") }}', {
-        method: 'POST',
-        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
-    }).then(r => r.ok ? r.json() : r.text().then(t => { throw new Error('HTTP ' + r.status); }))
-    .then(data => {
-        document.getElementById('secretDisplay').textContent = data.secret;
-        document.getElementById('step1').classList.add('d-none');
-        document.getElementById('step2').classList.remove('d-none');
-        renderQR(data.otp_uri);
-    }).catch(err => console.error('2FA auto-setup error:', err.message));
-})();
-@endif
+// Open the requested tab when arriving from the navbar or after a form redirect.
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.location.hash === '#tab-2fa') {
+        const trigger = document.querySelector('[href="#tab-2fa"]');
+        if (trigger && window.bootstrap?.Tab) bootstrap.Tab.getOrCreateInstance(trigger).show();
+    }
+});
 </script>
 @endpush
 @endsection

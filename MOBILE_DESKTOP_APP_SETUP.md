@@ -2,7 +2,7 @@
 
 This repo now includes:
 
-- `mobile-app/`: Expo app that opens `https://tradewithkay.com` in a WebView and registers Expo push tokens for logged-in users.
+- `mobile-app/`: Expo app that opens the live `https://tradewithkay.com` website in a WebView. First launch has a native welcome flow with direct paths to the existing website login and registration pages. Optional Face ID/fingerprint unlock protects app reopening on the current device; it does not replace website sign-in. Push permission is requested after sign-in, and notification taps open trusted KayXchange pages.
 - `desktop-app/`: Electron wrapper for Windows `.exe` builds.
 - Laravel push-token backend: `/mobile/push-token`, `MobilePushToken`, and `ExpoPushNotificationService`.
 
@@ -44,15 +44,17 @@ cd mobile-app
 npm install
 ```
 
-Create/link an Expo Application Services project:
+The app identifiers are set to `com.tradewithkay.app` for iOS and Android. This app is linked to the Expo project `@patrickezike66/tradewithkay` (`fb372d03-8920-4585-b680-7718cf3d25a2`). To relink it later, run:
 
 ```bash
 npx eas init
 ```
 
-Replace `REPLACE_WITH_EAS_PROJECT_ID` in `mobile-app/app.json` with the generated project ID.
+The EAS project ID is stored in `mobile-app/app.json`. Push-token registration uses this linked project ID.
 
-Preview:
+The first-run intro routes users to the existing `/login` and `/register` website pages. Biometric unlock is optional and uses the device's enrolled biometrics or passcode. Push notifications require the Laravel push-token endpoint and valid Expo/FCM/APNs credentials; push permission is requested only after sign-in.
+
+Preview the live-site shell with Expo Go only if you install an Expo Go version compatible with the app's SDK. This app currently uses SDK 52, so the current Expo Go app may not accept it:
 
 ```bash
 npm start
@@ -66,7 +68,17 @@ npm run build:android:store
 npm run build:ios
 ```
 
-Expo Go is useful for previewing the WebView shell. For dependable remote push notifications and store-ready builds, use EAS development or production builds.
+For a reliable preview, use an EAS development build. Remote push notifications and store-ready builds also use EAS; remote delivery requires Apple and Google push credentials configured there.
+
+### Release checklist
+
+1. Upgrade the app from its current Expo SDK 52 baseline to the current stable Expo SDK before preparing store submissions; follow Expo's SDK upgrade steps and re-run `npx expo install --fix` after each SDK step.
+2. Build and test on real iOS and Android devices. Check sign-in, KYC uploads, camera/file pickers, payments, crypto deposits, browser returns, logout, and notification permissions.
+3. Configure Apple signing and push credentials in EAS, then build iOS. iOS release builds require macOS/EAS and an Apple Developer account.
+4. Configure Android signing and FCM push credentials in EAS, then build an APK for internal testing and an AAB for Google Play.
+5. Prepare the store listings, privacy disclosures, support contact, and financial-service review materials before submitting.
+
+The website remains the source of content and account data. Changes to the live website appear in the app without publishing a new app build, while native-shell changes (icons, permissions, app identifiers, and notification setup) require a new build.
 
 ## Windows App
 
