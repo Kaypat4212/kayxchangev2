@@ -120,7 +120,8 @@ class WalletController extends Controller
         $configuredSellRate = (float) AdminSetting::getSetting('usd_wallet_sell_rate_ngn', 0);
         $sellRate = $configuredSellRate > 0 ? $configuredSellRate : (float) ($usdtRates['sell_rate'] ?? 0);
         $marketStale = (bool) ($market['_stale'] ?? false);
-        return view('wallet.usd', compact('wallets', 'marketPrices', 'portfolioValueUsd', 'valuationComplete', 'marketStale', 'sellRate'));
+        $minimumWithdrawalNgn = (float) config('withdrawal.minimum', 10);
+        return view('wallet.usd', compact('wallets', 'marketPrices', 'portfolioValueUsd', 'valuationComplete', 'marketStale', 'sellRate', 'minimumWithdrawalNgn'));
     }
 
     public function withdrawUsdToNaira(Request $request, CryptoTradeRateService $tradeRates)
@@ -161,7 +162,8 @@ class WalletController extends Controller
         }
 
         $amountNgn = round($usdValue * $rate, 2);
-        if ($amountNgn < 1) return back()->withErrors(['asset_amounts' => 'The selected wallet amounts are too small to convert.'])->withInput();
+        $minimumWithdrawalNgn = max(1.0, (float) config('withdrawal.minimum', 10));
+        if ($amountNgn < $minimumWithdrawalNgn) return back()->withErrors(['asset_amounts' => 'The selected amount must convert to at least ₦' . number_format($minimumWithdrawalNgn, 2) . '.'])->withInput();
         $reference = 'USD-NGN-' . Str::upper(Str::random(12));
         $result = DB::transaction(function () use ($request, $assetAmounts, $usdValue, $amountNgn, $rate, $reference, $snapshot) {
             $user = \App\Models\User::query()->lockForUpdate()->findOrFail(Auth::id());

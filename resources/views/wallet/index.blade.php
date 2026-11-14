@@ -12,7 +12,7 @@
   </div>
   <div class="row align-items-end g-4 mt-2">
   <div class="col-lg-7"><div class="kw-muted small mb-2">Portfolio value</div><div class="kw-total" id="portfolioUsd">{{ $portfolioUsd !== null ? '$'.number_format($portfolioUsd,2) : '—' }} <small>USD</small></div><div class="kw-fiat mt-2" id="portfolioNgn">{{ $portfolioNgn !== null ? '≈ ₦'.number_format($portfolioNgn,2) : 'Naira estimate unavailable' }}</div><div class="kw-note mt-2" id="priceUpdated">{{ $marketMeta['updated_at'] ? 'Prices updated '.\Illuminate\Support\Carbon::parse($marketMeta['updated_at'])->diffForHumans() : 'Waiting for a market price source' }}{{ $ngnPerUsd > 0 ? ' · NGN estimate uses platform USD sell rate' : ' · NGN balance excluded from USD total until a platform rate is configured' }}</div></div>
-   <div class="col-lg-5"><div class="kw-actions justify-content-lg-end"><a class="kw-action primary" href="{{ route('wallet.deposit') }}"><i class="bi bi-plus-lg"></i>Deposit crypto</a><a class="kw-action" href="{{ route('wallet.withdraw') }}"><i class="bi bi-arrow-up-right"></i>Withdraw</a><a class="kw-action" href="{{ route('wallet.history') }}"><i class="bi bi-clock-history"></i>History</a></div></div>
+   <div class="col-lg-5"><div class="kw-actions justify-content-lg-end"><a class="kw-action primary" href="{{ route('wallet.deposit') }}"><i class="bi bi-plus-lg"></i>Deposit crypto</a><a class="kw-action" href="{{ route('wallet.usd', ['withdraw'=>1]) }}"><i class="bi bi-arrow-left-right"></i>Convert crypto to NGN</a><a class="kw-action" href="{{ route('wallet.withdraw') }}"><i class="bi bi-bank"></i>Withdraw NGN</a><a class="kw-action" href="{{ route('wallet.history') }}"><i class="bi bi-clock-history"></i>History</a></div></div>
   </div>
  </header>
 
