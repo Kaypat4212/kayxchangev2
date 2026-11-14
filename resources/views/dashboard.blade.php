@@ -243,7 +243,7 @@
     #kxDashboardTour.is-open { display:block; }
     #kxDashboardTour::before { content:'';position:absolute;inset:0;z-index:0; }
     .kx-tour-mask { position:absolute;inset:0;z-index:1;width:100%;height:100%;pointer-events:none; }
-    .kx-tour-tip { position:fixed;z-index:2;width:min(360px,calc(100vw - 32px));padding:20px;border:1px solid rgba(130,255,150,.22);border-radius:20px;background:linear-gradient(145deg,#142018,#0b120d);color:#f2fff3;box-shadow:0 24px 80px rgba(0,0,0,.55);animation:kxTourEnter .28s cubic-bezier(.2,.8,.2,1) both; }
+    .kx-tour-tip { position:fixed;z-index:20003;width:min(360px,calc(100vw - 32px));max-height:min(560px,calc(100dvh - 32px));overflow-y:auto;padding:20px;border:1px solid rgba(130,255,150,.22);border-radius:20px;background:linear-gradient(145deg,#142018,#0b120d);color:#f2fff3;box-shadow:0 24px 80px rgba(0,0,0,.55);animation:kxTourEnter .28s cubic-bezier(.2,.8,.2,1) both; }
     body.light-mode .kx-tour-tip { background:linear-gradient(145deg,#fff,#f2faf3);color:#142318;border-color:rgba(0,130,20,.2);box-shadow:0 24px 80px rgba(20,60,20,.22); }
     .kx-tour-tip.is-centered { position:fixed;top:50%;left:50%;transform:translate(-50%,-50%); }
     .kx-tour-eyebrow { display:flex;align-items:center;gap:8px;color:#75e987;font-size:.67rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase;margin-bottom:9px; }
@@ -269,7 +269,7 @@
     body.kx-tour-running .kx-tour-highlight { pointer-events:none!important; }
     @keyframes kxTourGlow { 0%,100%{filter:drop-shadow(0 0 0 rgba(0,255,74,0))} 50%{filter:drop-shadow(0 0 9px rgba(0,255,74,.52))} }
     @keyframes kxTourEnter { from{opacity:0;translate:0 9px} to{opacity:1;translate:0 0} }
-    @media(max-width:575.98px) { .kx-tour-tip{padding:17px;border-radius:17px}.kx-tour-title{font-size:1.03rem}.kx-tour-copy{font-size:.78rem}.kx-tour-button{padding:9px 10px} }
+    @media(max-width:575.98px) { .kx-tour-tip{padding:17px;border-radius:17px}.kx-tour-footer{gap:6px;flex-wrap:wrap}.kx-tour-step-count{order:-1;width:100%;margin:0 0 2px}.kx-tour-title{font-size:1.03rem}.kx-tour-copy{font-size:.78rem}.kx-tour-button{padding:9px 10px} }
     @media(prefers-reduced-motion:reduce) { .kx-tour-tip,.kx-tour-highlight{animation:none!important;transition:none!important} }
 
     /* ===== Notification Dropdown ===== */
@@ -838,19 +838,32 @@
 
     function placeTip(target) {
         tip.classList.remove('is-centered');
-        tip.style.left = '16px';
-        tip.style.top = '16px';
+        const viewport = window.visualViewport;
+        const viewportLeft = viewport ? viewport.offsetLeft : 0;
+        const viewportTop = viewport ? viewport.offsetTop : 0;
+        const viewportWidth = viewport ? viewport.width : window.innerWidth;
+        const viewportHeight = viewport ? viewport.height : window.innerHeight;
+        const gap = 16;
+        tip.style.maxHeight = Math.max(180, viewportHeight - gap * 2) + 'px';
+        tip.style.left = (viewportLeft + gap) + 'px';
+        tip.style.top = (viewportTop + gap) + 'px';
         if (!target) {
             tip.classList.add('is-centered');
+            // Remove the inline corner coordinates so CSS can center the welcome card.
+            tip.style.left = '';
+            tip.style.top = '';
             return;
         }
 
         const rect = target.getBoundingClientRect();
-        const width = Math.min(360, window.innerWidth - 32);
+        const width = Math.min(360, viewportWidth - gap * 2);
         const tipHeight = tip.offsetHeight;
-        const left = Math.max(16, Math.min(window.innerWidth - width - 16, rect.left + rect.width / 2 - width / 2));
-        const below = rect.bottom + 16 + tipHeight <= window.innerHeight - 16;
-        const top = below ? rect.bottom + 16 : Math.max(16, rect.top - tipHeight - 16);
+        const minLeft = viewportLeft + gap;
+        const maxLeft = viewportLeft + viewportWidth - width - gap;
+        const left = Math.max(minLeft, Math.min(maxLeft, rect.left + rect.width / 2 - width / 2));
+        const below = rect.bottom + gap + tipHeight <= viewportTop + viewportHeight - gap;
+        const preferredTop = below ? rect.bottom + gap : rect.top - tipHeight - gap;
+        const top = Math.max(viewportTop + gap, Math.min(viewportTop + viewportHeight - tipHeight - gap, preferredTop));
         tip.style.left = left + 'px';
         tip.style.top = top + 'px';
     }
@@ -884,7 +897,9 @@
         activeTarget = step.selector ? document.querySelector(step.selector) : null;
         if (step.selector && !activeTarget) { showStep(current + 1); return; }
         if (activeTarget) {
-            activeTarget.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
+            // Settle the target before measuring it; smooth scrolling caused the guide
+            // to calculate against its old position and appear at the top of the page.
+            activeTarget.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
             activeTarget.classList.add('kx-tour-highlight');
             document.body.classList.add('kx-tour-running');
         }
@@ -897,11 +912,11 @@
         nextButton.innerHTML = current === steps.length - 1 ? 'Finish <i class="bi bi-check2 ms-1" aria-hidden="true"></i>' : (current === 0 ? 'Start <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>' : 'Next <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>');
         document.getElementById('kxTourProgress').innerHTML = steps.slice(1).map((_, i) => `<span class="${i + 1 < current ? 'is-done' : ''} ${i + 1 === current ? 'is-active' : ''}"></span>`).join('');
 
-        requestAnimationFrame(() => {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
             if (activeTarget && !activeTarget.isConnected) { showStep(current + 1); return; }
             paintMask(activeTarget);
             placeTip(activeTarget);
-        });
+        }));
     }
 
     function startTour() {
@@ -918,6 +933,7 @@
     backButton.addEventListener('click', () => showStep(current - 1));
     nextButton.addEventListener('click', () => showStep(current + 1));
     window.addEventListener('resize', () => { if (isOpen) { paintMask(activeTarget); placeTip(activeTarget); } });
+    window.visualViewport?.addEventListener('resize', () => { if (isOpen) { paintMask(activeTarget); placeTip(activeTarget); } });
     window.addEventListener('scroll', () => { if (isOpen) { paintMask(activeTarget); placeTip(activeTarget); } }, { passive: true });
     document.addEventListener('keydown', (event) => { if (isOpen && event.key === 'Escape') closeTour(); });
 

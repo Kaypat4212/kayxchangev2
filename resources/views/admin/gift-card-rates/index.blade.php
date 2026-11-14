@@ -163,6 +163,16 @@ select.gc-mini-input option{background:var(--kx-card);}
         <div class="d-flex align-items-center gap-2 flex-wrap"><span class="badge {{ $giftCardSalesEnabled ? 'bg-success' : 'bg-secondary' }}">{{ $giftCardSalesEnabled ? 'Sales on' : 'Sales off' }}</span><form method="POST" action="{{ route('admin.gift-card-rates.toggle-sales-feature') }}">@csrf<input type="hidden" name="enabled" value="{{ $giftCardSalesEnabled ? 0 : 1 }}"><button class="gc-save-btn" type="submit">{{ $giftCardSalesEnabled ? 'Turn sales off' : 'Turn sales on' }}</button></form><a class="btn btn-outline-light btn-sm" href="{{ route('admin.gift-card-sales.index') }}"><i class="bi bi-inbox me-1"></i>Sale requests</a></div>
     </div>
 
+    <div class="gc-add-card mb-4">
+        <div class="gc-add-title mb-1"><i class="bi bi-speedometer2"></i> Gift card purchase limits</div>
+        <div class="small mb-3" style="color:var(--kx-muted)">Purchases do not require KYC documents. These per order and daily Naira caps apply to every user; pending and completed purchases count toward the daily cap.</div>
+        <form method="POST" action="{{ route('admin.gift-card-rates.purchase-limits') }}" class="row g-3 align-items-end">@csrf @method('PUT')
+            <div class="col-sm-5"><label class="form-label small">Maximum per order (NGN)</label><input class="form-control" name="per_order_limit_ngn" type="number" min="1000" max="100000000" step="1000" value="{{ number_format($purchasePerOrderLimit, 2, '.', '') }}" required></div>
+            <div class="col-sm-5"><label class="form-label small">Maximum per day (NGN)</label><input class="form-control" name="daily_limit_ngn" type="number" min="1000" max="100000000" step="1000" value="{{ number_format($purchaseDailyLimit, 2, '.', '') }}" required></div>
+            <div class="col-sm-2"><button class="gc-save-btn w-100" type="submit">Save limits</button></div>
+        </form>
+    </div>
+
     {{-- Stats --}}
     @php
         $totalCards  = $rates->count();

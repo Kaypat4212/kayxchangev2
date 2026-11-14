@@ -35,7 +35,7 @@ class LogVisitor
         }
 
         try {
-            $this->logVisit($request);
+            $this->logVisit($request, $response);
         } catch (\Throwable $e) {
             Log::warning('LogVisitor middleware error: ' . $e->getMessage());
         }
@@ -43,7 +43,7 @@ class LogVisitor
         return $response;
     }
 
-    private function logVisit(Request $request): void
+    private function logVisit(Request $request, Response $response): void
     {
         $path = $request->path();
 
@@ -88,7 +88,7 @@ class LogVisitor
         ]);
 
         // Only notify for homepage visits by real humans
-        if (!$isBot && trim($ua) !== '' && $isHomepage && $this->homepageHumanVerified($request)) {
+        if ($response->isSuccessful() && !$isBot && trim($ua) !== '' && $isHomepage && $this->homepageHumanVerified($request)) {
             $this->maybeSendTelegram($log, $ip);
         }
     }
@@ -96,6 +96,7 @@ class LogVisitor
     private function homepageHumanVerified(Request $request): bool
     {
         $mode = (string) \App\Models\AdminSetting::getSetting('homepage_captcha_mode', 'custom');
+        if ($mode === 'off') return true;
         if (!in_array($mode, ['custom', 'turnstile'], true)) return false;
         return app(\App\Services\HomepageCaptchaVerification::class)->isVerified($request, $mode);
     }
@@ -128,15 +129,18 @@ class LogVisitor
      */
     private function maybeSendTelegram(VisitorLog $log, string $ip): void
     {
-        $cacheKey = "visitor_tg_{$ip}";
+        $cacheKey = 'visitor_tg:v2:' . hash('sha256', $ip);
         if (Cache::has($cacheKey)) return;
 
-        $ownerChatId = env('TELEGRAM_OWNER_CHAT_ID');
-        if (!$ownerChatId) return;
-
-        Cache::put($cacheKey, true, 43200); // 12 hours
-
-        $log->update(['telegram_notified' => true]);
+        $ownerChatId = config('services.telegram.owner_chat_id') ?: config('services.telegram.chat_id');
+        $token = config('services.telegram.bot_token')
+            ?: config('services.telegram.token')
+            ?: env('KAYXCHANGE_TELEGRAM_BOT_TOKEN')
+            ?: env('TELEGRAM_BOT_TOKEN');
+        if (!$ownerChatId || !$token) {
+            Log::warning('Homepage visit alert is not configured.', ['visitor_log_id' => $log->id, 'chat_id_configured' => (bool) $ownerChatId, 'token_configured' => (bool) $token]);
+            return;
+        }
 
         $flag    = $log->country_code ? $this->countryFlag($log->country_code) : '🌐';
         $device  = $log->is_mobile ? '📱 Mobile' : '🖥️ Desktop';
@@ -159,13 +163,17 @@ class LogVisitor
             "🕐 *Time:* {$time}";
 
         try {
-            $token = env('TELEGRAM_TOKEN');
-            if (!$token) return;
-            Http::timeout(4)->post("https://api.telegram.org/bot{$token}/sendMessage", [
+            $response = Http::timeout(8)->post("https://api.telegram.org/bot{$token}/sendMessage", [
                 'chat_id'    => $ownerChatId,
                 'text'       => $msg,
                 'parse_mode' => 'Markdown',
             ]);
+            if (!$response->successful() || !$response->json('ok')) {
+                Log::warning('Homepage visit Telegram alert was rejected.', ['visitor_log_id' => $log->id, 'http_status' => $response->status(), 'telegram_error' => $response->json('description')]);
+                return;
+            }
+            Cache::put($cacheKey, true, 43200);
+            $log->update(['telegram_notified' => true]);
         } catch (\Throwable $e) {
             Log::warning('Visitor Telegram notify failed: ' . $e->getMessage());
         }

@@ -118,13 +118,9 @@ class WalletController extends Controller
         }
         $usdtRates = $tradeRates->rates(['USDT'])['USDT'] ?? ['buy_rate' => null, 'sell_rate' => null];
         $configuredBuyRate = (float) AdminSetting::getSetting('usd_wallet_buy_rate_ngn', 0);
-        $configuredSellRate = (float) AdminSetting::getSetting('usd_wallet_sell_rate_ngn', 0);
         $buyRate = $configuredBuyRate > 0 ? $configuredBuyRate : (float) ($usdtRates['buy_rate'] ?? 0);
-        $sellRate = $configuredSellRate > 0 ? $configuredSellRate : (float) ($usdtRates['sell_rate'] ?? 0);
-        $buyRateSource = $configuredBuyRate > 0 ? 'Platform USD rate' : 'USDT platform buy rate';
-        $sellRateSource = $configuredSellRate > 0 ? 'Platform USD rate' : 'USDT platform sell rate';
         $marketStale = (bool) ($market['_stale'] ?? false);
-        return view('wallet.usd', compact('wallets', 'marketPrices', 'portfolioValueUsd', 'valuationComplete', 'marketStale', 'buyRate', 'sellRate', 'buyRateSource', 'sellRateSource'));
+        return view('wallet.usd', compact('wallets', 'marketPrices', 'portfolioValueUsd', 'valuationComplete', 'marketStale', 'buyRate'));
     }
 
     public function withdrawUsdToNaira(Request $request, CryptoTradeRateService $tradeRates)

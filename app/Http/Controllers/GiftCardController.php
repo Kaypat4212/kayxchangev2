@@ -26,7 +26,11 @@ class GiftCardController extends Controller
         $saleRates = GiftCardRate::query()->where('is_active', true)->whereIn('country', ['US', 'UK'])
             ->where('buy_rate', '>', 0)->orderBy('category')->orderBy('name')->get();
         $saleOrders = GiftCardSaleOrder::where('user_id', auth()->id())->latest()->paginate(10, ['*'], 'sales_page');
-        return view('gift-cards.index', compact('enabled', 'rates', 'orders', 'salesEnabled', 'saleRates', 'saleOrders'));
+        $purchasePerOrderLimit = (float) AdminSetting::getSetting('gift_card_purchase_per_order_limit_ngn', 250000);
+        $purchaseDailyLimit = (float) AdminSetting::getSetting('gift_card_purchase_daily_limit_ngn', 500000);
+        $purchaseSpentToday = (float) GiftCardOrder::where('user_id', auth()->id())->whereDate('created_at', today())->whereIn('status', ['pending', 'completed'])->sum('total_ngn');
+        $purchaseDailyRemaining = max(0, $purchaseDailyLimit - $purchaseSpentToday);
+        return view('gift-cards.index', compact('enabled', 'rates', 'orders', 'salesEnabled', 'saleRates', 'saleOrders', 'purchasePerOrderLimit', 'purchaseDailyLimit', 'purchaseDailyRemaining'));
     }
 
     public function storeSale(Request $request)
@@ -95,6 +99,17 @@ class GiftCardController extends Controller
                     abort(404);
                 }
                 $user = $request->user()->newQuery()->lockForUpdate()->findOrFail($request->user()->id);
+                $perOrderLimit = (float) AdminSetting::getSetting('gift_card_purchase_per_order_limit_ngn', 250000);
+                $dailyLimit = (float) AdminSetting::getSetting('gift_card_purchase_daily_limit_ngn', 500000);
+                if ($amount > $perOrderLimit) {
+                    return ['error' => 'The maximum gift card purchase per order is ₦' . number_format($perOrderLimit, 2) . '.'];
+                }
+                $spentToday = (float) GiftCardOrder::where('user_id', $user->id)->whereDate('created_at', today())
+                    ->whereIn('status', ['pending', 'completed'])->sum('total_ngn');
+                if ($spentToday + $amount > $dailyLimit) {
+                    $remaining = max(0, $dailyLimit - $spentToday);
+                    return ['error' => 'Your remaining gift card purchase limit today is ₦' . number_format($remaining, 2) . '.'];
+                }
                 if ($user->pin_locked_until && Carbon::now()->lt($user->pin_locked_until)) {
                     $minutes = max(1, (int) ceil(Carbon::now()->diffInSeconds($user->pin_locked_until) / 60));
                     return ['error' => "PIN locked. Try again in {$minutes} minute(s)."];
@@ -121,7 +136,7 @@ class GiftCardController extends Controller
                 app(BalanceSettlementService::class)->adjustNgnBalance((int) $user->id, -$amount, 'gift_card.purchase', $reference);
                 return ['order' => $order];
             });
-            if (isset($result['error'])) return back()->withInput()->withErrors(['pin' => $result['error']]);
+            if (isset($result['error'])) return back()->withInput()->withErrors(['purchase' => $result['error']]);
             $order = $result['order'];
         } catch (RuntimeException $e) {
             return back()->withInput()->withErrors(['purchase' => $e->getMessage()]);

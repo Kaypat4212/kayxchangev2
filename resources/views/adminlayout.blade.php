@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin-foundation.css') }}">
     @stack('styles')
     <style>
         .crypto-btn,
@@ -93,7 +94,7 @@
     </style>
 </head>
 
-<body class="bg-light">
+<body class="kx-admin-body">
 
     @include('components.admin-navbar')
 
@@ -103,9 +104,9 @@
     </div>
 
     <!-- Content Section -->
-    <div class="container" style="margin-top: 120px;">
+    <main class="kx-admin-shell container-fluid">
         @yield('content')
-    </div>
+    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @stack('scripts')

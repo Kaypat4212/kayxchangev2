@@ -9,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ asset('assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/admin-foundation.css') }}">
     <style>
     body { font-family: 'Poppins', sans-serif; background: #f4f6f9; }
     #loader { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:9999; }
@@ -66,8 +67,8 @@
     @media (min-width: 992px) and (max-width: 1399.98px) {
         #adminNavbar .navbar-brand span { display: none; }
         #adminNavbar .navbar-brand img { margin-right: 0 !important; }
-        #adminNavbar .navbar-nav .nav-link { font-size: 0; padding: .4rem .45rem; }
-        #adminNavbar .navbar-nav .nav-link i { font-size: 1rem; margin-right: 0; }
+        #adminNavbar .navbar-nav .nav-link { font-size: .72rem; padding: .38rem .4rem; }
+        #adminNavbar .navbar-nav .nav-link i { font-size: .9rem; margin-right: .15rem; }
         #adminNavbar .navbar-nav .dropdown-toggle::after { font-size: .6rem; margin-left: .15rem; vertical-align: middle; }
         #adminNavbar .navbar-actions .btn { padding: .25rem .4rem; font-size: .72rem; }
         #adminNavbar .navbar-actions .btn i { margin-right: 0 !important; }
@@ -88,14 +89,14 @@
     <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}">
     @stack('styles')
 </head>
-<body>
+<body class="kx-admin-body">
     @include('components.admin-navbar')
 
     <div id="loader"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>
 
-    <div class="container-fluid" style="margin-top: 24px; padding-bottom: 40px;">
+    <main class="kx-admin-shell container-fluid">
         @yield('content')
-    </div>
+    </main>
 
     <!-- Admin footer -->
     <footer style="background:#1a1f2e;color:rgba(255,255,255,0.4);font-size:0.75rem;text-align:center;padding:14px;border-top:1px solid rgba(255,255,255,0.07);">

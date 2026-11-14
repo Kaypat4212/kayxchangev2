@@ -26,7 +26,9 @@ class AdminGiftCardRateController extends Controller
 
         $giftCardsEnabled = filter_var(AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
         $giftCardSalesEnabled = filter_var(AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
-        return view('admin.gift-card-rates.index', compact('grouped', 'rates', 'giftCardsEnabled', 'giftCardSalesEnabled'));
+        $purchasePerOrderLimit = (float) AdminSetting::getSetting('gift_card_purchase_per_order_limit_ngn', 250000);
+        $purchaseDailyLimit = (float) AdminSetting::getSetting('gift_card_purchase_daily_limit_ngn', 500000);
+        return view('admin.gift-card-rates.index', compact('grouped', 'rates', 'giftCardsEnabled', 'giftCardSalesEnabled', 'purchasePerOrderLimit', 'purchaseDailyLimit'));
     }
 
     public function toggleFeature(Request $request)
@@ -43,6 +45,17 @@ class AdminGiftCardRateController extends Controller
         return back()->with('success', $request->boolean('enabled')
             ? 'Gift card sales are enabled. Users can submit USA and UK cards for admin review.'
             : 'Gift card sales are paused. Existing requests remain available for review.');
+    }
+
+    public function updatePurchaseLimits(Request $request)
+    {
+        $data = $request->validate([
+            'per_order_limit_ngn' => ['required', 'numeric', 'min:1000', 'max:100000000'],
+            'daily_limit_ngn' => ['required', 'numeric', 'min:1000', 'max:100000000'],
+        ]);
+        AdminSetting::set('gift_card_purchase_per_order_limit_ngn', (string) round((float) $data['per_order_limit_ngn'], 2));
+        AdminSetting::set('gift_card_purchase_daily_limit_ngn', (string) round((float) $data['daily_limit_ngn'], 2));
+        return back()->with('success', 'Gift card purchase limits updated. These limits apply to all users, without requiring KYC for card purchases.');
     }
 
     public function bulkUpdate(Request $request)

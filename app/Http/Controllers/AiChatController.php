@@ -943,6 +943,8 @@ class AiChatController extends Controller
         $billAvailable = $billServices->billPaymentsEnabled() && $billServices->providers() !== [];
         $utilityAvailable = $billAvailable && $billServices->utilityPaymentsEnabled();
         $giftSalesEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        $giftCardPerOrderLimit = (float) \App\Models\AdminSetting::getSetting('gift_card_purchase_per_order_limit_ngn', 250000);
+        $giftCardDailyLimit = (float) \App\Models\AdminSetting::getSetting('gift_card_purchase_daily_limit_ngn', 500000);
         $billFeatureFacts = '- Airtime and mobile data payments: ' . ($billAvailable ? 'currently enabled when providers are live' : 'currently unavailable; tell users the feature may be switched off or still being configured') . "\n"
             . '- Electricity and cable TV payments: ' . ($utilityAvailable ? 'currently enabled when providers are live' : 'currently unavailable or switched off') . "\n";
         return "You are KayBot, a smart and friendly crypto trading assistant for KayXchange - a Nigerian crypto exchange.\n\n"
@@ -958,7 +960,7 @@ class AiChatController extends Controller
             . "- Buy: Pay NGN via bank transfer -> receive crypto to wallet\n"
             . "- Sell: Send crypto -> receive NGN to bank account\n"
             . "- Wallets: USD is a read-only estimate of supported crypto wallet holdings and excludes NGN. Crypto stays on-platform; external crypto sends are not available yet. Users can convert selected crypto to NGN from the portfolio page.\n"
-            . "- Gift cards: USA and UK purchase requests can be placed at /gift-cards when enabled; the NGN charge is reserved and admin manually fulfills the order. Gift card sales are " . ($giftSalesEnabled ? 'enabled for supported cards with active buy rates; card submissions require admin verification and approval before NGN credit' : 'paused by default') . ".\n"
+            . "- Gift cards: USA and UK purchase requests can be placed at /gift-cards when enabled; KYC documents are not required, purchase limits are ₦" . number_format($giftCardPerOrderLimit, 2) . " per order and ₦" . number_format($giftCardDailyLimit, 2) . " per day, the NGN charge is reserved, and admin manually fulfills the order. Gift card sales are " . ($giftSalesEnabled ? 'enabled for supported cards with active buy rates; card submissions require admin verification and approval before NGN credit' : 'paused by default') . ".\n"
             . "- Crypto deposit networks currently configured in the platform: BTC on Bitcoin; ETH on ERC20; USDT on TRC20, ERC20, or BEP20; USDC on ERC20 or BEP20; BNB on BEP20; SOL on Solana\n"
             . "- Crypto deposits: users select an asset and network, follow the displayed address and amount, and track pending/confirmation status on the deposit page\n"
             . "- If an automated crypto deposit service is temporarily unavailable, a configured manual receiving address may be offered; the user submits a transaction hash and an admin verifies it before the balance is credited\n"

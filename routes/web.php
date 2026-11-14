@@ -501,6 +501,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/gift-card-rates', [AdminGiftCardRateController::class, 'index'])->name('admin.gift-card-rates.index');
     Route::post('/gift-card-rates/feature-toggle', [AdminGiftCardRateController::class, 'toggleFeature'])->name('admin.gift-card-rates.toggle-feature');
     Route::post('/gift-card-rates/sales-feature-toggle', [AdminGiftCardRateController::class, 'toggleSales'])->name('admin.gift-card-rates.toggle-sales-feature');
+    Route::put('/gift-card-rates/purchase-limits', [AdminGiftCardRateController::class, 'updatePurchaseLimits'])->name('admin.gift-card-rates.purchase-limits');
     Route::post('/gift-card-rates/bulk-update', [AdminGiftCardRateController::class, 'bulkUpdate'])->name('admin.gift-card-rates.bulk-update');
     Route::post('/gift-card-rates/add', [AdminGiftCardRateController::class, 'store'])->name('admin.gift-card-rates.store');
     Route::post('/gift-card-rates/{id}/update', [AdminGiftCardRateController::class, 'update'])->name('admin.gift-card-rates.update');
