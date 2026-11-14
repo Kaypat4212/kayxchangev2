@@ -469,6 +469,14 @@
                 <a href="{{ route('wallet.usd') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-currency-dollar"></i></div>USD Wallet</a>
                 <a href="{{ route('wallet.crypto') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-currency-bitcoin"></i></div>Crypto Wallets</a>
                 <a href="{{ route('wallet.index') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-wallet-fill"></i></div>Wallet Overview</a>
+                <a href="{{ route('portfolio.index') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-pie-chart-fill"></i></div>Crypto Portfolio</a>
+            </div>
+            <div class="mt-3 rounded-3 p-3" style="background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)">
+                <div class="small text-secondary">USD wallet balance</div>
+                <div class="fs-4 fw-bold text-white">${{ number_format($usdWalletBalance ?? 0, 2) }} <span class="small fw-normal text-secondary">USD</span></div>
+                <div class="small text-secondary mt-2">Combined wallet value</div>
+                <div class="fw-semibold text-white">{{ $totalWalletUsd !== null ? '$'.number_format($totalWalletUsd, 2).' USD' : 'Live valuation unavailable' }}</div>
+                <a class="small text-success" href="{{ route('wallet.index') }}">View wallet breakdown <i class="bi bi-arrow-right"></i></a>
             </div>
         </div>
 

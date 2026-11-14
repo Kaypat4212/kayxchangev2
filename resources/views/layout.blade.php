@@ -366,6 +366,8 @@
     })();
     </script>
 
+    @include('components.android-app-prompt')
+
     @stack('scripts')
 
     @include('components.ai-chatbot-widget')

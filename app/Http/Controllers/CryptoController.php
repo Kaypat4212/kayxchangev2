@@ -105,7 +105,20 @@ class CryptoController extends Controller
         $billService = app(\App\Services\BillPaymentProviderService::class);
         $billPaymentsEnabled = $billService->billPaymentsEnabled() && $billService->providers() !== [];
         $utilityPaymentsEnabled = $billPaymentsEnabled && $billService->utilityPaymentsEnabled();
-        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts', 'billPaymentsEnabled', 'utilityPaymentsEnabled'));
+        $currentUser = Auth::user();
+        $usdWalletBalance = (float) $currentUser->wallets()->where('currency', 'USD')->value('balance');
+        $walletMarket = app(\App\Services\ExchangeRateService::class)->getUsdRates();
+        $totalWalletUsd = (float) $usdtRate > 0 ? (float) $currentUser->balance / (float) $usdtRate : 0.0;
+        $walletValueComplete = (float) $currentUser->balance <= 0 || (float) $usdtRate > 0;
+        foreach ($currentUser->wallets()->where('is_active', true)->get() as $assetWallet) {
+            $asset = strtoupper((string) $assetWallet->currency);
+            if ($asset === 'NGN') continue;
+            if ($asset === 'USD') { $totalWalletUsd += (float) $assetWallet->balance; continue; }
+            if (is_numeric($walletMarket[$asset] ?? null)) $totalWalletUsd += (float) $assetWallet->balance * (float) $walletMarket[$asset];
+            elseif ((float) $assetWallet->balance > 0) $walletValueComplete = false;
+        }
+        if (!$walletValueComplete) $totalWalletUsd = null;
+        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts', 'billPaymentsEnabled', 'utilityPaymentsEnabled', 'usdWalletBalance', 'totalWalletUsd'));
     }
 
     public function buy()

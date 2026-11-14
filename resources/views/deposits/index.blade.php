@@ -22,7 +22,7 @@
 
     <div class="dc-actions">
         <a class="dc-action" href="{{ route('deposits.create') }}"><span class="dc-action-icon"><i class="bi bi-bank"></i></span><span><strong>Add naira</strong><small>Bank transfer or available payment gateway</small></span><i class="bi bi-arrow-up-right ms-auto"></i></a>
-        <a class="dc-action crypto" href="{{ route('wallet.deposit') }}"><span class="dc-action-icon"><i class="bi bi-currency-bitcoin"></i></span><span><strong>Deposit crypto</strong><small>BTC, ETH, USDT, USDC, BNB or SOL</small></span><i class="bi bi-arrow-up-right ms-auto"></i></a>
+        <a class="dc-action crypto" href="{{ route('wallet.deposit') }}"><span class="dc-action-icon"><i class="bi bi-currency-bitcoin"></i></span><span><strong>Deposit to crypto wallet</strong><small>Choose a coin and network, then follow your deposit status</small></span><i class="bi bi-arrow-up-right ms-auto"></i></a>
     </div>
 
     <section class="dc-stats" aria-label="Deposit summary">

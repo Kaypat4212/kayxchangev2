@@ -108,7 +108,7 @@
 
     {{-- Hero --}}
     <div class="kx-install-hero">
-        <div class="kx-install-app-icon">📲</div>
+        <div class="kx-install-app-icon"><img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange app icon" style="width:100%;height:100%;object-fit:cover;border-radius:22px"></div>
         <h2 class="fw-800 mb-1" style="font-size:1.6rem;">Add KayXchange to your device</h2>
         <p class="text-muted mb-0" style="font-size:0.88rem;">
             Install our app in seconds — no App Store, no Play Store needed.
@@ -185,6 +185,11 @@
             <i class="bi bi-download"></i>
             <span id="install-btn-label">Loading…</span>
         </button>
+        @if(is_file(public_path('downloads/kayxchange-android.apk')))
+            <a class="kx-big-install-btn mt-2 text-decoration-none" href="{{ route('app.android.download') }}" style="display:flex;align-items:center;justify-content:center;gap:9px"><i class="bi bi-android2"></i> Download Android APK</a>
+        @else
+            <div class="alert alert-secondary mt-3 mb-0 small">The Android APK build is not published yet. You can install the web app above now; the direct APK download will appear here once the signed installer is added.</div>
+        @endif
         <p class="text-muted text-center mt-2" style="font-size:0.75rem;" id="android-hint"></p>
     </div>
 

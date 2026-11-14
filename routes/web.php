@@ -76,6 +76,11 @@ Route::get('/home', [\App\Http\Controllers\HomeController::class, 'secondary']);
 Route::get('/faqs', fn() => view('faqs'))->name('faqs');
 Route::get('/about', fn() => view('about'))->name('about');
 Route::get('/install-app', fn() => view('install-app'))->name('install.app.public');
+Route::get('/app/android.apk', function () {
+    $apk = public_path('downloads/kayxchange-android.apk');
+    abort_unless(is_file($apk), 404, 'The Android app installer is not available yet.');
+    return response()->download($apk, 'KayXchange.apk', ['Content-Type' => 'application/vnd.android.package-archive']);
+})->name('app.android.download');
 
 // Secure file serving — serves files from storage/app/public without requiring a symlink
 Route::get('/file/{path}', function (string $path) {
@@ -201,6 +206,11 @@ Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () 
     Route::post('/send',     [\App\Http\Controllers\P2pTransferController::class, 'send'])->name('send.post');
     Route::get('/transfers', [\App\Http\Controllers\P2pTransferController::class, 'history'])->name('transfers');
     Route::get('/lookup',    [\App\Http\Controllers\P2pTransferController::class, 'lookupRecipient'])->name('lookup');
+});
+Route::middleware('auth')->prefix('portfolio')->name('portfolio.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\PortfolioController::class, 'index'])->name('index');
+    Route::post('/', [\App\Http\Controllers\PortfolioController::class, 'store'])->middleware('throttle:20,1')->name('store');
+    Route::delete('/{holding}', [\App\Http\Controllers\PortfolioController::class, 'destroy'])->whereNumber('holding')->name('destroy');
 });
 // Admin: reverse a transfer
 Route::middleware(['auth', 'admin'])->post('admin/p2p/{transfer}/reverse', [\App\Http\Controllers\P2pTransferController::class, 'reverse'])->name('admin.p2p.reverse');

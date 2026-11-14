@@ -56,6 +56,11 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    public function portfolioHoldings()
+    {
+        return $this->hasMany(PortfolioHolding::class);
+    }
+
     /**
      * The attributes that are mass assignable.
      *
