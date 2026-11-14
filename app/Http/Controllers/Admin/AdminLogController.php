@@ -73,6 +73,59 @@ class AdminLogController extends Controller
         }
     }
 
+    public function download(Request $request)
+    {
+        $files = $this->availableLogs();
+        $validated = $request->validate(['file' => ['required', 'string', 'max:100']]);
+        $file = $this->safeLogName($validated['file'], $files);
+        abort_unless($file, 404);
+
+        $path = storage_path('logs/' . $file);
+        abort_unless(is_file($path) && is_readable($path), 404);
+
+        return response()->streamDownload(function () use ($path): void {
+            $handle = @fopen($path, 'rb');
+            if (!$handle) return;
+
+            try {
+                while (($line = fgets($handle)) !== false) {
+                    echo $this->redact($line);
+                }
+            } finally {
+                fclose($handle);
+            }
+        }, $file . '.redacted.txt', [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function clear(Request $request)
+    {
+        $files = $this->availableLogs();
+        $validated = $request->validate(['file' => ['required', 'string', 'max:100']]);
+        $file = $this->safeLogName($validated['file'], $files);
+        abort_unless($file, 404);
+
+        $path = storage_path('logs/' . $file);
+        if (!is_file($path) || !is_writable($path)) {
+            return back()->with('error', 'This log file is not writable by the application. Check storage/logs permissions.');
+        }
+
+        if (@file_put_contents($path, '', LOCK_EX) === false) {
+            return back()->with('error', 'The log could not be cleared. Check storage/logs permissions and try again.');
+        }
+
+        // Keep an audit breadcrumb in the log after clearing it.
+        Log::notice('Admin cleared Laravel log file', [
+            'admin_id' => $request->user()?->id,
+            'file' => $file,
+        ]);
+
+        return redirect()->route('admin.logs.index', ['file' => $file])->with('success', 'The selected log was cleared. A short audit entry records who cleared it.');
+    }
+
     private function availableLogs(): array
     {
         $paths = glob(storage_path('logs/laravel*.log')) ?: [];

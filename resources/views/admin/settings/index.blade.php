@@ -130,9 +130,11 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <option value="1" {{ ($row->value ?? '0') === '1' ? 'selected' : '' }}>Maintenance</option>
                         </select>
                     @elseif($row->key === 'blocked_countries')
-                        @php($decodedCountries = json_decode((string) $row->value, true))
-                        @php($selectedCountries = is_array($decodedCountries) ? $decodedCountries : [])
-                        @php($extraCountries = array_values(array_diff($selectedCountries, array_keys($countryOptions))) )
+                        @php
+                            $decodedCountries = json_decode((string) $row->value, true);
+                            $selectedCountries = is_array($decodedCountries) ? $decodedCountries : [];
+                            $extraCountries = array_values(array_diff($selectedCountries, array_keys($countryOptions)));
+                        @endphp
                         <select name="blocked_countries[]" multiple size="7" aria-label="Countries to block">
                             @foreach($countryOptions as $code => $countryName)
                                 <option value="{{ $code }}" {{ in_array($code, $selectedCountries, true) ? 'selected' : '' }}>{{ $countryName }} ({{ $code }})</option>

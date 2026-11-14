@@ -8,9 +8,21 @@
             <h1 class="h3 text-white mb-1">Laravel error logs</h1>
             <p class="text-secondary mb-0">Review a recent log excerpt and ask AI for likely causes and practical fixes.</p>
         </div>
-        <a class="btn btn-outline-light" href="{{ route('admin.logs.index', ['file' => $selected]) }}"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</a>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-light" href="{{ route('admin.logs.index', ['file' => $selected]) }}"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</a>
+            @if($selected)
+            <a class="btn btn-outline-info" href="{{ route('admin.logs.download', ['file' => $selected]) }}"><i class="bi bi-download me-1"></i>Download sanitized log</a>
+            <form method="POST" action="{{ route('admin.logs.clear') }}" onsubmit="return confirm('Clear the selected Laravel log? This removes its current contents.');">
+                @csrf
+                @method('DELETE')
+                <input type="hidden" name="file" value="{{ $selected }}">
+                <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash3 me-1"></i>Clear log</button>
+            </form>
+            @endif
+        </div>
     </div>
 
+    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if(session('error'))<div class="alert alert-warning">{{ session('error') }}</div>@endif
     @if($logError)<div class="alert alert-info">{{ $logError }} Check that Laravel can read <code>storage/logs</code> on the server.</div>@endif
 
@@ -44,8 +56,35 @@
     @endif
 
     <section class="card bg-dark border-secondary">
-        <div class="card-header border-secondary d-flex justify-content-between align-items-center text-light"><span><i class="bi bi-file-earmark-text me-2"></i>Latest log excerpt</span><span class="badge text-bg-secondary">Redacted · latest 220 lines</span></div>
-        <div class="card-body p-0"><pre class="m-0 p-3 text-light" style="max-height:65vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem">{{ $content !== '' ? $content : 'No log contents to display.' }}</pre></div>
+        <div class="card-header border-secondary d-flex justify-content-between align-items-center flex-wrap gap-2 text-light">
+            <span><i class="bi bi-file-earmark-text me-2"></i>Latest log excerpt</span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge text-bg-secondary">Redacted · latest 220 lines</span>
+                @if($content !== '')<button class="btn btn-sm btn-outline-light" type="button" id="copyLogButton"><i class="bi bi-clipboard me-1"></i>Copy error</button>@endif
+            </div>
+        </div>
+        <div class="card-body p-0"><pre id="logContent" class="m-0 p-3 text-light" style="max-height:65vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem">{{ $content !== '' ? $content : 'No log contents to display.' }}</pre></div>
     </section>
+    <div class="small text-secondary mt-2" id="copyLogStatus" role="status" aria-live="polite"></div>
 </div>
+@if($content !== '')
+<script>
+document.getElementById('copyLogButton')?.addEventListener('click', async function () {
+    const text = document.getElementById('logContent')?.innerText || '';
+    const status = document.getElementById('copyLogStatus');
+    try {
+        await navigator.clipboard.writeText(text);
+        if (status) status.textContent = 'Sanitized log excerpt copied.';
+    } catch (error) {
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        temp.setAttribute('readonly', '');
+        temp.style.position = 'fixed'; temp.style.opacity = '0';
+        document.body.appendChild(temp); temp.select();
+        const copied = document.execCommand('copy'); temp.remove();
+        if (status) status.textContent = copied ? 'Sanitized log excerpt copied.' : 'Copy failed. Select and copy the log text manually.';
+    }
+});
+</script>
+@endif
 @endsection

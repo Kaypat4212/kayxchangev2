@@ -241,6 +241,8 @@ use App\Http\Controllers\Admin\AdminProfileController;
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('logs', [\App\Http\Controllers\Admin\AdminLogController::class, 'index'])->name('admin.logs.index');
     Route::post('logs/analyze', [\App\Http\Controllers\Admin\AdminLogController::class, 'analyze'])->middleware('throttle:5,1')->name('admin.logs.analyze');
+    Route::get('logs/download', [\App\Http\Controllers\Admin\AdminLogController::class, 'download'])->name('admin.logs.download');
+    Route::delete('logs/clear', [\App\Http\Controllers\Admin\AdminLogController::class, 'clear'])->name('admin.logs.clear');
     Route::get('forum', [\App\Http\Controllers\Admin\AdminForumController::class, 'index'])->name('admin.forum.index');
     Route::post('forum/official-posts', [\App\Http\Controllers\Admin\AdminForumController::class, 'storeOfficialTopic'])->middleware('throttle:10,1')->name('admin.forum.official-posts.store');
     Route::post('forum/topics/{topic}/official-replies', [\App\Http\Controllers\Admin\AdminForumController::class, 'replyOfficial'])->middleware('throttle:20,1')->name('admin.forum.official-replies.store');
