@@ -14,6 +14,7 @@ use App\Models\Withdrawal;
 use App\Models\PortfolioWithdrawal;
 use App\Models\Conversion;
 use App\Models\GiftCardOrder;
+use App\Models\GiftCardSaleOrder;
 use App\Models\AdminAuditLog;
 use App\Services\BalanceSettlementService;
 use Illuminate\Support\Facades\DB;
@@ -75,6 +76,7 @@ class AdminTransactionHistoryController extends Controller
             'crypto_withdrawal'=>CryptoWithdrawal::class, 'bill_payment'=>BillPayment::class,
             'transfer'=>P2pTransfer::class, 'portfolio_withdrawal'=>PortfolioWithdrawal::class, 'crypto_swap'=>Conversion::class,
             'gift_card_purchase'=>GiftCardOrder::class];
+        $types['gift_card_sale'] = GiftCardSaleOrder::class;
         $rows = collect();
         foreach ($types as $type=>$model) {
             if ($request->filled('type') && $request->query('type') !== $type) continue;
@@ -90,10 +92,10 @@ class AdminTransactionHistoryController extends Controller
                 $needle = '%'.$request->query('search').'%';
                 $columns = match($type) {
                     'buy','sell'=>['transaction_ref','coin','wallet_address'], 'deposit'=>['transaction_ref','currency','gateway_reference'],
-                    'withdrawal'=>['reference','currency','bank_account'], 'crypto_deposit'=>['transaction_hash','currency','payment_address'],
+                    'withdrawal'=>['reference','currency','bank_account'], 'crypto_deposit'=>['transaction_hash','currency','payment_address','payment_data->provider_payment_id'],
                     'crypto_withdrawal'=>['transaction_hash','address','network'], 'bill_payment'=>['reference','provider_reference','category'],
                     'transfer'=>['reference','note'], 'portfolio_withdrawal'=>['reference'], 'crypto_swap'=>['from_coin','to_coin','provider_conversion_id'],
-                    'gift_card_purchase'=>['reference','card_name','country','recipient_email'], default=>[]
+                    'gift_card_purchase','gift_card_sale'=>['reference','card_name','country'], default=>[]
                 };
                 $query->where(function ($q) use ($needle, $columns, $type) {
                     if ($type === 'transfer') $q->whereHas('sender', fn($u)=>$u->where('name','like',$needle)->orWhere('email','like',$needle))->orWhereHas('recipient', fn($u)=>$u->where('name','like',$needle)->orWhere('email','like',$needle));
@@ -112,12 +114,13 @@ class AdminTransactionHistoryController extends Controller
                     'portfolio_withdrawal' => $record->naira_amount,
                     'crypto_swap' => $record->from_amount,
                     'gift_card_purchase' => $record->total_ngn,
+                    'gift_card_sale' => $record->approved_ngn ?? $record->estimated_ngn,
                     default => $record->amount,
                 };
                 $rows->push((object)[
                     'type'=>$type, 'id'=>$record->id, 'user'=>$user,
-                    'reference'=>$record->transaction_ref ?? $record->reference ?? $record->transaction_hash ?? $record->gateway_reference ?? $record->provider_conversion_id ?? '—',
-                    'currency'=>$type==='gift_card_purchase' ? 'NGN' : ($record->coin ?? $record->currency ?? ($type==='bill_payment' ? $record->category : ($type==='crypto_swap' ? $record->from_coin : 'NGN'))),
+                    'reference'=>$record->transaction_ref ?? $record->reference ?? $record->transaction_hash ?? $record->gateway_reference ?? $record->provider_conversion_id ?? data_get($record->payment_data,'provider_payment_id') ?? '—',
+                    'currency'=>in_array($type,['gift_card_purchase','gift_card_sale'],true) ? 'NGN' : ($record->coin ?? $record->currency ?? ($type==='bill_payment' ? $record->category : ($type==='crypto_swap' ? $record->from_coin : 'NGN'))),
                     'amount'=>$amount, 'status'=>$record->status, 'created_at'=>$record->created_at,
                     'fee_amount'=>(float) ($record->fee_amount ?? 0),
                 ]);

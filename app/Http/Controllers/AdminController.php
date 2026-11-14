@@ -254,6 +254,41 @@ class AdminController extends Controller
         $deposits = Deposit::with('user')->orderBy('created_at', 'desc')->get();
         $withdrawals = Withdrawal::with('user')->orderBy('created_at', 'desc')->get();
 
+        // One admin-facing feed covering every financial module, including
+        // crypto deposits/withdrawals, swaps, bills, transfers and gift cards.
+        $allActivity = collect();
+        $pushActivity = function ($record, string $type, $user, string $asset, $amount, string $currency, $reference = null, string $detail = '') use (&$allActivity): void {
+            $allActivity->push((object)[
+                'id' => $record->id, 'type' => $type, 'user' => $user,
+                'asset' => $asset, 'amount' => $amount, 'currency' => $currency,
+                'reference' => $reference ?: '—', 'detail' => $detail,
+                'status' => (string)$record->status, 'created_at' => $record->created_at,
+            ]);
+        };
+        foreach ($buyTrades as $row) $pushActivity($row, 'buy', $row->user, strtoupper((string)$row->coin), $row->naira_amount, 'NGN', $row->transaction_ref, 'Crypto purchase');
+        foreach ($sellTrades as $row) $pushActivity($row, 'sell', $row->user, strtoupper((string)$row->coin), $row->naira_amount ?? $row->amount, 'NGN', $row->transaction_ref, 'Crypto sale payout');
+        foreach ($deposits as $row) $pushActivity($row, 'deposit', $row->user, 'NGN wallet', $row->amount, 'NGN', $row->transaction_ref ?? $row->gateway_reference, 'Naira deposit');
+        foreach ($withdrawals as $row) $pushActivity($row, 'withdrawal', $row->user, 'NGN wallet', (float)$row->amount + (float)($row->fee_amount ?? 0), 'NGN', $row->reference, 'Bank withdrawal');
+        $loadActivity = function (string $modelClass, string $type, string|array $relation, callable $mapper) use (&$allActivity, $pushActivity): void {
+            try {
+                foreach ($modelClass::with($relation)->latest()->limit(100)->get() as $row) {
+                    [$user, $asset, $amount, $currency, $reference, $detail] = $mapper($row);
+                    $pushActivity($row, $type, $user, (string)$asset, $amount, (string)$currency, $reference, (string)$detail);
+                }
+            } catch (\Throwable $exception) {
+                \Illuminate\Support\Facades\Log::warning('Admin all-activity feed could not load a transaction module.', ['type'=>$type,'error'=>$exception->getMessage()]);
+            }
+        };
+        $loadActivity(\App\Models\CryptoDeposit::class, 'crypto_deposit', 'user', fn($r)=>[$r->user,strtoupper((string)$r->currency),$r->received_amount ?: $r->expected_amount,strtoupper((string)$r->currency),$r->transaction_hash,'Crypto wallet deposit']);
+        $loadActivity(\App\Models\CryptoWithdrawal::class, 'crypto_withdrawal', ['user','wallet'], fn($r)=>[$r->user,strtoupper((string)($r->wallet?->currency ?? 'CRYPTO')),$r->amount,strtoupper((string)($r->wallet?->currency ?? 'CRYPTO')),$r->transaction_hash ?: $r->address,'Crypto wallet withdrawal']);
+        $loadActivity(\App\Models\Conversion::class, 'crypto_swap', 'user', fn($r)=>[$r->user,strtoupper((string)$r->from_coin).' → '.strtoupper((string)$r->to_coin),$r->from_amount,strtoupper((string)$r->from_coin),$r->provider_conversion_id,'Crypto swap · receive '.number_format((float)$r->to_amount,8).' '.strtoupper((string)$r->to_coin)]);
+        $loadActivity(\App\Models\BillPayment::class, 'bill_payment', 'user', fn($r)=>[$r->user,ucwords(str_replace('_',' ',(string)$r->category)),(float)$r->amount+(float)$r->fee,'NGN',$r->reference,'Bill or utility payment']);
+        $loadActivity(\App\Models\P2pTransfer::class, 'transfer', 'sender', fn($r)=>[$r->sender,'NGN wallet',$r->amount,'NGN',$r->reference,'Wallet transfer']);
+        $loadActivity(\App\Models\PortfolioWithdrawal::class, 'portfolio_withdrawal', 'user', fn($r)=>[$r->user,'Crypto portfolio → NGN',$r->naira_amount,'NGN',$r->reference,'Portfolio withdrawal']);
+        $loadActivity(\App\Models\GiftCardOrder::class, 'gift_card_purchase', 'user', fn($r)=>[$r->user,(string)$r->card_name,(float)$r->total_ngn,'NGN',$r->reference,'Gift card purchase']);
+        $loadActivity(\App\Models\GiftCardSaleOrder::class, 'gift_card_sale', 'user', fn($r)=>[$r->user,(string)$r->card_name,(float)($r->approved_ngn ?? $r->estimated_ngn),'NGN',$r->reference,'Gift card sale']);
+        $allActivity = $allActivity->sortByDesc('created_at')->take(400)->values();
+
         // Get summary statistics
         $statistics = [
             'total_transactions' => $buyTrades->count() + $sellTrades->count() + $deposits->count() + $withdrawals->count(),
@@ -267,8 +302,22 @@ class AdminController extends Controller
                                       $withdrawals->whereIn('status', ['successful', 'completed', 'approved'])->count(),
             'total_volume' => $buyTrades->sum('naira_amount') + $sellTrades->sum('naira_amount') + $deposits->sum('amount'),
         ];
+        foreach ([
+            \App\Models\CryptoDeposit::class, \App\Models\CryptoWithdrawal::class,
+            Conversion::class, \App\Models\BillPayment::class, \App\Models\P2pTransfer::class,
+            \App\Models\PortfolioWithdrawal::class, \App\Models\GiftCardOrder::class,
+            \App\Models\GiftCardSaleOrder::class,
+        ] as $extraModel) {
+            try {
+                $statistics['total_transactions'] += $extraModel::count();
+                $statistics['pending_transactions'] += $extraModel::whereIn('status', ['pending','processing','waiting','confirming','partially_paid','awaiting_admin_review'])->count();
+                $statistics['completed_transactions'] += $extraModel::whereIn('status', ['successful','completed','approved'])->count();
+            } catch (\Throwable $exception) {
+                // Some older installations may not have enabled every module table yet.
+            }
+        }
 
-        return view('admin.trades', compact('buyTrades', 'sellTrades', 'deposits', 'withdrawals', 'statistics'));
+        return view('admin.trades', compact('buyTrades', 'sellTrades', 'deposits', 'withdrawals', 'statistics', 'allActivity'));
     }
 
     public function updateBuyStatus(Request $request, $id)

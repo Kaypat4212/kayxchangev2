@@ -107,6 +107,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             <small>Review all trades · Confirm payments before approving</small>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            <a class="btn-kx-outline" href="{{ route('admin.transactions.index') }}"><i class="bi bi-list-ul"></i>Full transaction ledger</a>
             <button class="btn-kx-green" onclick="toggleExportPanel()" id="btn-export">
                 <i class="bi bi-download"></i> Export CSV
             </button>
@@ -215,6 +216,44 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             </button>
             <button class="nav-link" onclick="switchTab('dep',this)"><i class="bi bi-bank me-1"></i>Deposits ({{ $deposits->count() }})</button>
             <button class="nav-link" onclick="switchTab('wd',this)"><i class="bi bi-arrow-up-right-circle me-1"></i>Withdrawals ({{ $withdrawals->count() }})</button>
+            <button class="nav-link" onclick="switchTab('all',this)"><i class="bi bi-collection me-1"></i>All activity ({{ number_format($statistics['total_transactions']) }})</button>
+        </div>
+
+        {{-- Unified cross-module transaction view --}}
+        <div id="tab-all" style="display:none">
+            <div class="kx-panel-header">
+                <div><h3 class="kx-panel-title">All platform transaction types</h3><small style="color:var(--kx-muted)">Latest activity across fiat and crypto deposits, withdrawals, trades, swaps, bills, transfers and gift cards.</small></div>
+                <a class="btn-kx-outline" href="{{ route('admin.transactions.index') }}"><i class="bi bi-search"></i>Search and filter all history</a>
+            </div>
+            <div class="kx-filter-bar">
+                <input class="kx-input" type="search" id="all-activity-search" placeholder="Search user, reference, type or asset" aria-label="Search all platform activity">
+                <select class="kx-input" id="all-activity-status" aria-label="Filter activity by status"><option value="">All statuses</option>@foreach(['pending','awaiting_admin_review','processing','partially_paid','completed','approved','successful','failed','rejected','cancelled','expired'] as $activityFilterStatus)<option value="{{ $activityFilterStatus }}">{{ ucwords(str_replace('_',' ',$activityFilterStatus)) }}</option>@endforeach</select>
+            </div>
+            <div class="kx-table-wrap">
+                <table class="kx-table" id="all-activity-table">
+                    <thead><tr><th>Date</th><th>Type</th><th>Customer</th><th>Asset / service</th><th>Amount</th><th>Status</th><th>Reference</th><th>Open</th></tr></thead>
+                    <tbody>
+                    @forelse($allActivity as $activity)
+                        @php($activityTypeLabel=ucwords(str_replace('_',' ',$activity->type)))
+                        @php($activityStatusKey=strtolower($activity->status))
+                        @php($activityBadgeClass=in_array($activityStatusKey,['completed','approved','successful'],true)?'kx-badge-green':(in_array($activityStatusKey,['failed','rejected','cancelled','expired'],true)?'kx-badge-red':'kx-badge-yellow'))
+                        <tr data-activity-search="{{ strtolower($activityTypeLabel.' '.($activity->user?->name ?? '').' '.($activity->user?->email ?? '').' '.$activity->asset.' '.$activity->reference.' '.$activity->detail) }}" data-activity-status="{{ strtolower($activity->status) }}">
+                            <td style="white-space:nowrap">{{ $activity->created_at?->format('d M Y, H:i') }}</td>
+                            <td><span class="kx-badge kx-badge-blue">{{ $activityTypeLabel }}</span></td>
+                            <td><strong>{{ $activity->user?->name ?? 'Deleted user' }}</strong><div style="font-size:.7rem;color:var(--kx-muted)">{{ $activity->user?->email ?? '—' }}</div></td>
+                            <td>{{ $activity->asset }}<div style="font-size:.7rem;color:var(--kx-muted)">{{ $activity->detail }}</div></td>
+                            <td style="white-space:nowrap;font-weight:700">{{ $activity->currency==='NGN' ? '₦'.number_format((float)$activity->amount,2) : number_format((float)$activity->amount,8).' '.strtoupper($activity->currency) }}</td>
+                            <td><span class="kx-badge {{ $activityBadgeClass }}">{{ ucwords(str_replace('_',' ',$activity->status)) }}</span></td>
+                            <td style="font-family:monospace;font-size:.72rem;overflow-wrap:anywhere">{{ $activity->reference }}</td>
+                            <td><a class="btn-kx-icon" title="Open filtered transaction ledger" href="{{ route('admin.transactions.index',['type'=>$activity->type,'search'=>$activity->reference==='—'?'':$activity->reference]) }}"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="8" class="text-center py-5" style="color:var(--kx-muted)">No transactions have been recorded yet.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-3" style="color:var(--kx-muted);font-size:.72rem">Showing the latest 400 records across modules. Use the full transaction ledger to search older history.</div>
         </div>
 
         {{-- ─────────────── BUY TRADES ─────────────── --}}
@@ -939,14 +978,27 @@ function getCryptoQty(coin, usd) {
 
 // ── Tab switching ──────────────────────────────
 function switchTab(name, btn){
-    ['buy','sell','dep','wd'].forEach(t=>{
+    ['buy','sell','dep','wd','all'].forEach(t=>{
         const el = document.getElementById('tab-'+t);
         if(el) el.style.display = 'none';
     });
-    document.getElementById('tab-'+name).style.display = 'block';
+    const selectedTab = document.getElementById('tab-'+name);
+    if(selectedTab) selectedTab.style.display = 'block';
     document.querySelectorAll('.nav-tabs-kx .nav-link').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
 }
+
+function filterAllActivity(){
+    const query=(document.getElementById('all-activity-search')?.value||'').trim().toLowerCase();
+    const status=(document.getElementById('all-activity-status')?.value||'').toLowerCase();
+    document.querySelectorAll('#all-activity-table tbody tr[data-activity-search]').forEach(row=>{
+        const matchesText=!query||row.dataset.activitySearch.includes(query);
+        const matchesStatus=!status||row.dataset.activityStatus===status;
+        row.style.display=matchesText&&matchesStatus?'':'none';
+    });
+}
+document.getElementById('all-activity-search')?.addEventListener('input',filterAllActivity);
+document.getElementById('all-activity-status')?.addEventListener('change',filterAllActivity);
 
 // ── Row filtering ──────────────────────────────
 function filterRows(tab, filter, btn){
