@@ -71,10 +71,8 @@ Route::prefix('install')->name('install.')->group(function () {
 });
 
 Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
-Route::get('/home', function () {
-    $blogPosts = \App\Models\BlogPost::published()->limit(8)->get();
-    return view('home', compact('blogPosts'));
-});
+Route::post('/human-check', [\App\Http\Controllers\HomeController::class, 'verifyCaptcha'])->middleware('throttle:10,1')->name('home.captcha.verify');
+Route::get('/home', [\App\Http\Controllers\HomeController::class, 'secondary']);
 Route::get('/faqs', fn() => view('faqs'))->name('faqs');
 Route::get('/about', fn() => view('about'))->name('about');
 Route::get('/install-app', fn() => view('install-app'))->name('install.app.public');

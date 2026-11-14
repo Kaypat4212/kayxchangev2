@@ -65,7 +65,7 @@ class LogVisitor
         $routeName = $request->route()?->getName();
         $referer  = $request->headers->get('referer');
 
-        $isHomepage = in_array($routeName, ['home', null]) && ($path === '' || $path === '/');
+        $isHomepage = in_array($routeName, ['home', null]) && in_array($path, ['', '/', 'home'], true);
 
         // Write log record
         $log = VisitorLog::create([
@@ -88,9 +88,18 @@ class LogVisitor
         ]);
 
         // Only notify for homepage visits by real humans
-        if (!$isBot && $isHomepage) {
+        if (!$isBot && trim($ua) !== '' && $isHomepage && $this->homepageHumanVerified($request)) {
             $this->maybeSendTelegram($log, $ip);
         }
+    }
+
+    private function homepageHumanVerified(Request $request): bool
+    {
+        $mode = (string) \App\Models\AdminSetting::getSetting('homepage_captcha_mode', 'custom');
+        if (!in_array($mode, ['custom', 'turnstile'], true)) return false;
+        $verifiedMode = (string) $request->session()->get('homepage_human_verified_mode', '');
+        $verifiedAt = (int) $request->session()->get('homepage_human_verified_at', 0);
+        return $verifiedMode === $mode && $verifiedAt > 0 && now()->timestamp - $verifiedAt <= 43200;
     }
 
     /**

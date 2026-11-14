@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminSetting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -12,88 +11,100 @@ class HomeController extends Controller
 {
     public function index(Request $request)
     {
-        $this->notifyNewVisitor($request);
-        return view('index');
+        return $this->showLanding($request, 'index');
     }
 
-    private function notifyNewVisitor(Request $request): void
+    public function secondary(Request $request)
     {
-        $ip = $request->ip();
-
-        // Deduplicate: only alert once per IP per 6 hours
-        $cacheKey = 'visitor_notified_' . md5($ip);
-        if (Cache::has($cacheKey)) {
-            return;
-        }
-        Cache::put($cacheKey, true, now()->addHours(6));
-
-        try {
-            $token  = AdminSetting::getSetting('telegram_token') ?: env('KAYXCHANGE_TELEGRAM_BOT_TOKEN');
-            $chatId = AdminSetting::getSetting('telegram_owner_chat_id') ?: env('TELEGRAM_CHAT_ID') ?: env('KAYXCHANGE_TELEGRAM_CHAT_ID');
-
-            if (! $token || ! $chatId) {
-                return;
-            }
-
-            $userAgent = $request->userAgent() ?? 'Unknown';
-            $referer   = $request->headers->get('referer', 'Direct visit');
-            $time      = now()->format('d M Y, H:i:s');
-
-            // Condense user-agent to a readable label
-            $device = $this->parseDevice($userAgent);
-
-            // Geo-lookup via ip-api.com (free, no key needed)
-            $location = 'Unknown';
-            if ($ip && $ip !== '127.0.0.1' && $ip !== '::1') {
-                try {
-                    $geo = Http::timeout(4)->get("http://ip-api.com/json/{$ip}?fields=status,country,city");
-                    if ($geo->successful() && $geo->json('status') === 'success') {
-                        $city    = $geo->json('city', '');
-                        $country = $geo->json('country', '');
-                        $location = trim("{$city}, {$country}", ', ');
-                    }
-                } catch (\Throwable) {}
-            }
-
-            $message = "👁 *New Website Visitor*\n\n"
-                . "🌐 IP: `{$ip}`\n"
-                . "📍 Location: {$location}\n"
-                . "📱 Device: {$device}\n"
-                . "🔗 Referrer: {$referer}\n"
-                . "🕒 Time: {$time}\n\n"
-                . "_Visited the KayXchange home page_";
-
-            Http::timeout(6)->post("https://api.telegram.org/bot{$token}/sendMessage", [
-                'chat_id'    => $chatId,
-                'text'       => $message,
-                'parse_mode' => 'Markdown',
-            ]);
-        } catch (\Throwable $e) {
-            Log::info('HomeController visitor notify skipped: ' . $e->getMessage());
-        }
+        return $this->showLanding($request, 'home');
     }
 
-    private function parseDevice(string $ua): string
+    private function showLanding(Request $request, string $view)
     {
-        $ua = strtolower($ua);
+        $mode = $this->captchaMode();
+        if ($mode !== 'off' && !$this->isHumanVerified($request, $mode)) {
+            $request->session()->put('homepage_captcha_redirect', $view === 'home' ? '/home' : '/');
+            if ($mode === 'custom' && !$request->session()->has('homepage_captcha')) {
+                $left = random_int(3, 9);
+                $right = random_int(2, 8);
+                $request->session()->put('homepage_captcha', [
+                    'question' => "What is {$left} + {$right}?",
+                    'answer' => (string) ($left + $right),
+                ]);
+            }
 
-        // OS
-        if (str_contains($ua, 'android'))       $os = 'Android';
-        elseif (str_contains($ua, 'iphone'))    $os = 'iPhone';
-        elseif (str_contains($ua, 'ipad'))      $os = 'iPad';
-        elseif (str_contains($ua, 'windows'))   $os = 'Windows';
-        elseif (str_contains($ua, 'macintosh')) $os = 'Mac';
-        elseif (str_contains($ua, 'linux'))     $os = 'Linux';
-        else                                    $os = 'Unknown OS';
+            $siteKey = (string) AdminSetting::getSetting('turnstile_site_key', '');
+            $secret = (string) AdminSetting::getSetting('turnstile_secret_key', '');
+            return response()->view('captcha.homepage', [
+                'mode' => $mode,
+                'question' => $request->session()->get('homepage_captcha.question'),
+                'siteKey' => $siteKey,
+                'providerConfigured' => $mode !== 'turnstile' || ($siteKey !== '' && $secret !== ''),
+            ], 200)->header('Cache-Control', 'private, no-store, max-age=0');
+        }
 
-        // Browser
-        if (str_contains($ua, 'edg/'))          $browser = 'Edge';
-        elseif (str_contains($ua, 'opr/'))      $browser = 'Opera';
-        elseif (str_contains($ua, 'chrome/'))   $browser = 'Chrome';
-        elseif (str_contains($ua, 'firefox/'))  $browser = 'Firefox';
-        elseif (str_contains($ua, 'safari/'))   $browser = 'Safari';
-        else                                    $browser = 'Unknown Browser';
+        $data = $view === 'home' ? ['blogPosts' => \App\Models\BlogPost::published()->limit(8)->get()] : [];
+        return response()->view($view, $data)->header('Cache-Control', 'private, no-store, max-age=0');
+    }
 
-        return "{$browser} on {$os}";
+    public function verifyCaptcha(Request $request)
+    {
+        $mode = $this->captchaMode();
+        if (!in_array($mode, ['custom', 'turnstile'], true)) return redirect()->route('home');
+
+        if ($mode === 'custom') {
+            $request->validate(['captcha_answer' => ['required', 'string', 'max:12']]);
+            $expected = (string) $request->session()->get('homepage_captcha.answer', '');
+            $provided = trim((string) $request->input('captcha_answer'));
+            if ($expected === '' || !hash_equals($expected, $provided)) {
+                $request->session()->forget('homepage_captcha');
+                return redirect()->route('home')->withErrors(['captcha_answer' => 'That answer did not match. Please try the new question.']);
+            }
+        } else {
+            $secret = (string) AdminSetting::getSetting('turnstile_secret_key', '');
+            $siteKey = (string) AdminSetting::getSetting('turnstile_site_key', '');
+            $token = (string) $request->input('cf-turnstile-response', '');
+            if ($secret === '' || $siteKey === '' || $token === '') {
+                return redirect()->route('home')->withErrors(['captcha' => 'Human verification is temporarily unavailable. Please contact support.']);
+            }
+            try {
+                $response = Http::asForm()->timeout(8)->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+                    'secret' => $secret,
+                    'response' => $token,
+                    'remoteip' => $request->ip(),
+                ]);
+                $verifiedHost = strtolower((string) $response->json('hostname', ''));
+                $expectedHost = strtolower($request->getHost());
+                if (!$response->successful() || !$response->json('success') || $verifiedHost === '' || !hash_equals($expectedHost, $verifiedHost)) {
+                    return redirect()->route('home')->withErrors(['captcha' => 'Cloudflare could not verify this request. Please try again.']);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Homepage Turnstile verification request failed.', ['error' => $e->getMessage()]);
+                return redirect()->route('home')->withErrors(['captcha' => 'Human verification is temporarily unavailable. Please try again shortly.']);
+            }
+        }
+
+        $request->session()->forget('homepage_captcha');
+        $request->session()->put('homepage_human_verified_at', now()->timestamp);
+        $request->session()->put('homepage_human_verified_mode', $mode);
+        $target = $request->session()->pull('homepage_captcha_redirect', '/');
+        return redirect(in_array($target, ['/', '/home'], true) ? $target : '/');
+    }
+
+    private function captchaMode(): string
+    {
+        $mode = (string) AdminSetting::getSetting('homepage_captcha_mode', 'custom');
+        return in_array($mode, ['off', 'custom', 'turnstile'], true) ? $mode : 'custom';
+    }
+
+    private function isHumanVerified(Request $request, string $mode): bool
+    {
+        $verifiedAt = (int) $request->session()->get('homepage_human_verified_at', 0);
+        $verifiedMode = (string) $request->session()->get('homepage_human_verified_mode', '');
+        if ($verifiedAt <= 0 || $verifiedMode !== $mode || now()->timestamp - $verifiedAt > 43200) {
+            $request->session()->forget(['homepage_human_verified_at', 'homepage_human_verified_mode']);
+            return false;
+        }
+        return true;
     }
 }

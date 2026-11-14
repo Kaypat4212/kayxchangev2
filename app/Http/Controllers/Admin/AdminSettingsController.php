@@ -176,6 +176,9 @@ class AdminSettingsController extends Controller
         if (isset($data['convert_fee_percent']) && (!is_numeric($data['convert_fee_percent']) || (float)$data['convert_fee_percent'] < 0 || (float)$data['convert_fee_percent'] > 19.5)) {
             return back()->with('error', 'The platform swap fee must be between 0% and 19.5%.');
         }
+        if (isset($data['homepage_captcha_mode']) && !in_array($data['homepage_captcha_mode'], ['off', 'custom', 'turnstile'], true)) {
+            return back()->with('error', 'Choose Off, Custom CAPTCHA, or Cloudflare Turnstile.');
+        }
 
         foreach ($data as $key => $value) {
             $row = AdminSetting::where('key', $key)->first();

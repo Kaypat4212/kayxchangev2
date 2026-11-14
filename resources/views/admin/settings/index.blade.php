@@ -112,7 +112,13 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     @if($row->description)<div class="field-desc">{{ $row->description }}</div>@endif
                 </div>
                 <div class="field-input">
-                    @if($row->key === 'cf_enabled')
+                    @if($row->key === 'homepage_captcha_mode')
+                        <select name="{{ $row->key }}">
+                            <option value="off" {{ ($row->value ?? 'custom') === 'off' ? 'selected' : '' }}>Off</option>
+                            <option value="custom" {{ ($row->value ?? 'custom') === 'custom' ? 'selected' : '' }}>Custom challenge</option>
+                            <option value="turnstile" {{ ($row->value ?? 'custom') === 'turnstile' ? 'selected' : '' }}>Cloudflare Turnstile</option>
+                        </select>
+                    @elseif($row->key === 'cf_enabled')
                         <select name="{{ $row->key }}">
                             <option value="1" {{ ($row->value ?? '') == '1' ? 'selected' : '' }}>✅ Enabled</option>
                             <option value="0" {{ ($row->value ?? '0') == '0' ? 'selected' : '' }}>❌ Disabled</option>

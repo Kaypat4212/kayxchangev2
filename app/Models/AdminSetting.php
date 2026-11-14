@@ -73,6 +73,9 @@ class AdminSetting extends Model
             ['key' => 'cf_zone_id',      'group' => 'cloudflare', 'is_encrypted' => false, 'label' => 'Zone ID',          'description' => 'Found in your Cloudflare dashboard → Overview → right sidebar'],
             ['key' => 'cf_account_id',   'group' => 'cloudflare', 'is_encrypted' => false, 'label' => 'Account ID',       'description' => 'Cloudflare Account ID (right sidebar on any zone page)'],
             ['key' => 'cf_enabled',      'group' => 'cloudflare', 'is_encrypted' => false, 'label' => 'Enable Cloudflare','description' => 'Toggle Cloudflare features on/off (1 = on, 0 = off)'],
+            ['key' => 'homepage_captcha_mode', 'group' => 'cloudflare', 'is_encrypted' => false, 'label' => 'Homepage CAPTCHA mode', 'description' => 'Choose Off, custom arithmetic challenge, or Cloudflare Turnstile for homepage access.'],
+            ['key' => 'turnstile_site_key', 'group' => 'cloudflare', 'is_encrypted' => false, 'label' => 'Turnstile Site Key', 'description' => 'Cloudflare Dashboard → Turnstile → widget settings. Safe to show publicly.'],
+            ['key' => 'turnstile_secret_key', 'group' => 'cloudflare', 'is_encrypted' => true, 'label' => 'Turnstile Secret Key', 'description' => 'Private verification key. Stored encrypted and only used server-side.'],
 
             // ── AI / OpenAI ────────────────────────────────────────────────
             ['key' => 'openai_api_key',  'group' => 'ai', 'is_encrypted' => true,  'label' => 'OpenAI API Key',    'description' => 'From platform.openai.com → API Keys'],
