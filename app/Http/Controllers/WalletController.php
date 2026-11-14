@@ -249,6 +249,46 @@ class WalletController extends Controller
         return view('wallet.deposit', compact('wallets', 'supportedCryptos', 'depositProvider', 'selectedCurrency', 'selectedNetwork', 'settlementPreference'));
     }
 
+    public function depositMinimum(Request $request, \App\Services\CryptoDepositConfiguration $configuration, \App\Services\NowPaymentsService $nowPayments)
+    {
+        $currency = strtoupper((string) $request->query('currency', ''));
+        $network = strtoupper((string) $request->query('network', ''));
+        $supported = $this->cryptoWalletService->getSupportedCryptos();
+        abort_unless(in_array($network, $supported[$currency]['networks'] ?? [], true), 422, 'Choose a supported asset and network.');
+
+        $adminFloor = $configuration->minimumUsd($currency, $network);
+        $providerMinimum = null;
+        $providerStatus = 'not_active';
+        if ($this->cryptoWalletService->depositProviderLabel() === 'NOWPayments') {
+            try {
+                $code = $this->cryptoWalletService->nowPaymentsCurrencyCode($currency, $network);
+                $minimum = $nowPayments->minimumUsd($code);
+                if ($minimum > 0) {
+                    $providerMinimum = round($minimum, 2);
+                    $providerStatus = 'live';
+                } else {
+                    $providerStatus = 'unavailable';
+                }
+            } catch (\Throwable $exception) {
+                \Illuminate\Support\Facades\Log::warning('Unable to load live NOWPayments deposit minimum for customer quote.', [
+                    'currency' => $currency,
+                    'network' => $network,
+                    'error' => $exception->getMessage(),
+                ]);
+                $providerStatus = 'unavailable';
+            }
+        }
+
+        return response()->json([
+            'currency' => $currency,
+            'network' => $network,
+            'admin_minimum_usd' => round($adminFloor, 2),
+            'provider_minimum_usd' => $providerMinimum,
+            'minimum_usd' => max($adminFloor, $providerMinimum ?? 0),
+            'provider_status' => $providerStatus,
+        ])->header('Cache-Control', 'private, no-store, max-age=0');
+    }
+
     /**
      * Create a crypto deposit invoice
      */

@@ -621,7 +621,7 @@ class CryptoWalletService
         throw new \RuntimeException('Crypto deposits are currently unavailable. The selected provider is not enabled or its API credentials are incomplete.');
     }
 
-    private function nowPaymentsCurrencyCode(string $currency, string $network): string
+    public function nowPaymentsCurrencyCode(string $currency, string $network): string
     {
         $map = [
             'BTC'=>['BTC'=>'btc'], 'ETH'=>['ERC20'=>'eth'],

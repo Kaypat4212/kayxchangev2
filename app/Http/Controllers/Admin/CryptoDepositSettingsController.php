@@ -27,6 +27,39 @@ class CryptoDepositSettingsController extends Controller
         ]);
     }
 
+    public function providerMinimums(CryptoDepositConfiguration $configuration, \App\Services\CryptoWalletService $wallets, \App\Services\NowPaymentsService $provider)
+    {
+        $minimums = [];
+        foreach ($configuration->assets() as $currency => $asset) {
+            foreach ($asset['networks'] as $network) {
+                $minimum = null;
+                try {
+                    $code = $wallets->nowPaymentsCurrencyCode($currency, $network);
+                    $value = $provider->minimumUsd($code);
+                    if ($value > 0) $minimum = round($value, 2);
+                } catch (\Throwable $exception) {
+                    \Illuminate\Support\Facades\Log::warning('Admin could not fetch a NOWPayments network minimum.', [
+                        'currency' => $currency,
+                        'network' => $network,
+                        'error' => $exception->getMessage(),
+                    ]);
+                }
+                $minimums[$currency][$network] = [
+                    'provider_minimum_usd' => $minimum,
+                    'admin_floor_usd' => $configuration->minimumUsd($currency, $network),
+                    'effective_minimum_usd' => max($configuration->minimumUsd($currency, $network), $minimum ?? 0),
+                ];
+            }
+        }
+
+        return response()->json([
+            'ok' => true,
+            'environment' => $provider->environment(),
+            'minimums' => $minimums,
+            'updated_at' => now()->toIso8601String(),
+        ])->header('Cache-Control', 'private, no-store, max-age=0');
+    }
+
     public function update(Request $request, CryptoDepositConfiguration $configuration)
     {
         $request->validate([

@@ -208,6 +208,7 @@ Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () 
     Route::post('/usd/withdraw-to-naira', [\App\Http\Controllers\WalletController::class, 'withdrawUsdToNaira'])->middleware('throttle:5,1')->name('usd.withdraw-to-naira');
     Route::get('/crypto',    [\App\Http\Controllers\WalletController::class, 'crypto'])->name('crypto');
     Route::get('/deposit',   [\App\Http\Controllers\WalletController::class, 'deposit'])->name('deposit');
+    Route::get('/deposit/minimum', [\App\Http\Controllers\WalletController::class, 'depositMinimum'])->middleware('throttle:30,1')->name('deposit.minimum');
     Route::post('/deposit',  [\App\Http\Controllers\WalletController::class, 'createDeposit'])->name('deposit.create');
     Route::get('/deposit/{id}/success', [\App\Http\Controllers\WalletController::class, 'depositSuccess'])->name('deposit.success');
     Route::get('/deposit/{id}/status', [\App\Http\Controllers\WalletController::class, 'depositStatus'])->name('deposit.status');
@@ -266,6 +267,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('features/presence', [\App\Http\Controllers\Admin\AdminFeatureSettingsController::class, 'togglePresence'])->name('admin.features.presence');
     Route::post('bill-providers/test', [BillProviderSettingsController::class, 'test'])->middleware('throttle:5,1')->name('admin.bill-providers.test');
     Route::get('crypto-deposit-settings', [\App\Http\Controllers\Admin\CryptoDepositSettingsController::class, 'index'])->name('admin.crypto-deposit-settings.index');
+    Route::get('crypto-deposit-settings/provider-minimums', [\App\Http\Controllers\Admin\CryptoDepositSettingsController::class, 'providerMinimums'])->middleware('throttle:3,1')->name('admin.crypto-deposit-settings.provider-minimums');
     Route::put('crypto-deposit-settings', [\App\Http\Controllers\Admin\CryptoDepositSettingsController::class, 'update'])->middleware('throttle:10,1')->name('admin.crypto-deposit-settings.update');
     Route::get('manual-crypto-deposits', [\App\Http\Controllers\Admin\AdminManualCryptoDepositController::class, 'index'])->name('admin.manual-crypto-deposits.index');
     Route::post('manual-crypto-deposits/{deposit}/approve', [\App\Http\Controllers\Admin\AdminManualCryptoDepositController::class, 'approve'])->whereNumber('deposit')->middleware('throttle:10,1')->name('admin.manual-crypto-deposits.approve');

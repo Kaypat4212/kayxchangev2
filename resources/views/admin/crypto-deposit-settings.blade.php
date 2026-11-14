@@ -10,7 +10,7 @@
  @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
  <form method="POST" action="{{ route('admin.crypto-deposit-settings.update') }}" id="cryptoDepositSettingsForm">
   @csrf @method('PUT')
-  <section class="cd-card"><div class="d-flex justify-content-between gap-2 flex-wrap align-items-center mb-3"><div><h2 class="h5 text-white fw-bold mb-1">Payment defaults</h2><p class="cd-muted small mb-0">Minimums are in USD. The provider’s current network minimum is checked before invoices are created.</p></div><a class="btn btn-outline-light btn-sm" href="{{ route('admin.settings.index') }}#payment"><i class="bi bi-key me-1"></i>Payment credentials</a></div>
+  <section class="cd-card"><div class="d-flex justify-content-between gap-2 flex-wrap align-items-center mb-3"><div><h2 class="h5 text-white fw-bold mb-1">Payment defaults</h2><p class="cd-muted small mb-0">Minimums are in USD. The provider’s current network minimum is checked before invoices are created.</p><div class="cd-muted small mt-2" id="providerMinimumStatus" role="status" aria-live="polite">Provider minimums have not been refreshed yet.</div></div><div class="d-flex gap-2"><button class="btn btn-outline-success btn-sm" type="button" id="refreshProviderMinimums"><i class="bi bi-arrow-repeat me-1"></i>Fetch NOWPayments minimums</button><a class="btn btn-outline-light btn-sm" href="{{ route('admin.settings.index') }}#payment"><i class="bi bi-key me-1"></i>Payment credentials</a></div></div>
    <div class="row g-3">
     <div class="col-md-4"><label class="cd-label mt-0" for="payment_window_minutes">Customer payment window (minutes)</label><input class="cd-input" type="number" min="30" max="60" id="payment_window_minutes" name="payment_window_minutes" value="{{ old('payment_window_minutes',$paymentWindowMinutes) }}" required><div class="cd-muted small mt-1">NOWPayments invoices cannot be deleted by the platform. At local timeout, instructions are hidden and late payments are monitored for up to 7 days; late funds require admin review.</div></div>
     <div class="col-md-4"><label class="cd-label mt-0" for="expiry_hours">Other provider hold window (hours)</label><input class="cd-input" type="number" min="1" max="72" id="expiry_hours" name="expiry_hours" value="{{ old('expiry_hours',$expiryHours) }}" required><div class="cd-muted small mt-1">Used for deposits that do not use the NOWPayments customer timer.</div></div>
@@ -23,7 +23,7 @@
    @foreach($assets as $currency=>$asset)
     <div class="border-top border-secondary border-opacity-25 pt-3 mt-3"><div class="d-flex align-items-center gap-2 mb-3"><span class="badge text-bg-success">{{ $currency }}</span><h3 class="h6 text-white mb-0">{{ $asset['name'] }}</h3></div><div class="cd-grid">
      @foreach($asset['networks'] as $network)
-      <div class="cd-network"><span class="cd-pill">{{ $network }}</span><label class="cd-label" for="minimum_{{ $currency }}_{{ $network }}">Minimum invoice value (USD)</label><div class="input-group"><span class="input-group-text bg-dark border-secondary text-secondary">$</span><input class="cd-input" type="number" min="0" step="0.01" id="minimum_{{ $currency }}_{{ $network }}" name="minimums[{{ $currency }}][{{ $network }}]" value="{{ old("minimums.{$currency}.{$network}",data_get($walletSettings,"{$currency}.{$network}.minimum_usd")) }}"></div></div>
+      <div class="cd-network"><span class="cd-pill">{{ $network }}</span><label class="cd-label" for="minimum_{{ $currency }}_{{ $network }}">KayXchange minimum floor (USD)</label><div class="input-group"><span class="input-group-text bg-dark border-secondary text-secondary">$</span><input class="cd-input" type="number" min="0" step="0.01" id="minimum_{{ $currency }}_{{ $network }}" name="minimums[{{ $currency }}][{{ $network }}]" value="{{ old("minimums.{$currency}.{$network}",data_get($walletSettings,"{$currency}.{$network}.minimum_usd")) }}"></div><div class="cd-muted small mt-2" data-provider-minimum data-currency="{{ $currency }}" data-network="{{ $network }}">NOWPayments minimum: Fetch to check · User minimum is the higher of this floor and the provider minimum.</div></div>
      @endforeach
     </div></div>
    @endforeach
@@ -42,4 +42,25 @@
   <div class="cd-save"><button class="btn btn-success btn-lg px-4" type="submit"><i class="bi bi-shield-check me-1"></i>Save deposit settings</button></div>
  </form>
 </main>
+<script>
+(()=>{
+ const button=document.getElementById('refreshProviderMinimums'),status=document.getElementById('providerMinimumStatus');
+ if(!button||!status)return;
+ button.addEventListener('click',async()=>{
+  button.disabled=true;button.innerHTML='<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Checking provider…';status.textContent='Fetching live network minimums from NOWPayments. This may take a few seconds.';status.className='cd-muted small mt-2';
+  try{
+   const response=await fetch(@json(route('admin.crypto-deposit-settings.provider-minimums')),{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},credentials:'same-origin',cache:'no-store'});
+   const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.message||'Could not fetch provider minimums.');
+   let available=0;
+   document.querySelectorAll('[data-provider-minimum]').forEach(el=>{
+    const row=data.minimums?.[el.dataset.currency]?.[el.dataset.network],provider=Number(row?.provider_minimum_usd),floor=Number(row?.admin_floor_usd||0),effective=Number(row?.effective_minimum_usd||floor);
+    if(Number.isFinite(provider)&&provider>0){available++;el.innerHTML=`NOWPayments minimum: <strong class="text-info">$${provider.toFixed(2)}</strong> · User minimum: <strong class="text-success">$${effective.toFixed(2)}</strong>`}
+    else el.innerHTML='NOWPayments minimum: <span class="text-warning">Unavailable</span> · User floor: <strong class="text-success">$'+floor.toFixed(2)+'</strong>';
+   });
+   status.textContent=`${available} network minimum${available===1?'':'s'} received from NOWPayments (${String(data.environment||'').toUpperCase()}). Updated ${new Date(data.updated_at).toLocaleTimeString()}.`;
+  }catch(error){status.textContent=error.message||'Could not fetch NOWPayments minimums. Check the saved API key and try again.';status.className='text-warning small mt-2'}
+  finally{button.disabled=false;button.innerHTML='<i class="bi bi-arrow-repeat me-1"></i>Fetch NOWPayments minimums'}
+ });
+})();
+</script>
 @endsection
