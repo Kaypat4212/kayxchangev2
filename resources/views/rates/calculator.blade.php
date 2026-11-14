@@ -226,7 +226,11 @@ body { background: var(--kx-dark); color: var(--kx-text); }
                 <div class="coin-icon-w {{ $iconCls }}">{{ $symIcon }}</div>
                 <div class="coin-name-lbl">{{ $symbol }}</div>
                 <div class="coin-rate-lbl" id="coin-rate-{{ $symbol }}">
-                    @if($r)₦{{ number_format($r->sell_rate, 0) }}/USD@else—@endif
+                    @if ($r)
+                        ₦{{ number_format((float) $r->sell_rate, 0) }} / USD
+                    @else
+                        Rate unavailable
+                    @endif
                 </div>
             </div>
             @endforeach
