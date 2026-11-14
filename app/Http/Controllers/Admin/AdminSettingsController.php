@@ -343,6 +343,43 @@ class AdminSettingsController extends Controller
         ])->header('Cache-Control', 'private, no-store, max-age=0');
     }
 
+    public function saveNowPaymentsCredential(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
+    {
+        $data = $request->validate([
+            'credential' => ['required', 'in:api_key,ipn_secret'],
+            'value' => ['required', 'string', 'max:2000'],
+        ]);
+        $keys = [
+            'api_key' => ['setting' => 'nowpayments_api_key', 'label' => 'NOWPayments API key'],
+            'ipn_secret' => ['setting' => 'nowpayments_ipn_secret', 'label' => 'NOWPayments IPN secret'],
+        ];
+        $selected = $keys[$data['credential']];
+        $plainValue = trim($data['value']);
+        if ($plainValue === '') {
+            return response()->json(['ok' => false, 'message' => 'Enter a non-empty credential before saving.'], 422);
+        }
+
+        $setting = AdminSetting::firstOrNew(['key' => $selected['setting']]);
+        $previousValue = (string) AdminSetting::getSetting($selected['setting'], '');
+        $changed = $previousValue === '' || !hash_equals($previousValue, $plainValue);
+        $setting->fill([
+            'group' => 'payment',
+            'label' => $selected['label'],
+            'is_encrypted' => true,
+        ]);
+        $setting->value = Crypt::encryptString($plainValue);
+        $setting->save();
+
+        if ($changed) $securityAlerts->credentialChanged($request->user(), [$selected['label']]);
+
+        return response()->json([
+            'ok' => true,
+            'source' => 'database',
+            'masked' => str_repeat('•', max(4, min(8, strlen($plainValue) - 4))) . substr($plainValue, -4),
+            'message' => $selected['label'] . ' was encrypted and saved to the database. It is now the active credential.',
+        ])->header('Cache-Control', 'private, no-store, max-age=0');
+    }
+
     public function testNowPayments(NowPaymentsService $provider)
     {
         try {

@@ -344,6 +344,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <button type="button" class="btn btn-outline-info" onclick="copyNowPaymentsCredential('api_key','nowpayments-api-key-preview-status')"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copy</button>
                         </div>
                         <div id="nowpayments-api-key-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved key stays masked until you preview it.</div>
+                        <button type="button" class="btn btn-sm btn-outline-success mt-2 me-2" onclick="saveNowPaymentsCredential('api_key','nowpayments-api-key-preview-status')"><i class="bi bi-floppy me-1"></i>Save API key</button>
                         <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="clearNowPaymentsCredential('api_key','nowpayments-api-key-preview-status')"><i class="bi bi-trash3 me-1"></i>Clear saved API key</button>
                     @elseif($row->key === 'nowpayments_ipn_secret')
                         <div class="input-group">
@@ -354,6 +355,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <button type="button" class="btn btn-outline-info" onclick="copyNowPaymentsCredential('ipn_secret','nowpayments-ipn-secret-preview-status')"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copy</button>
                         </div>
                         <div id="nowpayments-ipn-secret-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved IPN secret stays masked until you preview it.</div>
+                        <button type="button" class="btn btn-sm btn-outline-success mt-2 me-2" onclick="saveNowPaymentsCredential('ipn_secret','nowpayments-ipn-secret-preview-status')"><i class="bi bi-floppy me-1"></i>Save IPN secret</button>
                         <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="clearNowPaymentsCredential('ipn_secret','nowpayments-ipn-secret-preview-status')"><i class="bi bi-trash3 me-1"></i>Clear saved IPN secret</button>
                     @elseif($row->is_encrypted)
                         <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password" oninput="credentialReplacementTyped(this)">
@@ -705,6 +707,62 @@ async function cfAction(action) {
             } catch (error) {
                 status.style.color = '#f87171';
                 status.textContent = error.message || `Could not clear the ${label}. Please try again.`;
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
+        async function saveNowPaymentsCredential(credential, statusId) {
+            const isApiKey = credential === 'api_key';
+            const label = isApiKey ? 'NOWPayments API key' : 'NOWPayments IPN secret';
+            const field = document.getElementById(isApiKey ? 'nowpayments-api-key-field' : 'nowpayments-ipn-secret-field');
+            const status = document.getElementById(statusId);
+            const button = status?.parentElement?.querySelector('button.btn-outline-success');
+            if (!field || !status || !['api_key', 'ipn_secret'].includes(credential)) return;
+            if (!field.value.trim()) {
+                status.style.color = '#f87171';
+                status.textContent = `Enter the replacement ${label} first.`;
+                field.focus();
+                return;
+            }
+
+            if (button) button.disabled = true;
+            status.style.color = '#fbbf24';
+            status.textContent = 'Encrypting and saving credential…';
+            try {
+                const response = await fetch(@json(route('admin.settings.nowpayments-credential-save')), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({ credential, value: field.value })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error(data.message || `Could not save ${label}.`);
+
+                field.value = '';
+                field.type = 'password';
+                field.placeholder = data.masked;
+                delete field.dataset.loadedSavedKey;
+                delete field.dataset.loadedSavedSecret;
+                const preview = document.getElementById(isApiKey ? 'nowpayments-api-key-preview' : 'nowpayments-ipn-secret-preview');
+                if (preview) {
+                    preview.innerHTML = '<i class="bi bi-eye me-1" aria-hidden="true"></i>Preview';
+                    preview.setAttribute('aria-pressed', 'false');
+                }
+                const sourceBadge = document.getElementById(`nowpayments-${credential}-source`);
+                if (sourceBadge) {
+                    sourceBadge.className = 'badge rounded-pill text-bg-success';
+                    sourceBadge.textContent = `${isApiKey ? 'API key' : 'IPN secret'}: Database`;
+                }
+                status.style.color = '#4ade80';
+                status.textContent = data.message;
+            } catch (error) {
+                status.style.color = '#f87171';
+                status.textContent = error.message || `Could not save ${label}. Please retry.`;
             } finally {
                 if (button) button.disabled = false;
             }
