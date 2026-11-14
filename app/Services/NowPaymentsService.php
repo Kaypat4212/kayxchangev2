@@ -20,13 +20,28 @@ class NowPaymentsService
 
     public function __construct()
     {
-        $this->apiKey = trim((string) AdminSetting::getSetting('nowpayments_api_key', ''));
-        $this->ipnSecret = trim((string) AdminSetting::getSetting('nowpayments_ipn_secret', ''));
-        $this->accountEmail = trim((string) AdminSetting::getSetting('nowpayments_account_email', ''));
-        $this->accountPassword = (string) AdminSetting::getSetting('nowpayments_account_password', '');
-        $sandbox = AdminSetting::getSetting('nowpayments_sandbox', '1') !== '0';
+        // Admin database values take precedence; environment values let cPanel
+        // deployments recover if the settings table is unavailable or cleared.
+        $this->apiKey = $this->credential('nowpayments_api_key', 'api_key');
+        $this->ipnSecret = $this->credential('nowpayments_ipn_secret', 'ipn_secret');
+        $this->accountEmail = $this->credential('nowpayments_account_email', 'account_email');
+        $this->accountPassword = $this->credential('nowpayments_account_password', 'account_password');
+        $sandboxSetting = AdminSetting::getSetting('nowpayments_sandbox', null);
+        $sandbox = $sandboxSetting === null
+            ? filter_var(config('services.nowpayments.sandbox', true), FILTER_VALIDATE_BOOLEAN)
+            : (string) $sandboxSetting !== '0';
         $this->baseUrl = $sandbox ? 'https://api-sandbox.nowpayments.io/v1' : 'https://api.nowpayments.io/v1';
     }
+
+    private function credential(string $settingKey, string $configKey): string
+    {
+        $databaseValue = trim((string) AdminSetting::getSetting($settingKey, ''));
+        if ($databaseValue !== '') return $databaseValue;
+        return trim((string) config('services.nowpayments.' . $configKey, ''));
+    }
+
+    public function configuredApiKey(): string { return $this->apiKey; }
+    public function configuredIpnSecret(): string { return $this->ipnSecret; }
 
     public function isEnabled(): bool
     {

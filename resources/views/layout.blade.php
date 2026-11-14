@@ -145,7 +145,7 @@
         z-index: 9999;
     }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=mobile-scale-20261114">
     @stack('styles')
 </head>
 

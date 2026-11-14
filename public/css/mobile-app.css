@@ -47,6 +47,11 @@ select, textarea, .form-control, .form-select {
 }
 
 @media (max-width: 767.98px) {
+    /* Give dense mobile screens a little more room without disabling user zoom. */
+    html {
+        font-size: 94%;
+    }
+
     body {
         padding-bottom: calc(76px + env(safe-area-inset-bottom));
     }
@@ -106,6 +111,10 @@ select, textarea, .form-control, .form-select {
 }
 
 @media (max-width: 380px) {
+    html {
+        font-size: 92%;
+    }
+
     .kx-bnav-item {
         font-size: .62rem;
         padding-left: 2px;

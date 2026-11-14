@@ -179,7 +179,11 @@ class AdminSettingsController extends Controller
             }
 
             $countryOptions = self::COUNTRY_OPTIONS;
-            return view('admin.settings.index', compact('grouped', 'cfStatus', 'countryOptions'));
+            $nowPaymentsCredentialStatus = [
+                'api_key' => $this->credentialSource('nowpayments_api_key', 'api_key'),
+                'ipn_secret' => $this->credentialSource('nowpayments_ipn_secret', 'ipn_secret'),
+            ];
+            return view('admin.settings.index', compact('grouped', 'cfStatus', 'countryOptions', 'nowPaymentsCredentialStatus'));
         } catch (\Throwable $e) {
             // A missing settings migration or a temporary database outage should
             // give administrators recovery guidance instead of a raw 500 page.
@@ -243,7 +247,6 @@ class AdminSettingsController extends Controller
             // Keep credential rows encrypted even when older database metadata is wrong.
             $isCredential = $row->is_encrypted || preg_match('/api.?key|secret|password|token|credential/i', (string) $key);
             if ($isCredential) {
-                if (in_array((string) $key, $requestedCredentialClears, true)) continue;
                 if ($value === null || trim((string) $value) === '') continue;
 
                 $plainValue = trim((string) $value);
@@ -266,6 +269,9 @@ class AdminSettingsController extends Controller
         }
 
         foreach ($requestedCredentialClears as $key) {
+            // A replacement typed in the same submission wins over a checked
+            // clear box, so the previous credential cannot overwrite it.
+            if (array_key_exists($key, $data) && trim((string) $data[$key]) !== '') continue;
             $row = AdminSetting::where('key', $key)->first();
             if (!$row) continue;
             $isCredential = $row->is_encrypted || preg_match('/api.?key|secret|password|token|credential/i', (string) $key);
@@ -293,9 +299,15 @@ class AdminSettingsController extends Controller
         if ($changedCriticalSettings) $securityAlerts->criticalAdminChange($request->user(), implode(', ', array_unique($changedCriticalSettings)), 'Admin Settings');
 
         $successMessage = $clearedCredentials
-            ? 'Saved credential(s) cleared: ' . implode(', ', array_unique($clearedCredentials)) . '. Enter a replacement key and save when ready.'
+            ? 'Saved credential(s) cleared from the database: ' . implode(', ', array_unique($clearedCredentials)) . '. Environment fallback credentials, if configured on the server, remain active.'
             : ($changedCredentials ? 'Settings saved. Updated credentials are encrypted and ready to use.' : 'Settings saved successfully.');
         return back()->with('success', $successMessage);
+    }
+
+    private function credentialSource(string $settingKey, string $configKey): string
+    {
+        if (trim((string) AdminSetting::getSetting($settingKey, '')) !== '') return 'database';
+        return trim((string) config('services.nowpayments.' . $configKey, '')) !== '' ? 'environment' : 'missing';
     }
 
     public function testNowPayments(NowPaymentsService $provider)
@@ -334,9 +346,9 @@ class AdminSettingsController extends Controller
     }
 
     /** Reveal the encrypted NOWPayments API key only after an explicit admin request. */
-    public function previewNowPaymentsApiKey(\App\Services\AdminSecurityAlertService $securityAlerts, Request $request)
+    public function previewNowPaymentsApiKey(\App\Services\AdminSecurityAlertService $securityAlerts, Request $request, NowPaymentsService $provider)
     {
-        $apiKey = (string) AdminSetting::getSetting('nowpayments_api_key', '');
+        $apiKey = $provider->configuredApiKey();
         if ($apiKey === '') {
             return response()->json(['ok' => false, 'message' => 'No saved NOWPayments API key is available to preview.'], 404)
                 ->header('Cache-Control', 'private, no-store, max-age=0')
@@ -351,9 +363,9 @@ class AdminSettingsController extends Controller
     }
 
     /** Reveal the encrypted NOWPayments IPN secret after an explicit admin request. */
-    public function previewNowPaymentsIpnSecret(\App\Services\AdminSecurityAlertService $securityAlerts, Request $request)
+    public function previewNowPaymentsIpnSecret(\App\Services\AdminSecurityAlertService $securityAlerts, Request $request, NowPaymentsService $provider)
     {
-        $ipnSecret = (string) AdminSetting::getSetting('nowpayments_ipn_secret', '');
+        $ipnSecret = $provider->configuredIpnSecret();
         if ($ipnSecret === '') {
             return response()->json(['ok' => false, 'message' => 'No saved NOWPayments IPN secret is available to preview.'], 404)
                 ->header('Cache-Control', 'private, no-store, max-age=0')
@@ -367,7 +379,7 @@ class AdminSettingsController extends Controller
             ->header('Pragma', 'no-cache');
     }
 
-    public function copyNowPaymentsCredential(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
+    public function copyNowPaymentsCredential(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts, NowPaymentsService $provider)
     {
         $data = $request->validate(['credential' => ['required', 'in:api_key,ipn_secret']]);
         $credentials = [
@@ -375,7 +387,9 @@ class AdminSettingsController extends Controller
             'ipn_secret' => ['setting' => 'nowpayments_ipn_secret', 'label' => 'NOWPayments IPN secret'],
         ];
         $selected = $credentials[$data['credential']];
-        $value = (string) AdminSetting::getSetting($selected['setting'], '');
+        $value = $data['credential'] === 'api_key'
+            ? $provider->configuredApiKey()
+            : $provider->configuredIpnSecret();
         if ($value === '') {
             return response()->json(['ok' => false, 'message' => 'No saved credential is available to copy.'], 404)
                 ->header('Cache-Control', 'private, no-store, max-age=0');

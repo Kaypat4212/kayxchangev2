@@ -30,7 +30,7 @@
     .kx-bnav-center-btn:hover { transform:translateX(-50%) scale(1.08); color:#fff; }
     .kx-bnav-center-lbl { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); font-size:0.6rem; color:rgba(255,255,255,0.4); white-space:nowrap; }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=mobile-scale-20261114">
     @stack('styles')
 </head>
 <body>

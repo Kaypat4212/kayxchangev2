@@ -72,6 +72,14 @@ return [
         'callback_url' => env('PAYSTACK_CALLBACK_URL'),
     ],
 
+    'nowpayments' => [
+        'api_key' => env('NOWPAYMENTS_API_KEY', env('NOWPAYMENTS_API_KEY_LIVE', '')),
+        'ipn_secret' => env('NOWPAYMENTS_IPN_SECRET', ''),
+        'account_email' => env('NOWPAYMENTS_ACCOUNT_EMAIL', ''),
+        'account_password' => env('NOWPAYMENTS_ACCOUNT_PASSWORD', ''),
+        'sandbox' => env('NOWPAYMENTS_SANDBOX', true),
+    ],
+
     'vtpass' => [
         'api_key' => env('VTPASS_API_KEY'),
         'public_key' => env('VTPASS_PUBLIC_KEY'),

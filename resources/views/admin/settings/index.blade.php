@@ -370,6 +370,15 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     <span id="nowpayments-test-result" class="small" role="status">Save the API key and environment setting before testing.</span>
                 </div>
                 <div class="field-desc mt-2">This checks the saved API key against the selected Sandbox or Live endpoint without creating a payment.</div>
+                <div class="d-flex flex-wrap gap-2 mt-3" aria-label="Active NOWPayments credential sources">
+                    @foreach(['api_key' => 'API key', 'ipn_secret' => 'IPN secret'] as $credentialName => $credentialLabel)
+                        @php $credentialSource = $nowPaymentsCredentialStatus[$credentialName] ?? 'missing'; @endphp
+                        <span class="badge rounded-pill {{ $credentialSource === 'missing' ? 'text-bg-secondary' : ($credentialSource === 'database' ? 'text-bg-success' : 'text-bg-info') }}">
+                            {{ $credentialLabel }}: {{ $credentialSource === 'database' ? 'Database' : ($credentialSource === 'environment' ? 'Environment fallback' : 'Not configured') }}
+                        </span>
+                    @endforeach
+                </div>
+                <div class="field-desc mt-2">The database value takes priority. If it is cleared, the service falls back to <code>NOWPAYMENTS_API_KEY</code> and <code>NOWPAYMENTS_IPN_SECRET</code> from the server environment. A server environment key remains active until it is removed there.</div>
                 @php
                     $nowPaymentsIpnUrl = route('nowpayments.webhook');
                     $nowPaymentsIpnScheme = parse_url($nowPaymentsIpnUrl, PHP_URL_SCHEME);

@@ -83,7 +83,7 @@
         });
     </script>
     <style>html,body{overflow-x:clip;max-width:100%;position:relative;}</style>
-    <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=mobile-scale-20261114">
 </head>
 <body>
     @yield('content')
