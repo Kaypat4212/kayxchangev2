@@ -8,11 +8,34 @@
  @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
  @forelse($deposits as $deposit)
   @php($data=$deposit->payment_data ?? []) @php($network=strtoupper((string)data_get($data,'deposit_input.network',''))) @php($explorerBase=match($network){'BTC'=>'https://blockstream.info/tx/','ERC20'=>'https://etherscan.io/tx/','TRC20'=>'https://tronscan.org/#/transaction/','BEP20'=>'https://bscscan.com/tx/','SOL'=>'https://solscan.io/tx/',default=>null})
+  @php($expectedCrypto=(float)data_get($data,'expected_crypto_amount',0)) @php($providerStatus=strtolower((string)data_get($data,'provider_status','pending'))) @php($latest=data_get($data,'latest_webhook',[])) @php($actualCrypto=(float)($deposit->received_amount ?: data_get($latest,'actually_paid',data_get($latest,'payer_amount',0)))) @php($remainingCrypto=max(0,$expectedCrypto-$actualCrypto)) @php($isProviderFinal=in_array($providerStatus,['finished','paid','paid_over'],true)) @php($paymentId=data_get($data,'provider_payment_id')) @php($depositValuation=data_get($data,'deposit_valuation',[])) @php($quotedPrice=(float)data_get($data,'deposit_input.quoted_market_price_usd',0)) @php($receivedUsd=(float)data_get($depositValuation,'market_value_usd',($quotedPrice>0?$actualCrypto*$quotedPrice:0)))
   <section class="md-card">
    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3"><div><div class="small text-success fw-bold">DEPOSIT #{{ $deposit->id }} · {{ strtoupper($deposit->currency) }} / {{ data_get($data,'deposit_input.network','—') }}</div><h2 class="h5 text-white mt-1 mb-1">{{ $deposit->user?->name ?? 'Unknown user' }}</h2><div class="md-muted small">{{ $deposit->user?->email ?? '—' }} · Created {{ $deposit->created_at?->format('d M Y, H:i') }}</div></div><span class="badge text-bg-warning">{{ $deposit->status === 'awaiting_admin_review' ? 'Awaiting admin approval' : ucfirst($deposit->status) }} · {{ str_replace('_',' ',data_get($data,'provider_status','pending')) }}</span></div>
-   <div class="md-grid mb-3"><div class="md-info"><small>Invoice value</small><strong>${{ number_format((float)$deposit->expected_amount,2) }} USD</strong></div><div class="md-info"><small>Expected transfer</small><strong>{{ number_format((float)data_get($data,'expected_crypto_amount',0),8) }} {{ strtoupper($deposit->currency) }} · {{ $network ?: 'Network unavailable' }}</strong></div><div class="md-info"><small>Receiving address</small><strong>{{ $deposit->payment_address }}</strong></div><div class="md-info"><small>Submitted transaction hash</small><strong>@if($deposit->transaction_hash && $explorerBase)<a class="text-success" href="{{ $explorerBase.rawurlencode($deposit->transaction_hash) }}" target="_blank" rel="noopener">{{ $deposit->transaction_hash }} <i class="bi bi-box-arrow-up-right"></i></a>@else{{ $deposit->transaction_hash ?: 'Not submitted yet' }}@endif</strong></div></div>
+   <div class="md-grid mb-3">
+    <div class="md-info"><small>Invoice value</small><strong>${{ number_format((float)$deposit->expected_amount,2) }} USD</strong></div>
+    <div class="md-info"><small>Expected transfer</small><strong>{{ number_format($expectedCrypto,8) }} {{ strtoupper($deposit->currency) }} · {{ $network ?: 'Network unavailable' }}</strong></div>
+    <div class="md-info"><small>Provider-confirmed amount</small><strong>{{ number_format($actualCrypto,8) }} {{ strtoupper($deposit->currency) }}</strong>
+     @if($receivedUsd>0)<div class="md-muted small">Approx. ${{ number_format($receivedUsd,2) }} USD at deposit quote</div>@endif
+    </div>
+    <div class="md-info"><small>Provider status</small><strong>{{ str_replace('_',' ',$providerStatus) }}</strong>
+     @if($isProviderFinal && $remainingCrypto>0)<div class="text-success small mt-1">Provider marked complete; no more payment is expected.</div>
+     @elseif(!$isProviderFinal && $remainingCrypto>0)<div class="text-warning small mt-1">Approx. {{ number_format($remainingCrypto,8) }} {{ strtoupper($deposit->currency) }} remaining.</div>
+     @endif
+    </div>
+    <div class="md-info"><small>NOWPayments payment ID</small><strong class="font-monospace">{{ $paymentId ?: 'Not available' }}</strong></div>
+    <div class="md-info"><small>Settlement destination</small><strong>{{ strtoupper((string)data_get($data,'deposit_input.settlement_preference','usd')) }} {{ data_get($data,'deposit_input.settlement_preference','usd')==='ngn' ? 'wallet' : 'crypto portfolio' }}</strong></div>
+    <div class="md-info"><small>Receiving address</small><strong>{{ $deposit->payment_address ?: 'Not available' }}</strong></div>
+    @php($txHash=$deposit->transaction_hash ?: data_get($latest,'txid'))
+    <div class="md-info"><small>Transaction hash</small><strong>
+     @if($txHash && $explorerBase)<a class="text-success" href="{{ $explorerBase.rawurlencode($txHash) }}" target="_blank" rel="noopener">{{ $txHash }} <i class="bi bi-box-arrow-up-right"></i></a>
+     @else{{ $txHash ?: 'Not reported yet' }}
+     @endif
+    </strong></div>
+    @if(data_get($data,'bitcoin_confirmations')!==null)
+     <div class="md-info"><small>Bitcoin confirmations</small><strong>{{ (int)data_get($data,'bitcoin_confirmations',0) }} / {{ (int)data_get($data,'bitcoin_required_confirmations',3) }}</strong></div>
+    @endif
+   </div>
    @if($deposit->status === 'awaiting_admin_review')
-    <div class="md-info mb-3"><small>Provider-confirmed amount</small><strong>{{ number_format((float)$deposit->received_amount,8) }} {{ strtoupper($deposit->currency) }}</strong></div>
     <form method="POST" action="{{ route('admin.manual-crypto-deposits.approve',$deposit->id) }}" class="d-flex gap-2 flex-wrap">@csrf<button class="btn btn-success" onclick="return confirm('Approve the confirmed deposit and credit the user wallet?')"><i class="bi bi-check2-circle me-1"></i>Approve & credit wallet</button></form>
     <form method="POST" action="{{ route('admin.manual-crypto-deposits.reject',$deposit->id) }}" class="d-flex gap-2 mt-2">@csrf<input class="md-input" name="admin_note" maxlength="500" placeholder="Reason (optional)"><button class="btn btn-outline-danger" onclick="return confirm('Reject this deposit? No wallet credit will be made.')">Reject</button></form>
    @elseif($deposit->status === 'pending')

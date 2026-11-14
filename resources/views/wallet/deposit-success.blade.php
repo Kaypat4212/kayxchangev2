@@ -17,7 +17,8 @@
     $partialExpected = (float)data_get($paymentData, 'expected_crypto_amount', $expectedCrypto ?? 0);
     $partialRemaining = max(0, $partialExpected - $partialReceived);
     $partialRemainingUsd = data_get($paymentData, 'partial_remaining_usd');
-    $isPartiallyPaid = $paymentStatus === 'partially_paid' || ($partialReceived > 0 && $partialExpected > $partialReceived + 0.00000001);
+    $isFinalProviderPayment = in_array($paymentStatus, ['finished','paid','paid_over'], true);
+    $isPartiallyPaid = !$isFinalProviderPayment && ($paymentStatus === 'partially_paid' || ($partialReceived > 0 && $partialExpected > $partialReceived + 0.00000001));
     $isManualFallback = data_get($paymentData,'provider') === 'manual';
     $isNowPayments = data_get($paymentData,'provider') === 'nowpayments';
     $isBitcoin = $coin === 'BTC';
@@ -55,6 +56,7 @@
   <div class="ds-row"><span>Status</span><strong id="deposit-status-text">{{ $statusLabel }}</strong></div>
   <p id="deposit-sync-label" class="ds-help mt-1 mb-0" role="status" aria-live="polite"><i class="bi bi-arrow-repeat me-1"></i>Checking for updates automatically…</p>
   <div id="partial-payment-notice" class="ds-alert warn mt-3 mb-0 {{ $isPartiallyPaid ? '' : 'd-none' }}" role="status"><i class="bi bi-exclamation-circle-fill me-2"></i><span id="partial-payment-message">We received {{ number_format($partialReceived,8) }} {{ $coin }} so far. Please send the remaining {{ number_format($partialRemaining,8) }} {{ $coin }} to this same payment address{{ $partialRemainingUsd !== null ? ' (about $'.number_format((float)$partialRemainingUsd,2).' USD).' : '.' }} The balance will be credited after the full payment is confirmed and reviewed.</span></div>
+  @if($isNowPayments && $isFinalProviderPayment && $partialReceived > 0 && $partialExpected > $partialReceived + 0.00000001)<div class="ds-alert ok mt-3 mb-0" role="status"><i class="bi bi-check-circle-fill me-2"></i>NOWPayments marked this payment complete and confirmed {{ number_format($partialReceived,8) }} {{ $coin }}. You do not need to send the difference shown in the original estimate. Any wallet credit will use the confirmed amount after the required review.</div>@endif
   @if($isBitcoin)<div class="ds-btc"><div class="ds-row"><span>Bitcoin confirmations</span><strong id="confirmation-count">{{ $confirmations }} / {{ $requiredConfirmations }}</strong></div><p id="confirmation-remaining" class="ds-help">{{ $deposit->status==='completed' ? 'The transfer is confirmed.' : ($deposit->transaction_hash ? max(0,$requiredConfirmations-$confirmations).' more confirmation(s) required.' : 'Waiting for the transfer to appear on the network.') }}</p></div>@endif
  </section>
 

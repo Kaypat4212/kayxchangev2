@@ -27,6 +27,8 @@ class CryptoController extends Controller
         $rateCoins = CryptoRate::query()->pluck('coin')->map(fn ($coin) => strtoupper((string) $coin))->merge(['BTC', 'ETH', 'USDT', 'SOL', 'BNB', 'USDC', 'LTC', 'ADA', 'DOGE'])->unique()->values()->all();
         $rates = app(\App\Services\CryptoTradeRateService::class)->rates($rateCoins);
         Log::info('Rates fetched for dashboard: ', ['rates' => $rates]);
+        $usdtRate = app(\App\Services\CryptoTradeRateService::class)->rate('USDT', 'sell') ?? 0;
+        $walletMarket = app(\App\Services\ExchangeRateService::class)->getUsdRates();
 
         // Fetch recent trades and withdrawals
         $buyTrades = BuyTrade::where('user_id', $userId)->latest()->limit(5)->get();
@@ -67,7 +69,7 @@ class CryptoController extends Controller
             ];
         });
 
-        $withdrawalTransactions = $withdrawals->map(function ($withdrawal) {
+        $withdrawalTransactions = $withdrawals->map(function ($withdrawal) use ($usdtRate) {
             $bankAccount = $withdrawal->bank_account ?? 'N/A';
             if (is_string($withdrawal->bank_account)) {
                 $bankDetails = json_decode($withdrawal->bank_account, true);
@@ -81,15 +83,33 @@ class CryptoController extends Controller
                 'created_at' => $withdrawal->created_at,
                 'type' => 'withdrawal',
                 'coin' => null,
-                'amount_usd' => null,
-                'amount_ngn' => $withdrawal->amount,
+                'amount_usd' => $usdtRate > 0 ? ((float)$withdrawal->amount + (float)($withdrawal->fee_amount ?? 0)) / $usdtRate : null,
+                'amount_ngn' => (float)$withdrawal->amount + (float)($withdrawal->fee_amount ?? 0),
                 'status' => strtolower($withdrawal->status),
                 'bank_account' => $bankAccount,
             ];
         });
 
+        $depositTransactions = \App\Models\Deposit::where('user_id', $userId)->latest()->limit(5)->get()->map(function ($deposit) use ($usdtRate) {
+            $ngn = max(0, (float) $deposit->amount - (float) ($deposit->fee_amount ?? 0));
+            return ['created_at'=>$deposit->created_at, 'type'=>'deposit', 'coin'=>'NGN wallet', 'amount_usd'=>$usdtRate > 0 ? $ngn / $usdtRate : null, 'amount_ngn'=>$ngn, 'status'=>strtolower((string)$deposit->status), 'bank_account'=>null];
+        });
+        $cryptoDepositTransactions = \App\Models\CryptoDeposit::where('user_id', $userId)->latest()->limit(5)->get()->map(function ($deposit) use ($walletMarket, $usdtRate) {
+            $coin = strtoupper((string) $deposit->currency);
+            $crypto = (float) ($deposit->received_amount ?: $deposit->expected_amount);
+            $usd = $crypto * (float) ($walletMarket[$coin] ?? 0);
+            $ngn = (float) ($deposit->ngn_credited_amount ?? 0);
+            return ['created_at'=>$deposit->created_at, 'type'=>'deposit', 'coin'=>$coin . ' crypto wallet', 'amount_usd'=>$usd > 0 ? $usd : null, 'amount_ngn'=>$ngn > 0 ? $ngn : ($usdtRate > 0 && $usd > 0 ? $usd * $usdtRate : null), 'status'=>strtolower((string)$deposit->status), 'bank_account'=>null];
+        });
+        $cryptoWithdrawalTransactions = \App\Models\CryptoWithdrawal::where('user_id', $userId)->with('wallet')->latest()->limit(5)->get()->map(function ($withdrawal) use ($walletMarket, $usdtRate) {
+            $coin = strtoupper((string) ($withdrawal->wallet?->currency ?? 'CRYPTO'));
+            $usd = (float) ($withdrawal->usd_value_at_request ?? 0);
+            if ($usd <= 0) $usd = (float) $withdrawal->amount * (float) ($walletMarket[$coin] ?? 0);
+            return ['created_at'=>$withdrawal->created_at, 'type'=>'withdrawal', 'coin'=>$coin . ' crypto wallet', 'amount_usd'=>$usd > 0 ? $usd : null, 'amount_ngn'=>$usdtRate > 0 && $usd > 0 ? $usd * $usdtRate : null, 'status'=>strtolower((string)$withdrawal->status), 'bank_account'=>$withdrawal->network ?: 'Crypto wallet'];
+        });
+
         // Combine transactions using concat instead of merge
-        $transactions = $buyTransactions->concat($sellTransactions)->concat($withdrawalTransactions)
+        $transactions = $buyTransactions->concat($sellTransactions)->concat($withdrawalTransactions)->concat($depositTransactions)->concat($cryptoDepositTransactions)->concat($cryptoWithdrawalTransactions)
             ->sortByDesc('created_at')->values()->take(5);
 
         // Full account activity feed, kept user-scoped and tolerant of optional modules on older installs.
@@ -103,11 +123,11 @@ class CryptoController extends Controller
             }
         };
         $appendActivities(BuyTrade::class, 'buy', fn ($item) => ['title' => 'Crypto buy request', 'detail' => strtoupper((string)$item->coin) . ' purchase', 'amount' => $item->naira_amount, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->transaction_ref, 'icon' => 'bi-arrow-down-left']);
-        $appendActivities(SellTrade::class, 'sell', fn ($item) => ['title' => 'Crypto sell request', 'detail' => strtoupper((string)$item->coin) . ' sale', 'amount' => $item->naira_amount, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->transaction_ref, 'icon' => 'bi-arrow-up-right']);
-        $appendActivities(Withdrawal::class, 'withdrawal', fn ($item) => ['title' => 'Naira withdrawal', 'detail' => 'Bank payout request', 'amount' => $item->amount, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-bank']);
-        $appendActivities(\App\Models\Deposit::class, 'deposit', fn ($item) => ['title' => 'Naira deposit', 'detail' => ucfirst((string)($item->payment_method ?? 'Deposit')), 'amount' => $item->amount, 'currency' => strtoupper((string)($item->currency ?? 'NGN')), 'status' => $item->status, 'reference' => $item->transaction_ref, 'icon' => 'bi-box-arrow-in-down']);
-        $appendActivities(\App\Models\CryptoDeposit::class, 'crypto_deposit', fn ($item) => ['title' => 'Crypto deposit', 'detail' => strtoupper((string)$item->currency) . ' · ' . number_format((float)($item->received_amount ?: $item->expected_amount), 8), 'amount' => $item->ngn_credited_amount, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->transaction_hash ?: ('Deposit #' . $item->id), 'icon' => 'bi-currency-bitcoin']);
-        $appendActivities(\App\Models\CryptoWithdrawal::class, 'crypto_withdrawal', function ($item) { $item->loadMissing('wallet'); return ['title' => 'Crypto withdrawal request', 'detail' => strtoupper((string)($item->wallet?->currency ?? 'Crypto')) . ' · ' . number_format((float)$item->amount, 8), 'amount' => $item->amount, 'currency' => strtoupper((string)($item->wallet?->currency ?? 'Crypto')), 'status' => $item->status, 'reference' => $item->transaction_hash ?: ('Withdrawal #' . $item->id), 'icon' => 'bi-box-arrow-up-right']; });
+        $appendActivities(SellTrade::class, 'sell', function ($item) use ($usdtRate) { $settled = strtolower((string)$item->status) === 'completed'; $walletCredit = $settled && (string)$item->payment_method === 'wallet_balance'; $ngn = (float)($item->naira_amount ?? 0); return ['title' => 'Crypto sell request', 'detail' => strtoupper((string)$item->coin) . ' sale · ' . ($walletCredit ? 'Naira wallet credited' : ($settled ? 'Payout marked completed' : 'Payout after approval')), 'amount' => $ngn, 'currency' => 'NGN', 'amount_ngn' => $ngn, 'amount_usd' => $usdtRate > 0 ? $ngn / $usdtRate : (float)($item->usd_amount ?? 0), 'balance_effect' => $walletCredit ? 'Balance increased' : ($settled ? 'Payout completed' : 'Awaiting payout'), 'direction' => $walletCredit ? 'in' : 'pending', 'status' => $item->status, 'reference' => $item->transaction_ref, 'icon' => 'bi-arrow-up-right']; });
+        $appendActivities(Withdrawal::class, 'withdrawal', function ($item) use ($usdtRate) { $approved = in_array(strtolower((string)$item->status), ['approved','successful','completed'], true); $ngn = (float)$item->amount + (float)($item->fee_amount ?? 0); return ['title' => 'Naira withdrawal', 'detail' => 'Bank payout request · ' . ($approved ? 'Naira wallet debited' : 'Debit on approval'), 'amount' => $ngn, 'currency' => 'NGN', 'amount_ngn' => $ngn, 'amount_usd' => $usdtRate > 0 ? $ngn / $usdtRate : null, 'balance_effect' => $approved ? 'Balance decreased' : 'Awaiting approval', 'direction' => $approved ? 'out' : 'pending', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-bank']; });
+        $appendActivities(\App\Models\Deposit::class, 'deposit', function ($item) use ($usdtRate) { $net = max(0, (float)$item->amount - (float)($item->fee_amount ?? 0)); $posted = in_array(strtolower((string)$item->status), ['approved','completed','successful'], true); return ['title' => 'Naira deposit', 'detail' => ucfirst((string)($item->payment_method ?? 'Deposit')) . ($posted ? ' · Naira wallet credited' : ' · Credit after confirmation'), 'amount' => $net, 'currency' => 'NGN', 'amount_ngn' => $net, 'amount_usd' => $usdtRate > 0 ? $net / $usdtRate : null, 'balance_effect' => $posted ? 'Balance increased' : 'Awaiting credit', 'direction' => $posted ? 'in' : 'pending', 'status' => $item->status, 'reference' => $item->transaction_ref, 'icon' => 'bi-box-arrow-in-down']; });
+        $appendActivities(\App\Models\CryptoDeposit::class, 'crypto_deposit', function ($item) use ($walletMarket, $usdtRate) { $coin = strtoupper((string)$item->currency); $crypto = (float)($item->received_amount ?: $item->expected_amount); $usd = $crypto * (float)($walletMarket[$coin] ?? 0); $ngn = (float)($item->ngn_credited_amount ?? 0); $posted = strtolower((string)$item->status) === 'completed'; return ['title' => 'Crypto deposit', 'detail' => number_format($crypto, 8) . ' ' . $coin . ($posted ? ' · Crypto balance credited' : ' · Credit after provider confirmation'), 'amount' => $crypto, 'currency' => $coin, 'amount_usd' => $usd > 0 ? $usd : null, 'amount_ngn' => $ngn > 0 ? $ngn : ($usd > 0 && $usdtRate > 0 ? $usd * $usdtRate : null), 'balance_effect' => $posted ? 'Balance increased' : 'Awaiting credit', 'direction' => $posted ? 'in' : 'pending', 'status' => $item->status, 'reference' => $item->transaction_hash ?: ('Deposit #' . $item->id), 'icon' => 'bi-currency-bitcoin']; });
+        $appendActivities(\App\Models\CryptoWithdrawal::class, 'crypto_withdrawal', function ($item) use ($walletMarket, $usdtRate) { $item->loadMissing('wallet'); $coin = strtoupper((string)($item->wallet?->currency ?? 'Crypto')); $usd = (float)($item->usd_value_at_request ?? 0); if ($usd <= 0) $usd = (float)$item->amount * (float)($walletMarket[$coin] ?? 0); $posted = strtolower((string)$item->status) === 'completed'; return ['title' => 'Crypto withdrawal', 'detail' => number_format((float)$item->amount, 8) . ' ' . $coin . ' · ' . ($posted ? 'Crypto wallet debited' : 'Debit on payout completion'), 'amount' => $item->amount, 'currency' => $coin, 'amount_usd' => $usd > 0 ? $usd : null, 'amount_ngn' => $usd > 0 && $usdtRate > 0 ? $usd * $usdtRate : null, 'balance_effect' => $posted ? 'Balance decreased' : 'Awaiting payout', 'direction' => $posted ? 'out' : 'pending', 'status' => $item->status, 'reference' => $item->transaction_hash ?: ('Withdrawal #' . $item->id), 'icon' => 'bi-box-arrow-up-right']; });
         $appendActivities(Conversion::class, 'swap', fn ($item) => ['title' => 'Crypto swap', 'detail' => number_format((float)$item->from_amount, 8) . ' ' . strtoupper((string)$item->from_coin) . ' → ' . strtoupper((string)$item->to_coin), 'amount' => $item->to_amount, 'currency' => strtoupper((string)$item->to_coin), 'status' => $item->status, 'reference' => $item->provider_conversion_id ?: ('Swap #' . $item->id), 'icon' => 'bi-arrow-left-right']);
         $appendActivities(\App\Models\PortfolioWithdrawal::class, 'portfolio', fn ($item) => ['title' => 'Crypto portfolio converted', 'detail' => 'Crypto assets converted to your Naira wallet', 'amount' => $item->naira_amount, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-pie-chart']);
         $appendActivities(\App\Models\GiftCardOrder::class, 'gift_card_purchase', fn ($item) => ['title' => 'Gift card purchase', 'detail' => $item->card_name . ' · ' . $item->country, 'amount' => $item->total_ngn, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-gift']);
@@ -141,9 +161,6 @@ class CryptoController extends Controller
 
         Log::info('Combined Transactions for Dashboard: ', ['count' => $transactions->count(), 'transactions' => $transactions->toArray()]);
 
-        // USDT sell rate for NGN→USD balance conversion
-        $usdtRate = app(\App\Services\CryptoTradeRateService::class)->rate('USDT', 'sell') ?? 0;
-
         // Referral count for dashboard stat tile
         $referralCount = Auth::user()->referralsMade()->count();
 
@@ -154,7 +171,6 @@ class CryptoController extends Controller
         $billPaymentsEnabled = $billService->billPaymentsEnabled() && $billService->providers() !== [];
         $utilityPaymentsEnabled = $billPaymentsEnabled && $billService->utilityPaymentsEnabled();
         $currentUser = Auth::user();
-        $walletMarket = app(\App\Services\ExchangeRateService::class)->getUsdRates();
         $cryptoPortfolioUsd = 0.0;
         $cryptoPortfolioComplete = true;
         foreach ($currentUser->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->get() as $cryptoWallet) {
@@ -735,12 +751,18 @@ class CryptoController extends Controller
         $buyTradesQuery = BuyTrade::where('user_id', $userId);
         $sellTradesQuery = SellTrade::where('user_id', $userId);
         $withdrawalsQuery = Withdrawal::where('user_id', $userId);
+        $depositsQuery = \App\Models\Deposit::where('user_id', $userId);
+        $cryptoDepositsQuery = \App\Models\CryptoDeposit::where('user_id', $userId);
+        $cryptoWithdrawalsQuery = \App\Models\CryptoWithdrawal::where('user_id', $userId);
 
         // Apply search filter
         if ($search) {
             $buyTradesQuery->where('coin', 'like', '%' . $search . '%');
             $sellTradesQuery->where('coin', 'like', '%' . $search . '%');
             $withdrawalsQuery->where('bank_account', 'like', '%' . $search . '%');
+            $depositsQuery->where(function ($query) use ($search) { $query->where('transaction_ref', 'like', '%' . $search . '%')->orWhere('payment_method', 'like', '%' . $search . '%'); });
+            $cryptoDepositsQuery->where(function ($query) use ($search) { $query->where('currency', 'like', '%' . $search . '%')->orWhere('transaction_hash', 'like', '%' . $search . '%'); });
+            $cryptoWithdrawalsQuery->where(function ($query) use ($search) { $query->where('network', 'like', '%' . $search . '%')->orWhere('transaction_hash', 'like', '%' . $search . '%'); });
         }
 
         // Apply status filter (case-insensitive)
@@ -748,6 +770,9 @@ class CryptoController extends Controller
             $buyTradesQuery->whereRaw('LOWER(status) = ?', [strtolower($status)]);
             $sellTradesQuery->whereRaw('LOWER(status) = ?', [strtolower($status)]);
             $withdrawalsQuery->whereRaw('LOWER(status) = ?', [strtolower($status)]);
+            $depositsQuery->whereRaw('LOWER(status) = ?', [strtolower($status)]);
+            $cryptoDepositsQuery->whereRaw('LOWER(status) = ?', [strtolower($status)]);
+            $cryptoWithdrawalsQuery->whereRaw('LOWER(status) = ?', [strtolower($status)]);
         }
 
         // Apply date filter
@@ -755,12 +780,20 @@ class CryptoController extends Controller
             $buyTradesQuery->whereDate('created_at', $date);
             $sellTradesQuery->whereDate('created_at', $date);
             $withdrawalsQuery->whereDate('created_at', $date);
+            $depositsQuery->whereDate('created_at', $date);
+            $cryptoDepositsQuery->whereDate('created_at', $date);
+            $cryptoWithdrawalsQuery->whereDate('created_at', $date);
         }
 
         // Apply type filter
         $buyTrades = ($type === 'all' || $type === 'buy') ? $buyTradesQuery->latest()->get() : collect([]);
         $sellTrades = ($type === 'all' || $type === 'sell') ? $sellTradesQuery->latest()->get() : collect([]);
         $withdrawals = ($type === 'all' || $type === 'withdrawal') ? $withdrawalsQuery->latest()->get() : collect([]);
+        $deposits = ($type === 'all' || $type === 'deposit') ? $depositsQuery->latest()->get() : collect([]);
+        $cryptoDeposits = ($type === 'all' || $type === 'deposit') ? $cryptoDepositsQuery->latest()->get() : collect([]);
+        $cryptoWithdrawals = ($type === 'all' || $type === 'withdrawal') ? $cryptoWithdrawalsQuery->with('wallet')->latest()->get() : collect([]);
+        $conversionRate = app(\App\Services\CryptoTradeRateService::class)->rate('USDT', 'sell') ?? 0;
+        $marketRates = app(\App\Services\ExchangeRateService::class)->getUsdRates();
 
         Log::info('Fetched Data: ', [
             'buy_trades_count' => $buyTrades->count(),
@@ -810,15 +843,19 @@ class CryptoController extends Controller
                 'created_at' => $withdrawal->created_at,
                 'type' => 'withdrawal',
                 'coin' => null,
-                'amount_usd' => null,
-                'amount_ngn' => $withdrawal->amount,
+                'amount_usd' => $conversionRate > 0 ? ((float)$withdrawal->amount + (float)($withdrawal->fee_amount ?? 0)) / $conversionRate : null,
+                'amount_ngn' => (float)$withdrawal->amount + (float)($withdrawal->fee_amount ?? 0),
                 'status' => strtolower($withdrawal->status),
                 'bank_account' => $bankAccount,
             ];
         });
 
+        $depositTransactions = $deposits->map(function ($deposit) use ($conversionRate) { $ngn = max(0, (float)$deposit->amount - (float)($deposit->fee_amount ?? 0)); return ['created_at'=>$deposit->created_at, 'type'=>'deposit', 'coin'=>'NGN wallet', 'amount_usd'=>$conversionRate > 0 ? $ngn / $conversionRate : null, 'amount_ngn'=>$ngn, 'status'=>strtolower((string)$deposit->status), 'bank_account'=>null]; });
+        $cryptoDepositTransactions = $cryptoDeposits->map(function ($deposit) use ($conversionRate, $marketRates) { $coin=strtoupper((string)$deposit->currency); $crypto=(float)($deposit->received_amount ?: $deposit->expected_amount); $usd=$crypto*(float)($marketRates[$coin] ?? 0); $ngn=(float)($deposit->ngn_credited_amount ?? 0); return ['created_at'=>$deposit->created_at, 'type'=>'deposit', 'coin'=>$coin.' crypto wallet', 'amount_usd'=>$usd > 0 ? $usd : null, 'amount_ngn'=>$ngn > 0 ? $ngn : ($usd > 0 && $conversionRate > 0 ? $usd*$conversionRate : null), 'status'=>strtolower((string)$deposit->status), 'bank_account'=>null]; });
+        $cryptoWithdrawalTransactions = $cryptoWithdrawals->map(function ($withdrawal) use ($conversionRate, $marketRates) { $coin=strtoupper((string)($withdrawal->wallet?->currency ?? 'CRYPTO')); $usd=(float)($withdrawal->usd_value_at_request ?? 0); if ($usd <= 0) $usd=(float)$withdrawal->amount*(float)($marketRates[$coin] ?? 0); return ['created_at'=>$withdrawal->created_at, 'type'=>'withdrawal', 'coin'=>$coin.' crypto wallet', 'amount_usd'=>$usd > 0 ? $usd : null, 'amount_ngn'=>$usd > 0 && $conversionRate > 0 ? $usd*$conversionRate : null, 'status'=>strtolower((string)$withdrawal->status), 'bank_account'=>$withdrawal->network ?: 'Crypto wallet']; });
+
         // Combine transactions using concat
-        $transactions = $buyTransactions->concat($sellTransactions)->concat($withdrawalTransactions)
+        $transactions = $buyTransactions->concat($sellTransactions)->concat($withdrawalTransactions)->concat($depositTransactions)->concat($cryptoDepositTransactions)->concat($cryptoWithdrawalTransactions)
             ->sortByDesc('created_at')->values();
 
         Log::info('Combined Transactions: ', [

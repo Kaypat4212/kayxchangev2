@@ -29,17 +29,27 @@ class AdminManualCryptoDepositController extends Controller
         ]);
         $record = CryptoDeposit::findOrFail($deposit);
         $isManual = data_get($record->payment_data, 'provider') === 'manual';
+        if (!$isManual && data_get($record->payment_data, 'provider') === 'nowpayments') {
+            try {
+                $record = $wallets->refreshDepositStatus($record, true);
+            } catch (\Throwable $exception) {
+                \Illuminate\Support\Facades\Log::warning('Admin could not refresh NOWPayments deposit before approval.', [
+                    'deposit_id' => $record->id,
+                    'error' => $exception->getMessage(),
+                ]);
+                return back()->with('error', 'NOWPayments could not be reached to verify the latest status. No balance was credited. Retry shortly.');
+            }
+        }
         if (($isManual && $record->status !== 'pending') || (!$isManual && $record->status !== 'awaiting_admin_review')) {
-            return back()->with('error', 'This fallback deposit is no longer awaiting review.');
+            return back()->with('error', 'This deposit is no longer awaiting admin review. Refresh the queue to see its latest status.');
         }
         if (!$isManual) {
             $paymentData = $record->payment_data ?? [];
             $providerStatus = strtolower((string)($paymentData['provider_status'] ?? ''));
-            $expectedCrypto = (float)data_get($paymentData, 'expected_crypto_amount', 0);
             $receivedCrypto = (float)($record->received_amount ?? 0);
             if (data_get($paymentData, 'provider') === 'nowpayments'
-                && ($providerStatus !== 'finished' || ($expectedCrypto > 0 && $receivedCrypto + 0.00000001 < $expectedCrypto))) {
-                return back()->with('error', 'This payment is still confirming or is underpaid. Wait for a fully paid provider status before approving wallet credit.');
+                && ($providerStatus !== 'finished' || $receivedCrypto <= 0)) {
+                return back()->with('error', 'NOWPayments has not confirmed a completed payment with a received amount yet. No balance was credited.');
             }
             $paymentData['admin_review_approved'] = true;
             $paymentData['admin_reviewed_by'] = auth()->id();

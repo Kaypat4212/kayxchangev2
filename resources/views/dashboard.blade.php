@@ -119,6 +119,13 @@
     .kx-activity-meta { display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px;color:rgba(255,255,255,.38);font-size:.67rem; }
     .kx-activity-status { display:inline-flex;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.07);color:#c8d6cc;font-weight:700;text-transform:capitalize; }
     .kx-activity-amount { color:#c7f6d0;font-size:.79rem;font-weight:800;white-space:nowrap;margin-left:auto; }
+    .kx-activity-values { display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:7px;color:rgba(255,255,255,.66);font-size:.7rem; }
+    .kx-activity-values strong { color:#edf8ef;font-weight:750; }
+    .kx-activity-effect { display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.06);font-weight:700; }
+    .kx-activity-effect.is-in { color:#5be28b;background:rgba(0,204,80,.1); }
+    .kx-activity-effect.is-out { color:#ffbd6b;background:rgba(251,146,60,.1); }
+    body.light-mode .kx-activity-values { color:#637268; }
+    body.light-mode .kx-activity-values strong { color:#203126; }
     body.light-mode .kx-activity-item { background:#fff;border-color:rgba(0,0,0,.08); }
     body.light-mode .kx-activity-title { color:#142319; }
     body.light-mode .kx-activity-detail,body.light-mode .kx-activity-meta { color:#66736a; }
@@ -431,9 +438,10 @@
                 <article class="kx-activity-item">
                     <div class="kx-activity-icon"><i class="bi {{ $activity['icon'] ?? 'bi-activity' }}"></i></div>
                     <div class="kx-activity-copy">
-                        <div class="d-flex align-items-start gap-2 flex-wrap"><div class="kx-activity-title">{{ $activity['title'] ?? 'Account activity' }}</div>@if(!empty($activity['amount']))<div class="kx-activity-amount">{{ ($activity['currency'] ?? 'NGN') === 'NGN' ? '₦' : '' }}{{ number_format((float)$activity['amount'], ($activity['currency'] ?? 'NGN') === 'NGN' ? 2 : 8) }} {{ ($activity['currency'] ?? 'NGN') !== 'NGN' ? $activity['currency'] : '' }}</div>@endif</div>
+                        <div class="d-flex align-items-start gap-2 flex-wrap"><div class="kx-activity-title">{{ $activity['title'] ?? 'Account activity' }}</div>@if(isset($activity['amount']) && $activity['amount'] !== null)<div class="kx-activity-amount">{{ ($activity['currency'] ?? 'NGN') === 'NGN' ? '₦' : '' }}{{ number_format((float)$activity['amount'], ($activity['currency'] ?? 'NGN') === 'NGN' ? 2 : 8) }} {{ ($activity['currency'] ?? 'NGN') !== 'NGN' ? $activity['currency'] : '' }}</div>@endif</div>
                         <div class="kx-activity-detail">{{ $activity['detail'] ?? '' }}</div>
-                        <div class="kx-activity-meta"><span>{{ $activity['created_at']?->timezone('Africa/Lagos')->format('d M Y · H:i') }}</span><span class="kx-activity-status" style="color:{{ $activityStatusColor }}">{{ str_replace('_',' ',$activityStatus) }}</span>@if(!empty($activity['reference']))<span>Ref {{ $activity['reference'] }}</span>@endif</div>
+                        @if(isset($activity['amount_ngn']) || isset($activity['amount_usd']))<div class="kx-activity-values">@if(isset($activity['amount_ngn']) && $activity['amount_ngn'] !== null)<span>NGN value <strong>₦{{ number_format((float)$activity['amount_ngn'],2) }}</strong></span>@endif @if(isset($activity['amount_usd']) && $activity['amount_usd'] !== null)<span>USD value <strong>${{ number_format((float)$activity['amount_usd'],2) }}</strong></span>@endif</div>@endif
+                        <div class="kx-activity-meta"><span>{{ $activity['created_at']?->timezone('Africa/Lagos')->format('d M Y · H:i') }}</span><span class="kx-activity-status" style="color:{{ $activityStatusColor }}">{{ str_replace('_',' ',$activityStatus) }}</span>@if(!empty($activity['balance_effect']))<span class="kx-activity-effect {{ ($activity['direction'] ?? '') === 'in' ? 'is-in' : ((($activity['direction'] ?? '') === 'out') ? 'is-out' : '') }}"><i class="bi {{ ($activity['direction'] ?? '') === 'in' ? 'bi-arrow-down-left' : ((($activity['direction'] ?? '') === 'out') ? 'bi-arrow-up-right' : 'bi-hourglass-split') }}"></i>{{ $activity['balance_effect'] }}</span>@endif @if(!empty($activity['reference']))<span>Ref {{ $activity['reference'] }}</span>@endif</div>
                     </div>
                 </article>
                 @endforeach
@@ -611,6 +619,7 @@
                         <option value="all">All Types</option>
                         <option value="buy">Buy</option>
                         <option value="sell">Sell</option>
+                        <option value="deposit">Deposits</option>
                         <option value="withdrawal">Withdrawal</option>
                     </select>
                 </div>

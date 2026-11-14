@@ -28,7 +28,7 @@ class ReconcileCryptoDeposits extends Command
         $errors = 0;
         $deposits = CryptoDeposit::query()
             ->where(function ($query) {
-                $query->where('status', 'pending')
+                $query->whereIn('status', ['pending', 'awaiting_admin_review'])
                     ->orWhere(function ($late) {
                         $late->where('status', 'expired')->where('payment_data->local_window_expired', true);
                     });

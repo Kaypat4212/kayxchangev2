@@ -235,7 +235,12 @@ class CryptoWalletService
         $providerStatus = strtolower((string) ($webhookData['payment_status'] ?? $webhookData['status'] ?? ''));
         $paidNow = (float)($webhookData['actually_paid'] ?? $webhookData['payer_amount'] ?? 0);
         $expectedNow = (float)data_get($deposit->payment_data, 'expected_crypto_amount', 0);
-        $hasPartialAmount = $expectedNow > 0 && $paidNow > 0 && $paidNow + 0.00000001 < $expectedNow;
+        // NOWPayments can report `finished` after accepting a slightly lower
+        // amount (for example, an exchange-rate or network-fee adjustment).
+        // Its final status is authoritative; credit the actual received amount
+        // instead of downgrading a settled invoice to partially paid.
+        $isFinalNowPayment = $provider === 'nowpayments' && $providerStatus === 'finished';
+        $hasPartialAmount = !$isFinalNowPayment && $expectedNow > 0 && $paidNow > 0 && $paidNow + 0.00000001 < $expectedNow;
         if ($isLateLocalPayment && $provider === 'nowpayments' && $paidNow > 0) {
             $lateNoticeSent = (bool)data_get($deposit->payment_data, 'late_payment_notice_sent', false);
             $deposit->received_amount = $paidNow;
@@ -257,12 +262,12 @@ class CryptoWalletService
                     ['type'=>'crypto_deposit_late_payment','deposit_id'=>$deposit->id,'currency'=>$deposit->currency]
                 );
             }
-            if ($providerStatus === 'partially_paid' || $hasPartialAmount) {
+            if (!$isFinalNowPayment && ($providerStatus === 'partially_paid' || $hasPartialAmount)) {
                 $this->recordPartialNowPayment($deposit, $webhookData, $providerStatus ?: 'partially_paid', $paidNow, $expectedNow);
                 return;
             }
         }
-        if ($provider === 'nowpayments' && ($providerStatus === 'partially_paid' || $hasPartialAmount)) {
+        if ($provider === 'nowpayments' && !$isFinalNowPayment && ($providerStatus === 'partially_paid' || $hasPartialAmount)) {
             $this->recordPartialNowPayment($deposit, $webhookData, $providerStatus, $paidNow, $expectedNow);
             return;
         }
@@ -299,8 +304,14 @@ class CryptoWalletService
             || filter_var(AdminSetting::getSetting('crypto_deposit_admin_review_enabled', '1'), FILTER_VALIDATE_BOOLEAN))
             && empty($webhookData['manual_review'])
             && empty(data_get($deposit->payment_data, 'admin_review_approved'))) {
+            $reviewNoticeSent = (bool)data_get($deposit->payment_data, 'admin_review_notice_sent', false);
+            $deposit->payment_data = array_merge($deposit->payment_data ?? [], [
+                'admin_review_notice_sent' => true,
+                'admin_review_required' => true,
+            ]);
             if ($deposit->status === 'awaiting_admin_review' && !empty(data_get($deposit->payment_data, 'admin_review_required'))) {
                 $deposit->save();
+                if (!$reviewNoticeSent) $this->notifyUserDepositAwaitingReview($deposit, $finalReceivedAmount, $provider, $providerStatus);
                 return; // Prevent repeated IPNs/poller runs from repeatedly alerting the review queue.
             }
             $deposit->received_amount = $finalReceivedAmount > 0 ? $finalReceivedAmount : (float)($deposit->received_amount ?? 0);
@@ -310,6 +321,7 @@ class CryptoWalletService
                 'admin_review_received_at' => now()->toIso8601String(),
             ]);
             $deposit->save();
+            if (!$reviewNoticeSent) $this->notifyUserDepositAwaitingReview($deposit, (float)$deposit->received_amount, $provider, $providerStatus);
             try {
                 app(AdminTradeAlertService::class)->sendTriggeredAlert('crypto_deposit', [
                     'reference' => 'DEP-' . $deposit->id,
@@ -402,6 +414,23 @@ class CryptoWalletService
         });
     }
 
+    private function notifyUserDepositAwaitingReview(CryptoDeposit $deposit, float $receivedAmount, string $provider, string $providerStatus): void
+    {
+        try {
+            $providerName = $provider === 'nowpayments' ? 'NOWPayments' : ucfirst($provider ?: 'Payment provider');
+            \App\Models\Notification::createForUser(
+                (int)$deposit->user_id,
+                'success',
+                'Crypto payment confirmed',
+                $providerName . ' confirmed ' . number_format($receivedAmount, 8, '.', '') . ' ' . strtoupper($deposit->currency)
+                    . ' for your deposit. You do not need to send more for this invoice. Your wallet will be updated after admin review.',
+                ['type'=>'crypto_deposit_review','deposit_id'=>$deposit->id,'provider'=>$provider,'provider_status'=>$providerStatus,'received_amount'=>$receivedAmount,'currency'=>strtoupper($deposit->currency)]
+            );
+        } catch (\Throwable $exception) {
+            Log::warning('Could not notify user about confirmed crypto deposit review.', ['deposit_id'=>$deposit->id,'error'=>$exception->getMessage()]);
+        }
+    }
+
     /** Persist partial provider payments and notify the account once per newly received amount. */
     private function recordPartialNowPayment(CryptoDeposit $deposit, array $webhookData, string $providerStatus, float $paid, float $expected): void
     {
@@ -465,13 +494,13 @@ class CryptoWalletService
     }
 
     /** Refresh provider status and public Bitcoin confirmation progress for an owned deposit. */
-    public function refreshDepositStatus(CryptoDeposit $deposit): CryptoDeposit
+    public function refreshDepositStatus(CryptoDeposit $deposit, bool $force = false): CryptoDeposit
     {
         $paymentData = $deposit->payment_data ?? [];
         $provider = strtolower((string)($paymentData['provider'] ?? 'cryptomus'));
-        if (in_array($deposit->status, ['pending', 'expired'], true) && $provider === 'nowpayments' && !empty($paymentData['provider_payment_id'])) {
+        if (in_array($deposit->status, ['pending', 'expired', 'awaiting_admin_review'], true) && $provider === 'nowpayments' && !empty($paymentData['provider_payment_id'])) {
             $lastCheck = (int) Cache::get('nowpayments.deposit.status_check.' . $deposit->id, 0);
-            if (time() - $lastCheck < 30) return $deposit;
+            if (!$force && time() - $lastCheck < 30) return $deposit;
             Cache::put('nowpayments.deposit.status_check.' . $deposit->id, time(), now()->addMinutes(10));
             try {
                 $providerData = $this->nowPaymentsService->paymentStatus((string)$paymentData['provider_payment_id']);

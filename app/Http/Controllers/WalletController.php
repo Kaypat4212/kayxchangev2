@@ -339,6 +339,12 @@ class WalletController extends Controller
                 $inputDetails
             );
 
+            // Keep NOWPayments customers on our live status page so partial
+            // payment instructions and provider status polling stay visible.
+            if (($result['provider'] ?? null) === 'nowpayments') {
+                return redirect()->route('wallet.deposit.success', $result['deposit']->id);
+            }
+
             if ($result['payment_url']) {
                 return redirect($result['payment_url']);
             }
