@@ -2,14 +2,13 @@
   "expo": {
     "name": "Trade With Kay",
     "slug": "tradewithkay",
+    "description": "KayXchange crypto and finance platform, powered by the live tradewithkay.com website.",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "tradewithkay",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
       "backgroundColor": "#0f1419"
     },
     "assetBundlePatterns": [
@@ -19,7 +18,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.tradewithkay.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Use Face ID to unlock KayXchange on this device."
       }
     },
     "android": {
@@ -34,13 +34,22 @@
       ]
     },
     "plugins": [
-      "expo-notifications"
+      "expo-notifications",
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow KayXchange to use Face ID to unlock the app."
+        }
+      ]
     ],
     "extra": {
       "websiteUrl": "https://tradewithkay.com",
       "eas": {
-        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+        "projectId": "fb372d03-8920-4585-b680-7718cf3d25a2"
       }
-    }
+    },
+    "owner": "patrickezike66"
   }
 }
