@@ -243,6 +243,7 @@ class AdminSettingsController extends Controller
             // Keep credential rows encrypted even when older database metadata is wrong.
             $isCredential = $row->is_encrypted || preg_match('/api.?key|secret|password|token|credential/i', (string) $key);
             if ($isCredential) {
+                if (in_array((string) $key, $requestedCredentialClears, true)) continue;
                 if ($value === null || trim((string) $value) === '') continue;
 
                 $plainValue = trim((string) $value);
@@ -270,16 +271,21 @@ class AdminSettingsController extends Controller
             $isCredential = $row->is_encrypted || preg_match('/api.?key|secret|password|token|credential/i', (string) $key);
             if (!$isCredential) continue;
 
-            // Saving a replacement takes precedence if both a new value and
-            // the clear checkbox are submitted for the same credential.
-            if (array_key_exists($key, $data) && trim((string) $data[$key]) !== '') continue;
-
-            $previousValue = (string) AdminSetting::getSetting((string) $key, '');
-            if ($previousValue === '') continue;
+            // Clear the stored value directly. Decryption may fail on legacy
+            // rows with stale metadata or an old APP_KEY, but that must not
+            // prevent the administrator from removing the unusable secret.
+            $hadStoredValue = $row->getRawOriginal('value') !== null
+                && (string) $row->getRawOriginal('value') !== '';
             $row->is_encrypted = true;
             $row->value = '';
             $row->save();
             $clearedCredentials[] = $row->label ?: $key;
+            if (!$hadStoredValue) {
+                \Illuminate\Support\Facades\Log::info('Admin credential clear requested for an already-empty setting.', [
+                    'setting_key' => $key,
+                    'admin_id' => $request->user()->id,
+                ]);
+            }
         }
 
         if ($changedCredentials) $securityAlerts->credentialChanged($request->user(), array_values(array_unique($changedCredentials)));

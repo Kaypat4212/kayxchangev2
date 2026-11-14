@@ -337,7 +337,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         <textarea name="{{ $row->key }}" rows="3" style="font-size:.82rem;">{{ $row->value ?? '' }}</textarea>
                     @elseif($row->key === 'nowpayments_api_key')
                         <div class="input-group">
-                            <input type="password" name="{{ $row->key }}" id="nowpayments-api-key-field" placeholder="{{ $row->display_value ?: 'Enter API key' }}" autocomplete="new-password" spellcheck="false">
+                            <input type="password" name="{{ $row->key }}" id="nowpayments-api-key-field" placeholder="{{ $row->display_value ?: 'Enter API key' }}" autocomplete="new-password" spellcheck="false" oninput="credentialReplacementTyped(this)">
                             <button type="button" class="btn btn-outline-secondary" id="nowpayments-api-key-preview" onclick="previewNowPaymentsApiKey()" aria-label="Preview saved NOWPayments API key" aria-pressed="false">
                                 <i class="bi bi-eye me-1" aria-hidden="true"></i>Preview
                             </button>
@@ -347,7 +347,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved API key</label>
                     @elseif($row->key === 'nowpayments_ipn_secret')
                         <div class="input-group">
-                            <input type="password" name="{{ $row->key }}" id="nowpayments-ipn-secret-field" placeholder="{{ $row->display_value ?: 'Enter IPN secret' }}" autocomplete="new-password" spellcheck="false">
+                            <input type="password" name="{{ $row->key }}" id="nowpayments-ipn-secret-field" placeholder="{{ $row->display_value ?: 'Enter IPN secret' }}" autocomplete="new-password" spellcheck="false" oninput="credentialReplacementTyped(this)">
                             <button type="button" class="btn btn-outline-secondary" id="nowpayments-ipn-secret-preview" onclick="previewNowPaymentsIpnSecret()" aria-label="Preview saved NOWPayments IPN secret" aria-pressed="false">
                                 <i class="bi bi-eye me-1" aria-hidden="true"></i>Preview
                             </button>
@@ -356,7 +356,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         <div id="nowpayments-ipn-secret-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved IPN secret stays masked until you preview it.</div>
                         <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved IPN secret</label>
                     @elseif($row->is_encrypted)
-                        <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password">
+                        <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password" oninput="credentialReplacementTyped(this)">
                         <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved {{ strtolower($row->label ?? 'credential') }}</label>
                     @else
                         <input type="text" name="{{ $row->key }}" value="{{ $row->value ?? '' }}" placeholder="{{ $row->label }}">
@@ -471,7 +471,32 @@ function confirmCredentialClear(checkbox) {
     if (!checkbox.checked) return;
     if (!window.confirm('Clear this saved credential? Any feature using it may stop working until you save a replacement.')) {
         checkbox.checked = false;
+        return;
     }
+    const credentialField = Array.from(document.querySelectorAll('.field-input input[name]'))
+        .find(input => input.name === checkbox.value);
+    if (credentialField) {
+        credentialField.value = '';
+        credentialField.type = 'password';
+        delete credentialField.dataset.loadedSavedKey;
+        delete credentialField.dataset.loadedSavedSecret;
+    }
+    const previewButton = checkbox.value === 'nowpayments_api_key'
+        ? document.getElementById('nowpayments-api-key-preview')
+        : checkbox.value === 'nowpayments_ipn_secret'
+            ? document.getElementById('nowpayments-ipn-secret-preview')
+            : null;
+    if (previewButton) {
+        previewButton.innerHTML = '<i class="bi bi-eye me-1" aria-hidden="true"></i>Preview';
+        previewButton.setAttribute('aria-pressed', 'false');
+    }
+}
+
+function credentialReplacementTyped(input) {
+    if (!input.value.trim()) return;
+    const clearCheckbox = Array.from(document.querySelectorAll('input[name="clear_settings[]"]'))
+        .find(checkbox => checkbox.value === input.name);
+    if (clearCheckbox?.checked) clearCheckbox.checked = false;
 }
 
 function showGroup(name, el) {
