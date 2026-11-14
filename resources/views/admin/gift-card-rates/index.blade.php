@@ -143,7 +143,7 @@ select.gc-mini-input option{background:var(--kx-card);}
 <div class="container-xl">
 
     <h1 class="gc-page-title"><i class="bi bi-gift-fill me-2" style="color:#00cc00"></i>Gift Card Rates</h1>
-    <p class="gc-page-sub">Set buy &amp; sell rates (₦) for each gift card country. Toggle cards on/off to show or hide them from users.</p>
+    <p class="gc-page-sub">Set buy &amp; sell rates (₦) for each gift card country. The customer purchase feature uses the <strong>Sell Rate</strong> as the amount KayXchange charges per face-value unit. Gift card selling stays unavailable.</p>
 
     {{-- Alerts --}}
     @if(session('success'))
@@ -152,6 +152,11 @@ select.gc-mini-input option{background:var(--kx-card);}
     @if($errors->any())
     <div class="gc-alert err"><i class="bi bi-x-circle-fill me-2"></i>{{ $errors->first() }}</div>
     @endif
+
+    <div class="gc-add-card mb-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+        <div><div class="gc-add-title mb-1"><i class="bi bi-toggles"></i> Customer gift card purchases</div><div style="font-size:.78rem;color:var(--kx-muted)">Only active USA and UK cards with a customer purchase rate are shown. Selling remains unavailable.</div></div>
+        <div class="d-flex align-items-center gap-2"><span class="badge {{ $giftCardsEnabled ? 'bg-success' : 'bg-secondary' }}">{{ $giftCardsEnabled ? 'Purchases on' : 'Purchases off' }}</span><form method="POST" action="{{ route('admin.gift-card-rates.toggle-feature') }}">@csrf<input type="hidden" name="enabled" value="{{ $giftCardsEnabled ? 0 : 1 }}"><button class="gc-save-btn" type="submit">{{ $giftCardsEnabled ? 'Turn purchases off' : 'Turn purchases on' }}</button></form><a class="btn btn-outline-light btn-sm" href="{{ route('admin.gift-card-orders.index') }}"><i class="bi bi-inbox me-1"></i>Purchase requests</a></div>
+    </div>
 
     {{-- Stats --}}
     @php

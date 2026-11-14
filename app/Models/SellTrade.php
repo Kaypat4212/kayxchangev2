@@ -50,6 +50,7 @@ class SellTrade extends Model
         'naira_amount',
         'rate_used',
         'wallet_address',
+        'sender_wallet_address',
         'payment_proof',
         'admin_payment_proof',
         'transaction_ref',

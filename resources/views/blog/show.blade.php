@@ -87,6 +87,13 @@
 
 /* Divider */
 .bls-divider { border-top: 1px solid var(--blog-border); margin: 2rem 0; }
+.bls-community-card { display:flex;align-items:center;gap:14px;padding:16px;border:1px solid rgba(0,204,0,.2);border-radius:16px;background:linear-gradient(120deg,rgba(0,204,0,.09),rgba(255,255,255,.025)); }
+.bls-community-icon { width:44px;height:44px;display:grid;place-items:center;flex:0 0 44px;border-radius:14px;background:rgba(0,204,0,.12);color:#55e675;font-size:1.2rem; }
+.bls-community-copy { display:grid;gap:3px;flex:1;min-width:0; }
+.bls-community-copy strong { color:#f3fff5;font-size:.9rem; }
+.bls-community-copy span { color:var(--blog-muted);font-size:.76rem;line-height:1.5; }
+.bls-community-button { display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;padding:10px 14px;border:1px solid rgba(0,204,0,.28);border-radius:11px;background:#00b935;color:#061107;text-decoration:none;font-size:.75rem;font-weight:700;transition:transform .18s,box-shadow .18s; }
+.bls-community-button:hover { transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,204,0,.18);color:#061107; }
 
 /* Related posts */
 .bls-related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
@@ -104,7 +111,7 @@
 .bls-rel-title { font-size: .85rem; font-weight: 600; color: #fff; line-height: 1.4; }
 .bls-rel-date { font-size: .72rem; color: var(--blog-muted); margin-top: .5rem; }
 
-@media(max-width:600px) { .bls-title { font-size: 1.3rem; } }
+@media(max-width:600px) { .bls-title { font-size: 1.3rem; }.bls-community-card{align-items:flex-start;flex-wrap:wrap}.bls-community-copy{flex-basis:calc(100% - 60px)}.bls-community-button{width:100%} }
 </style>
 @endpush
 
@@ -136,6 +143,21 @@
     <div class="bls-body">
         {!! $post->content !!}
     </div>
+
+    <div class="bls-divider"></div>
+
+    <section class="bls-community-card">
+        <div class="bls-community-icon"><i class="bi bi-chat-square-heart"></i></div>
+        <div class="bls-community-copy">
+            <strong>Continue the conversation</strong>
+            <span>Share a thoughtful take or ask the KayXchange community about this article.</span>
+        </div>
+        @auth
+            <a class="bls-community-button" href="{{ route('forum.create', ['blog' => $post->slug]) }}"><i class="bi bi-chat-dots-fill"></i>Discuss this article</a>
+        @else
+            <a class="bls-community-button" href="{{ route('login') }}"><i class="bi bi-box-arrow-in-right"></i>Sign in to discuss</a>
+        @endauth
+    </section>
 
     <div class="bls-divider"></div>
 

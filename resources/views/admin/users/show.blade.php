@@ -69,10 +69,20 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             <small>Viewing details for {{ $user->name }}</small>
         </div>
         <div class="d-flex gap-2">
+            @if(!$user->kyc_verified && (!$latestKyc || $latestKyc->status !== 'pending'))
+                <form method="POST" action="{{ route('admin.users.kyc-reminder', $user) }}" onsubmit="return confirm('Send a KYC reminder email to {{ addslashes($user->email) }}?')">
+                    @csrf
+                    <button type="submit" class="btn-kx-outline" style="border-color:rgba(245,158,11,.35);color:#fbbf24"><i class="bi bi-envelope-check me-1"></i>Send KYC reminder</button>
+                </form>
+            @elseif(!$user->kyc_verified && $latestKyc?->status === 'pending')
+                <span class="kx-badge kx-badge-yellow align-self-center"><i class="bi bi-hourglass-split me-1"></i>KYC under review</span>
+            @endif
             <a href="{{ route('admin.users.edit', $user->id) }}" class="btn-kx-green"><i class="bi bi-pencil me-1"></i>Edit</a>
             <a href="{{ route('admin.users.index') }}" class="btn-kx-outline"><i class="bi bi-arrow-left me-1"></i>Back</a>
         </div>
     </div>
+    @if(session('success'))<div class="kx-alert-success"><i class="bi bi-check-circle-fill"></i>{{ session('success') }}</div>@endif
+    @if($errors->any())<div class="kx-alert-error"><i class="bi bi-exclamation-triangle-fill"></i>{{ $errors->first() }}</div>@endif
 
     <div class="row g-3">
         <div class="col-md-4">

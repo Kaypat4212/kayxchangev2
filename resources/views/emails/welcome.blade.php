@@ -54,7 +54,7 @@
       </table>
 
       <p style="color:#e4e8f0;font-size:14px;line-height:1.8;margin:0 0 20px;">
-        You can now <strong style="color:#00cc00;">buy and sell crypto</strong> instantly with Naira, manage your wallet, and track all your transactions in one place.
+        Your dashboard is ready. You can explore KayXchange, manage your wallets, and follow your transactions in one place. Identity verification is required before withdrawals and some account features become available.
       </p>
 
       <!-- Feature pills -->
@@ -93,7 +93,7 @@
       <!-- Onboarding steps -->
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:24px;">
         <tr><td style="background:#1a2035;border:1px solid rgba(0,204,0,0.12);border-radius:12px;padding:20px 22px;">
-          <div style="font-size:12px;color:#00cc00;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:14px;">&#x1F4CB; Quick Setup — 3 Easy Steps</div>
+          <div style="font-size:12px;color:#00cc00;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:14px;">&#x1F4CB; Getting Started</div>
           <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
             <tr>
               <td style="padding:6px 0;vertical-align:top;width:28px;"><div style="width:22px;height:22px;border-radius:50%;background:rgba(0,204,0,.2);border:1px solid rgba(0,204,0,.4);text-align:center;line-height:22px;font-size:11px;font-weight:700;color:#00cc00;">1</div></td>
@@ -105,7 +105,11 @@
             </tr>
             <tr>
               <td style="padding:6px 0;vertical-align:top;width:28px;"><div style="width:22px;height:22px;border-radius:50%;background:rgba(0,204,0,.2);border:1px solid rgba(0,204,0,.4);text-align:center;line-height:22px;font-size:11px;font-weight:700;color:#00cc00;">3</div></td>
-              <td style="padding:6px 0;vertical-align:top;"><div style="font-size:13px;color:#e4e8f0;font-weight:600;">Start trading!</div><div style="font-size:12px;color:#7a8599;margin-top:2px;">Buy &amp; sell Bitcoin, USDT, and more — instantly at great rates.</div></td>
+              <td style="padding:6px 0;vertical-align:top;"><div style="font-size:13px;color:#e4e8f0;font-weight:600;">Complete identity verification</div><div style="font-size:12px;color:#7a8599;margin-top:2px;">Submit your documents securely from your dashboard to enable withdrawals.</div></td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;vertical-align:top;width:28px;"><div style="width:22px;height:22px;border-radius:50%;background:rgba(0,204,0,.2);border:1px solid rgba(0,204,0,.4);text-align:center;line-height:22px;font-size:11px;font-weight:700;color:#00cc00;">4</div></td>
+              <td style="padding:6px 0;vertical-align:top;"><div style="font-size:13px;color:#e4e8f0;font-weight:600;">Explore your dashboard</div><div style="font-size:12px;color:#7a8599;margin-top:2px;">Review rates, wallets, and available services before placing a transaction.</div></td>
             </tr>
           </table>
         </td></tr>

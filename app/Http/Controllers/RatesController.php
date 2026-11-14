@@ -31,7 +31,9 @@ class RatesController extends Controller
     // Display the rates for gift cards
     public function giftCardRates()
     {
-        return view('rates.giftcard');
+        $rates = \App\Models\GiftCardRate::where('is_active', true)->whereIn('country', ['US', 'UK'])->orderBy('category')->orderBy('name')->get();
+        $enabled = filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        return view('rates.giftcard', compact('rates', 'enabled'));
     }
 
     // Show the edit form for a specific rate

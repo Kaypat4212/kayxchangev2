@@ -8,9 +8,13 @@
         <div class="card-body p-4 p-lg-5">
             <div class="small text-success text-uppercase fw-bold">Wallet pricing</div>
             <h1 class="h3 fw-bold mt-2">USD wallet rates</h1>
-            <p class="text-secondary">Set independent NGN prices for USD wallet transactions. These rates do not change crypto trade rates.</p>
+            <p class="text-secondary">Manage the USD to Naira rates shown to users. You can copy the active platform USDT rates below, then adjust either rate manually.</p>
             @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
             @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+            <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap p-3 mb-4 rounded-3" style="background:#101713;border:1px solid rgba(255,255,255,.08)">
+                <div><div class="small text-secondary text-uppercase fw-bold">Current platform USDT rates</div><div class="mt-1">Buy <strong class="text-success">₦{{ $usdtBuyRate ? number_format((float)$usdtBuyRate,2) : '—' }}</strong><span class="mx-2 text-secondary">·</span>Sell <strong class="text-success">₦{{ $usdtSellRate ? number_format((float)$usdtSellRate,2) : '—' }}</strong></div></div>
+                <form method="POST" action="{{ route('admin.wallet-rates.sync-usdt') }}" onsubmit="return confirm('Copy the current platform USDT buy and sell rates to the USD wallet rates?')">@csrf<button class="btn btn-outline-success" type="submit" {{ !$usdtBuyRate || !$usdtSellRate ? 'disabled' : '' }}><i class="bi bi-arrow-repeat me-1"></i>Update from platform USDT</button></form>
+            </div>
             <form method="POST" action="{{ route('admin.wallet-rates.update') }}">
                 @csrf @method('PUT')
                 <div class="row g-3">

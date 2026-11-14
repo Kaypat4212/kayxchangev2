@@ -1,0 +1,51 @@
+@extends('adminlayout')
+
+@section('content')
+<div class="container-fluid py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <div>
+            <div class="text-uppercase small text-success fw-bold mb-2">Operations · Diagnostics</div>
+            <h1 class="h3 text-white mb-1">Laravel error logs</h1>
+            <p class="text-secondary mb-0">Review a recent log excerpt and ask AI for likely causes and practical fixes.</p>
+        </div>
+        <a class="btn btn-outline-light" href="{{ route('admin.logs.index', ['file' => $selected]) }}"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</a>
+    </div>
+
+    @if(session('error'))<div class="alert alert-warning">{{ session('error') }}</div>@endif
+    @if($logError)<div class="alert alert-info">{{ $logError }} Check that Laravel can read <code>storage/logs</code> on the server.</div>@endif
+
+    <div class="card bg-dark border-secondary mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ route('admin.logs.index') }}" class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label for="logFile" class="form-label text-light">Log file</label>
+                    <select id="logFile" name="file" class="form-select bg-black text-light border-secondary" onchange="this.form.submit()">
+                        @forelse($files as $file)<option value="{{ $file }}" @selected($selected === $file)>{{ $file }}</option>@empty<option value="">No Laravel logs found</option>@endforelse
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    @if($selected)
+                    <button form="analyzeLogForm" class="btn btn-success w-100"><i class="bi bi-stars me-1"></i>Diagnose recent errors with AI</button>
+                    @endif
+                </div>
+            </form>
+            @if($selected)
+            <form id="analyzeLogForm" method="POST" action="{{ route('admin.logs.analyze') }}" class="d-none">@csrf<input type="hidden" name="file" value="{{ $selected }}"></form>
+            @endif
+            <div class="small text-secondary mt-3">Only the last 180 lines (up to 18 KB) are sent for analysis. Common credentials and personal contact details are redacted first.</div>
+        </div>
+    </div>
+
+    @if($analysis)
+    <section class="card border-success mb-4">
+        <div class="card-header bg-success bg-opacity-10 text-white"><i class="bi bi-lightbulb me-2"></i>AI diagnosis and suggested fixes</div>
+        <div class="card-body text-light" style="white-space:pre-wrap">{{ $analysis }}</div>
+    </section>
+    @endif
+
+    <section class="card bg-dark border-secondary">
+        <div class="card-header border-secondary d-flex justify-content-between align-items-center text-light"><span><i class="bi bi-file-earmark-text me-2"></i>Latest log excerpt</span><span class="badge text-bg-secondary">Redacted · latest 220 lines</span></div>
+        <div class="card-body p-0"><pre class="m-0 p-3 text-light" style="max-height:65vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem">{{ $content !== '' ? $content : 'No log contents to display.' }}</pre></div>
+    </section>
+</div>
+@endsection

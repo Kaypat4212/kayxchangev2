@@ -221,6 +221,43 @@
     @keyframes kxSkel { 0%,100%{opacity:0.45} 50%{opacity:0.85} }
     @keyframes kx-pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
 
+    /* First visit dashboard guide */
+    .kx-tour-trigger { display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid rgba(0,204,0,.28);border-radius:999px;background:rgba(0,204,0,.08);color:#8df58d;font:600 .76rem 'Poppins',sans-serif;transition:all .2s ease; }
+    .kx-tour-trigger:hover { background:rgba(0,204,0,.16);color:#fff;transform:translateY(-1px); }
+    body.light-mode .kx-tour-trigger { color:#087b18;background:rgba(0,153,0,.07); }
+    #kxDashboardTour { position:fixed;inset:0;z-index:20000;display:none; }
+    #kxDashboardTour.is-open { display:block; }
+    #kxDashboardTour::before { content:'';position:absolute;inset:0;z-index:0; }
+    .kx-tour-mask { position:absolute;inset:0;z-index:1;width:100%;height:100%;pointer-events:none; }
+    .kx-tour-tip { position:fixed;z-index:2;width:min(360px,calc(100vw - 32px));padding:20px;border:1px solid rgba(130,255,150,.22);border-radius:20px;background:linear-gradient(145deg,#142018,#0b120d);color:#f2fff3;box-shadow:0 24px 80px rgba(0,0,0,.55);animation:kxTourEnter .28s cubic-bezier(.2,.8,.2,1) both; }
+    body.light-mode .kx-tour-tip { background:linear-gradient(145deg,#fff,#f2faf3);color:#142318;border-color:rgba(0,130,20,.2);box-shadow:0 24px 80px rgba(20,60,20,.22); }
+    .kx-tour-tip.is-centered { position:fixed;top:50%;left:50%;transform:translate(-50%,-50%); }
+    .kx-tour-eyebrow { display:flex;align-items:center;gap:8px;color:#75e987;font-size:.67rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase;margin-bottom:9px; }
+    body.light-mode .kx-tour-eyebrow { color:#11852a; }
+    .kx-tour-eyebrow i { font-size:1rem; }
+    .kx-tour-title { margin:0 0 7px;font-size:1.13rem;font-weight:700;letter-spacing:-.02em; }
+    .kx-tour-copy { margin:0;color:rgba(235,247,236,.68);font-size:.83rem;line-height:1.65; }
+    body.light-mode .kx-tour-copy { color:#526557; }
+    .kx-tour-progress { display:flex;gap:5px;margin:17px 0 15px; }
+    .kx-tour-progress span { height:4px;flex:1;border-radius:5px;background:rgba(255,255,255,.1);transition:background .2s,transform .2s; }
+    body.light-mode .kx-tour-progress span { background:rgba(0,0,0,.1); }
+    .kx-tour-progress span.is-active,.kx-tour-progress span.is-done { background:#00cc4a; }
+    .kx-tour-progress span.is-active { transform:scaleY(1.5); }
+    .kx-tour-footer { display:flex;align-items:center;gap:9px; }
+    .kx-tour-step-count { margin-right:auto;color:rgba(235,247,236,.45);font-size:.7rem;font-weight:600; }
+    body.light-mode .kx-tour-step-count { color:#78877b; }
+    .kx-tour-button { border:1px solid rgba(255,255,255,.12);border-radius:11px;padding:9px 12px;background:rgba(255,255,255,.05);color:inherit;font:600 .75rem 'Poppins',sans-serif;transition:all .18s; }
+    body.light-mode .kx-tour-button { border-color:rgba(0,0,0,.12);background:#fff; }
+    .kx-tour-button:hover { transform:translateY(-1px);border-color:rgba(0,204,70,.45); }
+    .kx-tour-button:disabled { opacity:.4;cursor:not-allowed;transform:none; }
+    .kx-tour-button-primary { background:linear-gradient(135deg,#00c83d,#078d29);color:#031306;border-color:transparent;font-weight:700;min-width:82px; }
+    .kx-tour-highlight { position:relative!important;z-index:20001!important;outline:2px solid rgba(86,255,119,.92)!important;outline-offset:5px!important;border-radius:16px!important;animation:kxTourGlow 1.7s ease-in-out infinite; }
+    body.kx-tour-running .kx-tour-highlight { pointer-events:none!important; }
+    @keyframes kxTourGlow { 0%,100%{filter:drop-shadow(0 0 0 rgba(0,255,74,0))} 50%{filter:drop-shadow(0 0 9px rgba(0,255,74,.52))} }
+    @keyframes kxTourEnter { from{opacity:0;translate:0 9px} to{opacity:1;translate:0 0} }
+    @media(max-width:575.98px) { .kx-tour-tip{padding:17px;border-radius:17px}.kx-tour-title{font-size:1.03rem}.kx-tour-copy{font-size:.78rem}.kx-tour-button{padding:9px 10px} }
+    @media(prefers-reduced-motion:reduce) { .kx-tour-tip,.kx-tour-highlight{animation:none!important;transition:none!important} }
+
     /* ===== Notification Dropdown ===== */
     .kx-dropdown { background:#0f1e0f; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:8px; min-width:300px; max-width:340px; box-shadow:0 16px 48px rgba(0,0,0,0.5); max-height:420px; overflow-y:auto; }
     body.light-mode .kx-dropdown { background:#fff; border-color:rgba(0,0,0,0.08); box-shadow:0 8px 28px rgba(0,0,0,0.12); }
@@ -283,7 +320,7 @@
         @endif
 
         <!-- ===== Dashboard Header ===== -->
-        <div class="kx-db-head">
+        <div class="kx-db-head" id="kx-tour-welcome">
             <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
                 <div>
                     <div class="kx-db-label">Dashboard</div>
@@ -300,27 +337,19 @@
                         <span style="font-size:0.72rem;color:rgba(255,255,255,0.26)">{{ now()->format('l, d M Y') }}</span>
                     </div>
                 </div>
-                {{-- Notification bell & theme toggle live in the top navbar (components/navbar) --}}
+                <button type="button" class="kx-tour-trigger" id="kx-start-dashboard-tour"><i class="bi bi-magic"></i>Dashboard guide</button>
             </div>
         </div>
 
         <!-- ===== Balance + Stats Row ===== -->
-        <div class="row g-4 mb-4">
+        <div class="row g-4 mb-4" id="kx-tour-balance">
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="d-grid gap-3">
                 <div class="kx-balance-card" style="height:auto">
                     <div class="kx-balance-label">Available Balance</div>
                     <div class="kx-balance-amount">₦{{ number_format(Auth::user()->balance, 2) }}</div>
-                    @php
-                        $usdEquiv = $usdtRate > 0 ? Auth::user()->balance / $usdtRate : 0;
-                    @endphp
                     <div class="kx-balance-sub" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                         <span>KayXchange Naira Wallet</span>
-                        @if($usdtRate > 0)
-                        <span class="kx-usd-equiv" title="Based on USDT sell rate ₦{{ number_format($usdtRate,2) }}/USD">
-                            ≈ ${{ number_format($usdEquiv, 2) }} USD
-                        </span>
-                        @endif
                     </div>
                     <div class="kx-bal-actions">
                         <a href="{{ route('deposits.index') }}" class="kx-bal-btn kx-bal-dep">
@@ -335,19 +364,12 @@
                     </div>
                 </div>
                 <div class="kx-balance-card" style="height:auto;min-height:0;padding:22px 26px">
-                    <div class="kx-balance-label">USD Wallet Balance</div>
-                    <div class="kx-balance-amount">${{ number_format($usdWalletBalance ?? 0, 2) }}</div>
-                    <div class="kx-balance-sub">KayXchange USD Wallet</div>
-                    <div class="kx-bal-actions" style="grid-template-columns:1fr;margin-top:.75rem">
-                        <a href="{{ route('wallet.usd') }}" class="kx-bal-btn kx-bal-send"><i class="bi bi-wallet2"></i>Open USD Wallet</a>
-                    </div>
-                </div>
-                <div class="kx-balance-card" style="height:auto;min-height:0;padding:22px 26px">
-                    <div class="kx-balance-label">Combined Wallet Value</div>
-                    <div class="kx-balance-amount" style="font-size:clamp(1.45rem,3vw,2.15rem)">{{ $totalWalletUsd !== null ? '$'.number_format($totalWalletUsd, 2) : '—' }} <span style="font-size:.48em">USD</span></div>
-                    <div class="kx-balance-sub">Estimated value across your active Naira, USD and crypto wallets</div>
-                    <div class="kx-bal-actions" style="grid-template-columns:1fr;margin-top:.75rem">
-                        <a href="{{ route('wallet.index') }}" class="kx-bal-btn kx-bal-dep"><i class="bi bi-pie-chart"></i>View Wallet Breakdown</a>
+                    <div class="kx-balance-label">USD Crypto Portfolio</div>
+                    <div class="kx-balance-amount">{{ $cryptoPortfolioUsd !== null ? '$'.number_format($cryptoPortfolioUsd, 2) : '—' }}</div>
+                    <div class="kx-balance-sub">{{ $cryptoPortfolioStale ? 'Crypto value estimate · market data may be delayed' : 'Estimated USD value of your crypto wallet balances' }}</div>
+                    <div class="kx-bal-actions" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-top:.75rem">
+                        <a href="{{ route('wallet.usd') }}" class="kx-bal-btn kx-bal-send"><i class="bi bi-wallet2"></i>USD Wallet</a>
+                        <a href="{{ route('wallet.usd', ['withdraw' => 1]) }}" class="kx-bal-btn kx-bal-wd"><i class="bi bi-arrow-left-right"></i>Withdraw to NGN</a>
                     </div>
                 </div>
                 </div>
@@ -425,7 +447,7 @@
         @endif
 
         <!-- ===== Quick Actions Row ===== -->
-        <div class="kx-card p-3 mb-4">
+        <div class="kx-card p-3 mb-4" id="kx-tour-actions">
             <div class="kx-quick">
                 <a href="{{ Auth::user()->kyc_verified ? route('buy') : route('kyc.form') }}" class="kx-qbtn kx-qi-buy">
                     <div class="kx-qicon"><i class="bi bi-cart-fill"></i></div>
@@ -451,6 +473,10 @@
                     <div class="kx-qicon" style="background:rgba(0,180,255,0.12);"><i class="bi bi-arrow-left-right" style="color:#38bdf8"></i></div>
                     Transfers
                 </a>
+                <a href="{{ route('forum.index') }}" class="kx-qbtn" id="kx-tour-forum" style="background:rgba(56,189,248,0.05);border-color:rgba(56,189,248,0.18);">
+                    <div class="kx-qicon" style="background:rgba(56,189,248,0.12);"><i class="bi bi-chat-square-heart-fill" style="color:#38bdf8"></i></div>
+                    Community Forum
+                </a>
                 <a href="{{ route('transactions.history') }}" class="kx-qbtn kx-qi-hist">
                     <div class="kx-qicon"><i class="bi bi-clock-history"></i></div>
                     History
@@ -462,7 +488,7 @@
             </div>
         </div>
 
-        <div class="kx-card p-3 mb-4">
+        <div class="kx-card p-3 mb-4" id="kx-tour-bills">
             <div class="kx-sec-title mb-3"><i class="bi bi-lightning-charge-fill"></i>Bills & Utilities <span class="kx-sec-tag ms-auto">Airtime · Data · Utilities</span></div>
             <div class="kx-quick">
                 @foreach([
@@ -481,7 +507,7 @@
             </div>
         </div>
 
-        <div class="kx-card p-3 mb-4">
+        <div class="kx-card p-3 mb-4" id="kx-tour-wallets">
             <div class="kx-sec-title mb-3"><i class="bi bi-wallet2"></i>Wallets <span class="kx-sec-tag ms-auto">USD and crypto</span></div>
             <div class="kx-quick">
                 <a href="{{ route('wallet.usd') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-currency-dollar"></i></div>USD Wallet</a>
@@ -534,7 +560,7 @@
         </div>
 
         <!-- ===== Transaction History ===== -->
-        <div class="kx-card p-4 mb-4">
+        <div class="kx-card p-4 mb-4" id="kx-tour-history">
             <div class="kx-sec-title mb-4">
                 <i class="bi bi-receipt-cutoff"></i>Transaction History
                 <div class="ms-auto d-flex gap-2 flex-wrap">
@@ -689,6 +715,176 @@
   <div class="modal-footer border-secondary"><button type="button" class="btn btn-success" data-bs-dismiss="modal">Got it</button></div>
  </div></div>
 </div>
+
+<div id="kxDashboardTour" aria-hidden="true">
+    <svg class="kx-tour-mask" aria-hidden="true" preserveAspectRatio="none">
+        <defs>
+            <mask id="kxTourCutout" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
+                <rect id="kxTourMaskBase" x="0" y="0" width="100%" height="100%" fill="#fff" />
+                <rect id="kxTourMaskHole" x="0" y="0" width="0" height="0" rx="18" fill="#000" />
+            </mask>
+        </defs>
+        <rect id="kxTourShade" x="0" y="0" width="100%" height="100%" fill="rgba(2,8,4,.78)" mask="url(#kxTourCutout)" />
+    </svg>
+    <section class="kx-tour-tip is-centered" id="kxTourTip" role="dialog" aria-modal="true" aria-labelledby="kxTourTitle" aria-describedby="kxTourCopy" tabindex="-1">
+        <div class="kx-tour-eyebrow"><i class="bi bi-stars" aria-hidden="true"></i><span id="kxTourEyebrow">WELCOME TO KAYXCHANGE</span></div>
+        <h2 class="kx-tour-title" id="kxTourTitle">Your dashboard, at a glance</h2>
+        <p class="kx-tour-copy" id="kxTourCopy">We’ll show you where to find your balances, trading tools and account activity. This short guide is optional and can be opened again any time.</p>
+        <div class="kx-tour-progress" id="kxTourProgress" aria-hidden="true"></div>
+        <div class="kx-tour-footer">
+            <button type="button" class="kx-tour-button" id="kxTourSkip">Skip guide</button>
+            <span class="kx-tour-step-count" id="kxTourStepCount">Welcome</span>
+            <button type="button" class="kx-tour-button" id="kxTourBack">Back</button>
+            <button type="button" class="kx-tour-button kx-tour-button-primary" id="kxTourNext">Start <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i></button>
+        </div>
+    </section>
+</div>
+
+<script>
+(function () {
+    const tour = document.getElementById('kxDashboardTour');
+    if (!tour) return;
+
+    const userKey = @json('kayxchange_dashboard_tour_v1_' . Auth::id());
+    const steps = [
+        { title: 'Your dashboard, at a glance', copy: 'We’ll show you where to find your balances, trading tools and account activity. This short guide is optional and can be opened again any time.', icon: 'bi-stars', eyebrow: 'WELCOME TO KAYXCHANGE' },
+        { selector: '#kx-tour-balance', title: 'Your money overview', copy: 'See your available Naira and USD balances, combined wallet value, and use the wallet shortcuts to add or move funds.', icon: 'bi-wallet2', eyebrow: 'BALANCES' },
+        { selector: '#kx-tour-actions .kx-qi-buy', title: 'Buy crypto', copy: 'Start a crypto purchase here. You’ll review the rate, amount and payment instructions before confirming.', icon: 'bi-cart-check', eyebrow: 'BUY' },
+        { selector: '#kx-tour-actions .kx-qi-sell', title: 'Sell crypto', copy: 'Create a sell request and follow its status from your dashboard. Check the coin and network details carefully before sending.', icon: 'bi-arrow-left-right', eyebrow: 'SELL' },
+        { selector: '#kx-tour-actions .kx-qi-dep', title: 'Deposit to your account', copy: 'Choose a deposit method and follow the displayed instructions. Always match the asset and network shown on the deposit page.', icon: 'bi-arrow-down-circle', eyebrow: 'DEPOSIT' },
+        { selector: '#kx-tour-actions .kx-qi-wd', title: 'Withdraw securely', copy: 'Request a withdrawal from here. Some withdrawals require identity verification and admin review before processing.', icon: 'bi-shield-lock', eyebrow: 'WITHDRAW' },
+        { selector: '#kx-tour-bills', title: 'Bills and utilities', copy: 'When enabled, this section lets you access services such as airtime, data, electricity and cable TV. Unavailable services are labelled.', icon: 'bi-lightning-charge', eyebrow: 'EVERYDAY PAYMENTS' },
+        { selector: '#kx-tour-wallets', title: 'Explore your wallets', copy: 'Open your USD wallet, supported crypto wallets, wallet overview or crypto portfolio from these shortcuts.', icon: 'bi-coin', eyebrow: 'WALLETS' },
+        { selector: '#kx-tour-forum', title: 'Join the community', copy: 'Ask questions, discuss crypto news and learn from other members. Posts are moderated; never share your PIN, password or wallet recovery phrase.', icon: 'bi-chat-square-heart', eyebrow: 'COMMUNITY' },
+        { selector: '#kx-tour-history', title: 'Track activity', copy: 'Review recent transactions here, then open the full history when you need more detail. You can restart this guide from the Dashboard guide button.', icon: 'bi-clock-history', eyebrow: 'HISTORY' }
+    ];
+
+    const tip = document.getElementById('kxTourTip');
+    const title = document.getElementById('kxTourTitle');
+    const copy = document.getElementById('kxTourCopy');
+    const eyebrow = document.getElementById('kxTourEyebrow');
+    const count = document.getElementById('kxTourStepCount');
+    const nextButton = document.getElementById('kxTourNext');
+    const backButton = document.getElementById('kxTourBack');
+    const hole = document.getElementById('kxTourMaskHole');
+    const svg = tour.querySelector('svg');
+    let current = 0;
+    let activeTarget = null;
+    let isOpen = false;
+
+    function rememberDone() {
+        try { localStorage.setItem(userKey, 'done'); } catch (_) {}
+    }
+
+    function clearTarget() {
+        if (activeTarget) activeTarget.classList.remove('kx-tour-highlight');
+        activeTarget = null;
+        document.body.classList.remove('kx-tour-running');
+        hole.setAttribute('width', '0');
+        hole.setAttribute('height', '0');
+    }
+
+    function closeTour() {
+        if (!isOpen) return;
+        clearTarget();
+        isOpen = false;
+        tour.classList.remove('is-open');
+        tour.setAttribute('aria-hidden', 'true');
+        rememberDone();
+        document.getElementById('kx-start-dashboard-tour')?.focus({ preventScroll: true });
+    }
+
+    function placeTip(target) {
+        tip.classList.remove('is-centered');
+        tip.style.left = '16px';
+        tip.style.top = '16px';
+        if (!target) {
+            tip.classList.add('is-centered');
+            return;
+        }
+
+        const rect = target.getBoundingClientRect();
+        const width = Math.min(360, window.innerWidth - 32);
+        const tipHeight = tip.offsetHeight;
+        const left = Math.max(16, Math.min(window.innerWidth - width - 16, rect.left + rect.width / 2 - width / 2));
+        const below = rect.bottom + 16 + tipHeight <= window.innerHeight - 16;
+        const top = below ? rect.bottom + 16 : Math.max(16, rect.top - tipHeight - 16);
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+    }
+
+    function paintMask(target) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        if (!target) {
+            hole.setAttribute('width', '0');
+            hole.setAttribute('height', '0');
+            return;
+        }
+        const rect = target.getBoundingClientRect();
+        const pad = 8;
+        const x = Math.max(4, rect.left - pad);
+        const y = Math.max(4, rect.top - pad);
+        const right = Math.min(w - 4, rect.right + pad);
+        const bottom = Math.min(h - 4, rect.bottom + pad);
+        hole.setAttribute('x', x);
+        hole.setAttribute('y', y);
+        hole.setAttribute('width', Math.max(0, right - x));
+        hole.setAttribute('height', Math.max(0, bottom - y));
+    }
+
+    function showStep(index) {
+        if (index >= steps.length) { closeTour(); return; }
+        current = Math.max(0, index);
+        clearTarget();
+        const step = steps[current];
+        activeTarget = step.selector ? document.querySelector(step.selector) : null;
+        if (step.selector && !activeTarget) { showStep(current + 1); return; }
+        if (activeTarget) {
+            activeTarget.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
+            activeTarget.classList.add('kx-tour-highlight');
+            document.body.classList.add('kx-tour-running');
+        }
+
+        title.textContent = step.title;
+        copy.textContent = step.copy;
+        eyebrow.innerHTML = `<i class="bi ${step.icon}" aria-hidden="true"></i><span>${step.eyebrow}</span>`;
+        count.textContent = current === 0 ? 'Welcome' : `${current} of ${steps.length - 1}`;
+        backButton.disabled = current === 0;
+        nextButton.innerHTML = current === steps.length - 1 ? 'Finish <i class="bi bi-check2 ms-1" aria-hidden="true"></i>' : (current === 0 ? 'Start <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>' : 'Next <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>');
+        document.getElementById('kxTourProgress').innerHTML = steps.slice(1).map((_, i) => `<span class="${i + 1 < current ? 'is-done' : ''} ${i + 1 === current ? 'is-active' : ''}"></span>`).join('');
+
+        requestAnimationFrame(() => {
+            if (activeTarget && !activeTarget.isConnected) { showStep(current + 1); return; }
+            paintMask(activeTarget);
+            placeTip(activeTarget);
+        });
+    }
+
+    function startTour() {
+        isOpen = true;
+        current = 0;
+        tour.classList.add('is-open');
+        tour.setAttribute('aria-hidden', 'false');
+        showStep(0);
+        window.setTimeout(() => tip.focus({ preventScroll: true }), 80);
+    }
+
+    document.getElementById('kx-start-dashboard-tour')?.addEventListener('click', startTour);
+    document.getElementById('kxTourSkip').addEventListener('click', closeTour);
+    backButton.addEventListener('click', () => showStep(current - 1));
+    nextButton.addEventListener('click', () => showStep(current + 1));
+    window.addEventListener('resize', () => { if (isOpen) { paintMask(activeTarget); placeTip(activeTarget); } });
+    window.addEventListener('scroll', () => { if (isOpen) { paintMask(activeTarget); placeTip(activeTarget); } }, { passive: true });
+    document.addEventListener('keydown', (event) => { if (isOpen && event.key === 'Escape') closeTour(); });
+
+    let seen = false;
+    try { seen = localStorage.getItem(userKey) === 'done'; } catch (_) {}
+    if (!seen) window.setTimeout(startTour, 650);
+})();
+</script>
+
 <script>
 document.querySelectorAll('[data-coming-soon]').forEach(button=>button.addEventListener('click',()=>{
  const title=document.getElementById('comingSoonTitle'); if(title) title.textContent=button.dataset.comingSoon+' is coming soon';
@@ -717,9 +913,9 @@ document.querySelectorAll('[data-coming-soon]').forEach(button=>button.addEventL
     function fetchRates() {
         const c = document.getElementById('rates-container');
         c.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="kx-skel" style="height:14px;width:55%;margin:0 auto 6px"></div><div class="kx-skel" style="height:14px;width:40%;margin:0 auto"></div></td></tr>';
-        fetch('/crypto-rates', { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+        fetch('{{ route('calc.rates') }}', { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-            .then(data => renderRates(data))
+            .then(data => renderRates(Object.entries(data).map(([coin, rates]) => ({ coin, buy_rate: rates.buy_rate, sell_rate: rates.sell_rate })))
             .catch(() => {
                 const fb = @json($rates);
                 if (Object.keys(fb).length) {

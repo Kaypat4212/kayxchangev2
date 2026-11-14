@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "76fb710c-50f5-489b-b464-430147277352"
+      }
+    },
+    "android": {
+      "package": "com.patrickezike66.kayxchangev2"
+    },
+    "ios": {
+      "bundleIdentifier": "com.tradewithkaydev",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

@@ -5,17 +5,23 @@ namespace App\Http\Controllers;
 use App\Exceptions\DepositMinimumException;
 use App\Models\Wallet;
 use App\Models\CryptoDeposit;
-use App\Models\CryptoRate;
 use App\Models\AdminSetting;
 use App\Models\SiteContent;
 use App\Services\CryptoWalletService;
 use App\Services\ExchangeRateService;
 use App\Services\AdminTradeAlertService;
+use App\Services\CryptoTradeRateService;
+use App\Services\BalanceSettlementService;
+use App\Services\WalletLedgerService;
+use App\Models\PortfolioWithdrawal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class WalletController extends Controller
 {
@@ -32,7 +38,6 @@ class WalletController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $user->wallets()->firstOrCreate(['currency' => 'USD'], ['balance' => 0, 'network' => null, 'address' => null, 'is_active' => true]);
         $wallets = $this->cryptoWalletService->getUserWallets($user);
         $market = app(ExchangeRateService::class)->getUsdRates();
         $ngnPerUsd = $this->ngnPerUsdRate();
@@ -43,15 +48,11 @@ class WalletController extends Controller
                 $prices[$coin] = ['price_usd' => (float) $market[$coin], 'change_24h' => $market['_change_24h'][$coin] ?? null];
             }
         }
-        $portfolioUsd = $ngnPerUsd > 0 ? (float) $user->balance / $ngnPerUsd : 0.0;
+        $portfolioUsd = 0.0;
         $valuationComplete = true;
         foreach ($wallets as $wallet) {
             $currency = strtoupper($wallet->currency);
-            if ($currency === 'NGN') continue; // User::balance is the canonical NGN balance.
-            if ($currency === 'USD') {
-                $portfolioUsd += (float) $wallet->balance;
-                continue;
-            }
+            if (in_array($currency, ['NGN', 'USD', 'EUR'], true)) continue;
             if (isset($prices[$currency])) $portfolioUsd += (float) $wallet->balance * $prices[$currency]['price_usd'];
             elseif ((float) $wallet->balance > 0) $valuationComplete = false;
         }
@@ -97,25 +98,138 @@ class WalletController extends Controller
     private function ngnPerUsdRate(): float
     {
         $configured = (float) AdminSetting::getSetting('usd_wallet_sell_rate_ngn', 0);
-        return $configured > 0 ? $configured : (float) (CryptoRate::where('coin', 'USDT')->value('sell_rate') ?? 0);
+        return $configured > 0 ? $configured : (float) (app(CryptoTradeRateService::class)->rate('USDT', 'sell') ?? 0);
     }
 
-    public function usd()
+    public function usd(CryptoTradeRateService $tradeRates)
     {
-        $wallet = Auth::user()->wallets()->firstOrCreate(
-            ['currency' => 'USD'],
-            ['balance' => 0, 'network' => null, 'address' => null, 'is_active' => true]
-        );
-        $buyRate = (float) AdminSetting::getSetting('usd_wallet_buy_rate_ngn', 0);
-        $sellRate = (float) AdminSetting::getSetting('usd_wallet_sell_rate_ngn', 0);
-        return view('wallet.usd', compact('wallet', 'buyRate', 'sellRate'));
+        $user = Auth::user();
+        $wallets = $user->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->orderBy('currency')->get();
+        $market = app(ExchangeRateService::class)->getUsdRates();
+        $marketPrices = [];
+        $portfolioValueUsd = 0.0;
+        $valuationComplete = true;
+        foreach ($wallets as $assetWallet) {
+            $coin = strtoupper((string) $assetWallet->currency);
+            $price = is_numeric($market[$coin] ?? null) ? (float) $market[$coin] : 0.0;
+            $marketPrices[$coin] = $price;
+            if ($price > 0) $portfolioValueUsd += (float) $assetWallet->balance * $price;
+            elseif ((float) $assetWallet->balance > 0) $valuationComplete = false;
+        }
+        $usdtRates = $tradeRates->rates(['USDT'])['USDT'] ?? ['buy_rate' => null, 'sell_rate' => null];
+        $configuredBuyRate = (float) AdminSetting::getSetting('usd_wallet_buy_rate_ngn', 0);
+        $configuredSellRate = (float) AdminSetting::getSetting('usd_wallet_sell_rate_ngn', 0);
+        $buyRate = $configuredBuyRate > 0 ? $configuredBuyRate : (float) ($usdtRates['buy_rate'] ?? 0);
+        $sellRate = $configuredSellRate > 0 ? $configuredSellRate : (float) ($usdtRates['sell_rate'] ?? 0);
+        $buyRateSource = $configuredBuyRate > 0 ? 'Platform USD rate' : 'USDT platform buy rate';
+        $sellRateSource = $configuredSellRate > 0 ? 'Platform USD rate' : 'USDT platform sell rate';
+        $marketStale = (bool) ($market['_stale'] ?? false);
+        return view('wallet.usd', compact('wallets', 'marketPrices', 'portfolioValueUsd', 'valuationComplete', 'marketStale', 'buyRate', 'sellRate', 'buyRateSource', 'sellRateSource'));
+    }
+
+    public function withdrawUsdToNaira(Request $request, CryptoTradeRateService $tradeRates)
+    {
+        $request->validate(['pin' => 'required|digits:4']);
+        $assetAmounts = collect((array) $request->input('asset_amounts', []))
+            ->mapWithKeys(fn ($amount, $asset) => [strtoupper((string) $asset) => is_numeric($amount) ? round((float) $amount, 8) : 0.0])
+            ->filter(fn ($amount) => $amount > 0);
+        if ($assetAmounts->keys()->contains(fn ($coin) => in_array($coin, ['NGN', 'USD', 'EUR'], true))) {
+            return back()->withErrors(['asset_amounts' => 'Choose a crypto wallet to convert. The USD portfolio figure itself is read-only.'])->withInput();
+        }
+        if ($assetAmounts->isEmpty()) {
+            return back()->withErrors(['asset_amounts' => 'Enter an amount for at least one wallet to withdraw.'])->withInput();
+        }
+        if ($assetAmounts->count() > 12 || $assetAmounts->contains(fn ($amount) => $amount < 0.00000001 || $amount > 1000000000)) {
+            return back()->withErrors(['asset_amounts' => 'One or more asset amounts are outside the supported range.'])->withInput();
+        }
+
+        $market = app(ExchangeRateService::class)->getUsdRates();
+        if (($market['_stale'] ?? false) === true) {
+            return back()->withErrors(['asset_amounts' => 'A fresh crypto price is required for this withdrawal. Please try again shortly.'])->withInput();
+        }
+        $snapshot = [];
+        $usdValue = 0.0;
+        foreach ($assetAmounts as $coin => $amount) {
+            $price = (float) ($market[$coin] ?? 0);
+            if ($price <= 0) {
+                return back()->withErrors(['asset_amounts' => "A live USD price is unavailable for {$coin}. Remove it or try again later."])->withInput();
+            }
+            $lineUsd = round($amount * $price, 8);
+            $usdValue += $lineUsd;
+            $snapshot[$coin] = ['amount' => $amount, 'price_usd' => $price, 'value_usd' => $lineUsd];
+        }
+        $configuredRate = (float) AdminSetting::getSetting('usd_wallet_buy_rate_ngn', 0);
+        $rate = $configuredRate > 0 ? $configuredRate : (float) ($tradeRates->rate('USDT', 'buy') ?? 0);
+        if ($rate <= 0) {
+            return back()->withErrors(['amount' => 'USD conversion is temporarily unavailable because the platform rate has not been configured.'])->withInput();
+        }
+
+        $amountNgn = round($usdValue * $rate, 2);
+        if ($amountNgn < 1) return back()->withErrors(['asset_amounts' => 'The selected wallet amounts are too small to convert.'])->withInput();
+        $reference = 'USD-NGN-' . Str::upper(Str::random(12));
+        $result = DB::transaction(function () use ($request, $assetAmounts, $usdValue, $amountNgn, $rate, $reference, $snapshot) {
+            $user = \App\Models\User::query()->lockForUpdate()->findOrFail(Auth::id());
+            if ($user->pin_locked_until && Carbon::now()->lt($user->pin_locked_until)) {
+                $minutes = max(1, (int) ceil(Carbon::now()->diffInSeconds($user->pin_locked_until) / 60));
+                return ['error' => "PIN locked. Try again in {$minutes} minute(s)."];
+            }
+            if (!$user->transaction_pin || !Hash::check($request->input('pin'), $user->transaction_pin)) {
+                $user->pin_attempts = (int) ($user->pin_attempts ?? 0) + 1;
+                if ($user->pin_attempts >= 5) $user->pin_locked_until = Carbon::now()->addMinutes(15);
+                $user->save();
+                $remaining = max(0, 5 - $user->pin_attempts);
+                return ['error' => "Incorrect transaction PIN. {$remaining} attempt(s) remaining."];
+            }
+
+            $user->pin_attempts = 0;
+            $user->pin_locked_until = null;
+            $user->save();
+            $lockedWallets = Wallet::query()->where('user_id', $user->id)->whereIn('currency', $assetAmounts->keys())->orderBy('currency')->lockForUpdate()->get()->keyBy(fn ($wallet) => strtoupper((string) $wallet->currency));
+            foreach ($assetAmounts as $coin => $amount) {
+                $wallet = $lockedWallets->get($coin);
+                if (!$wallet || (float) $wallet->balance + 0.00000001 < $amount) {
+                    return ['error' => "Insufficient {$coin} wallet balance. Refresh the page and try again."];
+                }
+            }
+            foreach ($assetAmounts as $coin => $amount) {
+                $wallet = $lockedWallets->get($coin);
+                $wallet->balance = round((float) $wallet->balance - $amount, 8);
+                $wallet->save();
+                app(WalletLedgerService::class)->record($wallet, -$amount, 'crypto_portfolio.withdraw_to_ngn', $reference, [
+                    'asset' => $coin,
+                    'usd_value' => $snapshot[$coin]['value_usd'],
+                    'market_price_usd' => $snapshot[$coin]['price_usd'],
+                    'ngn_rate_used' => $rate,
+                    'ngn_credit' => $amountNgn,
+                ]);
+            }
+            app(BalanceSettlementService::class)->adjustNgnBalance((int) $user->id, $amountNgn, 'usd_wallet.withdraw_to_ngn', $reference);
+            PortfolioWithdrawal::create([
+                'user_id' => $user->id,
+                'reference' => $reference,
+                'asset_amounts' => $assetAmounts->all(),
+                'usd_value' => $usdValue,
+                'ngn_rate' => $rate,
+                'naira_amount' => $amountNgn,
+                'status' => 'completed',
+                'rate_snapshot' => $snapshot,
+            ]);
+            return ['success' => true];
+        });
+
+        if (!empty($result['error'])) return back()->withErrors(['pin' => $result['error']])->withInput();
+        return redirect()->route('wallet.usd', ['withdraw' => 1])->with('success', '₦' . number_format($amountNgn, 2) . ' has been added to your Naira wallet. The selected crypto was converted at your confirmed portfolio rates.');
     }
 
     public function crypto(\App\Services\CryptoTradeRateService $tradeRates)
     {
         $wallets = Auth::user()->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->orderBy('currency')->get();
         $rates = $tradeRates->rates($wallets->pluck('currency')->map(fn ($coin) => strtoupper($coin))->all());
-        return view('wallet.crypto', compact('wallets', 'rates'));
+        $completedDeposits = CryptoDeposit::where('user_id', Auth::id())->where('status', 'completed')->get(['currency', 'received_amount', 'payment_data']);
+        $depositedTotals = $completedDeposits->groupBy(fn ($deposit) => strtoupper((string) $deposit->currency))
+            ->map(fn ($items) => (float) $items->sum(fn ($deposit) => (float) ($deposit->received_amount ?? 0)))->all();
+        $depositedValueUsd = (float) $completedDeposits->sum(fn ($deposit) => (float) data_get($deposit->payment_data, 'deposit_valuation.market_value_usd', 0));
+        return view('wallet.crypto', compact('wallets', 'rates', 'depositedTotals', 'depositedValueUsd', 'completedDeposits'));
     }
 
     /**
@@ -135,7 +249,8 @@ class WalletController extends Controller
         }
 
         $depositProvider = $this->cryptoWalletService->depositProviderLabel();
-        return view('wallet.deposit', compact('wallets', 'supportedCryptos', 'depositProvider', 'selectedCurrency', 'selectedNetwork'));
+        $settlementPreference = Auth::user()->crypto_deposit_settlement_preference === 'ngn' ? 'ngn' : 'usd';
+        return view('wallet.deposit', compact('wallets', 'supportedCryptos', 'depositProvider', 'selectedCurrency', 'selectedNetwork', 'settlementPreference'));
     }
 
     /**
@@ -178,6 +293,8 @@ class WalletController extends Controller
                 'quoted_market_price_usd' => $marketPrice > 0 ? $marketPrice : null,
                 'market_source' => $market['_source'] ?? null,
                 'quoted_at' => $market['_updated_at'] ?? null,
+                'settlement_preference' => $user->crypto_deposit_settlement_preference === 'ngn' ? 'ngn' : 'usd',
+                'quoted_ngn_per_usd' => app(CryptoTradeRateService::class)->rate($currency, 'sell'),
             ];
             $result = $this->cryptoWalletService->createCryptoDeposit(
                 $user,
@@ -356,22 +473,7 @@ class WalletController extends Controller
      */
     public function withdraw(Request $request)
     {
-        $user = Auth::user();
-        $wallets = $this->cryptoWalletService->getUserWallets($user);
-        foreach ($wallets as $wallet) {
-            $reserved = \App\Models\CryptoWithdrawal::where('wallet_id', $wallet->id)
-                ->whereIn('status', ['pending', 'processing'])->sum(DB::raw('amount + fee'));
-            $wallet->available_balance = max(0, (float) $wallet->balance - (float) $reserved);
-        }
-
-        $currency = strtoupper((string) $request->query('currency', ''));
-        $selectedWalletId = old('wallet_id');
-        if (!$selectedWalletId && $currency !== '') {
-            $selectedWalletId = $wallets->first(fn ($wallet) => strtoupper($wallet->currency) === $currency && (float) $wallet->available_balance > 0)?->id;
-        }
-        $selectedNetwork = strtoupper((string) old('network', $request->query('network', '')));
-
-        return view('wallet.withdraw', compact('wallets', 'selectedWalletId', 'selectedNetwork'));
+        return response()->view('wallet.withdraw-unavailable');
     }
 
     /**
@@ -379,81 +481,7 @@ class WalletController extends Controller
      */
     public function createWithdrawal(Request $request)
     {
-        $request->validate([
-            'wallet_id' => 'required|exists:wallets,id',
-            'amount' => 'required|numeric|min:0.00000001',
-            'address' => 'required|string',
-            'network' => 'required|string',
-        ]);
-
-        $user = Auth::user();
-        $selectedWallet = $user->wallets()->whereKey($request->wallet_id)->firstOrFail();
-        $market = app(ExchangeRateService::class)->getUsdRates();
-        $asset = strtoupper((string) $selectedWallet->currency);
-        $assetUsd = $asset === 'USD' ? 1.0 : (is_numeric($market[$asset] ?? null) ? (float) $market[$asset] : null);
-        $usdValue = $assetUsd !== null ? round((float) $request->amount * $assetUsd, 2) : null;
-        $riskFlags = [];
-        if ($usdValue === null || ($market['_stale'] ?? true)) $riskFlags[] = 'market_price_unavailable';
-        $singleLimit = (float) AdminSetting::getSetting('crypto_withdrawal_max_usd', '5000');
-        $dailyLimit = (float) AdminSetting::getSetting('crypto_withdrawal_daily_usd', '10000');
-        if ($usdValue !== null && $usdValue > $singleLimit) $riskFlags[] = 'single_withdrawal_threshold';
-        $withdrawal = DB::transaction(function () use ($request, $user, $usdValue, $riskFlags, $dailyLimit, $asset) {
-            $wallet = $user->wallets()->whereKey($request->wallet_id)->lockForUpdate()->firstOrFail();
-            if (!$wallet->isCrypto() || !$wallet->is_active) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['wallet_id' => 'Select an active crypto wallet.']);
-            }
-            $supportedNetworks = $this->cryptoWalletService->getSupportedCryptos()[$asset]['networks'] ?? [];
-            if (!in_array(strtoupper((string) $request->network), $supportedNetworks, true)) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['network' => 'Choose a network supported for this asset.']);
-            }
-            $reserved = \App\Models\CryptoWithdrawal::where('wallet_id', $wallet->id)
-                ->whereIn('status', ['pending', 'processing'])->sum(DB::raw('amount + fee'));
-            if ((float) $wallet->balance - (float) $reserved < (float) $request->amount) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Insufficient available balance after pending withdrawals.']);
-            }
-
-            $dayTotal = (float) \App\Models\CryptoWithdrawal::query()
-                ->join('wallets', 'wallets.id', '=', 'crypto_withdrawals.wallet_id')
-                ->where('crypto_withdrawals.user_id', $user->id)
-                ->where('wallets.currency', $asset)
-                ->whereDate('crypto_withdrawals.created_at', now()->toDateString())
-                ->whereIn('crypto_withdrawals.status', ['pending', 'processing', 'completed'])
-                ->sum('crypto_withdrawals.usd_value_at_request');
-            if ($usdValue !== null && $dayTotal + $usdValue > $dailyLimit) $riskFlags[] = 'daily_withdrawal_threshold';
-
-            return \App\Models\CryptoWithdrawal::create([
-                'user_id' => $user->id, 'wallet_id' => $wallet->id,
-                'amount' => $request->amount, 'address' => $request->address,
-                'network' => $request->network, 'status' => 'pending', 'fee' => 0,
-                'usd_value_at_request' => $usdValue,
-                'risk_flags' => array_values(array_unique($riskFlags)),
-            ]);
-        });
-
-        try {
-            app(AdminTradeAlertService::class)->sendTriggeredAlert('withdrawal', [
-                'reference' => 'CW-' . $withdrawal->id, 'user_name' => $user->name,
-                'user_email' => $user->email, 'coin' => $withdrawal->wallet?->currency,
-                'usd_amount' => $withdrawal->amount, 'wallet_address' => $withdrawal->address,
-                'network' => $withdrawal->network, 'status' => 'pending admin review',
-                'naira_amount' => 0,
-            ]);
-        } catch (\Throwable $e) { Log::warning('Crypto withdrawal admin alert failed', ['withdrawal_id'=>$withdrawal->id,'error'=>$e->getMessage()]); }
-
-        if (!empty($withdrawal->risk_flags)) {
-            foreach (\App\Models\User::query()->where('is_admin', true)->get(['id']) as $admin) {
-                \App\Models\Notification::create([
-                    'admin_id' => $admin->id,
-                    'type' => 'warning',
-                    'title' => 'Crypto withdrawal flagged for review',
-                    'message' => 'Withdrawal CW-' . $withdrawal->id . ' needs elevated review: ' . implode(', ', $withdrawal->risk_flags) . '.',
-                    'data' => ['crypto_withdrawal_id' => $withdrawal->id, 'risk_flags' => $withdrawal->risk_flags],
-                    'is_read' => false,
-                ]);
-            }
-        }
-
-        return redirect()->route('wallet.history')->with('success', 'Withdrawal request submitted');
+        return redirect()->route('wallet.withdraw')->with('error', 'External crypto withdrawals are not available yet. Your crypto remains safely in your KayXchange wallet.');
     }
 
     /**

@@ -882,6 +882,7 @@
         .kx-h-sub { margin-left: auto; margin-right: auto; }
         .kx-h-stats { justify-content: center; }
         .kx-h-ctas { justify-content: center; }
+        .kx-h-app-link { margin-inline: auto; }
         .kx-h-trust { justify-content: center; }
         .kx-h-visual { margin-top: 50px; }
         .kx-h-scroll { display: none; }
@@ -926,7 +927,7 @@
             justify-content: center; width: 100%;
             padding: 13px 18px; font-size: clamp(0.88rem, 3.8vw, 0.95rem);
         }
-        .kx-h-app-link { width:fit-content;max-width:100%;align-self:flex-start;justify-content:flex-start;gap:8px;min-height:46px;padding:6px 10px 6px 7px;border-radius:13px; }
+        .kx-h-app-link { width:fit-content;max-width:100%;align-self:center;justify-content:center;margin-inline:auto;gap:8px;min-height:46px;padding:6px 10px 6px 7px;border-radius:13px; }
         .kx-play-icon { width:33px;height:33px;flex-basis:33px;border-radius:10px;font-size:.98rem; }
         .kx-h-app-copy strong { font-size:.71rem; }
         .kx-h-app-copy small { font-size:.57rem;margin-top:3px; }

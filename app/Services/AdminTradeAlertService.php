@@ -66,7 +66,10 @@ class AdminTradeAlertService
             'Amount (USD): ' . ($data['usd_amount'] ?? 'N/A'),
             'Amount (NGN): ' . ($data['naira_amount'] ?? 'N/A'),
             'Wallet: ' . ($data['wallet_address'] ?? 'N/A'),
+            'User sending wallet: ' . ($data['sender_wallet_address'] ?? 'Not provided'),
             'Network: ' . ($data['network'] ?? 'N/A'),
+            'Payout choice: ' . ($data['payout_method'] ?? 'N/A'),
+            'Payout destination: ' . ($data['payout_destination'] ?? 'N/A'),
             'Status: ' . ($data['status'] ?? 'pending'),
             'Fraud Score: ' . $risk['score'] . '/100 (' . strtoupper($risk['level']) . ')',
             'Risk Signals: ' . (!empty($risk['signals']) ? implode(', ', $risk['signals']) : 'None'),
@@ -148,6 +151,12 @@ class AdminTradeAlertService
             . $this->escapeMarkdown('User: ' . ($data['user_name'] ?? 'N/A')) . "\n"
             . $this->escapeMarkdown('Old Status: ' . ($data['old_status'] ?? 'N/A')) . "\n"
             . $this->escapeMarkdown('New Status: ' . ($data['new_status'] ?? 'N/A'));
+
+        if (strtolower($tradeType) === 'sell' && strtolower((string) ($data['new_status'] ?? '')) === 'completed') {
+            $message .= "\n" . $this->escapeMarkdown('Payout choice: ' . ($data['payout_method'] ?? 'N/A'))
+                . "\n" . $this->escapeMarkdown('Payout destination: ' . ($data['payout_destination'] ?? 'N/A'))
+                . "\n" . $this->escapeMarkdown('Payout amount (NGN): ₦' . ($data['naira_amount'] ?? 'N/A'));
+        }
 
         $this->sendTelegram($message);
         Notification::createBroadcast('trade_update', $title, 'Ref: ' . ($data['reference'] ?? 'N/A') . ' status changed.', [

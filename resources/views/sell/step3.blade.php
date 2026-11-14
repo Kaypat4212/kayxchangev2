@@ -130,6 +130,18 @@
 
         <div class="kx-card">
             <div class="kx-card-hd">
+                <div class="hico"><i class="bi bi-wallet2"></i></div>
+                <div><h5>Your sending wallet <span class="text-secondary fw-normal">(optional)</span></h5><p>Address you will send this crypto from, if you know it</p></div>
+            </div>
+            <div class="kx-card-bd">
+                <label class="kx-label" for="senderWallet">Your wallet address</label>
+                <input class="kx-input" id="senderWallet" name="sender_wallet_address" type="text" maxlength="255" value="{{ old('sender_wallet_address') }}" placeholder="Paste the address you are sending from">
+                <small class="text-secondary d-block mt-2">This is your sending address. The platform’s receiving address is shown separately in your trade instructions.</small>
+            </div>
+        </div>
+
+        <div class="kx-card">
+            <div class="kx-card-hd">
                 <div class="hico"><i class="bi bi-credit-card-2-back-fill"></i></div>
                 <div><h5>Payout Method</h5><p>Choose where to receive your Naira</p></div>
             </div>

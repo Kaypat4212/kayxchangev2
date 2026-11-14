@@ -17,6 +17,18 @@ class UserController extends Controller
         return view('settings.index');
     }
 
+    public function updateCryptoSettlementPreference(Request $request)
+    {
+        $data = $request->validate([
+            'preference' => ['required', 'in:ngn,usd'],
+        ]);
+        $request->user()->forceFill(['crypto_deposit_settlement_preference' => $data['preference']])->save();
+
+        return back()->with('success', $data['preference'] === 'ngn'
+            ? 'Crypto deposits will settle to your Naira wallet.'
+            : 'Crypto deposits will stay in their coin wallets and appear in your USD portfolio total.');
+    }
+
     public function editBank()
     {
         $user = Auth::user();

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\GiftCardRate;
+use App\Models\AdminSetting;
 use App\Services\RateNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -23,7 +24,16 @@ class AdminGiftCardRateController extends Controller
         $rates = GiftCardRate::orderBy('category')->orderBy('name')->orderBy('country')->get();
         $grouped = $rates->groupBy('category');
 
-        return view('admin.gift-card-rates.index', compact('grouped', 'rates'));
+        $giftCardsEnabled = filter_var(AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        return view('admin.gift-card-rates.index', compact('grouped', 'rates', 'giftCardsEnabled'));
+    }
+
+    public function toggleFeature(Request $request)
+    {
+        AdminSetting::set('gift_cards_enabled', $request->boolean('enabled') ? '1' : '0');
+        return back()->with('success', $request->boolean('enabled')
+            ? 'Gift card purchases are now enabled for active USA and UK cards.'
+            : 'Gift card purchases are now paused. Existing order history and fulfillment remain available.');
     }
 
     public function bulkUpdate(Request $request)

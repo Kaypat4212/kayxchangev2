@@ -718,6 +718,9 @@ class TelegramService
                         case 'sell_txid':
                             $this->handleSellTxidInput($chatId, $text);
                             return true;
+                        case 'sell_sender_wallet':
+                            $this->handleSellSenderWalletInput($chatId, $text);
+                            return true;
                         case 'buy_txid':
                             $this->handleBuyTxidInput($chatId, $text);
                             return true;
@@ -807,6 +810,13 @@ class TelegramService
                 }
                 if ($data === 'sell_confirm') {
                     $this->handleSellConfirm($chatId);
+                    return true;
+                }
+                if ($data === 'sell_sender_wallet_skip') {
+                    $sellData = $this->getData($chatId);
+                    $method = (string) ($sellData['payout_method'] ?? '');
+                    $this->mergeData($chatId, ['sender_wallet_address' => null, 'sender_wallet_step_done' => true]);
+                    if ($method !== '') $this->handleSellPayoutSelected($chatId, $method);
                     return true;
                 }
 
@@ -1989,7 +1999,7 @@ class TelegramService
     private function handleSellPayoutSelected(int $chatId, string $method): void
     {
         // External bank — collect details first (use Paystack bank list)
-        if ($method === 'external_bank') {
+        if ($method === 'external_bank' && empty($this->getData($chatId)['ext_account_number'])) {
             $this->mergeData($chatId, ['payout_method' => 'external_bank']);
 
             // If user already selected bank + stored verified account, go straight to confirm
@@ -2054,6 +2064,18 @@ class TelegramService
         }
 
         $this->mergeData($chatId, ['payout_method' => $method]);
+        $data = $this->getData($chatId);
+        if (empty($data['sender_wallet_step_done'])) {
+            $this->setState($chatId, 'sell_sender_wallet');
+            $this->sendMessage($chatId,
+                "📬 *Your sending wallet (optional)*\n\n" .
+                "Enter the wallet address you will send the crypto from. This helps our admin identify incoming transfers.\n\n" .
+                "You can skip this if you do not know the address.",
+                'Markdown',
+                ['inline_keyboard' => [[['text' => 'Skip', 'callback_data' => 'sell_sender_wallet_skip']]]]
+            );
+            return;
+        }
         $this->setState($chatId, 'sell_confirm');
 
         $data    = $this->getData($chatId);
@@ -2087,6 +2109,7 @@ class TelegramService
                "💵 Amount: *\$" . number_format($usd, 2) . "*\n" .
                "💴 Payout: *₦" . number_format($naira, 2) . "*\n" .
                "💳 Method: {$payoutLabel}\n\n" .
+               "📬 Sending wallet: " . (($data['sender_wallet_address'] ?? '') ?: 'Not provided') . "\n\n" .
                "⚠️ _Make sure you have already sent the crypto before confirming._";
 
         $keyboard = ['inline_keyboard' => [
@@ -2097,6 +2120,24 @@ class TelegramService
         ]];
 
         $this->sendMessage($chatId, $msg, 'Markdown', $keyboard);
+    }
+
+    private function handleSellSenderWalletInput(int $chatId, string $address): void
+    {
+        $address = trim($address);
+        if (strlen($address) > 255) {
+            $this->sendMessage($chatId, 'That address is too long. Please re-enter it or tap Skip.');
+            return;
+        }
+        $data = $this->getData($chatId);
+        $method = (string) ($data['payout_method'] ?? '');
+        if ($method === '') {
+            $this->sendMessage($chatId, 'Sell session expired. Please start again with /sell.');
+            $this->clearState($chatId);
+            return;
+        }
+        $this->mergeData($chatId, ['sender_wallet_address' => $address ?: null, 'sender_wallet_step_done' => true]);
+        $this->handleSellPayoutSelected($chatId, $method);
     }
 
     private function handleSellConfirm(int $chatId): void
@@ -2162,6 +2203,7 @@ class TelegramService
                 'status'          => 'pending',
                 'source'          => 'telegram_bot',
                 'wallet_address'  => $walletAddr,
+                'sender_wallet_address' => $data['sender_wallet_address'] ?? null,
                 'bank_name'       => $bankName,
                 'account_number'  => $acctNumber,
                 'account_name'    => $acctName,
@@ -2204,6 +2246,11 @@ class TelegramService
                     'usd_amount'     => number_format($usd, 6),
                     'naira_amount'   => number_format($naira, 2),
                     'wallet_address' => $walletAddr,
+                    'sender_wallet_address' => $trade->sender_wallet_address,
+                    'payout_method' => $trade->payment_method,
+                    'payout_destination' => $trade->payment_method === 'wallet_balance'
+                        ? 'KayXchange Naira wallet'
+                        : trim(($trade->bank_name ?? '') . ' ' . ($trade->account_number ?? '')),
                     'network'        => $network ?? 'N/A',
                     'status'         => 'pending',
                     'trade_id'       => $trade->id,
@@ -2742,6 +2789,11 @@ class TelegramService
                     'user_name'  => $trade->name,
                     'old_status' => $oldStatus,
                     'new_status' => 'completed',
+                    'payout_method' => $trade->payment_method,
+                    'payout_destination' => $trade->payment_method === 'wallet_balance'
+                        ? 'KayXchange Naira wallet'
+                        : trim(($trade->bank_name ?? '') . ' ' . ($trade->account_number ?? '')),
+                    'naira_amount' => number_format((float) ($trade->naira_amount ?? 0), 2),
                 ]);
             } catch (\Throwable $e) {}
 
@@ -3306,6 +3358,10 @@ class TelegramService
                     ['text' => '💰 My Balance',       'callback_data' => 'cmd_balance'],
                 ],
                 [
+                    ['text' => '🎁 USA/UK Gift Cards', 'url' => url('/gift-cards')],
+                    ['text' => '🎁 Gift Card Rates', 'url' => url('/gift-card-rates')],
+                ],
+                [
                     ['text' => '❌ Exit AI Mode',     'callback_data' => 'cancel'],
                 ],
             ],
@@ -3343,6 +3399,9 @@ class TelegramService
                 [
                     ['text' => '💸 Buy Crypto',    'callback_data' => 'cmd_buy'],
                     ['text' => '💵 Sell Crypto',   'callback_data' => 'cmd_sell'],
+                ],
+                [
+                    ['text' => '🎁 USA/UK Gift Cards', 'url' => url('/gift-cards')],
                 ],
                 [
                     ['text' => '❌ Exit AI Mode',  'callback_data' => 'cancel'],

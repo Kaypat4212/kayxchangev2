@@ -126,6 +126,7 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
         <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
     </div>
     @endif
+    @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif
 
     {{-- Profile card --}}
     <div class="st-profile">
@@ -178,6 +179,25 @@ body{ background:var(--kx-dark); color:var(--kx-text); }
         <i class="bi bi-chevron-right st-row-arrow"></i>
     </a>
     @endif
+
+    <div class="st-section-label mt-3">Wallet preferences</div>
+    <section class="st-row" style="display:block;padding:18px 20px">
+        <div class="d-flex align-items-start gap-3 flex-wrap">
+            <div class="st-row-icon green"><i class="bi bi-arrow-left-right"></i></div>
+            <div class="flex-grow-1" style="min-width:220px">
+                <div class="st-row-title">Default crypto deposit settlement</div>
+                <div class="st-row-sub mb-3">Choose what happens after a crypto deposit is confirmed. This applies to new deposits; existing invoices keep the choice saved when they were created.</div>
+                <form method="POST" action="{{ route('settings.crypto-settlement') }}" class="d-flex flex-wrap align-items-center gap-2">
+                    @csrf @method('PUT')
+                    <select name="preference" class="form-select" style="max-width:310px;background:#101713;color:#e8f2ea;border-color:rgba(255,255,255,.14)" aria-label="Default crypto deposit settlement">
+                        <option value="usd" @selected(auth()->user()->crypto_deposit_settlement_preference !== 'ngn')>Keep crypto in its wallet · show in USD portfolio</option>
+                        <option value="ngn" @selected(auth()->user()->crypto_deposit_settlement_preference === 'ngn')>Convert deposit value to Naira wallet</option>
+                    </select>
+                    <button type="submit" class="btn btn-success btn-sm fw-bold"><i class="bi bi-check2 me-1"></i>Save preference</button>
+                </form>
+            </div>
+        </div>
+    </section>
 
     {{-- Security --}}
     <div class="st-section-label mt-3">Security</div>

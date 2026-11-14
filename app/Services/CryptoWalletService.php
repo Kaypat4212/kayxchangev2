@@ -7,7 +7,6 @@ use App\Exceptions\NowPaymentsApiException;
 use App\Models\Wallet;
 use App\Models\User;
 use App\Models\CryptoDeposit;
-use App\Models\CryptoRate;
 use App\Models\AdminSetting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -336,58 +335,49 @@ class CryptoWalletService
             $txid = (string) ($webhookData['txid'] ?? $locked->transaction_hash ?? '');
             $paidCrypto = (float) ($webhookData['actually_paid'] ?? $webhookData['payer_amount'] ?? $webhookData['payment_amount'] ?? 0);
             $currency = strtoupper($locked->currency);
-
             if ($currency === 'BTC') {
                 $payerCurrency = strtoupper((string) ($webhookData['pay_currency'] ?? $webhookData['payer_currency'] ?? $webhookData['currency'] ?? 'BTC'));
-                if (!str_starts_with($payerCurrency, 'BTC')) {
-                    throw new \RuntimeException('Payment provider reported a non-BTC payer currency for a BTC deposit.');
-                }
-                if ($paidCrypto <= 0) {
-                    throw new \RuntimeException('Cryptomus did not provide the actual BTC amount received.');
-                }
+                if (!str_starts_with($payerCurrency, 'BTC')) throw new \RuntimeException('Payment provider reported a non-BTC payer currency for a BTC deposit.');
+            }
+            if ($paidCrypto <= 0) throw new \RuntimeException('The payment provider did not report the actual crypto amount received.');
 
-                $usdValue = (float) ($webhookData['price_amount'] ?? $webhookData['payment_amount_usd'] ?? 0);
-                if ($usdValue <= 0 && $providerStatus === 'paid') {
-                    $usdValue = (float) ($webhookData['amount'] ?? 0);
-                }
-                if ($usdValue <= 0 && $providerStatus === 'paid') {
-                    $usdValue = (float) $locked->expected_amount;
-                }
-                $rate = CryptoRate::where('coin', 'BTC')->value('sell_rate');
-                if (!$rate || $usdValue <= 0) {
-                    throw new \RuntimeException('BTC NGN conversion rate or verified USD payment amount is unavailable.');
-                }
+            $locked->received_amount = $paidCrypto;
+            $liveCoins = $marketRates['_live_coins'] ?? array_keys(array_filter($marketRates, 'is_numeric'));
+            $livePrice = !($marketRates['_stale'] ?? false) && in_array($currency, $liveCoins, true) && is_numeric($marketRates[$currency] ?? null)
+                ? (float) $marketRates[$currency] : null;
+            $quotedPrice = (float) data_get($locked->payment_data, 'deposit_input.quoted_market_price_usd', 0);
+            $marketPrice = $livePrice ?: ($quotedPrice > 0 ? $quotedPrice : null);
+            $usdValue = $marketPrice !== null ? round($paidCrypto * $marketPrice, 8) : 0.0;
+            if ($usdValue <= 0) {
+                $expectedCrypto = (float) data_get($locked->payment_data, 'expected_crypto_amount', 0);
+                $quotedUsd = (float) data_get($locked->payment_data, 'deposit_input.input_usd_amount', $locked->expected_amount);
+                if ($expectedCrypto > 0 && $quotedUsd > 0) $usdValue = round($quotedUsd * ($paidCrypto / $expectedCrypto), 8);
+                if ($usdValue <= 0) $usdValue = (float) ($webhookData['price_amount'] ?? $webhookData['payment_amount_usd'] ?? 0);
+            }
+            if ($usdValue <= 0) throw new \RuntimeException('A deposit USD valuation is unavailable; no wallet was credited.');
 
-                $ngnAmount = round($usdValue * (float) $rate, 2);
-                $user = $locked->user()->lockForUpdate()->first();
-                if (!$user) {
-                    throw new \RuntimeException('BTC deposit user record was not found.');
-                }
-
-                // Keep the canonical NGN user balance and its wallet row aligned.
-                app(BalanceSettlementService::class)->creditNgnBalance((int) $user->id, $ngnAmount, 'crypto_deposit.completed', 'crypto-deposit:' . $locked->id);
+            $preference = strtolower((string) data_get($locked->payment_data, 'deposit_input.settlement_preference', 'usd'));
+            if ($preference === 'ngn') {
+                $rate = (float) data_get($locked->payment_data, 'deposit_input.quoted_ngn_per_usd', 0);
+                if ($rate <= 0) $rate = (float) (app(\App\Services\CryptoTradeRateService::class)->rate($currency, 'sell') ?? 0);
+                if ($rate <= 0) throw new \RuntimeException('The saved Naira settlement rate is unavailable; deposit requires admin review.');
+                $ngnAmount = round($usdValue * $rate, 2);
+                app(BalanceSettlementService::class)->creditNgnBalance((int) $locked->user_id, $ngnAmount, 'crypto_deposit.completed', 'crypto-deposit:' . $locked->id);
                 $locked->ngn_credited_amount = $ngnAmount;
                 $locked->ngn_rate_used = $rate;
-                $locked->received_amount = $paidCrypto > 0 ? $paidCrypto : null;
             } else {
-                $locked->received_amount = $paidCrypto > 0 ? $paidCrypto : (float) ($webhookData['amount'] ?? $locked->expected_amount);
-                $wallet = $locked->wallet;
-                if (!$wallet) {
-                    throw new \RuntimeException('Crypto deposit wallet record was not found.');
-                }
-                $wallet->credit((float) $locked->received_amount, 'crypto_deposit.completed', 'crypto-deposit:' . $locked->id);
+                $wallet = $locked->wallet()->lockForUpdate()->first();
+                if (!$wallet) throw new \RuntimeException('Crypto deposit wallet record was not found.');
+                $wallet->credit($paidCrypto, 'crypto_deposit.completed', 'crypto-deposit:' . $locked->id);
             }
 
-            $receivedAmount = (float) $locked->received_amount;
-            $liveCoins = $marketRates['_live_coins'] ?? array_keys(array_filter($marketRates, 'is_numeric'));
-            $marketPrice = !($marketRates['_stale'] ?? false) && in_array($currency, $liveCoins, true) && is_numeric($marketRates[$currency] ?? null)
-                ? (float) $marketRates[$currency] : null;
             $paymentData = $locked->payment_data ?? [];
             $paymentData['deposit_valuation'] = [
                 'market_price_usd' => $marketPrice,
-                'market_value_usd' => $marketPrice !== null ? round($receivedAmount * $marketPrice, 8) : null,
-                'source' => $marketPrice !== null ? ($marketRates['_source'] ?? 'unknown') : null,
-                'priced_at' => $marketPrice !== null ? ($marketRates['_updated_at'] ?? now()->toIso8601String()) : null,
+                'market_value_usd' => $usdValue,
+                'source' => $livePrice !== null ? ($marketRates['_source'] ?? 'live') : ($quotedPrice > 0 ? 'invoice_quote' : 'provider_quote'),
+                'priced_at' => $livePrice !== null ? ($marketRates['_updated_at'] ?? now()->toIso8601String()) : data_get($locked->payment_data, 'deposit_input.quoted_at'),
+                'settlement_preference' => $preference === 'ngn' ? 'ngn' : 'usd',
             ];
             $locked->payment_data = $paymentData;
             if ($currency === 'BTC' && $marketPrice !== null) $locked->btc_usd_price = $marketPrice;

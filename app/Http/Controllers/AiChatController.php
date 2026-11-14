@@ -565,14 +565,34 @@ class AiChatController extends Controller
     private function createSupportTicket(User $user, string $sessionId, string $question, string $context, ?string $aiReply = null): string
     {
         try {
-            AiSupportTicket::create([
-                'user_id'    => $user->id,
-                'session_id' => $sessionId,
-                'question'   => $question,
-                'context'    => $context,
-                'status'     => 'open',
-            ]);
-            $this->notifyAdminTelegram($user, $question);
+            [$ticket, $created] = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $sessionId, $question, $context) {
+                // Serialize support escalations per account so repeated chatbot
+                // retries cannot create a stack of simultaneous open tickets.
+                \App\Models\User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $ticket = AiSupportTicket::query()->where('user_id', $user->id)->where('status', 'open')->latest('updated_at')->lockForUpdate()->first();
+                if ($ticket) {
+                    $question = trim($question);
+                    $currentQuestion = (string) $ticket->question;
+                    $isRecentDuplicate = $ticket->updated_at && $ticket->updated_at->diffInSeconds(now()) < 90
+                        && str_ends_with(mb_strtolower($currentQuestion), mb_strtolower($question));
+                    if (!$isRecentDuplicate) {
+                        $ticket->question = mb_substr($currentQuestion . "\n\nFollow-up from user (" . now()->format('d M Y, H:i') . "):\n" . $question, -12000);
+                        $existingContext = trim((string) $ticket->context);
+                        $ticket->context = mb_substr(trim($existingContext . "\n\n--- Latest conversation context ---\n" . $context), -30000);
+                        $ticket->save();
+                    }
+                    return [$ticket, false];
+                }
+
+                return [AiSupportTicket::create([
+                    'user_id' => $user->id,
+                    'session_id' => $sessionId,
+                    'question' => $question,
+                    'context' => $context,
+                    'status' => 'open',
+                ]), true];
+            });
+            if ($created) $this->notifyAdminTelegram($user, $question);
         } catch (\Throwable $e) {
             Log::error('Support ticket creation failed: ' . $e->getMessage());
         }
@@ -691,13 +711,17 @@ class AiChatController extends Controller
 
     private function buildGiftCardRatesResponse(): string
     {
-        $url         = url('/gift-card-rates');
+        $url         = url('/gift-cards');
+        $enabled = filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
         $activeRates = GiftCardRate::where('is_active', true)
+            ->whereIn('country', ['US', 'UK'])
             ->orderBy('category')->orderBy('name')
             ->limit(10)->get();
 
-        $msg  = "🎁 **Gift Card Rates**\n\n";
-        $msg .= "View the full, up-to-date rates table:\n[🔗 {$url}]({$url})\n";
+        $msg  = "🎁 **USA & UK Gift Cards**\n\n";
+        $msg .= $enabled ? "You can request USA and UK gift card purchases from your Naira wallet. Requests are manually fulfilled.\n" : "Gift card purchases are temporarily paused by the platform team.\n";
+        $msg .= "Gift card selling is not available yet.\n\n";
+        $msg .= "Purchase page and current rates:\n[🔗 {$url}]({$url})\n";
 
         if ($activeRates->isNotEmpty()) {
             $msg .= "\n**Sample rates:**\n";
@@ -707,8 +731,8 @@ class AiChatController extends Controller
                     $currentCategory = $r->category;
                     $msg .= "\n_" . ucfirst($r->category ?? 'General') . "_\n";
                 }
-                $rateStr = $r->buy_rate ? '₦' . number_format($r->buy_rate) : '—';
-                $msg    .= "• {$r->name} ({$r->country}/{$r->currency}): {$rateStr}/unit\n";
+                $rateStr = $r->sell_rate > 0 ? '₦' . number_format($r->sell_rate, 2) : 'Unavailable';
+                $msg    .= "• {$r->name} ({$r->country}/{$r->currency}): {$rateStr} per {$r->currency}\n";
             }
         }
 
@@ -931,7 +955,8 @@ class AiChatController extends Controller
             . "- KayXchange lets Nigerians trade NGN <-> BTC/ETH/USDT/USDC/SOL/BNB\n"
             . "- Buy: Pay NGN via bank transfer -> receive crypto to wallet\n"
             . "- Sell: Send crypto -> receive NGN to bank account\n"
-            . "- Wallets: users can view NGN, USD, and supported crypto wallet balances, transaction history, and available wallet actions\n"
+            . "- Wallets: USD is a read-only estimate of supported crypto wallet holdings and excludes NGN. Crypto stays on-platform; external crypto sends are not available yet. Users can convert selected crypto to NGN from the portfolio page.\n"
+            . "- Gift cards: USA and UK gift card purchase requests can be placed at /gift-cards when enabled; rates are set by admins, payment is taken from NGN wallet, and admin manually fulfills requests. Gift card selling is not available yet.\n"
             . "- Crypto deposit networks currently configured in the platform: BTC on Bitcoin; ETH on ERC20; USDT on TRC20, ERC20, or BEP20; USDC on ERC20 or BEP20; BNB on BEP20; SOL on Solana\n"
             . "- Crypto deposits: users select an asset and network, follow the displayed address and amount, and track pending/confirmation status on the deposit page\n"
             . "- If an automated crypto deposit service is temporarily unavailable, a configured manual receiving address may be offered; the user submits a transaction hash and an admin verifies it before the balance is credited\n"

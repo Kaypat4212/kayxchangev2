@@ -131,6 +131,16 @@
 [data-bs-theme="light"] .kx-nav-link { color: rgba(20,20,20,0.75) !important; }
 [data-bs-theme="light"] .kx-nav-link:hover,[data-bs-theme="light"] .kx-nav-link.kx-active { color: #007a0f !important; background: rgba(0,130,17,0.07); }
 [data-bs-theme="light"] .kx-theme-btn { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #555; }
+.kx-wallet-menu { min-width: 286px; padding: 10px; border: 1px solid rgba(84,211,126,.22); border-radius: 16px; background: rgba(13,23,19,.98); box-shadow: 0 18px 48px rgba(0,0,0,.38); }
+.kx-wallet-menu .kx-wallet-menu-head { padding: 9px 11px 12px; color: #93a79a; font-size: .68rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.kx-wallet-menu .dropdown-item { display:flex; align-items:center; gap:10px; padding:10px 11px; border-radius:10px; color:#eaf3ed; font-size:.87rem; transition:background .18s,color .18s,transform .18s; }
+.kx-wallet-menu .dropdown-item i { width:20px; color:#62dc8b; font-size:1rem; }
+.kx-wallet-menu .dropdown-item:hover,.kx-wallet-menu .dropdown-item:focus { color:#fff; background:rgba(53,188,103,.15); transform:translateX(2px); }
+.kx-wallet-menu .dropdown-divider { border-color:rgba(255,255,255,.1); margin:7px 4px; }
+[data-bs-theme="light"] .kx-wallet-menu { background:rgba(255,255,255,.99); border-color:rgba(0,140,50,.18); box-shadow:0 18px 48px rgba(22,47,30,.16); }
+[data-bs-theme="light"] .kx-wallet-menu .kx-wallet-menu-head { color:#6b7d70; }
+[data-bs-theme="light"] .kx-wallet-menu .dropdown-item { color:#23352a; }
+[data-bs-theme="light"] .kx-wallet-menu .dropdown-item:hover { color:#075f2a; background:rgba(0,160,58,.09); }
 @media (max-width: 991.98px) {
     .kx-navbar .navbar-collapse {
         background: rgba(8, 14, 8, 0.98);
@@ -138,7 +148,15 @@
         border-radius: 14px;
         margin-top: 10px;
         padding: 16px;
+        max-height: calc(100vh - 84px);
+        max-height: calc(100dvh - 84px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0,204,0,.45) transparent;
     }
+    .kx-navbar .navbar-collapse::-webkit-scrollbar { width: 6px; }
+    .kx-navbar .navbar-collapse::-webkit-scrollbar-thumb { background: rgba(0,204,0,.42); border-radius: 8px; }
     [data-bs-theme="light"] .kx-navbar .navbar-collapse { background: rgba(255,255,255,0.99); border-color: rgba(0,153,0,0.15); }
     .kx-nav-link.kx-active::after { display: none; }
     .kx-nav-actions { flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(0,204,0,0.13); }
@@ -267,11 +285,14 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
           <a class="kx-nav-link dropdown-toggle @if(request()->is('wallet*')) kx-active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Wallets">
             <i class="bi bi-wallet2"></i>Wallets
           </a>
-          <ul class="dropdown-menu dropdown-menu-dark">
+          <ul class="dropdown-menu dropdown-menu-dark kx-wallet-menu">
+            <li class="kx-wallet-menu-head">Your wallets</li>
             <li><a class="dropdown-item" href="{{ route('wallet.index') }}"><i class="bi bi-wallet-fill me-2"></i>Wallet overview</a></li>
             <li><a class="dropdown-item" href="{{ route('wallet.usd') }}"><i class="bi bi-currency-dollar me-2"></i>USD wallet</a></li>
             <li><a class="dropdown-item" href="{{ route('wallet.crypto') }}"><i class="bi bi-currency-bitcoin me-2"></i>Crypto wallets</a></li>
             <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ route('wallet.deposit') }}"><i class="bi bi-box-arrow-in-down me-2"></i>Deposit crypto</a></li>
+            <li><a class="dropdown-item" href="{{ route('wallet.withdraw') }}"><i class="bi bi-shield-lock me-2"></i>External crypto send · soon</a></li>
             <li><a class="dropdown-item" href="{{ route('wallet.send') }}"><i class="bi bi-send-fill me-2"></i>Send money</a></li>
             <li><a class="dropdown-item" href="{{ route('wallet.history') }}"><i class="bi bi-clock-history me-2"></i>Wallet history</a></li>
           </ul>
@@ -279,6 +300,16 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('rate')) kx-active @endif" href="{{ url('/rate') }}">
             <i class="bi bi-graph-up-arrow"></i>Rates
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="kx-nav-link @if(request()->is('gift-cards*')) kx-active @endif" href="{{ route('gift-cards.index') }}" title="Buy USA and UK gift cards">
+            <i class="bi bi-gift"></i>Gift Cards
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="kx-nav-link @if(request()->is('forum*')) kx-active @endif" href="{{ route('forum.index') }}" title="KayXchange community forum">
+            <i class="bi bi-chat-square-heart"></i>Community
           </a>
         </li>
         <li class="nav-item">

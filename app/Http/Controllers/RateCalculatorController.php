@@ -12,7 +12,8 @@ class RateCalculatorController extends Controller
      */
     public function index()
     {
-        $rates = CryptoRate::select('coin', 'buy_rate', 'sell_rate')->get()->keyBy('coin');
+        $coins = CryptoRate::query()->pluck('coin')->map(fn ($coin) => strtoupper((string) $coin))->merge(['BTC', 'ETH', 'USDT', 'SOL', 'BNB', 'USDC', 'LTC', 'ADA', 'DOGE'])->unique()->values()->all();
+        $rates = app(\App\Services\CryptoTradeRateService::class)->rates($coins);
         return view('rates.calculator', compact('rates'));
     }
 
@@ -21,7 +22,8 @@ class RateCalculatorController extends Controller
      */
     public function apiRates()
     {
-        $rates = CryptoRate::select('coin', 'buy_rate', 'sell_rate')->get()->keyBy('coin');
+        $coins = CryptoRate::query()->pluck('coin')->map(fn ($coin) => strtoupper((string) $coin))->merge(['BTC', 'ETH', 'USDT', 'SOL', 'BNB', 'USDC', 'LTC', 'ADA', 'DOGE'])->unique()->values()->all();
+        $rates = app(\App\Services\CryptoTradeRateService::class)->rates($coins);
         return response()->json($rates);
     }
 }

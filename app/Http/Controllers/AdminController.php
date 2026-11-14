@@ -401,6 +401,11 @@ class AdminController extends Controller
                         'user_name' => $tradeUser->name ?? ($trade->name ?? 'N/A'),
                         'old_status' => $oldStatus,
                         'new_status' => $request->status,
+                        'payout_method' => $trade->payment_method,
+                        'payout_destination' => $trade->payment_method === 'wallet_balance'
+                            ? 'KayXchange Naira wallet'
+                            : trim(($trade->bank_name ?? '') . ' ' . ($trade->account_number ?? '')),
+                        'naira_amount' => number_format((float) ($trade->naira_amount ?? 0), 2),
                     ]);
                 } catch (\Throwable $alertEx) {
                     Log::warning('Buy status admin alert failed: ' . $alertEx->getMessage());
@@ -656,7 +661,29 @@ class AdminController extends Controller
     public function usersShow(User $user)
     {
         $user->load('badges');
-        return view('admin.users.show', compact('user'));
+        $latestKyc = Kyc::where('user_id', $user->id)->latest()->first();
+        return view('admin.users.show', compact('user', 'latestKyc'));
+    }
+
+    public function sendKycReminder(User $user)
+    {
+        if ($user->kyc_verified) {
+            return back()->with('success', 'This account is already KYC verified.');
+        }
+
+        $latestKyc = \App\Models\Kyc::where('user_id', $user->id)->latest()->first();
+        if ($latestKyc && $latestKyc->status === 'pending') {
+            return back()->with('success', 'This user has already submitted KYC documents. Their application is awaiting review.');
+        }
+
+        try {
+            Mail::to($user->email)->send(new \App\Mail\KycReminderMail($user));
+            Log::info('Admin sent KYC reminder email', ['admin_id' => Auth::id(), 'user_id' => $user->id]);
+            return back()->with('success', 'KYC reminder sent to ' . $user->email . '.');
+        } catch (\Throwable $e) {
+            Log::warning('Admin KYC reminder email failed', ['admin_id' => Auth::id(), 'user_id' => $user->id, 'error' => $e->getMessage()]);
+            return back()->withErrors(['kyc_reminder' => 'The reminder email could not be sent. Check the email delivery settings and try again.']);
+        }
     }
 
     public function usersEdit(User $user)

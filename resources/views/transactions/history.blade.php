@@ -76,6 +76,7 @@
 .kx-type-withdrawal{background:rgba(168,85,247,.12);color:#c084fc;}
 .kx-type-deposit{background:rgba(245,158,11,.1);color:#fbbf24;}
 .kx-type-crypto_deposit,.kx-type-crypto_withdrawal,.kx-type-crypto_swap{background:rgba(56,189,248,.12);color:#7dd3fc;}
+.kx-type-gift_card_purchase{background:rgba(236,72,153,.13);color:#f9a8d4;}
 .kx-type-bill_payment{background:rgba(251,146,60,.12);color:#fdba74;}
 .kx-type-transfer{background:rgba(192,132,252,.12);color:#c084fc;}
 
@@ -257,7 +258,7 @@
            class="kx-tab {{ $activeType==='withdrawal' ? 'active' : '' }}">
             <i class="bi bi-bank"></i> Withdrawals
         </a>
-        @foreach(['deposit'=>'Deposits','crypto_deposit'=>'Crypto deposits','crypto_withdrawal'=>'Crypto withdrawals','crypto_swap'=>'Crypto swaps','bill_payment'=>'Bills','transfer'=>'Transfers'] as $kind=>$label)
+        @foreach(['deposit'=>'Deposits','crypto_deposit'=>'Crypto deposits','crypto_withdrawal'=>'Crypto withdrawals','crypto_swap'=>'Crypto swaps','gift_card_purchase'=>'Gift cards','bill_payment'=>'Bills','transfer'=>'Transfers'] as $kind=>$label)
         <a href="{{ route('transactions.history', array_merge(request()->except('type'), ['type'=>$kind])) }}" class="kx-tab {{ $activeType===$kind ? 'active' : '' }}">{{ $label }}</a>
         @endforeach
     </div>
@@ -342,7 +343,7 @@
                 @php
                     $typClass = 'kx-type-'.($trade->type ?? 'other');
                     $stsClass = 'kx-sts-'.($trade->status ?? 'other');
-                    $typIcon  = $trade->type==='crypto_swap' ? 'bi-arrow-left-right' : ($trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle'))))));
+                    $typIcon  = $trade->type==='gift_card_purchase' ? 'bi-gift-fill' : ($trade->type==='crypto_swap' ? 'bi-arrow-left-right' : ($trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle'))))));
                     $walletLabel = in_array($trade->type, ['buy', 'sell']) ? ($trade->wallet_address ?? '—') : '—';
                     if($trade->payment_method && $trade->type==='withdrawal'){
                         $bd = json_decode($trade->payment_method,true);
@@ -353,7 +354,7 @@
                     <td>
                         <span class="kx-type-badge {{ $typClass }}">
                             <i class="bi {{ $typIcon }}"></i>
-                            {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ucfirst($trade->type) }}
+                            {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ($trade->type === 'gift_card_purchase' ? 'Gift card purchase' : ucfirst($trade->type)) }}
                         </span>
                     </td>
                     <td style="font-weight:600;color:#fff;">{{ $trade->coin ?? '—' }}</td>
@@ -401,12 +402,12 @@
         @php
             $typClass = 'kx-type-'.($trade->type ?? 'other');
             $stsClass = 'kx-sts-'.($trade->status ?? 'other');
-                    $typIcon  = $trade->type==='crypto_swap' ? 'bi-arrow-left-right' : ($trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle'))))));
+                    $typIcon  = $trade->type==='gift_card_purchase' ? 'bi-gift-fill' : ($trade->type==='crypto_swap' ? 'bi-arrow-left-right' : ($trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle'))))));
         @endphp
         <div class="kx-tx-card">
             <div class="kx-tx-card-top">
                 <span class="kx-type-badge {{ $typClass }}">
-                    <i class="bi {{ $typIcon }}"></i> {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ucfirst($trade->type) }}
+                    <i class="bi {{ $typIcon }}"></i> {{ $trade->type === 'crypto_swap' ? 'Crypto swap' : ($trade->type === 'gift_card_purchase' ? 'Gift card purchase' : ucfirst($trade->type)) }}
                 </span>
                 <span class="kx-sts {{ $stsClass }}">
                     @if(in_array($trade->status,['completed','approved']))<i class="bi bi-check-circle-fill"></i>
@@ -641,10 +642,16 @@ function row(label, val, cls = '', copyVal = null) {
     </div>`;
 }
 
+function safeText(value) {
+    const element = document.createElement('span');
+    element.textContent = String(value ?? '');
+    return element.innerHTML;
+}
+
 function renderDrawer(data) {
-    const typeLabels  = { buy: 'Buy Order', sell: 'Sell Order', withdrawal: 'Withdrawal', deposit: 'Deposit', crypto_deposit: 'Crypto Deposit', crypto_withdrawal: 'Crypto Withdrawal', crypto_swap: 'Crypto Swap', bill_payment: 'Bill Payment', transfer: 'Wallet Transfer' };
-    const typeColors  = { buy: '#38bdf8', sell: '#00cc00', withdrawal: '#c084fc', deposit:'#fbbf24', crypto_deposit:'#7dd3fc', crypto_withdrawal:'#7dd3fc', crypto_swap:'#7dd3fc', bill_payment:'#fdba74', transfer:'#c084fc' };
-    const typeIcons   = { buy: 'bi-arrow-down-circle-fill', sell: 'bi-arrow-up-circle-fill', withdrawal: 'bi-bank', deposit:'bi-box-arrow-in-down', crypto_deposit:'bi-box-arrow-in-down', crypto_withdrawal:'bi-box-arrow-up', crypto_swap:'bi-arrow-left-right', bill_payment:'bi-receipt', transfer:'bi-arrow-left-right' };
+    const typeLabels  = { buy: 'Buy Order', sell: 'Sell Order', withdrawal: 'Withdrawal', deposit: 'Deposit', crypto_deposit: 'Crypto Deposit', crypto_withdrawal: 'Crypto Withdrawal', crypto_swap: 'Crypto Swap', gift_card_purchase: 'Gift Card Purchase', bill_payment: 'Bill Payment', transfer: 'Wallet Transfer' };
+    const typeColors  = { buy: '#38bdf8', sell: '#00cc00', withdrawal: '#c084fc', deposit:'#fbbf24', crypto_deposit:'#7dd3fc', crypto_withdrawal:'#7dd3fc', crypto_swap:'#7dd3fc', gift_card_purchase:'#f9a8d4', bill_payment:'#fdba74', transfer:'#c084fc' };
+    const typeIcons   = { buy: 'bi-arrow-down-circle-fill', sell: 'bi-arrow-up-circle-fill', withdrawal: 'bi-bank', deposit:'bi-box-arrow-in-down', crypto_deposit:'bi-box-arrow-in-down', crypto_withdrawal:'bi-box-arrow-up', crypto_swap:'bi-arrow-left-right', gift_card_purchase:'bi-gift-fill', bill_payment:'bi-receipt', transfer:'bi-arrow-left-right' };
     const sColor = statusColor(data.status);
     const colorMap = { green: '#00cc00', yellow: '#ffc107', red: '#ef4444' };
 
@@ -787,6 +794,17 @@ function renderDrawer(data) {
         if (data.fee) html += row('Total swap fee', Number(data.fee).toFixed(8) + ' ' + (data.to_coin || 'crypto').toUpperCase());
         if (data.provider_status) html += row('Processing status', data.provider_status);
         html += `</div>`;
+    }
+
+    if (data.type === 'gift_card_purchase') {
+        html += `<div class="kx-detail-section"><div class="kx-detail-section-title">Gift card order</div>`;
+        if (data.card_name) html += row('Gift card', safeText(data.card_name) + ' · ' + safeText(data.country));
+        if (data.face_value) html += row('Card value', Number(data.face_value).toFixed(2) + ' ' + safeText(data.coin || ''));
+        if (data.unit_rate_ngn) html += row('Purchase rate', '₦' + Number(data.unit_rate_ngn).toLocaleString('en-NG', {minimumFractionDigits:2}) + ' per ' + safeText(data.coin || ''));
+        if (data.recipient_email) html += row('Delivery email', safeText(data.recipient_email));
+        if (data.delivery_code) html += row('Gift card code', `<span class="mono">${safeText(data.delivery_code)}</span>`);
+        if (data.admin_note) html += row('Admin update', safeText(data.admin_note));
+        html += `<div class="kx-note mt-2">Gift card sales are currently unavailable. Purchase requests are manually fulfilled.</div></div>`;
     }
 
     // Cancel button for pending transactions

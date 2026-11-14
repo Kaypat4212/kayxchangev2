@@ -21,6 +21,7 @@
 }
 .bl-hero h1 { font-size: 2rem; font-weight: 800; color: #fff; margin: 0 0 .4rem; }
 .bl-hero p  { color: var(--blog-muted); font-size: .9rem; max-width: 480px; margin: 0 auto; }
+.bl-community-link{display:inline-flex;align-items:center;gap:7px;margin-top:15px;padding:9px 14px;border:1px solid rgba(0,204,0,.25);border-radius:999px;background:rgba(0,204,0,.08);color:#7fea8d;text-decoration:none;font-size:.75rem;font-weight:700;transition:.2s}.bl-community-link:hover{background:rgba(0,204,0,.16);color:#fff;transform:translateY(-1px)}
 
 /* Category filter pills */
 .bl-cats { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.75rem; }
@@ -113,6 +114,7 @@
 <div class="bl-hero">
     <h1><i class="bi bi-journal-richtext me-2" style="color:var(--blog-green);"></i>Blog &amp; Education</h1>
     <p>Learn about crypto trading, market insights, and tips to help you make smarter decisions.</p>
+    @auth<a href="{{ route('forum.index') }}" class="bl-community-link"><i class="bi bi-chat-square-heart-fill"></i>Join the community discussion</a>@else<a href="{{ route('login') }}" class="bl-community-link"><i class="bi bi-box-arrow-in-right"></i>Sign in to join the forum</a>@endauth
 </div>
 
 <div class="container-fluid px-3 pb-5">

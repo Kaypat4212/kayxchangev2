@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\AdminSetting;
 use App\Models\CryptoRate;
 use App\Models\GiftCardRate;
+use App\Models\GiftCardOrder;
 use App\Models\BillProviderSetting;
 use App\Models\CompanyAccount;
 use App\Models\CryptoDeposit;
@@ -36,7 +37,7 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFour();
         User::observe(UserObserver::class);
         AdminSetting::observe(AdminSettingObserver::class);
-        foreach ([CryptoRate::class, GiftCardRate::class, BillProviderSetting::class, CompanyAccount::class, CryptoDeposit::class, CryptoWithdrawal::class, Deposit::class, Withdrawal::class, Conversion::class, SellTrade::class, BuyTrade::class, BillPayment::class, Wallet::class, User::class] as $model) {
+        foreach ([CryptoRate::class, GiftCardRate::class, GiftCardOrder::class, BillProviderSetting::class, CompanyAccount::class, CryptoDeposit::class, CryptoWithdrawal::class, Deposit::class, Withdrawal::class, Conversion::class, SellTrade::class, BuyTrade::class, BillPayment::class, Wallet::class, User::class] as $model) {
             $model::observe(AdminAuditedModelObserver::class);
         }
 

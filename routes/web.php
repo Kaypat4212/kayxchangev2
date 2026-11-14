@@ -35,6 +35,8 @@ use App\Http\Controllers\{
 use App\Http\Controllers\Admin\AdminCryptoRateController;
 use App\Http\Controllers\RateCalculatorController;
 use App\Http\Controllers\Admin\AdminGiftCardRateController;
+use App\Http\Controllers\GiftCardController;
+use App\Http\Controllers\Admin\AdminGiftCardOrderController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\BlogAiController;
 use App\Http\Controllers\Admin\AdminAiController;
@@ -100,6 +102,18 @@ Route::get('/blog/{slug}', [\App\Http\Controllers\BlogController::class, 'show']
 Route::get('/offline', fn() => view('offline'))->name('offline');
 Route::get('/privacy', fn() => view('privacy'))->name('privacy');
 Route::get('/terms', fn() => view('terms'))->name('terms');
+
+// Member-only community forum. All user-generated content stays escaped in the views.
+Route::middleware(['auth', 'verified_or_backdoor'])->prefix('forum')->name('forum.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ForumController::class, 'index'])->name('index');
+    Route::get('/new', [\App\Http\Controllers\ForumController::class, 'create'])->name('create');
+    Route::post('/topics', [\App\Http\Controllers\ForumController::class, 'store'])->middleware('throttle:3,1')->name('store');
+    Route::get('/topic/{slug}', [\App\Http\Controllers\ForumController::class, 'show'])->name('show');
+    Route::post('/topic/{topic}/reply', [\App\Http\Controllers\ForumController::class, 'reply'])->middleware('throttle:8,1')->name('reply');
+    Route::post('/topic/{topic}/helpful', [\App\Http\Controllers\ForumController::class, 'react'])->middleware('throttle:30,1')->name('react');
+    Route::post('/reply/{reply}/helpful', [\App\Http\Controllers\ForumController::class, 'reactToReply'])->middleware('throttle:30,1')->name('reply.react');
+    Route::post('/report', [\App\Http\Controllers\ForumController::class, 'report'])->middleware('throttle:5,1')->name('report');
+});
 
 // ── Telegram Login Widget callback (no auth required) ───────────────────────
 Route::match(['get', 'post'], '/auth/telegram/callback', [TelegramLoginController::class, 'callback'])->name('telegram.login.callback');
@@ -191,6 +205,7 @@ Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () 
     Route::get('/',          [\App\Http\Controllers\WalletController::class, 'index'])->name('index');
     Route::get('/market-prices', [\App\Http\Controllers\WalletController::class, 'marketPrices'])->middleware('throttle:30,1')->name('market-prices');
     Route::get('/usd',       [\App\Http\Controllers\WalletController::class, 'usd'])->name('usd');
+    Route::post('/usd/withdraw-to-naira', [\App\Http\Controllers\WalletController::class, 'withdrawUsdToNaira'])->middleware('throttle:5,1')->name('usd.withdraw-to-naira');
     Route::get('/crypto',    [\App\Http\Controllers\WalletController::class, 'crypto'])->name('crypto');
     Route::get('/deposit',   [\App\Http\Controllers\WalletController::class, 'deposit'])->name('deposit');
     Route::post('/deposit',  [\App\Http\Controllers\WalletController::class, 'createDeposit'])->name('deposit.create');
@@ -224,13 +239,24 @@ use App\Http\Controllers\Admin\AdminBackupController;
 use App\Http\Controllers\Admin\AdminProfileController;
 
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('logs', [\App\Http\Controllers\Admin\AdminLogController::class, 'index'])->name('admin.logs.index');
+    Route::post('logs/analyze', [\App\Http\Controllers\Admin\AdminLogController::class, 'analyze'])->middleware('throttle:5,1')->name('admin.logs.analyze');
+    Route::get('forum', [\App\Http\Controllers\Admin\AdminForumController::class, 'index'])->name('admin.forum.index');
+    Route::post('forum/official-posts', [\App\Http\Controllers\Admin\AdminForumController::class, 'storeOfficialTopic'])->middleware('throttle:10,1')->name('admin.forum.official-posts.store');
+    Route::post('forum/topics/{topic}/official-replies', [\App\Http\Controllers\Admin\AdminForumController::class, 'replyOfficial'])->middleware('throttle:20,1')->name('admin.forum.official-replies.store');
+    Route::patch('forum/topics/{topic}', [\App\Http\Controllers\Admin\AdminForumController::class, 'updateTopic'])->name('admin.forum.topics.update');
+    Route::post('forum/reports/{report}/resolve', [\App\Http\Controllers\Admin\AdminForumController::class, 'resolveReport'])->middleware('throttle:20,1')->name('admin.forum.reports.resolve');
+    Route::post('forum/categories', [\App\Http\Controllers\Admin\AdminForumController::class, 'storeCategory'])->name('admin.forum.categories.store');
+    Route::put('forum/categories/{category}', [\App\Http\Controllers\Admin\AdminForumController::class, 'updateCategory'])->name('admin.forum.categories.update');
     Route::get('operations', [\App\Http\Controllers\Admin\AdminOperationsController::class, 'index'])->name('admin.operations');
     Route::get('audit-log', [\App\Http\Controllers\Admin\AdminOperationsController::class, 'audit'])->name('admin.audit-log');
     Route::get('support-cases', [\App\Http\Controllers\SupportCaseController::class, 'adminIndex'])->name('admin.support-cases.index');
     Route::patch('support-cases/{supportCase}', [\App\Http\Controllers\SupportCaseController::class, 'respond'])->name('admin.support-cases.respond');
     Route::get('transactions', [\App\Http\Controllers\Admin\AdminTransactionHistoryController::class, 'index'])->name('admin.transactions.index');
+    Route::patch('transactions/{type}/{id}', [\App\Http\Controllers\Admin\AdminTransactionHistoryController::class, 'update'])->whereNumber('id')->middleware('throttle:20,1')->name('admin.transactions.update');
     Route::get('wallet-rates', [\App\Http\Controllers\Admin\AdminWalletRateController::class, 'index'])->name('admin.wallet-rates.index');
     Route::put('wallet-rates', [\App\Http\Controllers\Admin\AdminWalletRateController::class, 'update'])->name('admin.wallet-rates.update');
+    Route::post('wallet-rates/sync-usdt', [\App\Http\Controllers\Admin\AdminWalletRateController::class, 'syncFromUsdt'])->middleware('throttle:5,1')->name('admin.wallet-rates.sync-usdt');
     Route::get('bill-providers', [BillProviderSettingsController::class, 'index'])->name('admin.bill-providers.index');
     Route::put('bill-providers', [BillProviderSettingsController::class, 'update'])->name('admin.bill-providers.update');
     Route::get('features', [\App\Http\Controllers\Admin\AdminFeatureSettingsController::class, 'index'])->name('admin.features.index');
@@ -444,6 +470,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin')->name('admin.')->group(
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/users', [AdminController::class, 'usersIndex'])->name('admin.users.index');
     Route::get('/users/{user}', [AdminController::class, 'usersShow'])->name('admin.users.show');
+    Route::post('/users/{user}/kyc-reminder', [AdminController::class, 'sendKycReminder'])->middleware('throttle:10,1')->name('admin.users.kyc-reminder');
     Route::get('/users/{user}/edit', [AdminController::class, 'usersEdit'])->name('admin.users.edit');
     Route::put('/users/{user}', [AdminController::class, 'usersUpdate'])->name('admin.users.update');
     Route::delete('/users/{user}', [AdminController::class, 'usersDestroy'])->name('admin.users.destroy');
@@ -472,10 +499,14 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     
     // Gift Card Rate Management
     Route::get('/gift-card-rates', [AdminGiftCardRateController::class, 'index'])->name('admin.gift-card-rates.index');
+    Route::post('/gift-card-rates/feature-toggle', [AdminGiftCardRateController::class, 'toggleFeature'])->name('admin.gift-card-rates.toggle-feature');
     Route::post('/gift-card-rates/bulk-update', [AdminGiftCardRateController::class, 'bulkUpdate'])->name('admin.gift-card-rates.bulk-update');
     Route::post('/gift-card-rates/add', [AdminGiftCardRateController::class, 'store'])->name('admin.gift-card-rates.store');
     Route::post('/gift-card-rates/{id}/update', [AdminGiftCardRateController::class, 'update'])->name('admin.gift-card-rates.update');
     Route::delete('/gift-card-rates/{id}', [AdminGiftCardRateController::class, 'destroy'])->name('admin.gift-card-rates.destroy');
+    Route::get('/gift-card-orders', [AdminGiftCardOrderController::class, 'index'])->name('admin.gift-card-orders.index');
+    Route::post('/gift-card-orders/{order}/complete', [AdminGiftCardOrderController::class, 'complete'])->middleware('throttle:15,1')->name('admin.gift-card-orders.complete');
+    Route::post('/gift-card-orders/{order}/reject', [AdminGiftCardOrderController::class, 'reject'])->middleware('throttle:15,1')->name('admin.gift-card-orders.reject');
 
     // Admin Notification Management
     Route::prefix('notifications')->name('admin.notifications.')->group(function () {
@@ -585,6 +616,8 @@ Route::post('/admin/2fa-challenge', [AdminController::class, 'verify2faChallenge
 // Authenticated and Verified Routes
 // User AI Route
 Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
+    Route::get('/gift-cards', [GiftCardController::class, 'index'])->name('gift-cards.index');
+    Route::post('/gift-cards/orders', [GiftCardController::class, 'store'])->middleware('throttle:5,1')->name('gift-cards.orders.store');
     Route::post('/ai/dashboard-insight', [UserAiController::class, 'dashboardInsight'])->name('ai.dashboard-insight');
 });
 
@@ -604,6 +637,7 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     // Settings
     Route::get('/settings', [UserController::class, 'settings'])->name('settings.index');
     Route::post('/settings', [UserController::class, 'updateSettings'])->name('update.settings');
+    Route::put('/settings/crypto-settlement', [UserController::class, 'updateCryptoSettlementPreference'])->name('settings.crypto-settlement');
     // Route::middleware('auth')->group(function () {
     //     Route::get('/settings/edit-bank', [UserController::class, 'editBank'])->name('edit.bank');
     //     Route::post('/settings/update-bank', [UserController::class, 'updateBank'])->name('update.bank');

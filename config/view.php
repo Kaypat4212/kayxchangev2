@@ -28,9 +28,9 @@ return [
     |
     */
 
-    'compiled' => env(
-        'VIEW_COMPILED_PATH',
-        realpath(storage_path('framework/views'))
-    ),
+    // realpath() returns false on a fresh cPanel deployment before the views
+    // cache directory has been created. Laravel's compiler can create this
+    // directory as long as it receives a non-empty path.
+    'compiled' => env('VIEW_COMPILED_PATH') ?: storage_path('framework/views'),
 
 ];

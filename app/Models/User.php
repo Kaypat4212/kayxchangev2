@@ -104,6 +104,7 @@ class User extends Authenticatable
         'two_factor_confirmed_at',
         'kx_tag',
         'date_of_birth',
+        'crypto_deposit_settlement_preference',
     ];
 
     /**

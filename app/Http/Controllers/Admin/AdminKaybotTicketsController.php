@@ -16,11 +16,19 @@ class AdminKaybotTicketsController extends Controller
 
     public function index(Request $request)
     {
-        $status = $request->get('status', 'open');
+        $status = in_array($request->query('status', 'open'), ['open', 'answered', 'closed', 'all'], true)
+            ? $request->query('status', 'open') : 'open';
+        $search = trim((string) $request->query('search', ''));
         $tickets = AiSupportTicket::with(['user', 'repliedBy'])
             ->when($status !== 'all', fn($q) => $q->where('status', $status))
-            ->latest()
-            ->paginate(20);
+            ->when($search !== '', fn($q) => $q->where(function ($query) use ($search) {
+                $query->where('question', 'like', '%' . $search . '%')
+                    ->orWhere('context', 'like', '%' . $search . '%')
+                    ->orWhereHas('user', fn($user) => $user->where('name', 'like', '%' . $search . '%')->orWhere('email', 'like', '%' . $search . '%'));
+            }))
+            ->orderByDesc('updated_at')
+            ->paginate(15)
+            ->withQueryString();
 
         $counts = [
             'open'     => AiSupportTicket::where('status', 'open')->count(),
@@ -28,7 +36,7 @@ class AdminKaybotTicketsController extends Controller
             'closed'   => AiSupportTicket::where('status', 'closed')->count(),
         ];
 
-        return view('admin.kaybot-tickets', compact('tickets', 'status', 'counts'));
+        return view('admin.kaybot-tickets', compact('tickets', 'status', 'counts', 'search'));
     }
 
     public function reply(Request $request, AiSupportTicket $ticket)

@@ -1,147 +1,36 @@
 @extends('adminnavlayout')
-
-@section('title', 'KayBot Support Tickets')
-
+@section('title', 'KayBot Support Desk')
 @section('content')
-<div class="container-fluid px-4 py-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="fw-bold mb-0">🤖 KayBot Support Tickets</h4>
-            <p class="text-muted small mb-0">Questions escalated from KayBot that need a human response</p>
-        </div>
-    </div>
-
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">
-            <i class="bi bi-check-circle me-1"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">
-            <i class="bi bi-exclamation-triangle me-1"></i> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    {{-- Status Filter Tabs --}}
-    <ul class="nav nav-tabs mb-4">
-        <li class="nav-item">
-            <a class="nav-link {{ $status === 'open' ? 'active' : '' }}"
-               href="{{ route('admin.kaybot.tickets') }}?status=open">
-                Open <span class="badge bg-danger ms-1">{{ $counts['open'] }}</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ $status === 'answered' ? 'active' : '' }}"
-               href="{{ route('admin.kaybot.tickets') }}?status=answered">
-                Answered <span class="badge bg-success ms-1">{{ $counts['answered'] }}</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ $status === 'closed' ? 'active' : '' }}"
-               href="{{ route('admin.kaybot.tickets') }}?status=closed">
-                Closed <span class="badge bg-secondary ms-1">{{ $counts['closed'] }}</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ $status === 'all' ? 'active' : '' }}"
-               href="{{ route('admin.kaybot.tickets') }}?status=all">
-                All
-            </a>
-        </li>
-    </ul>
-
+<style>
+.kb-desk{max-width:1500px;margin:auto;padding:28px 18px 60px;color:#e8f0eb}.kb-hero,.kb-card,.kb-stat{border:1px solid rgba(255,255,255,.09);background:linear-gradient(145deg,rgba(21,31,27,.98),rgba(13,19,17,.98));box-shadow:0 18px 50px rgba(0,0,0,.16)}.kb-hero{padding:24px;border-radius:22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;background:radial-gradient(ellipse at 90% 0,rgba(0,204,87,.13),transparent 38%),linear-gradient(145deg,#17231c,#111a16)}.kb-eyebrow{color:#72e59a;font-size:.68rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase}.kb-title{font-size:clamp(1.35rem,3vw,1.9rem);font-weight:850;letter-spacing:-.04em;margin:7px 0 4px;color:#f4fbf5}.kb-sub{color:#91a198;font-size:.8rem;margin:0}.kb-search{display:flex;gap:8px;min-width:min(390px,100%)}.kb-search input{flex:1;min-width:0;background:#0b120e;border:1px solid #ffffff1a;border-radius:11px;color:#eaf4ed;padding:11px 13px}.kb-search button{border:0;border-radius:11px;padding:0 15px;background:#13bd58;color:#06150b;font-weight:800}.kb-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:17px}.kb-stat{padding:14px 16px;border-radius:15px}.kb-stat span{display:block;color:#8ea097;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em}.kb-stat strong{display:block;color:#f4faf5;font-size:1.45rem;margin-top:4px}.kb-tabs{display:flex;gap:7px;overflow:auto;padding:3px 0 13px}.kb-tab{white-space:nowrap;text-decoration:none;border:1px solid #ffffff14;border-radius:999px;padding:9px 14px;color:#a8b6ad;background:#111a15;font-size:.74rem;font-weight:750}.kb-tab.active{color:#8af3a7;border-color:#1dbd5a6b;background:#0d2617}.kb-tab .count{margin-left:5px;color:#7f9285}.kb-card{border-radius:18px;margin-bottom:14px;overflow:hidden}.kb-head{padding:15px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #ffffff0d}.kb-user{display:flex;align-items:center;gap:11px;min-width:0}.kb-avatar{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:#173421;color:#7fee9e;font-weight:850}.kb-name{font-size:.85rem;color:#f0f7f1;font-weight:800}.kb-meta,.kb-time{font-size:.69rem;color:#829188}.kb-status{font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:5px 9px;border-radius:999px}.kb-status.open{background:#f59e0b1b;color:#f9c564}.kb-status.answered{background:#14c76a1c;color:#74e49a}.kb-status.closed{background:#ffffff12;color:#9eaaa3}.kb-body{padding:17px 18px}.kb-label{color:#7c8d83;font-size:.64rem;letter-spacing:.1em;font-weight:800;text-transform:uppercase;margin-bottom:7px}.kb-question{white-space:pre-wrap;overflow-wrap:anywhere;color:#e5eee8;background:#0a110d;border:1px solid #ffffff0d;border-radius:13px;padding:14px;font-size:.82rem;line-height:1.65}.kb-context{margin-top:12px}.kb-context summary{cursor:pointer;color:#8db69a;font-size:.73rem}.kb-context pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#080e0b;border:1px solid #ffffff0e;border-radius:12px;color:#aebbb2;padding:13px;font-size:.7rem;max-height:260px;overflow:auto}.kb-reply{margin-top:15px;padding:15px;border:1px solid #28c76625;border-radius:14px;background:#0c1a11}.kb-reply-text{white-space:pre-wrap;overflow-wrap:anywhere;color:#d9f0df;font-size:.8rem;line-height:1.65}.kb-composer{margin-top:16px}.kb-composer textarea{width:100%;min-height:105px;background:#0a110d;border:1px solid #ffffff17;border-radius:12px;color:#edf6ef;padding:12px;resize:vertical}.kb-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:9px}.kb-actions .btn{border-radius:10px;font-size:.75rem;font-weight:750}.kb-empty{text-align:center;padding:55px 20px;color:#87968c}.kb-empty i{display:block;font-size:2rem;color:#5e8067;margin-bottom:9px}.kb-pager{padding:12px 16px}.kb-flash{border-radius:12px}@media(max-width:720px){.kb-desk{padding:17px 11px 42px}.kb-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.kb-hero{padding:19px}.kb-search{width:100%;min-width:0}.kb-head,.kb-body{padding:13px}.kb-time{width:100%}}
+body.light-mode .kb-desk{color:#203328}body.light-mode .kb-hero,body.light-mode .kb-card,body.light-mode .kb-stat{background:linear-gradient(145deg,#fff,#f6faf7);border-color:#dce8df;box-shadow:0 12px 35px rgba(18,54,29,.06)}body.light-mode .kb-title,body.light-mode .kb-stat strong,body.light-mode .kb-name{color:#183522}body.light-mode .kb-sub,body.light-mode .kb-meta,body.light-mode .kb-time{color:#63756a}body.light-mode .kb-tab{background:#f7faf7;color:#586a5d;border-color:#dce8df}body.light-mode .kb-tab.active{background:#e8f9ed;color:#087a31}body.light-mode .kb-question,body.light-mode .kb-search input,body.light-mode .kb-composer textarea{background:#f8fbf8;color:#24382a;border-color:#dce8df}body.light-mode .kb-reply{background:#f0fbf3;border-color:#cdebd5}body.light-mode .kb-reply-text{color:#304b38}body.light-mode .kb-context pre{background:#f7faf7;color:#405447}
+</style>
+<main class="kb-desk">
+    <header class="kb-hero"><div><div class="kb-eyebrow"><i class="bi bi-headset me-1"></i>KayBot support desk</div><h1 class="kb-title">Customer conversations</h1><p class="kb-sub">Keep each open support conversation together and respond from one clear thread.</p></div><form class="kb-search" method="GET" action="{{ route('admin.kaybot.tickets') }}"><input type="hidden" name="status" value="{{ $status }}"><input name="search" value="{{ $search }}" placeholder="Search user, email, question…" aria-label="Search tickets"><button type="submit"><i class="bi bi-search me-1"></i>Search</button></form></header>
+    @if(session('success'))<div class="alert alert-success kb-flash">{{ session('success') }}</div>@endif
+    @if(session('error'))<div class="alert alert-danger kb-flash">{{ session('error') }}</div>@endif
+    @if($errors->any())<div class="alert alert-danger kb-flash">{{ $errors->first() }}</div>@endif
+    <section class="kb-stats"><div class="kb-stat"><span>Needs a reply</span><strong>{{ number_format($counts['open']) }}</strong></div><div class="kb-stat"><span>Answered</span><strong>{{ number_format($counts['answered']) }}</strong></div><div class="kb-stat"><span>Closed</span><strong>{{ number_format($counts['closed']) }}</strong></div><div class="kb-stat"><span>Matching tickets</span><strong>{{ number_format($tickets->total()) }}</strong></div></section>
+    <nav class="kb-tabs" aria-label="Filter conversations">
+        @foreach(['open'=>'Open','answered'=>'Answered','closed'=>'Closed','all'=>'All'] as $key=>$label)<a class="kb-tab {{ $status===$key?'active':'' }}" href="{{ route('admin.kaybot.tickets', array_filter(['status'=>$key,'search'=>$search])) }}">{{ $label }}@if($key!=='all')<span class="count">{{ $counts[$key] }}</span>@endif</a>@endforeach
+    </nav>
     @forelse($tickets as $ticket)
-    <div class="card mb-3 border-{{ $ticket->status === 'open' ? 'warning' : ($ticket->status === 'answered' ? 'success' : 'secondary') }} shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center py-2">
-            <div>
-                <strong>{{ $ticket->user?->name ?? 'Guest' }}</strong>
-                <span class="text-muted small ms-2">{{ $ticket->user?->email }}</span>
-                <span class="badge ms-2
-                    @if($ticket->status === 'open') bg-warning text-dark
-                    @elseif($ticket->status === 'answered') bg-success
-                    @else bg-secondary @endif">
-                    {{ ucfirst($ticket->status) }}
-                </span>
+        <article class="kb-card">
+            <header class="kb-head"><div class="kb-user"><div class="kb-avatar">{{ mb_strtoupper(mb_substr($ticket->user?->name ?? 'U',0,1)) }}</div><div><div class="kb-name">{{ $ticket->user?->name ?? 'Deleted account' }}</div><div class="kb-meta">{{ $ticket->user?->email ?? '—' }} · Ticket #{{ $ticket->id }} · {{ $ticket->updated_at->diffForHumans() }}</div></div></div><div class="d-flex align-items-center gap-2"><span class="kb-status {{ $ticket->status }}">{{ ucfirst($ticket->status) }}</span><span class="kb-time">Opened {{ $ticket->created_at->format('d M Y, H:i') }}</span></div></header>
+            <div class="kb-body"><div class="kb-label">Customer messages</div><div class="kb-question">{{ $ticket->question }}</div>
+                @if($ticket->context)<details class="kb-context"><summary><i class="bi bi-chat-square-text me-1"></i>Conversation context</summary><pre class="mt-2 mb-0">{{ $ticket->context }}</pre></details>@endif
+                @if($ticket->admin_reply)<section class="kb-reply"><div class="kb-label"><i class="bi bi-reply-fill me-1"></i>Latest team response</div><div class="kb-reply-text">{{ $ticket->admin_reply }}</div><div class="kb-meta mt-2">{{ $ticket->replied_at?->format('d M Y, H:i') }} · {{ $ticket->repliedBy?->name ?? 'KayXchange Support' }} · {{ $ticket->user_notified ? 'Shown to user' : 'Waiting to show in KayBot' }}</div></section>@endif
+                @if($ticket->status !== 'closed')
+                    <form class="kb-composer" method="POST" action="{{ route('admin.kaybot.tickets.reply', $ticket) }}">@csrf<input type="hidden" name="ticket_id" value="{{ $ticket->id }}"><textarea name="admin_reply" maxlength="2000" required placeholder="Write a clear, helpful reply. The user sees it in KayBot.">{{ old('ticket_id') == $ticket->id ? old('admin_reply') : '' }}</textarea><div class="kb-actions"><small class="kb-meta">Replies are delivered in KayBot the next time the user opens it.</small><div class="d-flex gap-2"><button type="submit" class="btn btn-success"><i class="bi bi-send-fill me-1"></i>{{ $ticket->admin_reply ? 'Update reply' : 'Send reply' }}</button></div></div></form>
+                    <div class="d-flex justify-content-end mt-2"><form method="POST" action="{{ route('admin.kaybot.tickets.close', $ticket) }}" onsubmit="return confirm('Close this conversation?')">@csrf<button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-check2-circle me-1"></i>Close conversation</button></form></div>
+                @else
+                    <div class="d-flex justify-content-end mt-3"><form method="POST" action="{{ route('admin.kaybot.tickets.reopen', $ticket) }}">@csrf<button type="submit" class="btn btn-sm btn-outline-warning"><i class="bi bi-arrow-counterclockwise me-1"></i>Reopen conversation</button></form></div>
+                @endif
             </div>
-            <small class="text-muted">{{ $ticket->created_at->diffForHumans() }}</small>
-        </div>
-        <div class="card-body">
-            {{-- User question --}}
-            <div class="mb-3">
-                <label class="form-label fw-semibold small text-uppercase text-muted">User's Question</label>
-                <div class="bg-light rounded p-3 text-dark">{{ $ticket->question }}</div>
-            </div>
-
-            {{-- Chat context (collapsible) --}}
-            @if($ticket->context)
-            <div class="mb-3">
-                <a class="small text-muted" data-bs-toggle="collapse" href="#ctx-{{ $ticket->id }}" role="button">
-                    <i class="bi bi-chat-text me-1"></i> View conversation context
-                </a>
-                <div class="collapse mt-2" id="ctx-{{ $ticket->id }}">
-                    <pre class="bg-dark text-light rounded p-3 small" style="white-space:pre-wrap;max-height:200px;overflow-y:auto">{{ $ticket->context }}</pre>
-                </div>
-            </div>
-            @endif
-
-            {{-- Existing reply --}}
-            @if($ticket->admin_reply)
-            <div class="mb-3">
-                <label class="form-label fw-semibold small text-uppercase text-muted">Your Reply</label>
-                <div class="bg-success bg-opacity-10 border border-success rounded p-3">
-                    {{ $ticket->admin_reply }}
-                    <div class="small text-muted mt-1">
-                        Sent {{ $ticket->replied_at?->diffForHumans() }}
-                        by {{ $ticket->repliedBy?->name ?? 'Admin' }}
-                        · {{ $ticket->user_notified ? '✓ User notified' : '⏳ Pending delivery' }}
-                    </div>
-                </div>
-            </div>
-            @endif
-
-            {{-- Reply form --}}
-            @if($ticket->status !== 'closed')
-            <form method="POST" action="{{ route('admin.kaybot.tickets.reply', $ticket) }}">
-                @csrf
-                <div class="mb-2">
-                    <textarea name="admin_reply" class="form-control" rows="3"
-                        placeholder="Type your reply — the user will see this in KayBot next time they open it..."
-                        required>{{ old('admin_reply', $ticket->admin_reply) }}</textarea>
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="bi bi-send me-1"></i> {{ $ticket->admin_reply ? 'Update Reply' : 'Send Reply' }}
-                    </button>
-                    <form method="POST" action="{{ route('admin.kaybot.tickets.close', $ticket) }}" class="d-inline" onsubmit="return confirm('Close this ticket?')">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-x-circle me-1"></i> Close
-                        </button>
-                    </form>
-                </div>
-            </form>
-            @else
-            <form method="POST" action="{{ route('admin.kaybot.tickets.reopen', $ticket) }}" class="d-inline">
-                @csrf
-                <button type="submit" class="btn btn-outline-warning btn-sm">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reopen
-                </button>
-            </form>
-            @endif
-        </div>
-    </div>
+        </article>
     @empty
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-        No {{ $status !== 'all' ? $status : '' }} tickets found.
-    </div>
+        <div class="kb-card kb-empty"><i class="bi bi-inbox"></i><strong>No conversations found</strong><div class="small mt-2">Try another filter or search term.</div></div>
     @endforelse
-
-    <div class="mt-3">
-        {{ $tickets->appends(['status' => $status])->links() }}
-    </div>
-</div>
+    @if($tickets->hasPages())<div class="kb-card kb-pager">{{ $tickets->links() }}</div>@endif
+</main>
 @endsection

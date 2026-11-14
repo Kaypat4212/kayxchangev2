@@ -21,23 +21,23 @@
   <div class="col-md-6 col-xl-4"><article class="kw-card kw-ngn-card"><div class="d-flex justify-content-between"><div class="d-flex gap-3 align-items-center"><div class="kw-coin-icon"><i class="bi bi-bank"></i></div><div><div class="kw-symbol">NGN</div><div class="kw-asset-name">Naira balance</div></div></div><span class="kw-status-pill">Fiat</span></div><div class="kw-balance">₦{{ number_format((float)auth()->user()->balance,2) }}</div><div class="kw-value"><span>Available balance</span><span>NGN</span></div><div class="kw-asset-actions"><a href="{{ route('deposits.create') }}">Add funds</a><a href="{{ route('withdraw') }}">Withdraw</a></div></article></div>
   @foreach($wallets as $wallet)
    @php($currency = strtoupper($wallet->currency))
-   @if($currency !== 'NGN')
+   @if(!in_array($currency, ['NGN', 'USD', 'EUR'], true))
    @php($isUsd = $currency === 'USD')
    @php($isMultiNetworkUsdt = $currency === 'USDT')
    @php($marketPrice = $isUsd ? 1 : ($prices[$currency]['price_usd'] ?? null))
    @php($currentValue = $marketPrice !== null ? (float)$wallet->balance * $marketPrice : null)
    <div class="col-md-6 col-xl-4"><article class="kw-card {{ $isUsd ? 'kw-fiat-card' : '' }} wallet-card" data-currency="{{ $currency }}" data-amount="{{ (float)$wallet->balance }}">
-    <div class="d-flex justify-content-between"><div class="d-flex gap-3 align-items-center"><div class="kw-coin-icon">@if($isUsd)<i class="bi bi-currency-dollar"></i>@else<i class="bi bi-currency-bitcoin"></i>@endif</div><div><div class="kw-symbol">{{ $currency }}</div><div class="kw-asset-name">{{ $isUsd ? 'US dollar wallet' : ($isMultiNetworkUsdt ? 'Tether · multiple networks' : ($wallet->network ?: 'Crypto wallet')) }}</div></div></div><span class="kw-status-pill">{{ $isUsd ? 'Fiat' : ($isMultiNetworkUsdt ? 'Multi-network' : ($wallet->network ?: 'Crypto')) }}</span></div>
+    <div class="d-flex justify-content-between"><div class="d-flex gap-3 align-items-center"><div class="kw-coin-icon"><i class="bi bi-currency-bitcoin"></i></div><div><div class="kw-symbol">{{ $currency }}</div><div class="kw-asset-name">{{ $isMultiNetworkUsdt ? 'Tether · multiple networks' : ($wallet->network ?: 'Crypto wallet') }}</div></div></div><span class="kw-status-pill">{{ $isMultiNetworkUsdt ? 'Multi-network' : ($wallet->network ?: 'Crypto') }}</span></div>
     <div class="kw-balance">{{ number_format((float)$wallet->balance, $isUsd ? 2 : 8) }} <span class="fs-6">{{ $currency }}</span></div>
     <div class="kw-value"><span>Current market value</span><strong class="wallet-value">{{ $currentValue !== null ? '$'.number_format($currentValue,2) : '—' }}</strong></div>
-    <div class="kw-price">@if($isUsd)Reference value: $1.00 USD @elseif($marketPrice !== null)Spot price: ${{ number_format($marketPrice, $marketPrice < 1 ? 6 : 2) }} @else Live spot price unavailable @endif
-     @if(!$isUsd && isset($prices[$currency]['change_24h']) && $prices[$currency]['change_24h'] !== null)<span class="kw-change {{ $prices[$currency]['change_24h'] >= 0 ? 'kw-up' : 'kw-down' }} ms-1">{{ $prices[$currency]['change_24h'] >= 0 ? '+' : '' }}{{ number_format($prices[$currency]['change_24h'],2) }}% 24h</span>@endif
+    <div class="kw-price">@if($marketPrice !== null)Spot price: ${{ number_format($marketPrice, $marketPrice < 1 ? 6 : 2) }} @else Live spot price unavailable @endif
+     @if(isset($prices[$currency]['change_24h']) && $prices[$currency]['change_24h'] !== null)<span class="kw-change {{ $prices[$currency]['change_24h'] >= 0 ? 'kw-up' : 'kw-down' }} ms-1">{{ $prices[$currency]['change_24h'] >= 0 ? '+' : '' }}{{ number_format($prices[$currency]['change_24h'],2) }}% 24h</span>@endif
     </div>
     @if($wallet->address)<div class="kw-note text-truncate mt-2" title="{{ $wallet->address }}">{{ $wallet->address }}</div>@endif
     @if($isMultiNetworkUsdt)<div class="kw-note mt-2">USDT balance is shared across TRC20, ERC20 and BEP20 deposits. Choose the matching network on each deposit invoice.</div>@endif
     @php($assetNetworks=['BTC'=>['BTC'],'ETH'=>['ERC20'],'USDT'=>['TRC20','ERC20','BEP20'],'USDC'=>['ERC20','BEP20'],'BNB'=>['BEP20'],'SOL'=>['SOL']][$currency] ?? [])
     @php($suggestedNetwork=in_array(strtoupper((string)$wallet->network),$assetNetworks,true)?strtoupper($wallet->network):($assetNetworks[0]??''))
-    <div class="kw-asset-actions"><a href="{{ route('wallet.deposit', ['currency'=>$currency,'network'=>$suggestedNetwork]) }}">Deposit</a><a href="{{ route('wallet.withdraw', ['currency'=>$currency,'network'=>$suggestedNetwork]) }}">Withdraw</a>@if($isUsd)<a href="{{ route('wallet.usd') }}">USD rates</a>@endif</div>
+    <div class="kw-asset-actions"><a href="{{ route('wallet.deposit', ['currency'=>$currency,'network'=>$suggestedNetwork]) }}">Deposit</a><a href="{{ route('wallet.withdraw', ['currency'=>$currency,'network'=>$suggestedNetwork]) }}">Withdraw · coming soon</a></div>
    </article></div>
    @endif
   @endforeach

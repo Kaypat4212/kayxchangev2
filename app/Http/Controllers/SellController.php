@@ -467,6 +467,7 @@ class SellController extends Controller
 
         $request->validate([
             'payout_method' => 'required|in:default_bank,external_bank,wallet_balance',
+            'sender_wallet_address' => 'nullable|string|max:255',
             'password' => 'required|string|min:6',
         ]);
 
@@ -524,6 +525,7 @@ class SellController extends Controller
 
             $sellTrade->network       = $network;
             $sellTrade->wallet_address = $walletMap[$walletKey] ?? $walletMap[$coin] ?? 'N/A';
+            $sellTrade->sender_wallet_address = trim((string) $request->input('sender_wallet_address')) ?: null;
 
             if ($request->payout_method === 'default_bank') {
                 if (empty($user->bank_name) || empty($user->account_number) || empty($user->account_name) || $user->bank_name === 'N/A' || $user->account_number === 'N/A' || $user->account_name === 'N/A') {
@@ -581,7 +583,8 @@ class SellController extends Controller
                 $message .= "Account: {$sellTrade->account_number}\n";
                 $message .= "Name: {$sellTrade->account_name}\n";
             }
-            $message .= "Wallet: {$sellTrade->wallet_address}\n";
+            $message .= "Platform receiving wallet: {$sellTrade->wallet_address}\n";
+            $message .= "User sending wallet: " . ($sellTrade->sender_wallet_address ?: 'Not provided') . "\n";
             $message .= "Proof: <a href=\"" . asset('storage/' . $sellTrade->proof) . "\">View</a>\n";
             $message .= "Status: {$sellTrade->status}\n";
             $message .= "Timestamp: {$tradeTimestamp}\n";
@@ -597,6 +600,11 @@ class SellController extends Controller
                     'usd_amount' => number_format((float) $sellTrade->usd_amount, 6),
                     'naira_amount' => number_format((float) $sellTrade->naira_amount, 2),
                     'wallet_address' => $sellTrade->wallet_address ?? 'N/A',
+                    'sender_wallet_address' => $sellTrade->sender_wallet_address,
+                    'payout_method' => $sellTrade->payment_method,
+                    'payout_destination' => $sellTrade->payment_method === 'wallet_balance'
+                        ? 'KayXchange Naira wallet'
+                        : trim(($sellTrade->bank_name ?? '') . ' ' . ($sellTrade->account_number ?? '')),
                     'network' => $sellTrade->network ?? 'N/A',
                     'status' => $sellTrade->status,
                 ]);

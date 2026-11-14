@@ -24,7 +24,8 @@ class CryptoController extends Controller
         Log::info('Signed-in User ID: ', ['user_id' => $userId]);
 
         // Fetch crypto rates
-        $rates = CryptoRate::all(['coin', 'buy_rate', 'sell_rate'])->keyBy('coin')->toArray();
+        $rateCoins = CryptoRate::query()->pluck('coin')->map(fn ($coin) => strtoupper((string) $coin))->merge(['BTC', 'ETH', 'USDT', 'SOL', 'BNB', 'USDC', 'LTC', 'ADA', 'DOGE'])->unique()->values()->all();
+        $rates = app(\App\Services\CryptoTradeRateService::class)->rates($rateCoins);
         Log::info('Rates fetched for dashboard: ', ['rates' => $rates]);
 
         // Fetch recent trades and withdrawals
@@ -94,7 +95,7 @@ class CryptoController extends Controller
         Log::info('Combined Transactions for Dashboard: ', ['count' => $transactions->count(), 'transactions' => $transactions->toArray()]);
 
         // USDT sell rate for NGN→USD balance conversion
-        $usdtRate = CryptoRate::where('coin', 'USDT')->value('sell_rate') ?? 1;
+        $usdtRate = app(\App\Services\CryptoTradeRateService::class)->rate('USDT', 'sell') ?? 0;
 
         // Referral count for dashboard stat tile
         $referralCount = Auth::user()->referralsMade()->count();
@@ -106,19 +107,17 @@ class CryptoController extends Controller
         $billPaymentsEnabled = $billService->billPaymentsEnabled() && $billService->providers() !== [];
         $utilityPaymentsEnabled = $billPaymentsEnabled && $billService->utilityPaymentsEnabled();
         $currentUser = Auth::user();
-        $usdWalletBalance = (float) $currentUser->wallets()->where('currency', 'USD')->value('balance');
         $walletMarket = app(\App\Services\ExchangeRateService::class)->getUsdRates();
-        $totalWalletUsd = (float) $usdtRate > 0 ? (float) $currentUser->balance / (float) $usdtRate : 0.0;
-        $walletValueComplete = (float) $currentUser->balance <= 0 || (float) $usdtRate > 0;
-        foreach ($currentUser->wallets()->where('is_active', true)->get() as $assetWallet) {
-            $asset = strtoupper((string) $assetWallet->currency);
-            if ($asset === 'NGN') continue;
-            if ($asset === 'USD') { $totalWalletUsd += (float) $assetWallet->balance; continue; }
-            if (is_numeric($walletMarket[$asset] ?? null)) $totalWalletUsd += (float) $assetWallet->balance * (float) $walletMarket[$asset];
-            elseif ((float) $assetWallet->balance > 0) $walletValueComplete = false;
+        $cryptoPortfolioUsd = 0.0;
+        $cryptoPortfolioComplete = true;
+        foreach ($currentUser->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->get() as $cryptoWallet) {
+            $asset = strtoupper((string) $cryptoWallet->currency);
+            if (is_numeric($walletMarket[$asset] ?? null)) $cryptoPortfolioUsd += (float) $cryptoWallet->balance * (float) $walletMarket[$asset];
+            elseif ((float) $cryptoWallet->balance > 0) $cryptoPortfolioComplete = false;
         }
-        if (!$walletValueComplete) $totalWalletUsd = null;
-        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts', 'billPaymentsEnabled', 'utilityPaymentsEnabled', 'usdWalletBalance', 'totalWalletUsd'));
+        if (!$cryptoPortfolioComplete) $cryptoPortfolioUsd = null;
+        $cryptoPortfolioStale = (bool) ($walletMarket['_stale'] ?? false);
+        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts', 'billPaymentsEnabled', 'utilityPaymentsEnabled', 'cryptoPortfolioUsd', 'cryptoPortfolioStale'));
     }
 
     public function buy()

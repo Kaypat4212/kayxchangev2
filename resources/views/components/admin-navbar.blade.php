@@ -138,6 +138,9 @@
               <a class="dropdown-item @if(request()->is('admin/gift-card-rates*')) active @endif" href="{{ url('/admin/gift-card-rates') }}">
                 <i class="bi bi-gift me-2"></i>Gift Card Rates
               </a>
+              <a class="dropdown-item @if(request()->is('admin/gift-card-orders*')) active @endif" href="{{ route('admin.gift-card-orders.index') }}">
+                <i class="bi bi-inbox me-2"></i>Gift Card Orders
+              </a>
             </li>
             <li>
               <a class="dropdown-item @if(request()->is('admin/set-rates*') || request()->is('admin/edit-rate*') || request()->is('admin/rate*')) active @endif" href="{{ route('admin.crypto-rates.index') }}">
@@ -193,6 +196,11 @@
               </a>
             </li>
             <li>
+              <a class="dropdown-item @if(request()->is('admin/forum*')) active @endif" href="{{ route('admin.forum.index') }}">
+                <i class="bi bi-chat-square-heart me-2"></i>Community Forum
+              </a>
+            </li>
+            <li>
               <a class="dropdown-item @if(request()->is('admin/campaigns*')) active @endif" href="{{ route('admin.campaigns.index') }}">
                 <i class="bi bi-megaphone-fill me-2"></i>Campaigns
               </a>
@@ -213,6 +221,7 @@
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
             <li><a class="dropdown-item @if(request()->is('admin/operations*')) active @endif" href="{{ route('admin.operations') }}"><i class="bi bi-heart-pulse me-2"></i>Operations Health</a></li>
+            <li><a class="dropdown-item @if(request()->is('admin/logs*')) active @endif" href="{{ route('admin.logs.index') }}"><i class="bi bi-file-earmark-medical me-2"></i>Laravel Logs &amp; AI</a></li>
             <li><a class="dropdown-item @if(request()->is('admin/audit-log*')) active @endif" href="{{ route('admin.audit-log') }}"><i class="bi bi-shield-check me-2"></i>Admin Audit Log</a></li>
             <li><hr class="dropdown-divider"></li>
             <li>
