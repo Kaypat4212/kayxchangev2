@@ -85,7 +85,7 @@ body.light-mode .kwd-page{--kwd-text:#14231a;--kwd-muted:#687b71;color:#17261e}b
                                     data-balance="{{ number_format((float) $wallet->available_balance, 8, '.', '') }}"
                                     data-currency="{{ strtoupper($wallet->currency) }}"
                                     data-network="{{ strtoupper((string) $wallet->network) }}"
-                                    {{ (string) old('wallet_id') === (string) $wallet->id ? 'selected' : '' }}>
+                                    {{ (string) $selectedWalletId === (string) $wallet->id ? 'selected' : '' }}>
                                     {{ strtoupper($wallet->currency) }} · {{ number_format((float) $wallet->available_balance, 8, '.', '') }} available{{ $wallet->network ? ' · '.$wallet->network : '' }}
                                 </option>
                             @endforeach
@@ -174,14 +174,14 @@ body.light-mode .kwd-page{--kwd-text:#14231a;--kwd-muted:#687b71;color:#17261e}b
     if (!walletSelect || !networkSelect || !amountInput || !addressInput) return;
 
     const networksByAsset = @json($walletNetworkOptions);
-    const oldNetwork = @json(old('network', ''));
+    const oldNetwork = @json($selectedNetwork ?? '');
     const numberFmt = new Intl.NumberFormat(undefined, {maximumFractionDigits: 8});
 
     function refreshPreview() {
         const option = walletSelect.options[walletSelect.selectedIndex];
         const currency = option?.dataset.currency || '';
         const balance = Number(option?.dataset.balance || 0);
-        const fixedNetwork = (option?.dataset.network || '').toUpperCase();
+        const suggestedNetwork = (option?.dataset.network || '').toUpperCase();
         document.getElementById('previewCoin').textContent = currency ? currency + ' wallet' : 'Choose an asset';
         document.getElementById('previewWallet').textContent = currency || '—';
         document.getElementById('availableBalance').textContent = currency ? numberFmt.format(balance) + ' ' + currency : 'Select a wallet';
@@ -190,15 +190,11 @@ body.light-mode .kwd-page{--kwd-text:#14231a;--kwd-muted:#687b71;color:#17261e}b
         document.getElementById('previewAmount').textContent = amountInput.value && currency ? numberFmt.format(Number(amountInput.value)) + ' ' + currency : '—';
 
         const map = networksByAsset[currency] || {};
-        let choices = Object.entries(map);
-        if (fixedNetwork) {
-            choices = choices.filter(([code]) => code.toUpperCase() === fixedNetwork);
-            if (!choices.length) choices = [[fixedNetwork, fixedNetwork]];
-        }
+        const choices = Object.entries(map);
         networkSelect.replaceChildren(new Option(choices.length ? 'Select network...' : 'No supported network found', ''));
-        choices.forEach(([code, label]) => networkSelect.add(new Option(label, code, false, oldNetwork.toUpperCase() === code.toUpperCase())));
+        choices.forEach(([code, label]) => networkSelect.add(new Option(label, code, false, (oldNetwork || suggestedNetwork).toUpperCase() === code.toUpperCase())));
         networkSelect.disabled = choices.length === 0;
-        document.getElementById('previewNetwork').textContent = networkSelect.value ? networkSelect.options[networkSelect.selectedIndex].text : (fixedNetwork || (currency ? 'Select a network' : 'Network will appear here'));
+        document.getElementById('previewNetwork').textContent = networkSelect.value ? networkSelect.options[networkSelect.selectedIndex].text : (currency ? 'Select a network' : 'Network will appear here');
         const icon = document.getElementById('previewCoinIcon');
         icon.className = currency === 'BTC' ? 'bi bi-currency-bitcoin' : currency === 'USD' || currency === 'USDC' || currency === 'USDT' ? 'bi bi-currency-dollar' : 'bi bi-coin';
     }

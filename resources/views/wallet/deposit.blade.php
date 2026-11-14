@@ -12,7 +12,7 @@
  <div class="row g-3">
   <div class="col-lg-7"><section class="dep-card">
    <form action="{{ route('wallet.deposit.create') }}" method="POST" id="depositForm">@csrf
-    <div class="mb-3"><label class="dep-label" for="currency">Cryptocurrency</label><select name="currency" id="currency" class="dep-control" required><option value="">Choose an asset</option>@foreach($supportedCryptos as $symbol=>$asset)<option value="{{ $symbol }}" {{ old('currency')===$symbol?'selected':'' }}>{{ $asset['name'] }} ({{ $symbol }})</option>@endforeach</select></div>
+    <div class="mb-3"><label class="dep-label" for="currency">Cryptocurrency</label><select name="currency" id="currency" class="dep-control" required><option value="">Choose an asset</option>@foreach($supportedCryptos as $symbol=>$asset)<option value="{{ $symbol }}" {{ $selectedCurrency===$symbol?'selected':'' }}>{{ $asset['name'] }} ({{ $symbol }})</option>@endforeach</select></div>
     <div class="mb-3"><label class="dep-label" for="network">Network</label><select name="network" id="network" class="dep-control" required><option value="">Choose a network</option></select><div class="dep-muted small mt-1">Send only using the selected network. The invoice address and amount are generated for this choice.</div></div>
     <div class="row g-3 mb-3"><div class="col-sm-5"><label class="dep-label" for="input_type">I want to enter</label><select name="input_type" id="input_type" class="dep-control"><option value="usd" {{ old('input_type','usd')==='usd'?'selected':'' }}>USD value</option><option value="crypto" {{ old('input_type')==='crypto'?'selected':'' }}>Crypto amount</option></select></div><div class="col-sm-7"><label class="dep-label" for="amount" id="amountLabel">Deposit value (USD)</label><input name="amount" id="amount" type="number" min="0.00000001" step="any" value="{{ old('amount') }}" class="dep-control" placeholder="Enter amount" required></div></div>
     <div class="dep-estimate mb-3"><div class="dep-muted small" id="estimateLabel">Estimated crypto amount</div><div class="dep-estimate-value" id="estimateAmount">Choose an asset and amount</div><div class="dep-muted small mt-1" id="estimateMeta">Prices refresh automatically from the market price service.</div></div>
@@ -26,7 +26,7 @@
 <script>
 (()=>{
  const endpoint=@json(route('wallet.market-prices')),$=id=>document.getElementById(id);
- const supported=@json(collect($supportedCryptos)->map(fn($asset)=>$asset['networks'])->all());
+ const supported=@json(collect($supportedCryptos)->map(fn($asset)=>$asset['networks'])->all()),initialNetwork=@json($selectedNetwork),initialCurrency=@json($selectedCurrency);
  let livePrices={},priceSource='unavailable',lastUpdated=null,pricesStale=false;
  function refreshEstimate(){
   const coin=$('currency').value,kind=$('input_type').value,amount=Number($('amount').value||0),price=Number(livePrices[coin]?.price_usd||0);
@@ -40,7 +40,8 @@
   $('estimateMeta').textContent=(kind==='usd'?'USD invoice · $'+usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'Market price · $'+price.toLocaleString('en-US',{maximumFractionDigits:price<1?6:2})+' / '+coin)+(lastUpdated?' · '+priceSource+' · '+new Date(lastUpdated).toLocaleTimeString():'');
  }
  async function loadPrices(){try{const res=await fetch(endpoint,{headers:{Accept:'application/json'},cache:'no-store'});if(!res.ok)throw new Error();const data=await res.json();livePrices=data.prices||{};priceSource=data.source||'market';lastUpdated=data.updated_at||null;pricesStale=Boolean(data.stale);refreshEstimate()}catch(e){pricesStale=true;$('estimateMeta').textContent='Could not refresh market prices. USD input remains available; crypto input needs a live quote.';refreshEstimate()}}
- function refreshNetworks(){const select=$('network'),old=@json(old('network'));select.innerHTML='<option value="">Choose a network</option>';for(const network of (supported[$('currency').value]||[])){const option=document.createElement('option');option.value=network;option.textContent=network;if(old===network)option.selected=true;select.appendChild(option)}}
+ function refreshNetworks(){const select=$('network'),wanted=$('currency').value===initialCurrency?initialNetwork:'';select.innerHTML='<option value="">Choose a network</option>';for(const network of (supported[$('currency').value]||[])){const option=document.createElement('option');option.value=network;option.textContent=network;if(wanted===network)option.selected=true;select.appendChild(option)}if(!select.value&&select.options.length===2)select.selectedIndex=1}
+ $('network').addEventListener('change',()=>{$('network').dataset.userChanged='1'});
  $('currency').addEventListener('change',()=>{refreshNetworks();refreshEstimate()});$('input_type').addEventListener('change',refreshEstimate);$('amount').addEventListener('input',refreshEstimate);refreshNetworks();
  $('depositForm').addEventListener('submit',e=>{const amount=Number($('amount').value),price=Number(livePrices[$('currency').value]?.price_usd||0);if($('input_type').value==='crypto'&&(price<=0||pricesStale)){e.preventDefault();refreshEstimate() }else if(amount<=0){e.preventDefault()}});
  loadPrices();window.setInterval(loadPrices,60000);

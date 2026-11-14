@@ -249,8 +249,8 @@ class SellController extends Controller
     public function step1()
     {
         Log::info('Accessing sell.step1');
-        $rates = CryptoRate::whereIn('coin', ['BTC', 'ETH', 'USDT', 'SOL'])
-            ->pluck('sell_rate', 'coin')->toArray();
+        $resolved = app(\App\Services\CryptoTradeRateService::class)->rates(['BTC', 'ETH', 'USDT', 'SOL']);
+        $rates = array_map(fn ($rate) => $rate['sell_rate'], $resolved);
         if (empty($rates)) {
             Log::warning('No rates found in crypto_rates table');
             return view('sell.step1', ['rates' => [], 'error' => 'No crypto rates available.']);
@@ -283,7 +283,7 @@ class SellController extends Controller
         $submittedUsdAmount = $request->usd_amount;
         $submittedNairaAmount = $request->naira_amount;
 
-        $rate = CryptoRate::where('coin', $coin)->value('sell_rate') ?? 0;
+        $rate = app(\App\Services\CryptoTradeRateService::class)->rate($coin, 'sell') ?? 0;
         if ($rate <= 0) {
             Log::error('Invalid rate for coin', ['coin' => $coin]);
             return back()->withErrors(['coin' => 'Invalid rate for selected coin.']);

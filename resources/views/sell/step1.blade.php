@@ -319,7 +319,7 @@
                         <div class="coin-icon {{ $meta['icon'] }}">{{ $meta['ico'] }}</div>
                         <div class="coin-name">{{ $meta['sym'] }}</div>
                         <div class="coin-rate" id="rate_{{ $sym }}">
-                            @if(isset($rates[$sym]))
+                            @if(isset($rates[$sym]) && is_numeric($rates[$sym]) && $rates[$sym] > 0)
                                 ₦{{ number_format($rates[$sym],0) }}/USD
                             @else
                                 —

@@ -37,9 +37,8 @@ class BuyController extends Controller
                 ->with('error', 'KYC verification is required before you can buy crypto.');
         }
 
-        $rates = CryptoRate::pluck('buy_rate', 'coin')->toArray();
-        $defaultRates = ['BTC' => 1600, 'ETH' => 1500, 'USDT' => 1400];
-        $rates = array_merge($defaultRates, $rates);
+        $resolved = app(\App\Services\CryptoTradeRateService::class)->rates(['BTC', 'ETH', 'USDT']);
+        $rates = array_map(fn ($rate) => $rate['buy_rate'], $resolved);
         return view('buy', compact('rates'));
     }
 
@@ -61,10 +60,8 @@ class BuyController extends Controller
         }
 
         // Fetch current rates or use defaults
-        $rates = CryptoRate::pluck('buy_rate', 'coin')->toArray();
-        $defaultRates = ['BTC' => 1600, 'ETH' => 1500, 'USDT' => 1400];
         $coin = $request->input('coin');
-        $rate = $rates[$coin] ?? $defaultRates[$coin] ?? null;
+        $rate = app(\App\Services\CryptoTradeRateService::class)->rate($coin, 'buy');
 
         // Check if rate exists for the selected coin
         if (!$rate) {

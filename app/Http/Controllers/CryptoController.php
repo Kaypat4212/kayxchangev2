@@ -110,15 +110,15 @@ class CryptoController extends Controller
 
     public function buy()
     {
-        $rates = CryptoRate::pluck('buy_rate', 'coin')->toArray();
+        $resolved = app(\App\Services\CryptoTradeRateService::class)->rates(['BTC', 'ETH', 'USDT']);
+        $rates = array_map(fn ($rate) => $rate['buy_rate'], $resolved);
         return view('buy', compact('rates'));
     }
 
     public function sell()
     {
-        $rates = CryptoRate::whereIn('coin', ['BTC', 'ETH', 'USDT'])
-            ->pluck('sell_rate', 'coin')
-            ->toArray();
+        $resolved = app(\App\Services\CryptoTradeRateService::class)->rates(['BTC', 'ETH', 'USDT']);
+        $rates = array_map(fn ($rate) => $rate['sell_rate'], $resolved);
         Log::info('Sell rates fetched: ', ['rates' => $rates]);
         return view('sell', compact('rates'));
     }

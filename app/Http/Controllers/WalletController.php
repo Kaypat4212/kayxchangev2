@@ -110,24 +110,31 @@ class WalletController extends Controller
         return view('wallet.usd', compact('wallet', 'buyRate', 'sellRate'));
     }
 
-    public function crypto()
+    public function crypto(\App\Services\CryptoTradeRateService $tradeRates)
     {
         $wallets = Auth::user()->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->orderBy('currency')->get();
-        $rates = CryptoRate::orderBy('coin')->get()->keyBy(fn ($rate) => strtoupper($rate->coin));
+        $rates = $tradeRates->rates($wallets->pluck('currency')->map(fn ($coin) => strtoupper($coin))->all());
         return view('wallet.crypto', compact('wallets', 'rates'));
     }
 
     /**
      * Show crypto deposit page
      */
-    public function deposit()
+    public function deposit(Request $request)
     {
         $user = Auth::user();
         $wallets = $this->cryptoWalletService->getUserWallets($user);
         $supportedCryptos = $this->cryptoWalletService->getSupportedCryptos();
 
+        $selectedCurrency = strtoupper((string) old('currency', $request->query('currency', '')));
+        if (!array_key_exists($selectedCurrency, $supportedCryptos)) $selectedCurrency = '';
+        $selectedNetwork = strtoupper((string) old('network', $request->query('network', '')));
+        if (!in_array($selectedNetwork, $supportedCryptos[$selectedCurrency]['networks'] ?? [], true)) {
+            $selectedNetwork = $supportedCryptos[$selectedCurrency]['networks'][0] ?? '';
+        }
+
         $depositProvider = $this->cryptoWalletService->depositProviderLabel();
-        return view('wallet.deposit', compact('wallets', 'supportedCryptos', 'depositProvider'));
+        return view('wallet.deposit', compact('wallets', 'supportedCryptos', 'depositProvider', 'selectedCurrency', 'selectedNetwork'));
     }
 
     /**
@@ -337,7 +344,7 @@ class WalletController extends Controller
     /**
      * Show withdrawal page
      */
-    public function withdraw()
+    public function withdraw(Request $request)
     {
         $user = Auth::user();
         $wallets = $this->cryptoWalletService->getUserWallets($user);
@@ -347,7 +354,14 @@ class WalletController extends Controller
             $wallet->available_balance = max(0, (float) $wallet->balance - (float) $reserved);
         }
 
-        return view('wallet.withdraw', compact('wallets'));
+        $currency = strtoupper((string) $request->query('currency', ''));
+        $selectedWalletId = old('wallet_id');
+        if (!$selectedWalletId && $currency !== '') {
+            $selectedWalletId = $wallets->first(fn ($wallet) => strtoupper($wallet->currency) === $currency && (float) $wallet->available_balance > 0)?->id;
+        }
+        $selectedNetwork = strtoupper((string) old('network', $request->query('network', '')));
+
+        return view('wallet.withdraw', compact('wallets', 'selectedWalletId', 'selectedNetwork'));
     }
 
     /**
@@ -378,8 +392,9 @@ class WalletController extends Controller
             if (!$wallet->isCrypto() || !$wallet->is_active) {
                 throw \Illuminate\Validation\ValidationException::withMessages(['wallet_id' => 'Select an active crypto wallet.']);
             }
-            if ($wallet->network && strcasecmp($wallet->network, $request->network) !== 0) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['network' => 'The selected network does not match this wallet.']);
+            $supportedNetworks = $this->cryptoWalletService->getSupportedCryptos()[$asset]['networks'] ?? [];
+            if (!in_array(strtoupper((string) $request->network), $supportedNetworks, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['network' => 'Choose a network supported for this asset.']);
             }
             $reserved = \App\Models\CryptoWithdrawal::where('wallet_id', $wallet->id)
                 ->whereIn('status', ['pending', 'processing'])->sum(DB::raw('amount + fee'));
