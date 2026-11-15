@@ -60,8 +60,8 @@
         </div>
 
         <div class="mt-6">
-            <a href="{{ route('sell.success', ['trade_id' => $trade->id]) }}" class="w-full bg-gradient-to-r from-blue-600 to-teal-500 p-3 rounded-lg font-semibold text-white shadow-md hover:from-blue-700 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-center inline-block">
-                Confirm and Proceed
+            <a href="{{ route('trade.summary', ['trade_id' => $trade->id]) }}" class="w-full bg-gradient-to-r from-blue-600 to-teal-500 p-3 rounded-lg font-semibold text-white shadow-md hover:from-blue-700 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-center inline-block">
+                View trade status
             </a>
         </div>
     </div>

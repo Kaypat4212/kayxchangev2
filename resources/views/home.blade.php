@@ -923,6 +923,8 @@
         .kx-h-slbl { font-size: clamp(0.62rem, 2.7vw, 0.72rem); margin-top: 6px; line-height: 1.2; }
 
         .kx-h-ctas { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, .9fr); align-items: stretch; gap: 9px; margin-bottom: 22px; }
+        .kx-h-ctas-single { grid-template-columns: 1fr; justify-items: center; }
+        .kx-h-ctas-single .kx-h-cta1 { width: min(100%, 280px); }
         .kx-h-cta1, .kx-h-cta2 {
             justify-content: center; width: 100%; min-width: 0; min-height: 46px;
             padding: 10px clamp(8px, 2.8vw, 16px); font-size: clamp(0.78rem, 3.4vw, 0.91rem);
@@ -1003,7 +1005,7 @@
                         </div>
                     </div>
                     <!-- CTAs -->
-                    <div class="kx-h-ctas kx-hero-anim-5">
+                    <div class="kx-h-ctas kx-hero-anim-5 @auth kx-h-ctas-single @endauth">
                         @auth
                         <a href="{{ url('/dashboard') }}" class="kx-h-cta1">
                             <i class="bi bi-grid-1x2-fill"></i>Go to Dashboard<i class="bi bi-arrow-right"></i>

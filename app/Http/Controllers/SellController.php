@@ -683,6 +683,19 @@ class SellController extends Controller
     }
 
     /**
+     * Show the legacy sell confirmation page for the authenticated trade owner.
+     */
+    public function success($trade_id)
+    {
+        $trade = SellTrade::query()
+            ->whereKey($trade_id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        return view('trade.sell_success', compact('trade'));
+    }
+
+    /**
      * Show the proof upload page for a sell trade (used for bot-submitted trades).
      */
     public function paymentPage(int $id)
