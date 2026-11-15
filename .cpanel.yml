@@ -4,3 +4,4 @@ deployment:
     - cd /home/yrfofwzr/public_html && if [ -x /usr/local/bin/ea-php82 ] && [ -f /opt/cpanel/composer/bin/composer ]; then /usr/local/bin/ea-php82 /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader --no-interaction; elif command -v composer >/dev/null 2>&1; then composer install --no-dev --optimize-autoloader --no-interaction; else echo 'Composer is required to install Laravel dependencies.'; exit 1; fi
     - cd /home/yrfofwzr/public_html && if [ -x /usr/local/bin/ea-php82 ]; then /usr/local/bin/ea-php82 artisan migrate --force; else /usr/local/bin/php artisan migrate --force; fi
     - cd /home/yrfofwzr/public_html && if [ -x /usr/local/bin/ea-php82 ]; then /usr/local/bin/ea-php82 artisan optimize:clear; else /usr/local/bin/php artisan optimize:clear; fi
+    - cd /home/yrfofwzr/public_html && if [ -x /usr/local/bin/ea-php82 ]; then /usr/local/bin/ea-php82 artisan view:cache; else /usr/local/bin/php artisan view:cache; fi

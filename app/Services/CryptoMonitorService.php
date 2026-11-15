@@ -4,10 +4,12 @@ namespace App\Services;
 
 use App\Models\SellTrade;
 use App\Models\User;
+use App\Models\AdminSetting;
 use App\Mail\TradeNotification;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * CryptoMonitorService
@@ -33,7 +35,7 @@ use Illuminate\Support\Facades\Mail;
  */
 class CryptoMonitorService
 {
-    private const TOLERANCE   = 0.02;   // ±2% on expected crypto amount
+    private const TOLERANCE   = 0.005;  // 0.5% to limit false positive payment matches
     private const ETH_DEC     = 1e18;
     private const USDT_DEC    = 1e6;
     private const SOL_DEC     = 1e9;    // lamports → SOL
@@ -50,6 +52,9 @@ class CryptoMonitorService
     public function checkTrade(SellTrade $trade): bool
     {
         try {
+            if (filter_var(AdminSetting::getSetting('admin_presence_active', '1'), FILTER_VALIDATE_BOOLEAN)
+                || strtolower((string) $trade->status) !== 'pending'
+                || (string) $trade->payment_method !== 'wallet_balance') return false;
             $coin    = strtoupper($trade->coin    ?? '');
             $network = strtoupper($trade->network ?? '');
             $wallet  = $trade->wallet_address ?? '';
@@ -95,7 +100,7 @@ class CryptoMonitorService
             }
 
             if ($this->matchesAmount($trade, $satoshi / 1e8)) {
-                return $this->approveTrade($trade, $tx['hash']);
+                return $this->approveTrade($trade, $tx['hash'], isset($tx['confirmed']) ? strtotime($tx['confirmed']) : null);
             }
         }
         return false;
@@ -120,7 +125,7 @@ class CryptoMonitorService
             if (($tx['confirmations'] ?? 0) < 1) continue;
             if (strtolower($tx['to'] ?? '') !== strtolower($address)) continue;
             if ($this->matchesAmount($trade, (float) $tx['value'] / self::ETH_DEC)) {
-                return $this->approveTrade($trade, $tx['hash']);
+                return $this->approveTrade($trade, $tx['hash'], isset($tx['timeStamp']) ? (int) $tx['timeStamp'] : null);
             }
         }
         return false;
@@ -147,7 +152,7 @@ class CryptoMonitorService
             if (strtolower($tx['to'] ?? '') !== strtolower($address)) continue;
             $usdt = (float) $tx['value'] / self::USDT_DEC;
             if ($this->withinTolerance((float) $trade->usd_amount, $usdt)) {
-                return $this->approveTrade($trade, $tx['hash']);
+                return $this->approveTrade($trade, $tx['hash'], isset($tx['timeStamp']) ? (int) $tx['timeStamp'] : null);
             }
         }
         return false;
@@ -179,7 +184,7 @@ class CryptoMonitorService
             if (strtolower($to) !== strtolower($address)) continue;
             $usdt = $value / self::USDT_DEC;
             if ($this->withinTolerance((float) $trade->usd_amount, $usdt)) {
-                return $this->approveTrade($trade, $tx['transaction_id'] ?? $tx['txID'] ?? '');
+                return $this->approveTrade($trade, $tx['transaction_id'] ?? $tx['txID'] ?? '', isset($tx['block_timestamp']) ? (int) ($tx['block_timestamp'] / 1000) : null);
             }
         }
         return false;
@@ -206,7 +211,7 @@ class CryptoMonitorService
             if (strtolower($tx['to'] ?? '') !== strtolower($address)) continue;
             $usdt = (float) $tx['value'] / self::USDT_DEC;
             if ($this->withinTolerance((float) $trade->usd_amount, $usdt)) {
-                return $this->approveTrade($trade, $tx['hash']);
+                return $this->approveTrade($trade, $tx['hash'], isset($tx['timeStamp']) ? (int) $tx['timeStamp'] : null);
             }
         }
         return false;
@@ -256,7 +261,7 @@ class CryptoMonitorService
                 $receivedSOL = max(0, ($post - $pre)) / self::SOL_DEC;
 
                 if ($this->matchesAmount($trade, $receivedSOL)) {
-                    return $this->approveTrade($trade, $sig);
+                    return $this->approveTrade($trade, $sig, isset($txData['blockTime']) ? (int) $txData['blockTime'] : null);
                 }
             }
         }
@@ -280,11 +285,14 @@ class CryptoMonitorService
         return abs($expected - $received) / $expected <= self::TOLERANCE;
     }
 
-    private function approveTrade(SellTrade $trade, string $txHash): bool
+    private function approveTrade(SellTrade $trade, string $txHash, ?int $txTimestamp): bool
     {
+        if (!Schema::hasColumn('sell_trades', 'blockchain_txid') || $txHash === '' || !$txTimestamp || !$trade->created_at || $txTimestamp < $trade->created_at->timestamp) return false;
+        if (SellTrade::query()->where('blockchain_txid', $txHash)->where('id', '<>', $trade->id)->exists()) return false;
         $transition = app(BalanceSettlementService::class)->updateSellStatus(
             (int) $trade->id,
             'completed',
+            null,
             $txHash
         );
         if (!$transition['changed']) return false;
@@ -311,10 +319,11 @@ class CryptoMonitorService
                         'rate_used'      => number_format((float)$trade->rate_used, 2),
                         'naira_amount'   => number_format((float)$trade->naira_amount, 2),
                         'reference'      => $trade->transaction_ref,
+                        'blockchain_txid' => $trade->blockchain_txid,
                         'payment_method' => $trade->payment_method ?? 'Bank Transfer',
                         'reason'         => '',
                     ],
-                    badge: ['text' => 'Payment Sent', 'color' => '#00cc00'],
+                    badge: ['text' => 'Wallet Credited', 'color' => '#00cc00'],
                     ctaUrl: url('/dashboard'),
                     ctaText: 'Go to Dashboard',
                 ));
@@ -328,6 +337,7 @@ class CryptoMonitorService
                         (int)$user->telegram_chat_id,
                         "✅ *Sell Trade Auto-Confirmed!*\n\n" .
                         "🔖 Ref: `{$trade->transaction_ref}`\n" .
+                        "🔗 Blockchain TX: `{$trade->blockchain_txid}`\n" .
                         "🪙 {$trade->coin}: \$" . number_format((float)($trade->usd_amount ?? 0), 2) . "\n" .
                         "💴 Amount: ₦" . number_format((float)$trade->naira_amount, 2) . "\n" .
                         ($trade->payment_method === 'wallet_balance'

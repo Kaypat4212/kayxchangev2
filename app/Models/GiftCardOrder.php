@@ -11,7 +11,7 @@ class GiftCardOrder extends Model
         'user_id', 'gift_card_rate_id', 'reference', 'card_name', 'country', 'currency',
         'face_value', 'unit_rate_ngn', 'total_ngn', 'usd_exchange_rate', 'base_total_ngn',
         'purchase_markup_ngn', 'usd_face_value', 'effective_ngn_per_usd', 'recipient_email', 'customer_note',
-        'delivery_code', 'admin_note', 'reviewed_by', 'status', 'processed_at',
+        'delivery_code', 'admin_note', 'reviewed_by', 'status', 'processed_at', 'bot_purchase_token',
     ];
 
     protected $casts = [

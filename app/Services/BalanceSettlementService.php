@@ -103,9 +103,9 @@ class BalanceSettlementService
         });
     }
 
-    public function updateSellStatus(int $tradeId, string $status, ?string $transactionReference = null): array
+    public function updateSellStatus(int $tradeId, string $status, ?string $transactionReference = null, ?string $blockchainTxid = null): array
     {
-        return DB::transaction(function () use ($tradeId, $status, $transactionReference): array {
+        return DB::transaction(function () use ($tradeId, $status, $transactionReference, $blockchainTxid): array {
             $trade = SellTrade::query()->lockForUpdate()->findOrFail($tradeId);
             $currentStatus = strtolower((string) $trade->status);
             if ($currentStatus === strtolower($status)) {
@@ -126,6 +126,9 @@ class BalanceSettlementService
             $trade->status = $status;
             if ($transactionReference !== null) {
                 $trade->transaction_ref = $transactionReference;
+            }
+            if ($blockchainTxid !== null && \Illuminate\Support\Facades\Schema::hasColumn('sell_trades', 'blockchain_txid')) {
+                $trade->blockchain_txid = $blockchainTxid;
             }
             $trade->save();
 

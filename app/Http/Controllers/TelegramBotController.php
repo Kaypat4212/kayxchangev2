@@ -26,7 +26,12 @@ class TelegramBotController extends Controller
     {
         try {
             $update = $request->all();
-            Log::info('Telegram webhook received', $update);
+            Log::info('Telegram webhook received', [
+                'update_id' => $update['update_id'] ?? null,
+                'has_message' => isset($update['message']),
+                'has_callback' => isset($update['callback_query']),
+                'chat_id' => $update['message']['chat']['id'] ?? $update['callback_query']['message']['chat']['id'] ?? null,
+            ]);
 
             if (isset($update['message'])) {
                 $this->handleMessage($update['message']);
@@ -38,7 +43,7 @@ class TelegramBotController extends Controller
         } catch (\Exception $e) {
             Log::error('Telegram webhook error', [
                 'error' => $e->getMessage(),
-                'update' => $request->all()
+                'update_id' => $request->input('update_id'),
             ]);
             return response()->json(['error' => 'Internal server error'], 500);
         }
@@ -84,6 +89,9 @@ class TelegramBotController extends Controller
             case '/help':
                 $this->handleHelpCommand($chatId);
                 break;
+            case '/features':
+                $this->handleFeaturesCommand($chatId);
+                break;
             case '/unlink':
                 $this->handleUnlinkCommand($chatId, $username);
                 break;
@@ -108,7 +116,7 @@ class TelegramBotController extends Controller
         $message .= "1️⃣ Type `/verify` to link your account\n";
         $message .= "2️⃣ Enter your KayXchange email\n";
         $message .= "3️⃣ Start receiving notifications!\n\n";
-        $message .= "Use the buttons below for crypto deposits (NOWPayments when enabled), your USD wallet and other platform services. Wallet actions continue on the secure website and require sign-in.\n\n";
+        $message .= "Use the buttons below for crypto deposits, your USD crypto portfolio and other platform services. Wallet actions continue on the secure website and require sign-in.\n\n";
         $message .= "_Type /help for more commands_";
 
         $keyboard = [
@@ -132,6 +140,10 @@ class TelegramBotController extends Controller
                 [
                     ['text' => '📈 Portfolio', 'url' => url('/portfolio')],
                     ['text' => '🛟 Support', 'url' => url('/support/cases')],
+                ],
+                [
+                    ['text' => '📜 Transactions', 'url' => url('/transactions/history')],
+                    ['text' => '🔔 Notifications', 'url' => url('/notifications')],
                 ]
             ]
         ];
@@ -410,7 +422,7 @@ class TelegramBotController extends Controller
         $message .= "/status - Check your account status\n";
         $message .= "/help - Show this help message\n";
         $message .= "/unlink - Disconnect your account\n\n";
-        $message .= "Platform access: Crypto deposits, USD crypto portfolio, wallet history, swaps, bills, gift cards, portfolio tracking and support are available on the secure KayXchange website. Use /start for quick links.\n\n";
+        $message .= "Platform access: Crypto deposits, USD crypto portfolio, wallet history, swaps, bills, gift cards, portfolio tracking, transactions, notifications and support are available on the secure KayXchange website. Use /start or /features for quick links.\n\n";
         $message .= "*What I can do:*\n";
         $message .= "• Send trade confirmations\n";
         $message .= "• Notify about rate changes\n";
@@ -420,6 +432,21 @@ class TelegramBotController extends Controller
         $message .= "Contact KayXchange support at support@kayxchange.com";
 
         $this->sendMessage($chatId, $message);
+    }
+
+    private function handleFeaturesCommand($chatId): void
+    {
+        $message = "✨ *KayXchange services*\nChoose a service. Sign in on the secure site when asked; sensitive wallet actions are completed there.";
+        $keyboard = ['inline_keyboard' => [
+            [['text' => '₿ Crypto deposit', 'url' => url('/wallet/deposit')], ['text' => '💵 USD crypto wallet', 'url' => url('/wallet/usd')]],
+            [['text' => '👛 Wallets', 'url' => url('/wallet')], ['text' => '📜 Wallet history', 'url' => url('/wallet/history')]],
+            [['text' => '🔁 Swap crypto', 'url' => url('/swap')], ['text' => '💸 Withdraw', 'url' => url('/wallet/withdraw')]],
+            [['text' => '🎁 Gift cards', 'url' => url('/gift-cards')], ['text' => '🧾 Bills', 'url' => url('/bills')]],
+            [['text' => '📈 Portfolio', 'url' => url('/portfolio')], ['text' => '🧾 Transactions', 'url' => url('/transactions/history')]],
+            [['text' => '🔔 Notifications', 'url' => url('/notifications')], ['text' => '🛟 Support', 'url' => url('/support/cases')]],
+            [['text' => '📊 Rates', 'url' => url('/rate-calculator')], ['text' => '🏠 Dashboard', 'url' => url('/dashboard')]],
+        ]];
+        $this->sendMessage($chatId, $message, $keyboard);
     }
 
     /**

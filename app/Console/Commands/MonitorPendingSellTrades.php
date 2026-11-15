@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\SellTrade;
+use App\Models\AdminSetting;
 use App\Services\CryptoMonitorService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -26,10 +27,15 @@ class MonitorPendingSellTrades extends Command
 
     public function handle(CryptoMonitorService $monitor): int
     {
+        if (filter_var(AdminSetting::getSetting('admin_presence_active', '1'), FILTER_VALIDATE_BOOLEAN)) {
+            $this->info('[CryptoMonitor] Admin is marked active; sell trades remain in the review queue.');
+            return self::SUCCESS;
+        }
         $hours  = (int) $this->option('hours');
         $cutoff = Carbon::now()->subHours($hours);
 
         $trades = SellTrade::where('status', 'pending')
+            ->where('payment_method', 'wallet_balance')
             ->whereIn('coin', ['BTC', 'ETH', 'USDT', 'SOL'])
             ->where('created_at', '>=', $cutoff)
             ->get();

@@ -14,6 +14,8 @@ use App\Models\SellTrade;
 use App\Models\BuyTrade;
 use App\Models\Kyc;
 use App\Models\CryptoRate;
+use App\Models\CryptoDeposit;
+use App\Models\GiftCardRate;
 // use App\Models\CryptoRate;
 use App\Models\TelegramBotMessage;
 
@@ -63,6 +65,18 @@ class TelegramService
     {
         Cache::forget("tg_state_{$chatId}");
         Cache::forget("tg_data_{$chatId}");
+    }
+
+    private function deleteSensitiveMessage(int $chatId, int $messageId): void
+    {
+        try {
+            Http::timeout(4)->post("{$this->apiUrl}/deleteMessage", [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+            ]);
+        } catch (\Throwable $e) {
+            Log::info('KayX bot could not delete a sensitive Telegram message', ['chat_id' => $chatId]);
+        }
     }
 
     private function getData(int $chatId): array
@@ -556,7 +570,7 @@ class TelegramService
         // Extract the first word (command without arguments)
         $command = strtolower(explode(' ', $text)[0]);
 
-        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai', 'upload', 'features', 'wallet', 'crypto_deposit', 'usd_wallet'];
+        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai', 'upload', 'features', 'wallet', 'crypto_deposit', 'usd_wallet', 'deposit_status', 'giftcards'];
 
         return in_array($command, $known, true) ? $command : null;
     }
@@ -570,11 +584,17 @@ class TelegramService
                 $text      = $message['text'] ?? '';
                 $firstName = $message['from']['first_name'] ?? '';
                 $username  = $message['from']['username'] ?? '';
+                $incomingState = $this->getState($chatId);
+                $sensitiveInput = in_array($incomingState, [
+                    'link_pin', 'reg_set_pin', 'reg_confirm_pin', 'sell_pin', 'buy_pin',
+                    'reg_password', 'reg_confirm_password', 'giftcard_pin',
+                ], true);
+                $loggedText = $sensitiveInput ? '[secure input redacted]' : $text;
 
                 Log::info('Received Telegram message', [
                     'chat_id'  => $chatId,
                     'username' => $username,
-                    'text'     => substr($text, 0, 100),
+                    'text'     => substr($loggedText, 0, 100),
                 ]);
 
                 // ── Detect message type and extract media info ─────────────────
@@ -618,9 +638,12 @@ class TelegramService
                 // ── Log to DB and forward to bot owner ────────────────────────
                 $this->logAndForwardMessage(
                     $chatId, $username, $firstName,
-                    $text ?: '[unknown]',
-                    $messageType, $this->getState($chatId), $isCommand, $logFileId, $logFileName
+                    $loggedText ?: '[unknown]',
+                    $messageType, $incomingState, $isCommand, $logFileId, $logFileName
                 );
+                if ($sensitiveInput && !empty($message['message_id'])) {
+                    $this->deleteSensitiveMessage($chatId, (int) $message['message_id']);
+                }
 
                 // ── Photo upload (proof) ──────────────────────────────────────────
                 if (!empty($message['photo'])) {
@@ -676,6 +699,8 @@ class TelegramService
                         'wallet'   => $this->handleFeatureLink($chatId, 'Wallet overview', '/wallet'),
                         'crypto_deposit' => $this->handleCryptoDepositCommand($chatId),
                         'usd_wallet' => $this->handleUsdWalletCommand($chatId),
+                        'deposit_status' => $this->handleCryptoDepositStatus($chatId),
+                        'giftcards' => $this->handleGiftCardsCommand($chatId),
                         default    => $this->handleUnknownCommand($chatId),
                     };
                     return true;
@@ -734,6 +759,21 @@ class TelegramService
                         case 'deposit_amount':
                             $this->handleDepositAmountInput($chatId, $text);
                             return true;
+                        case 'crypto_deposit_amount':
+                            $this->handleCryptoDepositAmountInput($chatId, $text);
+                            return true;
+                        case 'giftcard_face_value':
+                            $this->handleGiftCardFaceValueInput($chatId, $text);
+                            return true;
+                        case 'giftcard_recipient_email':
+                            $this->handleGiftCardRecipientInput($chatId, $text);
+                            return true;
+                        case 'giftcard_note':
+                            $this->handleGiftCardNoteInput($chatId, $text);
+                            return true;
+                        case 'giftcard_pin':
+                            $this->handleGiftCardPinInput($chatId, $text);
+                            return true;
                         case 'reg_name':
                             $this->handleRegNameInput($chatId, $text);
                             return true;
@@ -774,6 +814,33 @@ class TelegramService
                 // ── Cancel ────────────────────────────────────────────────────────
                 if ($data === 'cancel') {
                     $this->handleCancelCommand($chatId);
+                    return true;
+                }
+
+                if (str_starts_with($data, 'crypto_coin:')) {
+                    $this->handleCryptoDepositCoinSelected($chatId, substr($data, 11));
+                    return true;
+                }
+                if (str_starts_with($data, 'crypto_network:')) {
+                    $this->handleCryptoDepositNetworkSelected($chatId, substr($data, 15));
+                    return true;
+                }
+                if (str_starts_with($data, 'crypto_settlement:')) {
+                    $this->handleCryptoDepositSettlementSelected($chatId, substr($data, 18));
+                    return true;
+                }
+                if (str_starts_with($data, 'giftcard_rate:')) {
+                    $this->handleGiftCardRateSelected($chatId, (int) substr($data, 14));
+                    return true;
+                }
+                if ($data === 'giftcard_note_skip') {
+                    $this->mergeData($chatId, ['giftcard_note' => null]);
+                    $this->showGiftCardConfirmation($chatId);
+                    return true;
+                }
+                if ($data === 'giftcard_confirm') {
+                    $this->setState($chatId, 'giftcard_pin');
+                    $this->sendMessage($chatId, "🔐 *Confirm gift card purchase*\nEnter your 4-digit transaction PIN. Your message is redacted from bot logs and deleted when Telegram allows. The charge is only reserved after the PIN is verified.\n\n_Type /cancel to stop._");
                     return true;
                 }
 
@@ -902,11 +969,12 @@ class TelegramService
                     'cmd_ai'       => $this->handleAiChatCommand($chatId),
                     'cmd_crypto_deposit' => $this->handleCryptoDepositCommand($chatId),
                     'cmd_usd_wallet' => $this->handleUsdWalletCommand($chatId),
+                    'cmd_crypto_status' => $this->handleCryptoDepositStatus($chatId),
+                    'cmd_giftcards' => $this->handleGiftCardsCommand($chatId),
                     'cmd_wallet_page' => $this->handleFeatureLink($chatId, 'Wallet overview', '/wallet'),
                     'cmd_withdraw' => $this->handleFeatureLink($chatId, 'Withdraw', '/wallet/withdraw'),
                     'cmd_swap' => $this->handleFeatureLink($chatId, 'Swap crypto', '/swap'),
                     'cmd_bills' => $this->handleFeatureLink($chatId, 'Bills and utilities', '/bills'),
-                    'cmd_giftcards' => $this->handleFeatureLink($chatId, 'Gift cards', '/gift-cards'),
                     'cmd_portfolio' => $this->handleFeatureLink($chatId, 'Portfolio', '/portfolio'),
                     'cmd_support' => $this->handleFeatureLink($chatId, 'Support cases', '/support/cases'),
                     'cmd_history' => $this->handleFeatureLink($chatId, 'Wallet history', '/wallet/history'),
@@ -923,7 +991,8 @@ class TelegramService
         } catch (\Exception $e) {
             Log::error('Error processing Telegram update', [
                 'error' => $e->getMessage(),
-                'update' => $update,
+                'update_id' => $update['update_id'] ?? null,
+                'chat_id' => $update['message']['chat']['id'] ?? $update['callback_query']['message']['chat']['id'] ?? null,
             ]);
             return false;
         }
@@ -1541,7 +1610,7 @@ class TelegramService
         $user = User::where('telegram_chat_id', $chatId)->first();
         $message = $user
             ? "✨ *KayXchange features*\nChoose a service below. Wallet actions open the secure website so your account session and payment review rules remain active."
-            : "✨ *Explore KayXchange*\nLink or create your account to use wallet and trading services. Crypto deposits open the secure site; NOWPayments is used when enabled by the platform.";
+            : "✨ *Explore KayXchange*\nLink or create your account to use wallet and trading services. Crypto deposit invoices and payment tracking use the platform’s current configuration.";
 
         $keyboard = ['inline_keyboard' => [
             [
@@ -1595,10 +1664,23 @@ class TelegramService
     private function handleCryptoDepositCommand(int $chatId): void
     {
         $user = User::where('telegram_chat_id', $chatId)->first();
-        $note = $user
-            ? "Choose a supported coin and network on the deposit page. When NOWPayments is enabled, the site creates and tracks the invoice; provider confirmation and the configured admin review decide when funds are credited."
-            : "Sign in to your KayXchange account first. The deposit page will create an invoice through the active provider (NOWPayments when enabled).";
-        $this->sendMessage($chatId, "₿ *Crypto deposit*\n{$note}", 'Markdown', ['inline_keyboard' => [[['text' => 'Open crypto deposit', 'url' => $this->telegramAppUrl() . '/wallet/deposit']], [['text' => 'USD wallet', 'url' => $this->telegramAppUrl() . '/wallet/usd']]]]);
+        if (!$user) {
+            $this->sendMessage($chatId, "🔐 Link your KayXchange account first, then use /crypto_deposit. Deposits can be settled into the USD crypto portfolio or your NGN wallet.", 'Markdown', ['inline_keyboard' => [[['text' => 'Create account', 'url' => $this->telegramAppUrl() . '/register']], [['text' => 'Sign in', 'url' => $this->telegramAppUrl() . '/login']]]]);
+            return;
+        }
+
+        $cryptoWallets = app(CryptoWalletService::class);
+        $supported = $cryptoWallets->getSupportedCryptos();
+        $rows = [];
+        foreach ($supported as $coin => $details) {
+            $rows[] = [[
+                'text' => ($details['name'] ?? $coin) . ' · ' . $coin,
+                'callback_data' => 'crypto_coin:' . $coin,
+            ]];
+        }
+        $this->setData($chatId, ['crypto_deposit_settlement' => 'usd']);
+        $this->setState($chatId, 'crypto_deposit_coin');
+        $this->sendMessage($chatId, "₿ *Create a crypto deposit*\nChoose the asset. You’ll select its network and USD invoice value next. The invoice uses the platform’s active payment configuration and status tracking. No balance is deducted to create an invoice.", 'Markdown', ['inline_keyboard' => $rows]);
     }
 
     private function handleUsdWalletCommand(int $chatId): void
@@ -1608,6 +1690,298 @@ class TelegramService
             ? "💵 *USD crypto portfolio*\nView the live USD valuation of your supported crypto holdings and use the wallet page to manage available actions. This is a portfolio valuation, not a separate cash balance."
             : "💵 *USD crypto portfolio*\nSign in to view your live portfolio valuation across supported crypto holdings.";
         $this->sendMessage($chatId, $message, 'Markdown', ['inline_keyboard' => [[['text' => 'Open USD wallet', 'url' => $this->telegramAppUrl() . '/wallet/usd']], [['text' => 'Open crypto deposit', 'url' => $this->telegramAppUrl() . '/wallet/deposit']]]]);
+    }
+
+    private function handleCryptoDepositCoinSelected(int $chatId, string $coin): void
+    {
+        $supported = app(CryptoWalletService::class)->getSupportedCryptos();
+        $coin = strtoupper(trim($coin));
+        if (!isset($supported[$coin])) {
+            $this->sendMessage($chatId, 'That asset is not currently supported for deposits. Use /crypto_deposit to choose an available asset.');
+            return;
+        }
+        $this->mergeData($chatId, ['crypto_deposit_coin' => $coin]);
+        $this->setState($chatId, 'crypto_deposit_network');
+        $rows = array_map(fn ($network) => [[
+            'text' => $coin . ' · ' . $network,
+            'callback_data' => 'crypto_network:' . $network,
+        ]], $supported[$coin]['networks']);
+        $this->sendMessage($chatId, "Select the network for *{$coin}*. Send only this asset over the exact selected network.", 'Markdown', ['inline_keyboard' => $rows]);
+    }
+
+    private function handleCryptoDepositNetworkSelected(int $chatId, string $network): void
+    {
+        $data = $this->getData($chatId);
+        $coin = strtoupper((string) ($data['crypto_deposit_coin'] ?? ''));
+        $supported = app(CryptoWalletService::class)->getSupportedCryptos();
+        $network = strtoupper(trim($network));
+        if (!$coin || !in_array($network, $supported[$coin]['networks'] ?? [], true)) {
+            $this->sendMessage($chatId, 'That network does not match the selected asset. Start again with /crypto_deposit.');
+            return;
+        }
+        $this->mergeData($chatId, ['crypto_deposit_network' => $network]);
+        $this->setState($chatId, 'crypto_deposit_settlement');
+        $this->sendMessage($chatId, "Where should a confirmed deposit settle?\n\nUSD keeps the crypto in its coin wallet and updates your read-only crypto portfolio value. NGN converts the confirmed value into your Naira wallet.", 'Markdown', ['inline_keyboard' => [[['text' => '💵 USD crypto portfolio', 'callback_data' => 'crypto_settlement:usd']], [['text' => '₦ Naira wallet', 'callback_data' => 'crypto_settlement:ngn']]]]);
+    }
+
+    private function handleCryptoDepositSettlementSelected(int $chatId, string $preference): void
+    {
+        $preference = strtolower($preference);
+        if (!in_array($preference, ['usd', 'ngn'], true)) {
+            $this->sendMessage($chatId, 'Choose USD crypto portfolio or Naira wallet.');
+            return;
+        }
+        $data = $this->getData($chatId);
+        if (empty($data['crypto_deposit_coin']) || empty($data['crypto_deposit_network'])) {
+            $this->sendMessage($chatId, 'Your deposit selection expired. Start again with /crypto_deposit.');
+            $this->clearState($chatId);
+            return;
+        }
+        $this->mergeData($chatId, ['crypto_deposit_settlement' => $preference]);
+        $this->setState($chatId, 'crypto_deposit_amount');
+        $settlementLabel = $preference === 'usd' ? 'USD crypto portfolio' : 'Naira wallet';
+        $this->sendMessage($chatId, "Enter the invoice value in USD (minimum is set by the active provider).\n\nAsset: *{$data['crypto_deposit_coin']} · {$data['crypto_deposit_network']}*\nSettlement: *{$settlementLabel}*\n\n_No funds are debited when a deposit invoice is created._", 'Markdown');
+    }
+
+    private function handleCryptoDepositAmountInput(int $chatId, string $text): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        $data = $this->getData($chatId);
+        $amount = is_numeric($text) ? (float) $text : 0;
+        if (!$user || empty($data['crypto_deposit_coin']) || empty($data['crypto_deposit_network']) || $amount <= 0 || $amount > 100000) {
+            $this->sendMessage($chatId, 'Enter a valid USD amount up to $100,000, or use /cancel to stop.');
+            return;
+        }
+
+        $coin = strtoupper((string) $data['crypto_deposit_coin']);
+        $network = strtoupper((string) $data['crypto_deposit_network']);
+        $settlement = ($data['crypto_deposit_settlement'] ?? 'usd') === 'ngn' ? 'ngn' : 'usd';
+        $walletService = app(CryptoWalletService::class);
+        try {
+            $walletService->getUserWallets($user);
+            $market = app(ExchangeRateService::class)->getUsdRates();
+            $marketPrice = in_array($coin, $market['_live_coins'] ?? [], true) ? (float) ($market[$coin] ?? 0) : 0.0;
+            $result = $walletService->createCryptoDeposit($user, $coin, $amount, [
+                'input_type' => 'usd', 'network' => $network, 'input_amount' => $amount,
+                'input_currency' => 'USD', 'input_usd_amount' => round($amount, 8),
+                'quoted_market_price_usd' => $marketPrice > 0 ? $marketPrice : null,
+                'market_source' => $market['_source'] ?? null,
+                'quoted_at' => $market['_updated_at'] ?? null,
+                'settlement_preference' => $settlement,
+                'quoted_ngn_per_usd' => app(CryptoTradeRateService::class)->rate($coin, 'sell'),
+                'created_from' => 'telegram_kayx_bot',
+            ]);
+            $deposit = $result['deposit'];
+            Cache::put('tg_latest_crypto_deposit_' . $chatId, $deposit->id, now()->addDays(7));
+            $paymentData = $deposit->payment_data ?? [];
+            $expectedCrypto = (float) data_get($paymentData, 'expected_crypto_amount', $result['expected_amount'] ?? 0);
+            $payCurrency = strtoupper((string) data_get($paymentData, 'provider_pay_currency', $coin));
+            $address = (string) ($deposit->payment_address ?? '');
+            $expires = optional($deposit->expires_at)->timezone(config('app.timezone'))->format('d M, H:i');
+            $message = "✅ *Deposit invoice created*\n\n" .
+                "Invoice: *$" . number_format($amount, 2) . " USD*\n" .
+                "Asset/network: *{$coin} · {$network}*\n" .
+                "Settlement: *" . ($settlement === 'usd' ? 'USD crypto portfolio' : 'Naira wallet') . "*\n" .
+                ($expectedCrypto > 0 ? "Send exactly: *" . rtrim(rtrim(number_format($expectedCrypto, 12, '.', ''), '0'), '.') . " {$payCurrency}*\n" : '') .
+                ($address !== '' ? "Deposit address:\n`{$address}`\n" : '') .
+                ($expires ? "Invoice window ends: {$expires}\n" : '') .
+                "\nPayment is credited only after confirmation and any required admin review. Do not send after the invoice expires.";
+            $keyboard = ['inline_keyboard' => [
+                [['text' => '🔄 Check deposit status', 'callback_data' => 'cmd_crypto_status']],
+                [['text' => 'Open status page', 'url' => $this->telegramAppUrl() . '/wallet/deposit/' . $deposit->id . '/success']],
+            ]];
+            $this->clearState($chatId);
+            $this->sendMessage($chatId, $message, 'Markdown', $keyboard);
+            if ($address !== '') {
+                $barcode = $this->getBarcodePathForWallet($address);
+                if ($barcode) {
+                    $this->sendPhoto($chatId, $barcode, "Scan to copy the {$coin} {$network} deposit address.");
+                    @unlink($barcode);
+                }
+            }
+        } catch (\App\Services\DepositMinimumException $e) {
+            $this->sendMessage($chatId, 'The minimum for this asset and network is $' . number_format($e->minimumUsd, 2) . ' USD. Enter a higher amount or use /cancel.');
+        } catch (\Throwable $e) {
+            Log::warning('Telegram crypto deposit creation failed', ['user_id' => $user->id, 'coin' => $coin, 'network' => $network, 'error' => $e->getMessage()]);
+            $this->clearState($chatId);
+            $this->sendMessage($chatId, 'Crypto deposits are temporarily unavailable. No balance was deducted. Please try again later or use the secure wallet page.');
+        }
+    }
+
+    private function handleCryptoDepositStatus(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        $depositId = Cache::get('tg_latest_crypto_deposit_' . $chatId);
+        $deposit = $user
+            ? CryptoDeposit::query()->where('user_id', $user->id)->when($depositId, fn ($q) => $q->whereKey($depositId))->latest()->first()
+            : null;
+        if (!$deposit) {
+            $this->sendMessage($chatId, 'No recent crypto deposit was found. Start one with /crypto_deposit.');
+            return;
+        }
+        if (Cache::add('tg_crypto_status_poll_' . $chatId, 1, now()->addSeconds(8))) {
+            try { $deposit = app(CryptoWalletService::class)->refreshDepositStatus($deposit); }
+            catch (\Throwable $e) { Log::info('Telegram deposit status refresh deferred', ['deposit_id' => $deposit->id, 'error' => $e->getMessage()]); }
+        }
+        $status = strtolower((string) $deposit->status);
+        $providerStatus = strtolower((string) data_get($deposit->payment_data, 'provider_status', $status));
+        $received = (float) ($deposit->received_amount ?? 0);
+        $remaining = data_get($deposit->payment_data, 'partial_remaining_crypto');
+        $message = "₿ *Deposit status*\n" .
+            "Deposit #{$deposit->id} · *" . strtoupper($deposit->currency) . "*\n" .
+            "Status: *" . str_replace('_', ' ', ucfirst($providerStatus)) . "*\n" .
+            ($received > 0 ? "Received: *" . number_format($received, 8, '.', '') . ' ' . strtoupper($deposit->currency) . "*\n" : '') .
+            ($remaining !== null && (float) $remaining > 0 ? "Still due: *" . number_format((float) $remaining, 8, '.', '') . ' ' . strtoupper($deposit->currency) . "*\n" : '') .
+            ($status === 'awaiting_admin_review' ? "\nPayment confirmed; waiting for admin review before wallet credit." : ($status === 'completed' ? "\nYour wallet credit is complete." : "\nThe page will update after provider confirmation."));
+        $this->sendMessage($chatId, $message, 'Markdown', ['inline_keyboard' => [[['text' => 'Refresh status', 'callback_data' => 'cmd_crypto_status']], [['text' => 'Open deposit page', 'url' => $this->telegramAppUrl() . '/wallet/deposit/' . $deposit->id . '/success']]]]);
+    }
+
+    private function handleGiftCardsCommand(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (!$user) {
+            $this->sendMessage($chatId, 'Link your KayXchange account before buying a gift card. Sign in or register, then use /giftcards.', 'Markdown', ['inline_keyboard' => [[['text' => 'Sign in', 'url' => $this->telegramAppUrl() . '/login']], [['text' => 'Register', 'url' => $this->telegramAppUrl() . '/register']]]]);
+            return;
+        }
+        if (!filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN)) {
+            $this->sendMessage($chatId, 'Gift card purchases are temporarily paused by the platform.');
+            return;
+        }
+        $rates = GiftCardRate::query()->where('is_active', true)->whereIn('country', ['US', 'UK'])
+            ->where('sell_rate', '>', 0)->where('usd_exchange_rate', '>', 0)->orderBy('country')->orderBy('name')->limit(40)->get();
+        if ($rates->isEmpty()) {
+            $this->sendMessage($chatId, 'USA and UK gift card rates are not available right now. Please check again later.');
+            return;
+        }
+        $rows = [];
+        foreach ($rates as $rate) {
+            $rows[] = [[
+                'text' => $rate->name . ' · ' . $rate->country . ' ' . $rate->currency,
+                'callback_data' => 'giftcard_rate:' . $rate->id,
+            ]];
+        }
+        $this->clearState($chatId);
+        $this->setState($chatId, 'giftcard_face_value');
+        $this->sendMessage($chatId, "🎁 *Buy a USA or UK gift card*\nChoose the card type. The next step shows the face value in USD/GBP, the platform conversion rate, the admin-set service fee and the exact Naira total. Your Naira wallet is charged only after PIN confirmation; fulfillment is reviewed by the admin.", 'Markdown', ['inline_keyboard' => $rows]);
+    }
+
+    private function handleGiftCardRateSelected(int $chatId, int $rateId): void
+    {
+        $rate = GiftCardRate::query()->whereKey($rateId)->where('is_active', true)->whereIn('country', ['US', 'UK'])
+            ->where('sell_rate', '>', 0)->where('usd_exchange_rate', '>', 0)->first();
+        if (!$rate || !filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN)) {
+            $this->sendMessage($chatId, 'That gift card is not currently available. Use /giftcards to refresh the list.');
+            return;
+        }
+        $token = (string) Str::uuid();
+        $this->setData($chatId, ['giftcard_rate_id' => $rate->id, 'giftcard_token' => $token]);
+        $this->setState($chatId, 'giftcard_face_value');
+        $this->sendMessage($chatId, "Selected: *{$rate->name} · {$rate->country}*\nEnter the card face value in *{$rate->currency}* (between 1 and 10,000). Example: `100`.", 'Markdown');
+    }
+
+    private function handleGiftCardFaceValueInput(int $chatId, string $text): void
+    {
+        $value = is_numeric($text) ? (float) $text : 0;
+        $data = $this->getData($chatId);
+        $rate = GiftCardRate::query()->whereKey($data['giftcard_rate_id'] ?? 0)->where('is_active', true)->first();
+        if (!$rate || $value < 1 || $value > 10000) {
+            $this->sendMessage($chatId, 'Enter a face value from 1 to 10,000, or use /cancel to stop.');
+            return;
+        }
+        $this->mergeData($chatId, ['giftcard_face_value' => round($value, 2)]);
+        $this->setState($chatId, 'giftcard_recipient_email');
+        $this->sendMessage($chatId, "Enter the recipient email for this *{$rate->name} {$rate->country}* card.", 'Markdown');
+    }
+
+    private function handleGiftCardRecipientInput(int $chatId, string $email): void
+    {
+        if (!filter_var(trim($email), FILTER_VALIDATE_EMAIL)) {
+            $this->sendMessage($chatId, 'Enter a valid recipient email address.');
+            return;
+        }
+        $this->mergeData($chatId, ['giftcard_recipient' => trim($email)]);
+        $this->setState($chatId, 'giftcard_note');
+        $this->sendMessage($chatId, 'Add an optional note for the fulfillment team, or tap Skip.', 'Markdown', ['inline_keyboard' => [[['text' => 'Skip note', 'callback_data' => 'giftcard_note_skip']]]]);
+    }
+
+    private function handleGiftCardNoteInput(int $chatId, string $text): void
+    {
+        $this->mergeData($chatId, ['giftcard_note' => mb_substr(trim($text), 0, 500)]);
+        $this->showGiftCardConfirmation($chatId);
+    }
+
+    private function showGiftCardConfirmation(int $chatId): void
+    {
+        $data = $this->getData($chatId);
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        $rate = GiftCardRate::query()->whereKey($data['giftcard_rate_id'] ?? 0)->where('is_active', true)->first();
+        if (!$user || !$rate || !isset($data['giftcard_face_value'], $data['giftcard_recipient'])) {
+            $this->clearState($chatId);
+            $this->sendMessage($chatId, 'This gift card request expired. Start again with /giftcards.');
+            return;
+        }
+        $quote = app(GiftCardPurchaseService::class)->quote($rate, (float) $data['giftcard_face_value']);
+        $limit = (float) \App\Models\AdminSetting::getSetting('gift_card_purchase_per_order_limit_ngn', 250000);
+        if ($quote['total_ngn'] > $limit) {
+            $this->sendMessage($chatId, 'This amount is above the current per-order limit of ₦' . number_format($limit, 2) . '. Choose a smaller face value with /giftcards.');
+            $this->clearState($chatId);
+            return;
+        }
+        if ((float) $user->balance < $quote['total_ngn']) {
+            $this->sendMessage($chatId, 'Your Naira wallet balance is below the total charge of ₦' . number_format($quote['total_ngn'], 2) . '. Deposit NGN and try again.');
+            $this->clearState($chatId);
+            return;
+        }
+        $currency = htmlspecialchars((string) $rate->currency, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $cardName = htmlspecialchars((string) $rate->name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $country = htmlspecialchars((string) $rate->country, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $email = htmlspecialchars((string) $data['giftcard_recipient'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $html = "<b>Review gift card purchase</b>\n\n" .
+            "<b>Card:</b> {$cardName} · {$country}\n" .
+            "<b>Face value:</b> {$currency} " . number_format((float) $data['giftcard_face_value'], 2) . "\n" .
+            "<b>Calculated at:</b> ₦" . number_format($quote['ngn_per_usd'], 2) . " / USD\n" .
+            "<b>Service fee:</b> ₦" . number_format($quote['service_fee_ngn'], 2) . "\n" .
+            "<b>Total charge:</b> ₦" . number_format($quote['total_ngn'], 2) . "\n" .
+            "<b>Recipient:</b> {$email}\n" .
+            "<b>Wallet balance:</b> ₦" . number_format((float) $user->balance, 2) . "\n\n" .
+            "This creates a pending fulfillment request and reserves the displayed NGN amount after PIN confirmation.";
+        $this->setState($chatId, 'giftcard_review');
+        $this->sendMessage($chatId, $html, 'HTML', ['inline_keyboard' => [[['text' => '🔐 Confirm and enter PIN', 'callback_data' => 'giftcard_confirm']], [['text' => 'Cancel', 'callback_data' => 'cancel']]]]);
+    }
+
+    private function handleGiftCardPinInput(int $chatId, string $pin): void
+    {
+        if (!preg_match('/^\d{4}$/', trim($pin))) {
+            $this->sendMessage($chatId, 'Enter your 4-digit transaction PIN, or use /cancel to stop.');
+            return;
+        }
+        $data = $this->getData($chatId);
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (!$user) {
+            $this->clearState($chatId);
+            $this->sendMessage($chatId, 'Your Telegram account link is no longer active. Link your account and try again.');
+            return;
+        }
+        try {
+            $order = app(GiftCardPurchaseService::class)->purchase(
+                $user, (int) ($data['giftcard_rate_id'] ?? 0), (float) ($data['giftcard_face_value'] ?? 0),
+                (string) ($data['giftcard_recipient'] ?? ''), trim($pin), $data['giftcard_note'] ?? null,
+                (string) ($data['giftcard_token'] ?? '')
+            );
+            $this->clearState($chatId);
+            $this->sendMessage($chatId, "✅ *Gift card request received*\n\nReference: `{$order->reference}`\nCard: {$order->card_name} · {$order->country}\nFace value: {$order->currency} " . number_format((float) $order->face_value, 2) . "\nReserved: ₦" . number_format((float) $order->total_ngn, 2) . "\nStatus: *Pending fulfillment review*\n\nWe’ll notify you when it is ready. Your order is available in Gift Cards → Purchase history.", 'Markdown', ['inline_keyboard' => [[['text' => 'Gift card history', 'url' => $this->telegramAppUrl() . '/gift-cards']], [['text' => 'All features', 'callback_data' => 'cmd_features']]]]);
+        } catch (\App\Exceptions\GiftCardPurchaseException $e) {
+            if (str_contains(strtolower($e->getMessage()), 'pin')) {
+                $this->sendMessage($chatId, '❌ ' . $e->getMessage() . ' Try your PIN again, or use /cancel to stop.');
+                return;
+            }
+            $this->clearState($chatId);
+            $this->sendMessage($chatId, '❌ ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('KayX bot gift card purchase failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            $this->clearState($chatId);
+            $this->sendMessage($chatId, 'We could not submit the gift card request. No order was placed; please try again or contact support.');
+        }
     }
 
     /**
@@ -1638,8 +2012,10 @@ class TelegramService
                     "  └ PIN required if set → choose coin → amount → wallet → proof (photo or txid)\n" .
                     "`/deposit` — Deposit NGN into your wallet balance\n" .
                     "  └ Pick account → enter amount → upload proof photo\n" .
-                    "`/crypto_deposit` — Open secure crypto deposits (NOWPayments when enabled)\n" .
+                    "`/crypto_deposit` — Create a crypto deposit invoice and check its payment status\n" .
                     "`/usd_wallet` — Open your read-only crypto portfolio valuation\n" .
+                    "`/deposit_status` — Refresh your latest crypto deposit status\n" .
+                    "`/giftcards` — Buy a USA/UK gift card with quote review and PIN confirmation\n" .
                     "`/features` — Wallets, withdrawals, swaps, bills, gift cards, portfolio and support\n" .
                     "`/rates` — View live NGN buy & sell rates\n" .
                     "`/balance` — Check your account balance\n" .

@@ -54,6 +54,7 @@ class SellTrade extends Model
         'payment_proof',
         'admin_payment_proof',
         'transaction_ref',
+        'blockchain_txid',
         'cancelled_at',
         'cancelled_by',
         'source',
