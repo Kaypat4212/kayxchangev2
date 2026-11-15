@@ -82,6 +82,7 @@ class AdminGiftCardRateController extends Controller
             'rates.*.purchase_markup_ngn' => 'required|numeric|min:0|max:10000000',
             'rates.*.usd_exchange_rate' => 'nullable|numeric|min:0.000001|max:1000000',
             'rates.*.is_active'  => 'nullable|boolean',
+            'rates.*.image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
         foreach ($request->input('rates') as $id => $row) {
@@ -94,6 +95,8 @@ class AdminGiftCardRateController extends Controller
                 'usd_exchange_rate' => $rate->currency === 'USD' ? 1 : ($row['usd_exchange_rate'] ?? null),
                 'is_active' => isset($row['is_active']) ? 1 : 0,
             ]);
+            $artwork = $request->file("rates.$id.image");
+            if ($artwork) $this->saveArtwork($rate, $artwork);
         }
 
         $this->dispatchRateNotifications();
@@ -126,11 +129,13 @@ class AdminGiftCardRateController extends Controller
             'sell_rate' => 'required|numeric|min:0',
             'purchase_markup_ngn' => 'nullable|numeric|min:0|max:10000000',
             'usd_exchange_rate' => 'nullable|numeric|min:0.000001|max:1000000',
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
         $data['purchase_markup_ngn'] = $data['purchase_markup_ngn'] ?? 3000;
         $data['usd_exchange_rate'] = $data['currency'] === 'USD' ? 1 : ($data['usd_exchange_rate'] ?? null);
-        GiftCardRate::create(array_merge($data, ['is_active' => true]));
+        $rate = GiftCardRate::create(array_merge(collect($data)->except('image')->all(), ['is_active' => true]));
+        if ($request->hasFile('image')) $this->saveArtwork($rate, $request->file('image'));
 
         return back()->with('success', 'Gift card added successfully.');
     }
@@ -145,6 +150,7 @@ class AdminGiftCardRateController extends Controller
             'purchase_markup_ngn' => 'sometimes|required|numeric|min:0|max:10000000',
             'usd_exchange_rate' => 'nullable|numeric|min:0.000001|max:1000000',
             'is_active' => 'nullable|boolean',
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
         $update = [
@@ -156,6 +162,7 @@ class AdminGiftCardRateController extends Controller
         if ($rate->currency === 'USD') $update['usd_exchange_rate'] = 1;
         elseif (array_key_exists('usd_exchange_rate', $data)) $update['usd_exchange_rate'] = $data['usd_exchange_rate'];
         $rate->update($update);
+        if ($request->hasFile('image')) $this->saveArtwork($rate, $request->file('image'));
 
         return response()->json(['success' => true]);
     }
@@ -164,5 +171,22 @@ class AdminGiftCardRateController extends Controller
     {
         GiftCardRate::findOrFail($id)->delete();
         return back()->with('success', 'Gift card deleted.');
+    }
+
+    private function saveArtwork(GiftCardRate $rate, \Illuminate\Http\UploadedFile $file): void
+    {
+        $directory = public_path('assets/gift-cards');
+        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+            throw new \RuntimeException('Gift card artwork directory could not be created.');
+        }
+        $filename = \Illuminate\Support\Str::uuid() . '.' . strtolower($file->getClientOriginalExtension());
+        $file->move($directory, $filename);
+        $previous = (string) $rate->image_path;
+        $rate->image_path = 'assets/gift-cards/' . $filename;
+        $rate->save();
+        if (str_starts_with($previous, 'assets/gift-cards/')) {
+            $oldPath = public_path($previous);
+            if (is_file($oldPath)) @unlink($oldPath);
+        }
     }
 }

@@ -9,7 +9,7 @@ class GiftCardSaleOrder extends Model
     protected $fillable = [
         'user_id', 'gift_card_rate_id', 'reference', 'card_name', 'country', 'currency',
         'face_value', 'unit_rate_ngn', 'estimated_ngn', 'approved_ngn', 'card_code',
-        'image_path', 'customer_note', 'admin_note', 'reviewed_by', 'status', 'processed_at',
+        'image_path', 'customer_note', 'admin_note', 'reviewed_by', 'status', 'processed_at', 'bot_submission_token',
     ];
 
     protected $casts = [

@@ -14,6 +14,7 @@ class AdminLogController extends Controller
         $files = $this->availableLogs();
         $selected = $this->safeLogName((string) $request->query('file', 'laravel.log'), $files);
         $content = $selected ? $this->readTail($selected) : '';
+        $errorLines = array_values(array_map(fn ($line) => $this->redact($line), array_filter(preg_split('/\r\n|\n|\r/', $content) ?: [], static fn ($line) => preg_match('/\b(?:ERROR|CRITICAL|ALERT|EMERGENCY|FATAL|ParseError|QueryException|Exception)\b|NOWPayments Custody reserve check blocked/i', $line))));
 
         return view('admin.logs', [
             'files' => $files,
@@ -21,6 +22,8 @@ class AdminLogController extends Controller
             'content' => $this->redact($content),
             'analysis' => session('log_analysis'),
             'logError' => $selected ? null : 'No readable Laravel log file was found in storage/logs.',
+            'errorLines' => array_slice($errorLines, -80),
+            'errorCount' => count($errorLines),
         ]);
     }
 

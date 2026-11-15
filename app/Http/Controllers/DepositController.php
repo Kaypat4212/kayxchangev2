@@ -528,9 +528,6 @@ class DepositController extends Controller
 
             $deposit->save();
 
-            // Send Telegram notification
-            $this->sendTelegramAlert($deposit, true);
-
             return redirect()->route('deposits.index')->with('success', 'Deposit submitted successfully!');
         } catch (\Exception $e) {
             Log::error('Failed to process deposit', [

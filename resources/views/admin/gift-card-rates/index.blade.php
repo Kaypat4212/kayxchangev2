@@ -197,7 +197,7 @@ select.gc-mini-input option{background:var(--kx-card);}
     {{-- ── Add New Card ── --}}
     <div class="gc-add-card">
         <div class="gc-add-title"><i class="bi bi-plus-circle-fill"></i> Add New Gift Card</div>
-        <form method="POST" action="{{ route('admin.gift-card-rates.store') }}">
+        <form method="POST" action="{{ route('admin.gift-card-rates.store') }}" enctype="multipart/form-data">
             @csrf
             <div class="row g-3 align-items-end">
                 <div class="col-md-3">
@@ -253,6 +253,10 @@ select.gc-mini-input option{background:var(--kx-card);}
                     <label class="form-label" style="font-size:.75rem;color:var(--kx-muted);font-weight:600;">Service fee ₦ / order</label>
                     <input type="number" name="purchase_markup_ngn" class="gc-mini-input" value="3000" min="0" step="0.01" required>
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label" style="font-size:.75rem;color:var(--kx-muted);font-weight:600;">Card artwork (optional)</label>
+                    <input type="file" name="image" class="gc-mini-input" accept="image/jpeg,image/png,image/webp">
+                </div>
                 <div class="col-md-1">
                     <button type="submit" class="gc-save-btn w-100" style="padding:10px 0;font-size:.8rem;">
                         <i class="bi bi-plus-lg me-1"></i>Add
@@ -263,7 +267,7 @@ select.gc-mini-input option{background:var(--kx-card);}
     </div>
 
     {{-- ── Bulk Update Form ── --}}
-    <form method="POST" action="{{ route('admin.gift-card-rates.bulk-update') }}" id="gcBulkForm">
+    <form method="POST" action="{{ route('admin.gift-card-rates.bulk-update') }}" id="gcBulkForm" enctype="multipart/form-data">
         @csrf
 
         @php
@@ -290,6 +294,7 @@ select.gc-mini-input option{background:var(--kx-card);}
                         <thead>
                             <tr>
                                 <th>Card Name</th>
+                                <th>Artwork</th>
                                 <th>Country</th>
                                 <th>Currency</th>
                                 <th>Buy Rate (₦)</th>
@@ -304,6 +309,7 @@ select.gc-mini-input option{background:var(--kx-card);}
                             @foreach($cards as $card)
                             <tr>
                                 <td style="font-weight:600;color:#fff;">{{ $card->name }}</td>
+                                <td><input type="file" name="rates[{{ $card->id }}][image]" class="gc-rate-input" accept="image/jpeg,image/png,image/webp" aria-label="Upload {{ $card->name }} artwork"><small class="d-block text-secondary">{{ $card->image_path ? 'Current image saved' : 'Icon fallback' }}</small></td>
                                 <td><span class="gc-country">{{ $card->country }}</span></td>
                                 <td style="color:var(--kx-muted);font-family:monospace;font-size:.78rem;">{{ $card->currency }}</td>
                                 <td>

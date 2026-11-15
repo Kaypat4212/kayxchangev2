@@ -149,22 +149,31 @@ class NowPaymentsService
     public function custodyAvailableBalance(string $currencyCode): float
     {
         if ($this->apiKey === '') throw new \RuntimeException('NOWPayments API key is not configured.');
-        try {
-            $response = Http::acceptJson()->withHeaders(['x-api-key' => $this->apiKey])
-                ->timeout(12)->get($this->baseUrl . '/balance');
-        } catch (ConnectionException $e) {
-            throw new NowPaymentsApiException('NOWPayments balance service is temporarily unreachable.', 0, $e);
-        }
-        if (!$response->successful()) {
-            if (in_array($response->status(), [401, 403], true)) {
-                throw new \RuntimeException('NOWPayments denied access to the account balance endpoint. Standard payments may work, but swaps require Custody balance access; ask NOWPayments to enable the required balance/Custody permissions for this account.');
+        // The endpoint returns the whole account balance. Briefly cache it to
+        // prevent repeated clicks/retries from exhausting provider request limits.
+        // Swap submission still serializes per source asset before reserve checks.
+        $cacheKey = 'nowpayments_custody_balances_' . hash('sha256', $this->environment() . '|' . $this->apiKey);
+        $balances = Cache::remember($cacheKey, now()->addSeconds(8), function (): array {
+            try {
+                $response = Http::acceptJson()->withHeaders(['x-api-key' => $this->apiKey])
+                    ->timeout(12)->get($this->baseUrl . '/balance');
+            } catch (ConnectionException $e) {
+                throw new NowPaymentsApiException('NOWPayments balance service is temporarily unreachable.', 0, $e);
             }
-            $this->throwProviderError($response, 'check Custody liquidity');
-        }
-
-        $body = $response->json() ?? [];
-        $balances = $body['balances'] ?? $body['result'] ?? $body;
-        $requestedCode = strtolower($currencyCode);
+            if (!$response->successful()) {
+                if ($response->status() === 429) {
+                    Log::warning('NOWPayments Custody balance endpoint rate-limited a request.', ['environment' => $this->environment()]);
+                    throw new NowPaymentsApiException('The swap service is receiving too many requests. Please wait a few seconds before trying again.', 429);
+                }
+                if (in_array($response->status(), [401, 403], true)) {
+                    throw new \RuntimeException('NOWPayments denied access to the account balance endpoint. Standard payments may work, but swaps require Custody balance access; ask NOWPayments to enable the required balance/Custody permissions for this account.');
+                }
+                $this->throwProviderError($response, 'check Custody liquidity');
+            }
+            $body = $response->json() ?? [];
+            $rows = $body['balances'] ?? $body['result'] ?? $body;
+            return is_array($rows) ? $rows : [];
+        });        $requestedCode = strtolower($currencyCode);
         $requestedAsset = preg_replace('/(trc20|erc20|bep20|bsc|sol)$/', '', $requestedCode);
         foreach ($balances as $code => $balance) {
             if (!is_array($balance)) continue;
@@ -178,6 +187,64 @@ class NowPaymentsService
             return max(0, $amount - max(0, $pending));
         }
         return 0.0;
+    }
+
+    public function validatePayoutAddress(string $address, string $currencyCode, ?string $extraId = null): array
+    {
+        $response = Http::acceptJson()->asJson()->withHeaders(['x-api-key' => $this->apiKey])->timeout(12)
+            ->post($this->baseUrl . '/payout/validate-address', array_filter([
+                'address' => $address, 'currency' => strtolower($currencyCode), 'extra_id' => $extraId,
+            ], static fn ($value) => $value !== null && $value !== ''));
+        if (!$response->successful()) $this->throwProviderError($response, 'validate a crypto payout address');
+        return $response->json() ?? [];
+    }
+
+    public function payoutCurrencyCode(string $coin, string $network): string
+    {
+        $map = [
+            'BTC' => ['BTC' => 'btc'], 'ETH' => ['ERC20' => 'eth'], 'LTC' => ['LTC' => 'ltc'],
+            'TRX' => ['TRC20' => 'trx', 'TRX' => 'trx'], 'XRP' => ['XRP' => 'xrp'], 'DOGE' => ['DOGE' => 'doge'],
+            'ADA' => ['ADA' => 'ada'], 'TON' => ['TON' => 'ton'], 'SOL' => ['SOL' => 'sol'],
+            'USDT' => ['TRC20' => 'usdttrc20', 'ERC20' => 'usdterc20', 'BEP20' => 'usdtbsc'],
+            'USDC' => ['ERC20' => 'usdcerc20', 'BEP20' => 'usdcbsc'], 'BNB' => ['BEP20' => 'bnbbsc'],
+        ];
+        $code = $map[strtoupper($coin)][strtoupper($network)] ?? null;
+        if (!$code) throw new \RuntimeException('The selected asset and network do not have a NOWPayments payout mapping.');
+        return $code;
+    }
+
+    /** Create one admin-approved payout batch. Caller must save the returned ID immediately. */
+    public function createCryptoPayout(string $address, string $currencyCode, float $amount, string $description): array
+    {
+        $token = $this->custodyToken();
+        $response = Http::acceptJson()->asJson()->withHeaders([
+            'Authorization' => 'Bearer ' . $token, 'x-api-key' => $this->apiKey,
+        ])->timeout(20)->post($this->baseUrl . '/payout', ['withdrawals' => [[
+            'address' => $address, 'currency' => strtolower($currencyCode), 'amount' => round($amount, 8),
+            'payout_description' => $description,
+        ]]]);
+        if (!$response->successful()) $this->throwProviderError($response, 'create a crypto payout');
+        return $response->json() ?? [];
+    }
+
+    public function verifyCryptoPayout(string $batchId, string $verificationCode): array
+    {
+        $token = $this->custodyToken();
+        $response = Http::acceptJson()->asJson()->withHeaders([
+            'Authorization' => 'Bearer ' . $token, 'x-api-key' => $this->apiKey,
+        ])->timeout(15)->post($this->baseUrl . '/payout/' . rawurlencode($batchId) . '/verify', [
+            'verification_code' => $verificationCode,
+        ]);
+        if (!$response->successful()) $this->throwProviderError($response, 'verify a crypto payout');
+        return $response->json() ?? [];
+    }
+
+    public function cryptoPayoutStatus(string $payoutId): array
+    {
+        $response = Http::acceptJson()->withHeaders(['x-api-key' => $this->apiKey])->timeout(12)
+            ->get($this->baseUrl . '/payout/' . rawurlencode($payoutId));
+        if (!$response->successful()) $this->throwProviderError($response, 'check a crypto payout');
+        return $response->json() ?? [];
     }
 
     public function testCustodyConnection(): array

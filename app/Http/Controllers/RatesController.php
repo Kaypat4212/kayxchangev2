@@ -3,16 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Rate;
+use App\Models\CryptoRate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class RatesController extends Controller
 {
     // Display the rates page
     public function index()
     {
-  
-        
-        return view('rates.index');
+        $cryptoCount = \App\Models\CryptoRate::count();
+        $giftCardsEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        $giftCardCount = \App\Models\GiftCardRate::where('is_active', true)->whereIn('country', ['US', 'UK'])->where('sell_rate', '>', 0)->count();
+        return view('rates.index', compact('cryptoCount', 'giftCardsEnabled', 'giftCardCount'));
     }
 
     // Display the rates for cryptocurrencies

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sign In – KayXchange</title>
-  <link rel="icon" type="image/png" href="{{ asset('Assests/favicon.png') }}">
+  <link rel="icon" type="{{ $siteFaviconMime ?? 'image/png' }}" href="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="{{ asset('assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -124,7 +124,7 @@
   <header class="lx-topbar">
     <div class="container d-flex align-items-center justify-content-between">
       <a class="lx-brand" href="{{ url('/') }}">
-        <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+        <img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange">
         Kay<span>Xchange</span>
       </a>
       <div class="d-flex align-items-center gap-3">
@@ -141,7 +141,7 @@
 
       <div class="lx-left">
         <div class="lx-left-logo">
-          <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+          <img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange">
           <div class="lx-left-logo-text">Kay<span>Xchange</span></div>
         </div>
         <h2>Welcome<br>back, <em>trader.</em></h2>

@@ -12,13 +12,10 @@ class AdminManualCryptoDepositController extends Controller
 {
     public function index()
     {
-        $deposits = CryptoDeposit::with('user')
-            ->where(function ($query) {
-                $query->where('status', 'awaiting_admin_review')
-                    ->orWhere(function ($manual) { $manual->where('payment_data->provider', 'manual')->where('status', 'pending'); });
-            })
-            ->latest()->paginate(20);
-        return view('admin.manual-crypto-deposits', compact('deposits'));
+        $deposits = CryptoDeposit::with('user')->latest()->paginate(25);
+        $reviewCount = CryptoDeposit::where('status', 'awaiting_admin_review')->count()
+            + CryptoDeposit::where('status', 'pending')->where('payment_data->provider', 'manual')->count();
+        return view('admin.manual-crypto-deposits', compact('deposits', 'reviewCount'));
     }
 
     public function approve(Request $request, int $deposit, CryptoWalletService $wallets)

@@ -46,11 +46,6 @@ class AiChatController extends Controller
 
         $request->validate(['message' => 'required|string|max:1000']);
 
-        [$apiKey, $provConfig, $provider] = $this->resolveProvider();
-        if (! $apiKey) {
-            return response()->json(['reply' => 'AI assistant is not configured yet. Please contact support.']);
-        }
-
         $user      = auth()->user();
         $sessionId = $request->session()->get('ai_chat_session') ?? Str::random(32);
         $request->session()->put('ai_chat_session', $sessionId);
@@ -58,13 +53,40 @@ class AiChatController extends Controller
 
         // 1. Check for pending admin reply (graceful fallback if table not yet migrated)
         try {
-            $pendingReply = $this->checkPendingAdminReply($sessionId, $user);
-            if ($pendingReply) {
-                $this->saveMessage($user?->id, $sessionId, 'user', $message);
-                return response()->json(['reply' => $pendingReply, 'admin_reply' => true]);
+            $giftCardChatActive = $request->session()->has('kaybot_giftcard')
+                || ((bool) preg_match('/\b(gift[\s-]?cards?|itunes cards?)\b/i', $message)
+                    && (bool) preg_match('/\b(buy|purchase|sell|selling|trade|trading|start|want|need)\b/i', $message));
+            if (!$giftCardChatActive) {
+                $pendingReply = $this->checkPendingAdminReply($sessionId, $user);
+                if ($pendingReply) {
+                    $this->saveMessage($user?->id, $sessionId, 'user', $message);
+                    return response()->json(['reply' => $pendingReply, 'admin_reply' => true]);
+                }
             }
         } catch (\Exception $e) {
             Log::warning('KayBot: admin reply check skipped — ' . $e->getMessage());
+        }
+
+        // Gift-card purchases and sales use a deterministic chat flow, not the
+        // AI prompt. Secret card codes and PINs are redacted from stored history.
+        $giftCardState = $request->session()->get('kaybot_giftcard');
+        $giftCardIntent = (bool) preg_match('/\b(gift[\s-]?cards?|itunes cards?)\b/i', $message)
+            && (bool) preg_match('/\b(buy|purchase|sell|selling|trade|trading|start|want|need)\b/i', $message);
+        if ($giftCardState || $giftCardIntent) {
+            $sensitive = $giftCardState && in_array($giftCardState['step'] ?? '', ['sale_code', 'purchase_pin'], true);
+            $this->saveMessage($user?->id, $sessionId, 'user', $sensitive ? '[secure gift-card input redacted]' : $message);
+            try {
+                $giftCardFlow = app(\App\Services\KayBotGiftCardFlow::class);
+                $giftResult = $giftCardState
+                    ? $giftCardFlow->handle($request, $user, $message, $giftCardState)
+                    : $giftCardFlow->begin($request, $user, $message);
+            } catch (\Throwable $e) {
+                Log::error('KayBot gift-card flow failed', ['user_id' => $user?->id, 'error' => $e->getMessage()]);
+                $giftResult = ['reply' => 'The gift-card assistant could not complete that step. Please try again or contact support.'];
+            }
+            $this->saveMessage($user?->id, $sessionId, 'assistant', $giftResult['reply']);
+            if ($sensitive) $giftResult['sensitive_input'] = true;
+            return response()->json($giftResult);
         }
 
         // 2. Manual escalation request
@@ -108,6 +130,10 @@ class AiChatController extends Controller
         }
 
         // 5. Normal AI response with optional live price injection
+        [$apiKey, $provConfig, $provider] = $this->resolveProvider();
+        if (! $apiKey) {
+            return response()->json(['reply' => 'AI assistant is not configured yet. Please contact support.']);
+        }
         $systemPrompt = $this->buildSystemPrompt($message);
         $this->saveMessage($user?->id, $sessionId, 'user', $message);
 
@@ -960,7 +986,7 @@ class AiChatController extends Controller
             . "- Buy: Pay NGN via bank transfer -> receive crypto to wallet\n"
             . "- Sell: Send crypto -> receive NGN to bank account\n"
             . "- Wallets: USD is a read-only estimate of supported crypto wallet holdings and excludes NGN. Crypto stays on-platform; external crypto sends are not available yet. Users can convert selected crypto to NGN from the portfolio page.\n"
-            . "- Gift cards: USA and UK purchase requests can be placed at /gift-cards when enabled; KYC documents are not required, purchase limits are ₦" . number_format($giftCardPerOrderLimit, 2) . " per order and ₦" . number_format($giftCardDailyLimit, 2) . " per day, the NGN charge is reserved, and admin manually fulfills the order. Gift card sales are " . ($giftSalesEnabled ? 'enabled for supported cards with active buy rates; card submissions require admin verification and approval before NGN credit' : 'paused by default') . ".\n"
+            . "- Gift cards: USA and UK purchase requests can be placed at /gift-cards or started conversationally in KayBot when enabled; KYC documents are not required, purchase limits are ₦" . number_format($giftCardPerOrderLimit, 2) . " per order and ₦" . number_format($giftCardDailyLimit, 2) . " per day, the NGN charge is reserved after PIN verification, and admin manually fulfills the order. Users can request to sell supported cards in KayBot when the separate sales switch is enabled; card codes are stored encrypted and admin verification/approval is required before NGN credit. Sales are " . ($giftSalesEnabled ? 'enabled for supported cards with active buy rates' : 'paused by default') . ".\n"
             . "- Crypto deposit networks currently configured in the platform: BTC on Bitcoin; ETH on ERC20; USDT on TRC20, ERC20, or BEP20; USDC on ERC20 or BEP20; BNB on BEP20; SOL on Solana\n"
             . "- Crypto deposits: users select an asset and network, follow the displayed address and amount, and track pending/confirmation status on the deposit page\n"
             . "- If an automated crypto deposit service is temporarily unavailable, a configured manual receiving address may be offered; the user submits a transaction hash and an admin verifies it before the balance is credited\n"

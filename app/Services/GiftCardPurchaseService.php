@@ -35,7 +35,7 @@ class GiftCardPurchaseService
         ];
     }
 
-    public function purchase(User $user, int $rateId, float $faceValue, string $recipientEmail, string $pin, ?string $note = null, ?string $idempotencyToken = null): GiftCardOrder
+    public function purchase(User $user, int $rateId, float $faceValue, string $recipientEmail, string $pin, ?string $note = null, ?string $idempotencyToken = null, ?float $expectedTotalNgn = null): GiftCardOrder
     {
         if (!filter_var(AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN)) {
             throw new GiftCardPurchaseException('Gift card purchases are temporarily unavailable.');
@@ -47,6 +47,9 @@ class GiftCardPurchaseService
         if (!filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) throw new GiftCardPurchaseException('Enter a valid recipient email address.');
 
         $quote = $this->quote($rate, $faceValue);
+        if ($expectedTotalNgn !== null && abs($quote['total_ngn'] - $expectedTotalNgn) > 0.01) {
+            throw new GiftCardPurchaseException('The gift-card rate or total changed while you were confirming. Review the latest quote and submit again. No charge was made.');
+        }
         $reference = 'GC-' . now()->format('ymd') . '-' . Str::upper(Str::random(8));
         $token = $idempotencyToken ? substr(hash('sha256', $idempotencyToken), 0, 64) : null;
 

@@ -71,17 +71,22 @@
 
     <div class="row g-4">
         <div class="col-md-6">
-            <div class="rate-card animate__animated animate__fadeInLeft">
-                <a href="{{ route('rates.crypto') }}" class="btn-rate">Crypto Rates</a>
+            <div class="rate-card animate__animated animate__fadeInLeft h-100">
+                <div class="d-flex align-items-center gap-3 mb-3"><span class="rate-asset-icon rate-asset-icon--crypto"><i class="bi bi-currency-bitcoin"></i></span><div><div class="fw-bold fs-5">Crypto rates</div><div class="text-secondary small">{{ $cryptoCount ?? 0 }} assets listed</div></div></div>
+                <a href="{{ route('rates.crypto') }}" class="btn-rate">View crypto rates <i class="bi bi-arrow-right ms-1"></i></a>
             </div>
         </div>
         <div class="col-md-6">
-            <div class="rate-card animate__animated animate__fadeInRight">
-                <button class="btn-rate disabled" onclick="showGiftcardToast()">Giftcard Rates</button>
+            <div class="rate-card animate__animated animate__fadeInRight h-100">
+                <div class="d-flex align-items-center gap-3 mb-3"><span class="rate-asset-icon rate-asset-icon--gift"><i class="bi bi-gift-fill"></i></span><div><div class="fw-bold fs-5">Gift card rates</div><div class="text-secondary small">{{ $giftCardCount ?? 0 }} active USA/UK cards</div></div></div>
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-3"><span class="badge {{ ($giftCardsEnabled ?? false) ? 'bg-success' : 'bg-secondary' }}">Purchases {{ ($giftCardsEnabled ?? false) ? 'enabled' : 'paused' }}</span><span class="small text-secondary">Admin controlled</span></div>
+                <a href="{{ route('giftcard.rates') }}" class="btn-rate">View gift card rates <i class="bi bi-arrow-right ms-1"></i></a>
             </div>
         </div>
     </div>
 </div>
+
+<style>.rate-asset-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;font-size:1.35rem}.rate-asset-icon--crypto{background:#fff4d6;color:#c58000}.rate-asset-icon--gift{background:#fce7f3;color:#c02672}</style>
 
 <!-- Toast Notification -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3">

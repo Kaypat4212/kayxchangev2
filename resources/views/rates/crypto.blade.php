@@ -66,7 +66,7 @@
         @forelse($rates as $rate)
             <div class="col-md-4 col-sm-6">
                 <div class="card-rate animate__animated animate__fadeInUp" style="animation-delay: {{ $loop->index * 0.2 }}s">
-                    <h4 class="text-lg font-semibold mb-3">{{ $rate->coin }}</h4>
+                    <div class="d-flex align-items-center gap-3 mb-3"><span class="crypto-rate-icon"><strong>{{ strtoupper(substr($rate->coin,0,1)) }}</strong></span><div><h4 class="text-lg font-semibold mb-0">{{ strtoupper($rate->coin) }}</h4><small class="text-secondary">{{ strtoupper($rate->coin) }} market</small></div></div>
                     <div class="mb-2">
                         <span class="rate-label">Buy Rate:</span>
                         <span class="rate-value">₦{{ number_format($rate->buy_rate, 2) }}</span>
@@ -84,4 +84,5 @@
         @endforelse
     </div>
 </div>
+<style>.crypto-rate-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:1px solid rgba(26,60,52,.2);background:linear-gradient(145deg,#f0fff5,#d6f5df);color:#187347;font-size:1.2rem;box-shadow:0 5px 14px #173c2920}</style>
 @endsection

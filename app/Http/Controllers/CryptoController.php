@@ -179,8 +179,15 @@ class CryptoController extends Controller
         $ratesUpdated = $usdRates['_updated_at'] ?? null;
         unset($usdRates['_source'], $usdRates['_updated_at']);
 
+        $convertMode = \App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus'); // compare | cryptomus | manual | nowpayments
+        if (!in_array($convertMode, ['compare', 'cryptomus', 'nowpayments', 'manual'], true)) $convertMode = 'cryptomus';
+        $coinSymbols = $convertMode === 'nowpayments'
+            ? app(\App\Services\NowPaymentsConversionService::class)->supportedCoins()
+            : array_keys(\App\Services\ExchangeRateService::SUPPORTED_COINS);
         $coins = [];
-        foreach (\App\Services\ExchangeRateService::SUPPORTED_COINS as $symbol => $meta) {
+        foreach ($coinSymbols as $symbol) {
+            $meta = \App\Services\ExchangeRateService::SUPPORTED_COINS[$symbol] ?? null;
+            if (!$meta) continue;
             $coins[$symbol] = [
                 'name' => $meta['name'],
                 'usd'  => $usdRates[$symbol] ?? $meta['fallback'],
@@ -188,13 +195,6 @@ class CryptoController extends Controller
         }
 
         $platformFeePercent = max(0, min(19.5, (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5')));
-        $convertMode = \App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus'); // compare | cryptomus | manual
-        if (!in_array($convertMode, ['compare', 'cryptomus', 'nowpayments', 'manual'], true)) {
-            $convertMode = 'cryptomus';
-        }
-        if ($convertMode === 'nowpayments') {
-            $coins = array_intersect_key($coins, array_flip(['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL']));
-        }
         $cryptomusReady = (new CryptomusService())->isEnabled();
         $nowPayments = app(\App\Services\NowPaymentsService::class);
         $swapReady = $nowPayments->isCustodyConversionReady();
@@ -210,9 +210,10 @@ class CryptoController extends Controller
 
         $walletBalances = Auth::user()->wallets()->where('is_active', true)->get()
             ->mapWithKeys(fn ($wallet) => [strtoupper($wallet->currency) => (float) $wallet->balance])->all();
+        $swapLimits = $this->swapLimits();
         $swapRequestKey = (string) Str::uuid();
 
-        return view('convert', compact('coins', 'walletBalances', 'swapRequestKey', 'feePercent', 'convertMode', 'cryptomusReady', 'swapReady', 'convertInstructions', 'recentConversions', 'rateSource', 'ratesUpdated'));
+        return view('convert', compact('coins', 'walletBalances', 'swapRequestKey', 'swapLimits', 'feePercent', 'convertMode', 'cryptomusReady', 'swapReady', 'convertInstructions', 'recentConversions', 'rateSource', 'ratesUpdated'));
     }
 
     /**
@@ -238,6 +239,12 @@ class CryptoController extends Controller
         if (!$rateService->isSupported($fromCoin) || !$rateService->isSupported($toCoin)) {
             return response()->json(['success' => false, 'message' => 'Unsupported coin selected'], 400);
         }
+        if (\App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus') === 'nowpayments') {
+            $swapProvider = app(\App\Services\NowPaymentsConversionService::class);
+            if (!$swapProvider->supportsCoin($fromCoin) || !$swapProvider->supportsCoin($toCoin)) {
+                return response()->json(['success' => false, 'message' => 'This asset is not currently enabled for Custody swaps.'], 422);
+            }
+        }
 
         if ($fromCoin === $toCoin) {
             return response()->json(['success' => false, 'message' => 'Choose two different coins'], 400);
@@ -249,6 +256,9 @@ class CryptoController extends Controller
                 $feePercent = app(\App\Services\NowPaymentsConversionService::class)->totalFeePercent();
             }
             $quote = $rateService->quote($fromCoin, $toCoin, (float) $request->from_amount, $feePercent);
+            if ($limitError = $this->swapLimitError((float) $quote['usd_value'])) {
+                return response()->json(['success' => false, 'message' => $limitError], 422);
+            }
 
             return response()->json([
                 'success' => true,
@@ -337,17 +347,21 @@ class CryptoController extends Controller
             // Server-side quote — never trust client-supplied amounts
             $feePercent = (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5');
             $quote = $rateService->quote($fromCoin, $toCoin, $fromAmount, $feePercent);
+            if ($limitError = $this->swapLimitError((float) $quote['usd_value'])) {
+                return response()->json(['success' => false, 'message' => $limitError], 422);
+            }
+
+            $duplicate = Conversion::query()->where('user_id', $user->id)->where('mode', 'cryptomus')
+                ->where('from_coin', $fromCoin)->where('to_coin', $toCoin)->where('from_amount', $fromAmount)
+                ->whereIn('status', ['pending', 'processing'])->where('created_at', '>=', now()->subMinutes(3))->latest('id')->first();
+            if ($duplicate) {
+                $existingResponse = is_array($duplicate->cryptomus_response) ? $duplicate->cryptomus_response : [];
+                return response()->json(['success' => true, 'message' => 'This swap is already processing. Opening its existing request.', 'conversion_id' => $duplicate->id, 'payment_url' => data_get($existingResponse, 'result.url'), 'duplicate' => true]);
+            }
 
             $feeAmount = $quote['fee_amount'];
             $finalToAmount = $quote['receive_amount'];
             $fromAmountInUsd = $quote['usd_value'];
-
-            if ($fromAmountInUsd < 1) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Minimum conversion is $1.00 worth of crypto.'
-                ], 400);
-            }
 
             // Create conversion record
             $conversion = Conversion::create([
@@ -465,10 +479,15 @@ class CryptoController extends Controller
 
             $feePercent = (float) \App\Models\AdminSetting::getSetting('convert_fee_percent', '0.5');
             $quote = $rateService->quote($fromCoin, $toCoin, $fromAmount, $feePercent);
-
-            if ($quote['usd_value'] < 1) {
-                return response()->json(['success' => false, 'message' => 'Minimum conversion is $1.00 worth of crypto.'], 400);
+            if ($limitError = $this->swapLimitError((float) $quote['usd_value'])) {
+                return response()->json(['success' => false, 'message' => $limitError], 422);
             }
+
+            $duplicate = Conversion::query()->where('user_id', $user->id)->where('mode', 'manual')
+                ->where('from_coin', $fromCoin)->where('to_coin', $toCoin)->where('from_amount', $fromAmount)
+                ->whereIn('status', ['pending', 'processing'])->where('created_at', '>=', now()->subMinutes(3))->latest('id')->first();
+            if ($duplicate) return response()->json(['success' => true, 'message' => 'This swap request is already awaiting review.', 'conversion_id' => $duplicate->id, 'duplicate' => true]);
+
 
             $conversion = Conversion::create([
                 'user_id'        => $user->id,
@@ -573,15 +592,13 @@ class CryptoController extends Controller
         $toCoin = strtoupper($request->input('to_coin'));
         $fromAmount = round((float) $request->input('from_amount'), 8);
         $rates = app(\App\Services\ExchangeRateService::class);
-        if (!$rates->isSupported($fromCoin) || !$rates->isSupported($toCoin) || $fromCoin === $toCoin) {
+        if (!$rates->isSupported($fromCoin) || !$rates->isSupported($toCoin) || !$service->supportsCoin($fromCoin) || !$service->supportsCoin($toCoin) || $fromCoin === $toCoin) {
             return response()->json(['success' => false, 'message' => 'Choose a supported, different cryptocurrency pair.'], 422);
         }
 
         try {
             $quote = $rates->quote($fromCoin, $toCoin, $fromAmount, $service->totalFeePercent());
-            if ($quote['usd_value'] < 1) {
-                return response()->json(['success' => false, 'message' => 'Minimum swap is $1.00 worth of crypto.'], 422);
-            }
+            if ($limitError = $this->swapLimitError((float) $quote['usd_value'])) return response()->json(['success' => false, 'message' => $limitError], 422);
             $conversion = $service->submit(Auth::user(), $fromCoin, $toCoin, $fromAmount, $quote, (string) $request->input('swap_request_key'));
             return response()->json([
                 'success' => true,
@@ -599,6 +616,31 @@ class CryptoController extends Controller
             Log::error('NOWPayments wallet swap failed', ['user_id' => Auth::id(), 'from_coin' => $fromCoin, 'to_coin' => $toCoin, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'We could not safely complete this swap request. Please try again or contact support.'], 500);
         }
+    }
+
+    private function swapLimits(): array
+    {
+        $minimum = \App\Models\AdminSetting::getSetting('convert_min_usd', null);
+        $maximum = \App\Models\AdminSetting::getSetting('convert_max_usd', null);
+        $minimum = is_numeric($minimum) && (float) $minimum > 0 ? (float) $minimum : 1.0;
+        $maximum = is_numeric($maximum) && (float) $maximum > 0 ? (float) $maximum : 1000.0;
+        if ($maximum < $minimum) $maximum = $minimum;
+        return [
+            'minimum_usd' => $minimum,
+            'maximum_usd' => $maximum,
+        ];
+    }
+
+    private function swapLimitError(float $usdValue): ?string
+    {
+        $limits = $this->swapLimits();
+        if ($usdValue + 0.000001 < $limits['minimum_usd']) {
+            return 'Swap minimum is $' . number_format($limits['minimum_usd'], 2) . ' USD. Your amount is about $' . number_format($usdValue, 2) . '.';
+        }
+        if ($usdValue - 0.000001 > $limits['maximum_usd']) {
+            return 'Swap maximum is $' . number_format($limits['maximum_usd'], 2) . ' USD per transaction. Reduce the amount and try again.';
+        }
+        return null;
     }
 
     public function convertFailed($id)

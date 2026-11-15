@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline - KayXchange</title>
-    <link rel="icon" type="image/png" href="{{ asset('Assests/favicon.png') }}">
+    <link rel="icon" type="{{ $siteFaviconMime ?? 'image/png' }}" href="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}">
     <style>
         * {
             margin: 0;

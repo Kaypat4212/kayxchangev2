@@ -8,6 +8,7 @@
     $walletNetworkOptions = [
         'BTC' => ['BTC' => 'Bitcoin'],
         'ETH' => ['ERC20' => 'Ethereum · ERC-20'],
+        'LTC' => ['LTC' => 'Litecoin'], 'TRX' => ['TRC20' => 'TRON'], 'XRP' => ['XRP' => 'XRP Ledger'], 'DOGE' => ['DOGE' => 'Dogecoin'], 'ADA' => ['ADA' => 'Cardano'], 'TON' => ['TON' => 'TON'],
         'USDT' => ['TRC20' => 'Tron · TRC-20', 'ERC20' => 'Ethereum · ERC-20', 'BEP20' => 'BNB Smart Chain · BEP-20'],
         'USDC' => ['ERC20' => 'Ethereum · ERC-20', 'BEP20' => 'BNB Smart Chain · BEP-20'],
         'BNB' => ['BEP20' => 'BNB Smart Chain · BEP-20'],
@@ -45,7 +46,7 @@ body.light-mode .kwd-page{--kwd-text:#14231a;--kwd-muted:#687b71;color:#17261e}b
             </div>
         </div>
         <div class="kwd-trust-row position-relative" style="z-index:1">
-            <span class="kwd-trust"><i class="bi bi-shield-check"></i>Admin review before payout</span>
+                    <span class="kwd-trust"><i class="bi bi-shield-check"></i>Admin approval and provider verification before payout</span>
             <span class="kwd-trust"><i class="bi bi-diagram-3"></i>Network matched to your wallet</span>
             <span class="kwd-trust"><i class="bi bi-hourglass-split"></i>Pending requests reduce available balance</span>
         </div>
@@ -75,6 +76,7 @@ body.light-mode .kwd-page{--kwd-text:#14231a;--kwd-muted:#687b71;color:#17261e}b
             @else
                 <form class="kwd-form" action="{{ route('wallet.withdraw.create') }}" method="POST" id="walletWithdrawForm">
                     @csrf
+                    <input type="hidden" name="request_key" value="{{ $withdrawalRequestKey }}">
 
                     <div class="kwd-field">
                         <label class="kwd-label" for="wallet_id">Pay from <small>Choose a funded crypto wallet</small></label>
@@ -96,7 +98,7 @@ body.light-mode .kwd-page{--kwd-text:#14231a;--kwd-muted:#687b71;color:#17261e}b
                     <div class="kwd-field">
                         <label class="kwd-label" for="amount">Amount to withdraw <small id="amountCurrencyLabel">Crypto amount</small></label>
                         <div class="kwd-amount-wrap">
-                            <input class="kwd-control" type="number" name="amount" id="amount" inputmode="decimal" step="0.00000001" min="0.00000001" value="{{ old('amount') }}" placeholder="0.00000000" required>
+                            <input class="kwd-control" type="number" name="amount" id="amount" inputmode="decimal" step="0.000001" min="0.000001" value="{{ old('amount') }}" placeholder="0.000000" required>
                             <button class="kwd-max" type="button" id="useMaxButton">MAX</button>
                         </div>
                         <div class="kwd-balance-line"><span>Available balance</span><strong id="availableBalance">Select a wallet</strong></div>
@@ -209,7 +211,7 @@ body.light-mode .kwd-page{--kwd-text:#14231a;--kwd-muted:#687b71;color:#17261e}b
     document.getElementById('useMaxButton').addEventListener('click', () => {
         const selected = walletSelect.options[walletSelect.selectedIndex];
         if (!selected?.dataset.balance) return;
-        amountInput.value = Number(selected.dataset.balance).toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
+        amountInput.value = Number(selected.dataset.balance).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
         refreshPreview();
     });
     document.getElementById('walletWithdrawForm')?.addEventListener('submit', event => {

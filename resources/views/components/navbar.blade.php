@@ -257,7 +257,7 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
 <nav class="kx-navbar navbar navbar-expand-lg" id="kxMainNav">
   <div class="container">
     <a class="kx-brand" href="@auth {{ url('/dashboard') }} @else {{ url('/') }} @endauth">
-      <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+      <img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange">
       <span>Kay<span class="kx-brand-green">Xchange</span></span>
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#kxNav" aria-controls="kxNav" aria-expanded="false" aria-label="Toggle navigation">

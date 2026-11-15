@@ -2,7 +2,7 @@
 <nav class="navbar navbar-expand-lg bg-dark navbar-dark sticky-top" id="adminNavbar">
   <div class="container-fluid">
     <a class="navbar-brand" href="{{ url('/admin/dashboard') }}">
-        <img width="40px" src="{{ asset('Assests/favicon.png') }}" alt="KayXchange Admin" class="me-2">
+        <img width="40px" src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange Admin" class="me-2">
         <span class="text-warning">Admin Panel</span>
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbarNav" aria-controls="adminNavbarNav" aria-expanded="false" aria-label="Toggle navigation">

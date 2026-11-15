@@ -6,7 +6,7 @@
     <title>KayXchange — Trade with Kay</title>
     <meta name="description" content="Welcome to Kay xchange! We provide fast and reliable Crypto to Naira exchange services.">
     <meta name="keywords" content="Kay xchange, currency exchange, Cryptocurrency to naira, Cryptotonaira, p2p, foreign exchange">
-    <link rel="icon" href="{{ asset('Assests/favicon.png') }}" type="image/png">
+    <link rel="icon" href="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" type="{{ $siteFaviconMime ?? 'image/png' }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -29,7 +29,7 @@
 
         <!-- Logo -->
         <div class="logo-wrap">
-            <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange Logo" class="logo-img" onerror="this.style.display='none'">
+            <img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange Logo" class="logo-img" onerror="this.style.display='none'">
             <span class="logo-text">Kay<span class="logo-accent">Xchange</span></span>
         </div>
 

@@ -170,6 +170,22 @@ class AdminController extends Controller
         $totalReferralRewards = Referral::where('status', 'completed')->sum('reward_amount');
         $siteMode = AdminSetting::getSetting('runtime_mode', 'production');
         $pendingCounts = $this->dashboardPendingCounts();
+        $recentDepositActivity = collect();
+        if (Schema::hasTable('deposits')) {
+            $recentDepositActivity = $recentDepositActivity->merge(Deposit::with('user')->latest()->limit(6)->get()->map(fn ($d) => [
+                'kind' => 'NGN', 'id' => $d->id, 'user' => $d->user?->name ?? 'Unknown user',
+                'amount' => '₦' . number_format((float) $d->amount, 2), 'status' => (string) $d->status,
+                'created_at' => $d->created_at, 'url' => route('admin.deposits.index'),
+            ]));
+        }
+        if (Schema::hasTable('crypto_deposits')) {
+            $recentDepositActivity = $recentDepositActivity->merge(\App\Models\CryptoDeposit::with('user')->latest()->limit(6)->get()->map(fn ($d) => [
+                'kind' => 'CRYPTO · ' . strtoupper((string) $d->currency), 'id' => $d->id, 'user' => $d->user?->name ?? 'Unknown user',
+                'amount' => number_format((float) ($d->received_amount ?: $d->expected_amount), 8) . ' ' . strtoupper((string) $d->currency),
+                'status' => (string) $d->status, 'created_at' => $d->created_at, 'url' => route('admin.manual-crypto-deposits.index'),
+            ]));
+        }
+        $recentDepositActivity = $recentDepositActivity->sortByDesc(fn ($d) => $d['created_at']?->timestamp ?? 0)->take(8)->values();
         $newUsersThisMonth = User::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count();
 
         // Swap totals are shown alongside the provider feature switches.
@@ -207,6 +223,7 @@ class AdminController extends Controller
             'pendingConversions',
             'completedConversions',
             'pendingCounts',
+            'recentDepositActivity',
             'newUsersThisMonth',
             'cryptoDepositsEnabled',
             'cryptoDepositProviderName',
@@ -223,6 +240,7 @@ class AdminController extends Controller
             'pending_sell_trades' => SellTrade::where('status', 'pending')->count(),
             'pending_deposits' => Schema::hasTable('deposits') ? Deposit::where('status', 'pending')->count() : 0,
             'crypto_deposits_review' => 0,
+            'crypto_deposits_open' => 0,
             'crypto_withdrawals' => 0,
             'bill_requests' => 0,
             'open_support' => 0,
@@ -231,6 +249,7 @@ class AdminController extends Controller
         if (Schema::hasTable('crypto_deposits')) {
             $counts['crypto_deposits_review'] = \App\Models\CryptoDeposit::where('status', 'awaiting_admin_review')->count()
                 + \App\Models\CryptoDeposit::where('status', 'pending')->where('payment_data->provider', 'manual')->count();
+            $counts['crypto_deposits_open'] = \App\Models\CryptoDeposit::whereIn('status', ['pending', 'awaiting_admin_review'])->count();
         }
         if (Schema::hasTable('crypto_withdrawals')) {
             $counts['crypto_withdrawals'] = \App\Models\CryptoWithdrawal::where('status', 'pending')->count();

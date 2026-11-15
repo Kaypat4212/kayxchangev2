@@ -55,6 +55,12 @@
     </section>
     @endif
 
+    <section class="card bg-dark border-danger border-opacity-25 mb-4">
+        <div class="card-header border-danger border-opacity-25 d-flex justify-content-between align-items-center text-light"><span><i class="bi bi-exclamation-octagon me-2 text-danger"></i>Error and exception entries</span><span class="badge text-bg-danger">{{ $errorCount ?? 0 }} in latest excerpt</span></div>
+        <div class="card-body p-0"><pre class="m-0 p-3 text-light" style="max-height:38vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem">{{ !empty($errorLines) ? implode("\n", $errorLines) : 'No error-level entries found in the latest excerpt.' }}</pre></div>
+        <div class="card-footer border-secondary small text-secondary">This section filters the sanitized excerpt shown below. New application errors are written to the selected Laravel log automatically.</div>
+    </section>
+
     <section class="card bg-dark border-secondary">
         <div class="card-header border-secondary d-flex justify-content-between align-items-center flex-wrap gap-2 text-light">
             <span><i class="bi bi-file-earmark-text me-2"></i>Latest log excerpt</span>

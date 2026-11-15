@@ -183,13 +183,36 @@ class AdminSettingsController extends Controller
                 'api_key' => $this->credentialSource('nowpayments_api_key', 'api_key'),
                 'ipn_secret' => $this->credentialSource('nowpayments_ipn_secret', 'ipn_secret'),
             ];
-            return view('admin.settings.index', compact('grouped', 'cfStatus', 'countryOptions', 'nowPaymentsCredentialStatus'));
+            $siteFaviconPath = AdminSetting::getSetting('site_favicon_path', 'Assests/favicon.png');
+            return view('admin.settings.index', compact('grouped', 'cfStatus', 'countryOptions', 'nowPaymentsCredentialStatus', 'siteFaviconPath'));
         } catch (\Throwable $e) {
             // A missing settings migration or a temporary database outage should
             // give administrators recovery guidance instead of a raw 500 page.
             report($e);
             return response()->view('admin.settings.unavailable', [], 200);
         }
+    }
+
+    public function updateBranding(Request $request)
+    {
+        $request->validate([
+            'favicon' => ['required', 'image', 'mimes:png,jpg,jpeg,webp', 'dimensions:min_width=64,min_height=64,max_width=1024,max_height=1024,ratio=1', 'max:2048'],
+        ]);
+
+        $directory = public_path('assets/site-branding');
+        \Illuminate\Support\Facades\File::ensureDirectoryExists($directory);
+        $file = $request->file('favicon');
+        $extension = strtolower($file->extension());
+        $filename = (string) \Illuminate\Support\Str::uuid() . '.' . $extension;
+        $file->move($directory, $filename);
+        $path = 'assets/site-branding/' . $filename;
+
+        AdminSetting::updateOrCreate(
+            ['key' => 'site_favicon_path'],
+            ['value' => $path, 'is_encrypted' => false, 'group' => 'general', 'label' => 'Site logo and favicon', 'description' => 'Shared brand icon used on customer and admin pages.'],
+        );
+
+        return redirect()->route('admin.settings.index')->with('success', 'Site logo and favicon updated across the platform.');
     }
 
     public function update(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
@@ -227,6 +250,23 @@ class AdminSettingsController extends Controller
         if (isset($data['convert_fee_percent']) && (!is_numeric($data['convert_fee_percent']) || (float)$data['convert_fee_percent'] < 0 || (float)$data['convert_fee_percent'] > 19.5)) {
             return back()->with('error', 'The platform swap fee must be between 0% and 19.5%.');
         }
+        foreach (['convert_min_usd' => 'minimum', 'convert_max_usd' => 'maximum'] as $limitKey => $label) {
+            if (isset($data[$limitKey]) && (!is_numeric($data[$limitKey]) || (float) $data[$limitKey] <= 0 || (float) $data[$limitKey] > 100000000)) {
+                return back()->with('error', 'The swap ' . $label . ' value must be greater than $0 and no more than $100,000,000.');
+            }
+        }
+        $savedMinimum = AdminSetting::getSetting('convert_min_usd', null);
+        $savedMaximum = AdminSetting::getSetting('convert_max_usd', null);
+        $minimumSwap = (float) ($data['convert_min_usd'] ?? (is_numeric($savedMinimum) && (float)$savedMinimum > 0 ? $savedMinimum : 1));
+        $maximumSwap = (float) ($data['convert_max_usd'] ?? (is_numeric($savedMaximum) && (float)$savedMaximum > 0 ? $savedMaximum : 1000));
+        if ($maximumSwap < $minimumSwap) return back()->with('error', 'The maximum swap value must be at least the minimum swap value.');
+        if (isset($data['swap_supported_coins'])) {
+            $availableSwapCoins = ['BTC','ETH','USDT','USDC','BNB','SOL','XRP','DOGE','LTC','TRX','ADA','TON'];
+            $symbols = preg_split('/[,\s]+/', strtoupper((string) $data['swap_supported_coins']), -1, PREG_SPLIT_NO_EMPTY);
+            $unsupported = array_values(array_diff(array_unique($symbols), $availableSwapCoins));
+            if ($unsupported) return back()->with('error', 'Unsupported swap coin symbol(s): ' . implode(', ', $unsupported) . '. Add a price feed and NOWPayments network mapping before enabling a new asset.');
+            $data['swap_supported_coins'] = implode(',', array_values(array_unique($symbols)));
+        }
         if (isset($data['homepage_captcha_mode']) && !in_array($data['homepage_captcha_mode'], ['off', 'custom', 'turnstile'], true)) {
             return back()->with('error', 'Choose Off, Custom CAPTCHA, or Cloudflare Turnstile.');
         }
@@ -237,7 +277,7 @@ class AdminSettingsController extends Controller
         $criticalKeys = [
             'runtime_mode', 'site_maintenance', 'nowpayments_enabled', 'nowpayments_sandbox',
             'crypto_deposit_provider', 'convert_mode', 'blocked_countries', 'homepage_captcha_mode',
-            'cf_enabled', 'cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_conversion_enabled',
+            'cf_enabled', 'cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_conversion_enabled', 'nowpayments_crypto_withdrawals_enabled',
         ];
 
         foreach ($data as $key => $value) {

@@ -108,7 +108,7 @@
 
     {{-- Hero --}}
     <div class="kx-install-hero">
-        <div class="kx-install-app-icon"><img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange app icon" style="width:100%;height:100%;object-fit:cover;border-radius:22px"></div>
+        <div class="kx-install-app-icon"><img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange app icon" style="width:100%;height:100%;object-fit:cover;border-radius:22px"></div>
         <h2 class="fw-800 mb-1" style="font-size:1.6rem;">Add KayXchange to your device</h2>
         <p class="text-muted mb-0" style="font-size:0.88rem;">
             Install our app in seconds — no App Store, no Play Store needed.

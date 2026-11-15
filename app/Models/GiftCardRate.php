@@ -13,6 +13,7 @@ class GiftCardRate extends Model
         'country',
         'currency',
         'category',
+        'image_path',
         'buy_rate',
         'sell_rate',
         'purchase_markup_ngn',

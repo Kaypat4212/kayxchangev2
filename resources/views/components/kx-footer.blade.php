@@ -9,7 +9,7 @@
         <!-- Brand -->
         <div class="kx-footer-brand-col">
             <a href="{{ url('/') }}" class="kx-footer-brand">
-                <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+                <img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange">
                 <span>Kay<span class="kx-green">Xchange</span></span>
             </a>
             <p class="kx-footer-tagline">Nigeria's trusted crypto exchange platform. Fast, secure, and reliable.</p>

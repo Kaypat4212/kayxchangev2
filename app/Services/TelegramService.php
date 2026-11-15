@@ -570,7 +570,7 @@ class TelegramService
         // Extract the first word (command without arguments)
         $command = strtolower(explode(' ', $text)[0]);
 
-        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai', 'upload', 'features', 'wallet', 'crypto_deposit', 'usd_wallet', 'deposit_status', 'giftcards'];
+        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai', 'upload', 'features', 'wallet', 'crypto_deposit', 'usd_wallet', 'deposit_status', 'giftcards', 'giftcard_buy', 'giftcard_sell', 'buygiftcard', 'sellgiftcard'];
 
         return in_array($command, $known, true) ? $command : null;
     }
@@ -587,7 +587,7 @@ class TelegramService
                 $incomingState = $this->getState($chatId);
                 $sensitiveInput = in_array($incomingState, [
                     'link_pin', 'reg_set_pin', 'reg_confirm_pin', 'sell_pin', 'buy_pin',
-                    'reg_password', 'reg_confirm_password', 'giftcard_pin',
+                    'reg_password', 'reg_confirm_password', 'giftcard_pin', 'giftcard_sale_code',
                 ], true);
                 $loggedText = $sensitiveInput ? '[secure input redacted]' : $text;
 
@@ -676,7 +676,11 @@ class TelegramService
                 }
 
                 // ── Commands take priority over active states ─────────────────────
-                $command = $this->resolveCommand($text);
+                if (preg_match('/\b(gift[\s-]?cards?|itunes cards?)\b/i', $text)) {
+                    $command = preg_match('/\b(sell|selling|trade|trading)\b/i', $text) ? 'giftcard_sell' : (preg_match('/\b(buy|purchase|start|want|need)\b/i', $text) ? 'giftcard_buy' : 'giftcards');
+                } else {
+                    $command = $this->resolveCommand($text);
+                }
                 if ($command !== null) {
                     if ($command === 'cancel') {
                         $this->handleCancelCommand($chatId);
@@ -701,6 +705,10 @@ class TelegramService
                         'usd_wallet' => $this->handleUsdWalletCommand($chatId),
                         'deposit_status' => $this->handleCryptoDepositStatus($chatId),
                         'giftcards' => $this->handleGiftCardsCommand($chatId),
+                        'giftcard_buy' => $this->handleGiftCardPurchaseStart($chatId),
+                        'giftcard_sell' => $this->handleGiftCardSaleStart($chatId),
+                        'buygiftcard' => $this->handleGiftCardPurchaseStart($chatId),
+                        'sellgiftcard' => $this->handleGiftCardSaleStart($chatId),
                         default    => $this->handleUnknownCommand($chatId),
                     };
                     return true;
@@ -774,6 +782,15 @@ class TelegramService
                         case 'giftcard_pin':
                             $this->handleGiftCardPinInput($chatId, $text);
                             return true;
+                        case 'giftcard_sale_face_value':
+                            $this->handleGiftCardSaleFaceValue($chatId, $text);
+                            return true;
+                        case 'giftcard_sale_note':
+                            $this->handleGiftCardSaleNote($chatId, $text);
+                            return true;
+                        case 'giftcard_sale_code':
+                            $this->handleGiftCardSaleCode($chatId, $text);
+                            return true;
                         case 'reg_name':
                             $this->handleRegNameInput($chatId, $text);
                             return true;
@@ -841,6 +858,28 @@ class TelegramService
                 if ($data === 'giftcard_confirm') {
                     $this->setState($chatId, 'giftcard_pin');
                     $this->sendMessage($chatId, "🔐 *Confirm gift card purchase*\nEnter your 4-digit transaction PIN. Your message is redacted from bot logs and deleted when Telegram allows. The charge is only reserved after the PIN is verified.\n\n_Type /cancel to stop._");
+                    return true;
+                }
+                if ($data === 'giftcard_buy') {
+                    $this->handleGiftCardPurchaseStart($chatId);
+                    return true;
+                }
+                if ($data === 'giftcard_sell') {
+                    $this->handleGiftCardSaleStart($chatId);
+                    return true;
+                }
+                if (str_starts_with($data, 'giftcard_sale_rate:')) {
+                    $this->handleGiftCardSaleRateSelected($chatId, (int) substr($data, 19));
+                    return true;
+                }
+                if ($data === 'giftcard_sale_note_skip') {
+                    $this->mergeData($chatId, ['giftcard_sale_note' => null]);
+                    $this->setState($chatId, 'giftcard_sale_code');
+                    $this->sendMessage($chatId, 'Enter the card code to submit for review. It is stored encrypted and removed from Telegram chat where possible. No funds are credited until admin approval.');
+                    return true;
+                }
+                if ($data === 'giftcard_sale_confirm') {
+                    $this->handleGiftCardSaleConfirm($chatId);
                     return true;
                 }
 
@@ -971,6 +1010,8 @@ class TelegramService
                     'cmd_usd_wallet' => $this->handleUsdWalletCommand($chatId),
                     'cmd_crypto_status' => $this->handleCryptoDepositStatus($chatId),
                     'cmd_giftcards' => $this->handleGiftCardsCommand($chatId),
+                    'cmd_giftcard_buy' => $this->handleGiftCardPurchaseStart($chatId),
+                    'cmd_giftcard_sell' => $this->handleGiftCardSaleStart($chatId),
                     'cmd_wallet_page' => $this->handleFeatureLink($chatId, 'Wallet overview', '/wallet'),
                     'cmd_withdraw' => $this->handleFeatureLink($chatId, 'Withdraw', '/wallet/withdraw'),
                     'cmd_swap' => $this->handleFeatureLink($chatId, 'Swap crypto', '/swap'),
@@ -1840,6 +1881,16 @@ class TelegramService
     {
         $user = User::where('telegram_chat_id', $chatId)->first();
         if (!$user) {
+            $this->sendMessage($chatId, 'Link your KayXchange account to submit gift-card transactions. Sign in or register, then link Telegram from your profile.', 'Markdown', ['inline_keyboard' => [[['text' => 'Sign in', 'url' => $this->telegramAppUrl() . '/login']], [['text' => 'Register', 'url' => $this->telegramAppUrl() . '/register']]]]);
+            return;
+        }
+        $this->sendMessage($chatId, 'Choose what you want to do with a USA or UK gift card:', 'Markdown', ['inline_keyboard' => [[['text' => '🎁 Buy a gift card', 'callback_data' => 'giftcard_buy']], [['text' => '💳 Sell a gift card', 'callback_data' => 'giftcard_sell']]]]);
+    }
+
+    private function handleGiftCardPurchaseStart(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (!$user) {
             $this->sendMessage($chatId, 'Link your KayXchange account before buying a gift card. Sign in or register, then use /giftcards.', 'Markdown', ['inline_keyboard' => [[['text' => 'Sign in', 'url' => $this->telegramAppUrl() . '/login']], [['text' => 'Register', 'url' => $this->telegramAppUrl() . '/register']]]]);
             return;
         }
@@ -1863,6 +1914,110 @@ class TelegramService
         $this->clearState($chatId);
         $this->setState($chatId, 'giftcard_face_value');
         $this->sendMessage($chatId, "🎁 *Buy a USA or UK gift card*\nChoose the card type. The next step shows the face value in USD/GBP, the platform conversion rate, the admin-set service fee and the exact Naira total. Your Naira wallet is charged only after PIN confirmation; fulfillment is reviewed by the admin.", 'Markdown', ['inline_keyboard' => $rows]);
+    }
+
+    private function handleGiftCardSaleStart(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (!$user) {
+            $this->sendMessage($chatId, 'Link your KayXchange account before submitting a card for sale. Use /giftcards after linking.');
+            return;
+        }
+        if (!filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN)) {
+            $this->sendMessage($chatId, 'Gift card selling is currently paused by the platform.', 'Markdown', ['inline_keyboard' => [[['text' => 'Buy a gift card', 'callback_data' => 'giftcard_buy']]]]);
+            return;
+        }
+        $rates = GiftCardRate::query()->where('is_active', true)->whereIn('country', ['US','UK'])->where('buy_rate', '>', 0)
+            ->orderBy('country')->orderBy('name')->limit(40)->get();
+        if ($rates->isEmpty()) {
+            $this->sendMessage($chatId, 'Gift card selling is enabled, but no USA/UK cards currently have an active sell rate.');
+            return;
+        }
+        $rows = [];
+        foreach ($rates as $rate) $rows[] = [['text' => $rate->name . ' · ' . $rate->country . ' · ₦' . number_format((float)$rate->buy_rate, 2) . '/' . $rate->currency, 'callback_data' => 'giftcard_sale_rate:' . $rate->id]];
+        $this->setData($chatId, ['giftcard_sale_token' => (string) Str::uuid()]);
+        $this->setState($chatId, 'giftcard_sale_face_value');
+        $this->sendMessage($chatId, 'Choose the USA/UK gift card you want to sell. The displayed rate is an estimate; admin verifies the card and approves the final NGN credit.', 'Markdown', ['inline_keyboard' => $rows]);
+    }
+
+    private function handleGiftCardSaleRateSelected(int $chatId, int $rateId): void
+    {
+        $rate = GiftCardRate::query()->whereKey($rateId)->where('is_active', true)->whereIn('country', ['US','UK'])->where('buy_rate', '>', 0)->first();
+        if (!$rate || !filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN)) {
+            $this->sendMessage($chatId, 'That gift card is not currently accepted for selling. Refresh with /giftcards.');
+            return;
+        }
+        $this->mergeData($chatId, ['giftcard_sale_rate_id' => $rate->id]);
+        $this->setState($chatId, 'giftcard_sale_face_value');
+        $this->sendMessage($chatId, "Selected {$rate->name} · {$rate->country}. Enter the card face value in {$rate->currency} (1–10,000). Estimated payout uses ₦" . number_format((float)$rate->buy_rate, 2) . " per {$rate->currency}; admin confirms after review.");
+    }
+
+    private function handleGiftCardSaleFaceValue(int $chatId, string $text): void
+    {
+        $value = is_numeric(str_replace(',', '', trim($text))) ? (float)str_replace(',', '', trim($text)) : 0;
+        $data = $this->getData($chatId);
+        $rate = GiftCardRate::query()->whereKey($data['giftcard_sale_rate_id'] ?? 0)->where('is_active', true)->where('buy_rate', '>', 0)->first();
+        if (!$rate || $value < 1 || $value > 10000) {
+            $this->sendMessage($chatId, 'Enter a face value from 1 to 10,000, or use /cancel.');
+            return;
+        }
+        $this->mergeData($chatId, ['giftcard_sale_face_value' => round($value, 2)]);
+        $this->setState($chatId, 'giftcard_sale_note');
+        $this->sendMessage($chatId, 'Add an optional note for admin verification or tap Skip.', 'Markdown', ['inline_keyboard' => [[['text' => 'Skip note', 'callback_data' => 'giftcard_sale_note_skip']]]]);
+    }
+
+    private function handleGiftCardSaleNote(int $chatId, string $text): void
+    {
+        $this->mergeData($chatId, ['giftcard_sale_note' => in_array(mb_strtolower(trim($text)), ['skip','no','none'], true) ? null : mb_substr(trim($text), 0, 500)]);
+        $this->setState($chatId, 'giftcard_sale_code');
+        $this->sendMessage($chatId, 'Enter the card code to submit for admin verification. It is stored encrypted and this Telegram message is removed when possible. Your NGN wallet is not credited until admin approval.');
+    }
+
+    private function handleGiftCardSaleCode(int $chatId, string $text): void
+    {
+        $code = trim($text);
+        if (mb_strlen($code) < 4 || mb_strlen($code) > 2000) {
+            $this->sendMessage($chatId, 'Enter a valid gift-card code, or use /cancel.');
+            return;
+        }
+        $this->mergeData($chatId, ['giftcard_sale_code' => \Illuminate\Support\Facades\Crypt::encryptString($code)]);
+        $data = $this->getData($chatId);
+        $rate = GiftCardRate::find($data['giftcard_sale_rate_id'] ?? 0);
+        if (!$rate) {
+            $this->clearState($chatId);
+            $this->setData($chatId, []);
+            $this->sendMessage($chatId, 'That gift card is no longer available. Start again with /giftcards.');
+            return;
+        }
+        $estimate = (float)($data['giftcard_sale_face_value'] ?? 0) * (float)$rate->buy_rate;
+        $this->setState($chatId, 'giftcard_sale_confirm');
+        $this->sendMessage($chatId, "Review gift card sale\nCard: {$rate->name} · {$rate->country}\nFace value: {$rate->currency} " . number_format((float)$data['giftcard_sale_face_value'], 2) . "\nEstimated value: ₦" . number_format($estimate, 2) . "\n\nAdmin verifies the code before approval. No balance will be credited until then.", 'Markdown', ['inline_keyboard' => [[['text' => '✅ Submit for review', 'callback_data' => 'giftcard_sale_confirm']], [['text' => 'Cancel', 'callback_data' => 'cancel']]]]);
+    }
+
+    private function handleGiftCardSaleConfirm(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        $data = $this->getData($chatId);
+        if (!$user || empty($data['giftcard_sale_code'])) {
+            $this->clearState($chatId);
+            $this->setData($chatId, []);
+            $this->sendMessage($chatId, 'This gift card request expired. Start again with /giftcards.');
+            return;
+        }
+        try {
+            $order = app(\App\Services\GiftCardSaleService::class)->submit(
+                $user, (int)($data['giftcard_sale_rate_id'] ?? 0), (float)($data['giftcard_sale_face_value'] ?? 0),
+                \Illuminate\Support\Facades\Crypt::decryptString((string)$data['giftcard_sale_code']), $data['giftcard_sale_note'] ?? null, (string)($data['giftcard_sale_token'] ?? '')
+            );
+            $this->clearState($chatId);
+            $this->setData($chatId, []);
+            $this->sendMessage($chatId, "✅ Gift-card sale submitted for review\nReference: {$order->reference}\nEstimated value: ₦" . number_format((float)$order->estimated_ngn, 2) . "\nStatus: Pending admin verification. The final NGN amount is credited only after approval.", 'Markdown', ['inline_keyboard' => [[['text' => 'Gift card history', 'url' => $this->telegramAppUrl() . '/gift-cards']], [['text' => 'Buy a gift card', 'callback_data' => 'giftcard_buy']]]]);
+        } catch (\Throwable $e) {
+            Log::error('Telegram gift-card sale submit failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            $this->clearState($chatId);
+            $this->setData($chatId, []);
+            $this->sendMessage($chatId, 'We could not submit the card. Please contact support or try the secure Gift Cards page.');
+        }
     }
 
     private function handleGiftCardRateSelected(int $chatId, int $rateId): void
@@ -1932,6 +2087,7 @@ class TelegramService
             $this->clearState($chatId);
             return;
         }
+        $this->mergeData($chatId, ['giftcard_expected_total_ngn' => (float) $quote['total_ngn']]);
         $currency = htmlspecialchars((string) $rate->currency, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $cardName = htmlspecialchars((string) $rate->name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $country = htmlspecialchars((string) $rate->country, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -1966,7 +2122,7 @@ class TelegramService
             $order = app(GiftCardPurchaseService::class)->purchase(
                 $user, (int) ($data['giftcard_rate_id'] ?? 0), (float) ($data['giftcard_face_value'] ?? 0),
                 (string) ($data['giftcard_recipient'] ?? ''), trim($pin), $data['giftcard_note'] ?? null,
-                (string) ($data['giftcard_token'] ?? '')
+                (string) ($data['giftcard_token'] ?? ''), (float) ($data['giftcard_expected_total_ngn'] ?? 0)
             );
             $this->clearState($chatId);
             $this->sendMessage($chatId, "✅ *Gift card request received*\n\nReference: `{$order->reference}`\nCard: {$order->card_name} · {$order->country}\nFace value: {$order->currency} " . number_format((float) $order->face_value, 2) . "\nReserved: ₦" . number_format((float) $order->total_ngn, 2) . "\nStatus: *Pending fulfillment review*\n\nWe’ll notify you when it is ready. Your order is available in Gift Cards → Purchase history.", 'Markdown', ['inline_keyboard' => [[['text' => 'Gift card history', 'url' => $this->telegramAppUrl() . '/gift-cards']], [['text' => 'All features', 'callback_data' => 'cmd_features']]]]);
@@ -2015,7 +2171,9 @@ class TelegramService
                     "`/crypto_deposit` — Create a crypto deposit invoice and check its payment status\n" .
                     "`/usd_wallet` — Open your read-only crypto portfolio valuation\n" .
                     "`/deposit_status` — Refresh your latest crypto deposit status\n" .
-                    "`/giftcards` — Buy a USA/UK gift card with quote review and PIN confirmation\n" .
+                    "`/giftcards` — Choose to buy or sell a USA/UK gift card\n" .
+                    "`/buygiftcard` — Buy with rate review and transaction PIN confirmation\n" .
+                    "`/sellgiftcard` — Submit a card for admin verification (NGN credit only after approval)\n" .
                     "`/features` — Wallets, withdrawals, swaps, bills, gift cards, portfolio and support\n" .
                     "`/rates` — View live NGN buy & sell rates\n" .
                     "`/balance` — Check your account balance\n" .

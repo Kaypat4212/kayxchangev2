@@ -20,6 +20,12 @@ class CryptoWithdrawal extends Model
         'rejected_reason',
         'usd_value_at_request',
         'risk_flags',
+        'provider_payout_id',
+        'provider_payout_status',
+        'provider_payout_started_at',
+        'provider_payout_verified_at',
+        'provider_payout_response',
+        'request_key',
     ];
 
     protected $casts = [
@@ -28,6 +34,9 @@ class CryptoWithdrawal extends Model
         'processed_at' => 'datetime',
         'usd_value_at_request' => 'decimal:2',
         'risk_flags' => 'array',
+        'provider_payout_started_at' => 'datetime',
+        'provider_payout_verified_at' => 'datetime',
+        'provider_payout_response' => 'array',
     ];
 
     /**

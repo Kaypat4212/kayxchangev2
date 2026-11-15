@@ -20,6 +20,7 @@ use RuntimeException;
 class NowPaymentsConversionService
 {
     private const PROVIDER_FEE_PERCENT = 0.5;
+    private const PLATFORM_SWAP_ASSETS = ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL', 'XRP', 'DOGE', 'LTC', 'TRX', 'ADA', 'TON'];
 
     public function __construct(private readonly NowPaymentsService $provider)
     {
@@ -29,6 +30,18 @@ class NowPaymentsConversionService
     {
         $platformFee = max(0, min(19.5, (float) AdminSetting::getSetting('convert_fee_percent', '0.5')));
         return round($platformFee + self::PROVIDER_FEE_PERCENT, 4);
+    }
+
+    public function supportedCoins(): array
+    {
+        $saved = trim((string) AdminSetting::getSetting('swap_supported_coins', ''));
+        $coins = $saved === '' ? self::PLATFORM_SWAP_ASSETS : preg_split('/[,\s]+/', strtoupper($saved), -1, PREG_SPLIT_NO_EMPTY);
+        return array_values(array_intersect(array_unique($coins), self::PLATFORM_SWAP_ASSETS));
+    }
+
+    public function supportsCoin(string $coin): bool
+    {
+        return in_array(strtoupper($coin), $this->supportedCoins(), true);
     }
 
     public function submit(User $user, string $fromCoin, string $toCoin, float $amount, array $quote, string $requestKey): Conversion
@@ -41,14 +54,25 @@ class NowPaymentsConversionService
         $this->provider->prepareCustodyAccess();
         $fromCoin = strtoupper($fromCoin);
         $toCoin = strtoupper($toCoin);
-        $swapAssets = ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL'];
-        if ($fromCoin === $toCoin || !in_array($fromCoin, $swapAssets, true) || !in_array($toCoin, $swapAssets, true)) {
+        if ($fromCoin === $toCoin || !$this->supportsCoin($fromCoin) || !$this->supportsCoin($toCoin)) {
             throw new RuntimeException('Choose a supported, different cryptocurrency pair.');
         }
         $amount = round($amount, 8);
         if ($amount <= 0) throw new RuntimeException('Enter a valid swap amount.');
         $existing = Conversion::where('idempotency_key', $requestKey)->where('user_id', $user->id)->first();
-        if ($existing) return $existing;
+        if ($existing) {
+            if (strtoupper($existing->from_coin) !== $fromCoin || strtoupper($existing->to_coin) !== $toCoin || abs((float) $existing->from_amount - $amount) > 0.00000001) {
+                throw new RuntimeException('This swap confirmation was already used for a different request. Refresh the swap page before submitting again.');
+            }
+            return $existing;
+        }
+        // Suppress accidental double submissions even if the browser generated
+        // a fresh key after a slow response. Return the in-flight swap instead.
+        $duplicate = Conversion::query()->where('user_id', $user->id)->where('mode', 'nowpayments')
+            ->where('from_coin', $fromCoin)->where('to_coin', $toCoin)->where('from_amount', $amount)
+            ->whereIn('status', ['pending', 'processing'])->where('created_at', '>=', now()->subMinutes(3))
+            ->latest('id')->first();
+        if ($duplicate) return $duplicate;
 
         // Serialize swaps from the same asset so concurrent requests cannot
         // reserve the same local/provider liquidity at the same time.
@@ -71,7 +95,12 @@ class NowPaymentsConversionService
                         $query->where('network', $sourceNetwork)->orWhereNull('network');
                     })->sum('balance');
                 if ($providerAvailable + 0.00000001 < $userLiabilities) {
-                    throw new RuntimeException('Swaps for ' . $fromCoin . ' are temporarily paused because confirmed platform Custody reserves do not cover current wallet balances. Please contact support.');
+                    Log::warning('NOWPayments Custody reserve check blocked a swap.', [
+                        'user_id' => $user->id, 'asset' => $fromCoin, 'network' => $sourceNetwork,
+                        'requested_amount' => $amount, 'provider_available' => $providerAvailable,
+                        'platform_wallet_liabilities' => $userLiabilities,
+                    ]);
+                    throw new RuntimeException('Swaps for ' . $fromCoin . ' are temporarily unavailable while platform liquidity is being checked. Try another asset or contact support if this continues.');
                 }
 
                 $conversion = DB::transaction(function () use ($user, $fromCoin, $toCoin, $amount, $quote, $requestKey): Conversion {
@@ -313,14 +342,23 @@ class NowPaymentsConversionService
             'USDC' => ['ERC20' => 'usdcerc20', 'BEP20' => 'usdcbsc'],
             'BNB' => ['BEP20' => 'bnbbsc'],
             'SOL' => ['SOL' => 'sol'],
+            'XRP' => ['XRP' => 'xrp'],
+            'DOGE' => ['DOGE' => 'doge'],
+            'LTC' => ['LTC' => 'ltc'],
+            'TRX' => ['TRC20' => 'trx', 'TRX' => 'trx'],
+            'ADA' => ['ADA' => 'ada'],
+            'TON' => ['TON' => 'ton'],
         ];
         $code = $map[strtoupper($coin)][strtoupper($network)] ?? null;
+        if (!$code && in_array(strtoupper($coin), ['BTC','XRP','DOGE','LTC','ADA','TON'], true) && strtoupper($network) === strtoupper($coin)) {
+            $code = strtolower($coin);
+        }
         if (!$code) throw new RuntimeException('The selected coin wallet has no supported NOWPayments network.');
         return $code;
     }
 
     private function defaultNetwork(string $coin): string
     {
-        return ['BTC' => 'BTC', 'ETH' => 'ERC20', 'USDT' => 'TRC20', 'USDC' => 'ERC20', 'BNB' => 'BEP20', 'SOL' => 'SOL'][$coin] ?? 'ERC20';
+        return ['BTC' => 'BTC', 'ETH' => 'ERC20', 'USDT' => 'TRC20', 'USDC' => 'ERC20', 'BNB' => 'BEP20', 'SOL' => 'SOL', 'XRP'=>'XRP', 'DOGE'=>'DOGE', 'LTC'=>'LTC', 'TRX'=>'TRC20', 'ADA'=>'ADA', 'TON'=>'TON'][$coin] ?? 'ERC20';
     }
 }

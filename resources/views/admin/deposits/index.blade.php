@@ -66,7 +66,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
     <div class="kx-page-header">
         <div>
             <h4><i class="bi bi-bank me-2" style="color:var(--kx-blue)"></i>Deposit Review</h4>
-            <small>Approve or cancel pending deposits</small>
+            <small>Review NGN, bank, payment-gateway, manual and crypto deposits in one place</small>
         </div>
         <div class="kx-search"><i class="bi bi-search" style="color:var(--kx-muted)"></i>
             <input class="kx-search-input" id="dSearch" placeholder="Search…">
@@ -76,18 +76,15 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
     @if(session('success'))<div class="kx-alert-success"><i class="bi bi-check-circle-fill"></i>{{ session('success') }}</div>@endif
     @if(session('error'))<div class="kx-alert-error"><i class="bi bi-exclamation-circle-fill"></i>{{ session('error') }}</div>@endif
 
-    @php
-        $depPending  = collect($deposits)->where('status','pending')->count();
-        $depApproved = collect($deposits)->whereIn('status',['approved','successful','completed'])->count();
-        $depTotal    = collect($deposits)->sum('amount');
-    @endphp
     <div class="kx-stat-row">
         <div class="kx-stat"><div class="kx-stat-icon icon-yellow"><i class="bi bi-hourglass-split"></i></div>
-            <div><div class="kx-stat-label">Pending</div><div class="kx-stat-value">{{ $depPending }}</div></div></div>
+            <div><div class="kx-stat-label">Pending NGN</div><div class="kx-stat-value">{{ $depositStats['pending'] }}</div></div></div>
         <div class="kx-stat"><div class="kx-stat-icon icon-green"><i class="bi bi-check-circle-fill"></i></div>
-            <div><div class="kx-stat-label">Approved</div><div class="kx-stat-value">{{ $depApproved }}</div></div></div>
+            <div><div class="kx-stat-label">Approved NGN</div><div class="kx-stat-value">{{ $depositStats['approved'] }}</div></div></div>
         <div class="kx-stat"><div class="kx-stat-icon icon-blue"><i class="bi bi-cash-coin"></i></div>
-            <div><div class="kx-stat-label">Total Volume</div><div class="kx-stat-value" style="font-size:1rem">₦{{ number_format($depTotal,0) }}</div></div></div>
+            <div><div class="kx-stat-label">Approved NGN volume</div><div class="kx-stat-value" style="font-size:1rem">₦{{ number_format($depositStats['volume'],0) }}</div></div></div>
+        <div class="kx-stat"><div class="kx-stat-icon icon-purple"><i class="bi bi-currency-bitcoin"></i></div>
+            <div><div class="kx-stat-label">Open crypto deposits</div><div class="kx-stat-value">{{ $depositStats['crypto_open'] }}</div></div></div>
     </div>
 
     {{-- ── Deposit Fee Settings Panel ───────────────────────────────── --}}
@@ -220,6 +217,37 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                 </tbody>
             </table>
         </div>
+        <div class="p-3">{{ $deposits->links() }}</div>
+    </div>
+    <div class="kx-panel mt-4">
+        <div class="kx-panel-header">
+            <span class="kx-panel-title"><i class="bi bi-currency-bitcoin me-2" style="color:var(--kx-purple)"></i>Crypto deposits · all providers and statuses</span>
+            <a class="btn-kx-outline" href="{{ route('admin.manual-crypto-deposits.index') }}"><i class="bi bi-box-arrow-up-right"></i>Open crypto activity</a>
+        </div>
+        <div class="kx-table-wrap">
+            <table class="kx-table" id="cryptoDepositTable">
+                <thead><tr><th>Deposit</th><th>User</th><th>Asset / network</th><th>Amount received</th><th>Provider / ID</th><th>Status</th><th>Created</th><th>Review</th></tr></thead>
+                <tbody>
+                @forelse($cryptoDeposits as $crypto)
+                    @php($meta=$crypto->payment_data ?? [])
+                    @php($network=strtoupper((string)data_get($meta,'deposit_input.network',data_get($meta,'provider_pay_currency',''))))
+                    <tr>
+                        <td><strong>#{{ $crypto->id }}</strong></td>
+                        <td>{{ $crypto->user?->name ?? 'Unknown' }}<br><small style="color:var(--kx-muted)">{{ $crypto->user?->email }}</small></td>
+                        <td><strong>{{ strtoupper($crypto->currency) }}</strong><br><small style="color:var(--kx-muted)">{{ $network ?: 'Network not recorded' }}</small></td>
+                        <td>{{ number_format((float)$crypto->received_amount,8) }} {{ strtoupper($crypto->currency) }}<br><small style="color:var(--kx-muted)">Expected {{ number_format((float)data_get($meta,'expected_crypto_amount',$crypto->expected_amount),8) }}</small></td>
+                        <td>{{ strtoupper((string)data_get($meta,'provider','crypto')) }}<br><small style="color:var(--kx-muted)">{{ data_get($meta,'provider_payment_id') ?: 'Payment ID unavailable' }}</small></td>
+                        <td><span class="kx-badge {{ $crypto->status==='completed'?'kx-badge-green':(in_array($crypto->status,['pending','awaiting_admin_review'])?'kx-badge-yellow':($crypto->status==='failed'?'kx-badge-red':'kx-badge-gray')) }}">{{ str_replace('_',' ',ucfirst($crypto->status)) }}</span><br><small style="color:var(--kx-muted)">{{ str_replace('_',' ',(string)data_get($meta,'provider_status','')) }}</small></td>
+                        <td>{{ optional($crypto->created_at)->format('d M Y, H:i') }}</td>
+                        <td>@if(in_array($crypto->status,['pending','awaiting_admin_review']))<a class="btn-kx-edit" href="{{ route('admin.manual-crypto-deposits.index') }}"><i class="bi bi-eye"></i> Review queue</a>@else<span style="color:var(--kx-muted)">—</span>@endif</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="8" style="text-align:center;color:var(--kx-muted);padding:2rem">No crypto deposits recorded yet.</td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="p-3">{{ $cryptoDeposits instanceof \Illuminate\Pagination\LengthAwarePaginator ? $cryptoDeposits->links() : '' }}</div>
     </div>
 </div>
 
@@ -316,7 +344,7 @@ document.getElementById('depm-confirm-btn').addEventListener('click', function()
 
 document.getElementById('dSearch').addEventListener('input', function(){
     const q = this.value.toLowerCase();
-    document.querySelectorAll('#dTable tbody tr').forEach(r=>{ r.style.display=r.textContent.toLowerCase().includes(q)?'':'none'; });
+    document.querySelectorAll('#dTable tbody tr, #cryptoDepositTable tbody tr').forEach(r=>{ r.style.display=r.textContent.toLowerCase().includes(q)?'':'none'; });
 });
 </script>
 @endsection

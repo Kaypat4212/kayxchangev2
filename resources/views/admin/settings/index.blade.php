@@ -67,6 +67,19 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     </div>
     @endif
 
+    <section class="kx-card" aria-labelledby="branding-title">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="Current platform logo" width="64" height="64" style="border-radius:16px;object-fit:cover;border:1px solid var(--kx-border)" id="brandingPreview">
+            <div class="flex-grow-1"><h2 id="branding-title" class="h5 fw-bold mb-1">Platform logo and favicon</h2><p class="field-desc mb-0">Upload once here to update the icon and default brand mark on customer and admin pages. Use a square PNG, JPG, or WebP image from 64×64 to 1024×1024 (max 2 MB).</p></div>
+        </div>
+        <form method="POST" action="{{ route('admin.settings.branding') }}" enctype="multipart/form-data" class="mt-3 d-flex gap-2 flex-wrap align-items-center">
+            @csrf
+            <input class="form-control" type="file" name="favicon" accept="image/png,image/jpeg,image/webp" required style="max-width:440px" onchange="if(this.files[0])document.getElementById('brandingPreview').src=URL.createObjectURL(this.files[0])">
+            <button class="btn px-4 fw-bold" type="submit" style="background:var(--kx-green);color:#081108;border-radius:10px"><i class="bi bi-image me-1"></i>Save platform logo</button>
+            @error('favicon')<span class="text-danger small">{{ $message }}</span>@enderror
+        </form>
+    </section>
+
     {{-- Tab bar --}}
     <div class="group-tab">
         <a href="#cloudflare" class="active" onclick="showGroup('cloudflare',this)">☁️ Cloudflare</a>
@@ -302,7 +315,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     @elseif($row->description)<div class="field-desc">{{ $row->description }}</div>@endif
                 </div>
                 <div class="field-input">
-                    @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_enabled', 'nowpayments_sandbox', 'nowpayments_conversion_enabled']))
+                    @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_enabled', 'nowpayments_sandbox', 'nowpayments_conversion_enabled', 'nowpayments_crypto_withdrawals_enabled']))
                         @php
                             $toggleVal = $row->value ?? (in_array($row->key, ['cryptomus_convert_enabled', 'nowpayments_sandbox'], true) ? '1' : '0');
                             $toggleOn  = $toggleVal === '1';
@@ -333,6 +346,13 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         </select>
                     @elseif($row->key === 'convert_fee_percent')
                         <input type="number" name="{{ $row->key }}" value="{{ $row->value ?? '0.5' }}" min="0" max="19.5" step="0.1">
+                    @elseif($row->key === 'convert_min_usd')
+                        <input type="number" name="{{ $row->key }}" value="{{ $row->value ?? '1' }}" min="0.01" max="100000000" step="0.01">
+                    @elseif($row->key === 'convert_max_usd')
+                        <input type="number" name="{{ $row->key }}" value="{{ $row->value ?? '1000' }}" min="0.01" max="100000000" step="0.01">
+                    @elseif($row->key === 'swap_supported_coins')
+                        <input type="text" name="{{ $row->key }}" value="{{ $row->value ?? 'BTC,ETH,USDT,USDC,BNB,SOL,XRP,DOGE,LTC,TRX,ADA,TON' }}" placeholder="BTC,ETH,USDT,LTC">
+                        <div class="field-desc mt-2">Available price and NOWPayments network mappings: <span class="text-success">BTC · ETH · USDT · USDC · BNB · SOL · XRP · DOGE · LTC · TRX · ADA · TON</span>. Add only symbols with a live/fallback market price and a supported payout/swap network.</div>
                     @elseif($row->key === 'convert_instructions')
                         <textarea name="{{ $row->key }}" rows="3" style="font-size:.82rem;">{{ $row->value ?? '' }}</textarea>
                     @elseif($row->key === 'nowpayments_api_key')

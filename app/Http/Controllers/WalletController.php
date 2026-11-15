@@ -527,7 +527,21 @@ class WalletController extends Controller
      */
     public function withdraw(Request $request)
     {
-        return response()->view('wallet.withdraw-unavailable');
+        if (AdminSetting::getSetting('nowpayments_crypto_withdrawals_enabled', '0') !== '1') {
+            return response()->view('wallet.withdraw-unavailable');
+        }
+        $user = Auth::user();
+        $wallets = $this->cryptoWalletService->getUserWallets($user)->where('currency', '!=', 'NGN')->where('currency', '!=', 'USD')->where('currency', '!=', 'EUR')->values();
+        foreach ($wallets as $wallet) {
+            $reserved = (float) \App\Models\CryptoWithdrawal::where('wallet_id', $wallet->id)->whereIn('status', ['pending', 'processing'])->sum(DB::raw('amount + fee'));
+            $wallet->setAttribute('available_balance', max(0, (float) $wallet->balance - $reserved));
+        }
+        $selectedWalletId = old('wallet_id', $request->query('wallet_id'));
+        $selectedNetwork = strtoupper((string) old('network', $request->query('network', '')));
+        $recentWithdrawals = \App\Models\CryptoWithdrawal::with('wallet')->where('user_id', $user->id)->latest()->limit(4)->get();
+        $withdrawalRequestKey = (string) Str::uuid();
+        $withdrawalEnabled = true;
+        return view('wallet.withdraw', compact('wallets', 'selectedWalletId', 'selectedNetwork', 'recentWithdrawals', 'withdrawalEnabled', 'withdrawalRequestKey'));
     }
 
     /**
@@ -535,7 +549,61 @@ class WalletController extends Controller
      */
     public function createWithdrawal(Request $request)
     {
-        return redirect()->route('wallet.withdraw')->with('error', 'External crypto withdrawals are not available yet. Your crypto remains safely in your KayXchange wallet.');
+        if (AdminSetting::getSetting('nowpayments_crypto_withdrawals_enabled', '0') !== '1') {
+            return redirect()->route('wallet.withdraw')->with('error', 'External crypto withdrawals are temporarily disabled. Your balance was not changed.');
+        }
+        $data = $request->validate([
+            'wallet_id' => ['required', 'integer', 'exists:wallets,id'],
+            'amount' => ['required', 'numeric', 'gt:0', 'max:1000000000000'],
+            'network' => ['required', 'string', 'max:30'],
+            'address' => ['required', 'string', 'min:10', 'max:255'],
+            'request_key' => ['required', 'uuid'],
+        ]);
+        $user = Auth::user();
+        $existing = \App\Models\CryptoWithdrawal::where('user_id', $user->id)->where('request_key', $data['request_key'])->first();
+        if ($existing) return redirect()->route('wallet.withdraw')->with('success', 'Withdrawal request CW-' . $existing->id . ' was already submitted.');
+        $wallet = Wallet::whereKey($data['wallet_id'])->where('user_id', $user->id)->where('is_active', true)->firstOrFail();
+        $currency = strtoupper((string) $wallet->currency);
+        $networkMap = [
+            'BTC' => ['BTC'], 'ETH' => ['ERC20'], 'LTC' => ['LTC'], 'TRX' => ['TRC20'], 'XRP' => ['XRP'], 'DOGE' => ['DOGE'], 'ADA' => ['ADA'], 'TON' => ['TON'],
+            'USDT' => ['TRC20', 'ERC20', 'BEP20'], 'USDC' => ['ERC20', 'BEP20'], 'BNB' => ['BEP20'], 'SOL' => ['SOL'],
+        ];
+        $network = strtoupper($data['network']);
+        if (!in_array($network, $networkMap[$currency] ?? [], true)) {
+            return back()->withInput()->withErrors(['network' => 'Select a supported network for ' . $currency . '.']);
+        }
+        $amount = round((float) $data['amount'], 8);
+        if (abs($amount - round($amount, 6)) > 0.00000001) {
+            return back()->withInput()->withErrors(['amount' => 'NOWPayments payouts support up to 6 decimal places for this request.']);
+        }
+        try {
+            [$withdrawal, $created] = DB::transaction(function () use ($user, $wallet, $amount, $network, $data, $currency) {
+                \App\Models\User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $existingRequest = \App\Models\CryptoWithdrawal::where('user_id', $user->id)->where('request_key', $data['request_key'])->first();
+                if ($existingRequest) return [$existingRequest, false];
+                $locked = Wallet::whereKey($wallet->id)->lockForUpdate()->firstOrFail();
+                $reserved = (float) \App\Models\CryptoWithdrawal::where('wallet_id', $wallet->id)->whereIn('status', ['pending', 'processing'])->sum(DB::raw('amount + fee'));
+                if ($amount <= 0 || $amount + $reserved > (float) $locked->balance + 0.000000001) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'The amount exceeds your available wallet balance.']);
+                }
+                $usdRates = app(ExchangeRateService::class)->getUsdRates();
+                $spot = (float) ($usdRates[$currency] ?? 0);
+                $createdWithdrawal = \App\Models\CryptoWithdrawal::create([
+                    'user_id' => $user->id, 'wallet_id' => $wallet->id, 'amount' => $amount,
+                    'fee' => 0, 'address' => trim($data['address']), 'network' => $network,
+                    'status' => 'pending', 'request_key' => $data['request_key'], 'usd_value_at_request' => $spot > 0 ? round($amount * $spot, 2) : null,
+                ]);
+                return [$createdWithdrawal, true];
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) { throw $e; }
+        if (!$created) return redirect()->route('wallet.withdraw')->with('success', 'Withdrawal request CW-' . $withdrawal->id . ' was already submitted.');
+        try {
+            foreach (\App\Models\User::where('is_admin', true)->pluck('id') as $adminId) {
+                \App\Models\Notification::create(['admin_id' => $adminId, 'type' => 'warning', 'title' => 'Crypto withdrawal needs review', 'message' => 'CW-' . $withdrawal->id . ' · ' . $currency . ' ' . number_format($amount, 8) . ' · ' . $network, 'data' => ['type' => 'crypto_withdrawal', 'withdrawal_id' => $withdrawal->id], 'is_read' => false]);
+            }
+            app(AdminTradeAlertService::class)->sendNewTradeAlert('crypto withdrawal', ['reference' => 'CW-' . $withdrawal->id, 'user_name' => $user->name, 'coin' => $currency, 'amount' => number_format($amount, 8), 'network' => $network, 'wallet' => $data['address'], 'status' => 'pending']);
+        } catch (\Throwable $e) { Log::warning('Crypto withdrawal admin alert failed', ['withdrawal_id' => $withdrawal->id, 'error' => $e->getMessage()]); }
+        return redirect()->route('wallet.withdraw')->with('success', 'Withdrawal request CW-' . $withdrawal->id . ' was submitted. It will be reviewed before any crypto is sent.');
     }
 
     /**

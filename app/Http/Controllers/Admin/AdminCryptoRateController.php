@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CryptoRate;
+use App\Models\AdminSetting;
 use App\Services\CoinGeckoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -114,6 +115,15 @@ class AdminCryptoRateController extends Controller
                 'buy_rate' => $request->buy_rate,
                 'sell_rate' => $request->sell_rate,
             ]);
+
+            $swapEligible = ['BTC','ETH','USDT','USDC','BNB','SOL','XRP','DOGE','LTC','TRX','ADA','TON'];
+            if (in_array($rate->coin, $swapEligible, true)) {
+                $defaultSwapCoins = implode(',', $swapEligible);
+                $configuredSwapCoins = trim((string) AdminSetting::getSetting('swap_supported_coins', $defaultSwapCoins));
+                $swapCoins = $configuredSwapCoins === '' ? $swapEligible : preg_split('/[,\s]+/', strtoupper($configuredSwapCoins), -1, PREG_SPLIT_NO_EMPTY);
+                $swapCoins[] = $rate->coin;
+                AdminSetting::set('swap_supported_coins', implode(',', array_values(array_unique($swapCoins))));
+            }
 
             Log::info('New cryptocurrency added by admin', [
                 'admin_id' => auth()->id(),

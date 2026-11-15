@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>Welcome to {{ config('app.name') }}</title>
-<link rel="icon" type="image/png" href="{{ asset('Assests/favicon.png') }}">
+<link rel="icon" type="{{ $siteFaviconMime ?? 'image/png' }}" href="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}

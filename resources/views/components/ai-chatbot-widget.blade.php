@@ -98,6 +98,8 @@ body.light-mode #kaybot-input:focus{border-color:rgba(0,150,0,.45);}
         <div class="kb-quick" id="kaybot-static-qr">
             <button onclick="kaybotAsk('Buy crypto')">🛒 Buy crypto</button>
             <button onclick="kaybotAsk('Sell crypto')">💰 Sell crypto</button>
+            <button onclick="kaybotAsk('Buy a gift card')">🎁 Buy gift card</button>
+            <button onclick="kaybotAsk('Sell a gift card')">💳 Sell gift card</button>
             <button onclick="kaybotAsk('What are the current rates?')">📊 Rates</button>
             <button onclick="kaybotAsk('How long does a trade take?')">⏱ Trade time</button>
             <button onclick="kaybotAsk('Contact support')">🎧 Support</button>
@@ -123,6 +125,7 @@ body.light-mode #kaybot-input:focus{border-color:rgba(0,150,0,.45);}
 <script>
 let kaybotOpen = false;
 let kaybotBusy = false;
+let kaybotSensitiveNext = false;
 
 function kaybotToggle() {
     kaybotOpen = !kaybotOpen;
@@ -179,7 +182,9 @@ async function kaybotSend() {
 
     input.value = '';
     kaybotBusy  = true;
-    kaybotAppend('user', msg);
+    const hideThisInput = kaybotSensitiveNext;
+    kaybotSensitiveNext = false;
+    const userBubble = kaybotAppend('user', hideThisInput ? '••••••••••' : msg);
     const typing = kaybotAppend('bot', '…', true);
 
     try {
@@ -194,6 +199,8 @@ async function kaybotSend() {
         let data;
         try { data = JSON.parse(text); } catch { typing.remove(); kaybotAppend('bot', 'Sorry, something went wrong. Please try again.'); kaybotBusy = false; return; }
         typing.remove();
+        if (data.sensitive_input === true) userBubble.remove();
+        kaybotSensitiveNext = data.sensitive_input_next === true;
         kaybotAppend('bot', data.reply ?? 'Sorry, something went wrong.', false, data.quick_replies ?? [], data.payment_url ?? null, data.payment_action ?? null, data.payment_details ?? null);
     } catch (e) {
         typing.remove();

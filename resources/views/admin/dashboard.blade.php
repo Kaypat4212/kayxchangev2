@@ -388,13 +388,30 @@
 </div>
 <div class="row g-3 mb-4">
     <div class="col-6 col-xl-3"><a href="{{ route('admin.deposits.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon blue"><i class="bi bi-cash-coin"></i></div><div><div class="kx-nav-card-title">NGN deposits</div><div class="kx-nav-card-sub">Awaiting review</div></div><span class="kx-queue-number" id="stat-deposits">{{ $pendingCounts['pending_deposits'] ?? 0 }}</span></a></div>
-    <div class="col-6 col-xl-3"><a href="{{ route('admin.manual-crypto-deposits.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon purple"><i class="bi bi-currency-bitcoin"></i></div><div><div class="kx-nav-card-title">Crypto deposits</div><div class="kx-nav-card-sub">Need admin review</div></div><span class="kx-queue-number" id="stat-crypto-deposits">{{ $pendingCounts['crypto_deposits_review'] ?? 0 }}</span></a></div>
+    <div class="col-6 col-xl-3"><a href="{{ route('admin.manual-crypto-deposits.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon purple"><i class="bi bi-currency-bitcoin"></i></div><div><div class="kx-nav-card-title">Crypto deposits</div><div class="kx-nav-card-sub">Open invoices &amp; reviews</div></div><span class="kx-queue-number" id="stat-crypto-deposits">{{ $pendingCounts['crypto_deposits_open'] ?? 0 }}</span></a></div>
     <div class="col-6 col-xl-3"><a href="{{ route('admin.withdrawals') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon orange"><i class="bi bi-bank"></i></div><div><div class="kx-nav-card-title">Withdrawals</div><div class="kx-nav-card-sub">Awaiting payout approval</div></div><span class="kx-queue-number" id="stat-withdrawals">{{ $pendingCounts['pending_withdrawals'] ?? 0 }}</span></a></div>
     <div class="col-6 col-xl-3"><a href="{{ route('admin.trades') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon red"><i class="bi bi-arrow-left-right"></i></div><div><div class="kx-nav-card-title">Buy &amp; sell trades</div><div class="kx-nav-card-sub">Pending decisions</div></div><span class="kx-queue-number" id="stat-trades">{{ $pendingCounts['pending_trades'] ?? 0 }}</span></a></div>
     <div class="col-6 col-xl-3"><a href="{{ route('admin.crypto-withdrawals.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon amber"><i class="bi bi-send-check"></i></div><div><div class="kx-nav-card-title">Crypto payouts</div><div class="kx-nav-card-sub">Pending crypto withdrawals</div></div><span class="kx-queue-number" id="stat-crypto-withdrawals">{{ $pendingCounts['crypto_withdrawals'] ?? 0 }}</span></a></div>
     <div class="col-6 col-xl-3"><a href="{{ route('admin.bill-payments.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon green"><i class="bi bi-receipt"></i></div><div><div class="kx-nav-card-title">Bill requests</div><div class="kx-nav-card-sub">Pending payment requests</div></div><span class="kx-queue-number" id="stat-bills">{{ $pendingCounts['bill_requests'] ?? 0 }}</span></a></div>
     <div class="col-6 col-xl-3"><a href="{{ url('/admin/kyc') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon blue"><i class="bi bi-patch-check"></i></div><div><div class="kx-nav-card-title">KYC review</div><div class="kx-nav-card-sub">Documents to verify</div></div><span class="kx-queue-number" id="stat-kyc">{{ $pendingCounts['pending_kyc'] ?? 0 }}</span></a></div>
     <div class="col-6 col-xl-3"><a href="{{ route('admin.support-cases.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon red"><i class="bi bi-chat-square-text"></i></div><div><div class="kx-nav-card-title">Open support cases</div><div class="kx-nav-card-sub">Customer replies needed</div></div><span class="kx-queue-number" id="stat-support">{{ $pendingCounts['open_support'] ?? 0 }}</span></a></div>
+</div>
+
+<div class="kx-section-heading">
+    <div><h2>Recent deposit activity</h2><p>Latest NGN and crypto deposit requests across providers.</p></div>
+    <a class="btn-kx-outline" href="{{ route('admin.deposits.index') }}"><i class="bi bi-list-ul me-1"></i>All deposits</a>
+</div>
+<div class="row g-3 mb-4">
+    @forelse($recentDepositActivity as $activity)
+        <div class="col-12 col-md-6 col-xl-3">
+            <a href="{{ $activity['url'] }}" class="kx-nav-card" style="height:100%;min-height:110px;display:flex;align-items:flex-start;gap:12px;text-decoration:none">
+                <div class="kx-stat-icon {{ str_starts_with($activity['kind'],'CRYPTO') ? 'purple' : 'blue' }}"><i class="bi {{ str_starts_with($activity['kind'],'CRYPTO') ? 'bi-currency-bitcoin' : 'bi-cash-coin' }}"></i></div>
+                <div style="min-width:0"><div class="kx-nav-card-title">{{ $activity['kind'] }} · #{{ $activity['id'] }}</div><div class="kx-nav-card-sub">{{ $activity['user'] }} · {{ $activity['amount'] }}</div><div class="small text-secondary mt-1">{{ ucfirst(str_replace('_',' ',$activity['status'])) }} · {{ optional($activity['created_at'])->diffForHumans() }}</div></div>
+            </a>
+        </div>
+    @empty
+        <div class="col-12"><div class="kx-nav-card text-secondary">No deposits have been recorded yet.</div></div>
+    @endforelse
 </div>
 
 <div class="kx-section-heading">
@@ -702,6 +719,8 @@
                     <div class="col-6"><a href="{{ url('/admin/notifications') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-bell me-1"></i>Notifications</a></div>
                     <div class="col-6"><a href="{{ url('/admin/crypto-rates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-currency-bitcoin me-1"></i>Crypto Rates</a></div>
                     <div class="col-6"><a href="{{ url('/admin/gift-card-rates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-gift me-1"></i>Gift Card Rates</a></div>
+                    <div class="col-6"><a href="{{ route('admin.gift-card-orders.index') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-bag-check me-1"></i>Gift Card Purchases</a></div>
+                    <div class="col-6"><a href="{{ route('admin.gift-card-sales.index') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-credit-card-2-front me-1"></i>Gift Card Sales</a></div>
                     @if($swapEnabled)
                     <div class="col-6"><a href="{{ route('admin.conversions.index') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-arrow-left-right me-1"></i>Swaps</a></div>
                     @endif
@@ -721,6 +740,38 @@
 
     </div><!-- /RIGHT -->
 </div>
+
+<section class="kx-panel" aria-labelledby="admin-ops-guide-title">
+    <div class="kx-panel-header">
+        <h5 id="admin-ops-guide-title"><i class="bi bi-compass me-2" style="color:var(--kx-green)"></i>Gift Cards &amp; Chatbots — Admin Guide</h5>
+        <a href="{{ route('admin.gift-card-rates.index') }}" class="btn-kx-outline"><i class="bi bi-sliders"></i> Manage rates</a>
+    </div>
+    <div class="kx-panel-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="kx-card h-100" style="padding:1rem;border:1px solid var(--kx-border);border-radius:12px;background:var(--kx-card2)">
+                    <strong><i class="bi bi-toggle-on me-1 text-success"></i>1. Configure availability</strong>
+                    <p class="mb-2 mt-2" style="font-size:.82rem;color:var(--kx-muted)">Set active USA/UK card rates and purchase service fees. Gift-card purchases and sales have separate switches; sales stay off until you enable them.</p>
+                    <a href="{{ route('admin.gift-card-rates.index') }}" class="btn-kx-outline">Rates &amp; switches</a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kx-card h-100" style="padding:1rem;border:1px solid var(--kx-border);border-radius:12px;background:var(--kx-card2)">
+                    <strong><i class="bi bi-shield-check me-1 text-warning"></i>2. Review every sale</strong>
+                    <p class="mb-2 mt-2" style="font-size:.82rem;color:var(--kx-muted)">Purchases reserve NGN after PIN confirmation and await fulfillment. Sales remain pending; verify the card and approve it before any NGN credit.</p>
+                    <div class="d-flex flex-wrap gap-2"><a href="{{ route('admin.gift-card-orders.index') }}" class="btn-kx-outline">Purchase queue</a><a href="{{ route('admin.gift-card-sales.index') }}" class="btn-kx-outline">Sale queue</a></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kx-card h-100" style="padding:1rem;border:1px solid var(--kx-border);border-radius:12px;background:var(--kx-card2)">
+                    <strong><i class="bi bi-chat-dots me-1 text-info"></i>3. Chat entry points</strong>
+                    <p class="mb-2 mt-2" style="font-size:.82rem;color:var(--kx-muted)">Telegram users can use <code>/giftcards</code> or ask to buy/sell a card. Signed-in users can start the same conversational flow in KayBot. Gift-card codes and purchase PINs are handled as secure inputs.</p>
+                    <a href="{{ route('admin.telegram.index') }}" class="btn-kx-outline">Telegram bot settings</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
 {{-- ── AI Report Generator Card ────────────────────────────────────────── --}}
 <div class="kx-panel" style="margin-top:1.5rem">
@@ -844,7 +895,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setCount('stat-kyc', k);
             setCount('stat-trades', t);
             setCount('stat-deposits', data.pending_deposits || 0);
-            setCount('stat-crypto-deposits', data.crypto_deposits_review || 0);
+            setCount('stat-crypto-deposits', data.crypto_deposits_open || 0);
             setCount('stat-crypto-withdrawals', data.crypto_withdrawals || 0);
             setCount('stat-bills', data.bill_requests || 0);
             setCount('stat-support', data.open_support || 0);
@@ -947,8 +998,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById(id).addEventListener('input', function() { this.classList.remove('error'); });
     });
 
-    // Recent notifications
-    fetch('{{ route("admin.notifications.index") }}?per_page=5', {
+    const escapeAdminText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    // Keep admin alerts fresh while the dashboard stays open.
+    const loadAdminRecentNotifications = () => fetch('{{ route("admin.notifications.index") }}?per_page=5', {
         headers: {
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
@@ -978,10 +1030,10 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="notif-item">
                 <div class="notif-icon-wrap"><i class="bi ${n.icon || 'bi-bell'}"></i></div>
                 <div class="flex-grow-1">
-                    <div class="notif-title">${n.title}</div>
-                    <div class="notif-text">${n.message}</div>
+                    <div class="notif-title">${escapeAdminText(n.title)}</div>
+                    <div class="notif-text">${escapeAdminText(n.message)}</div>
                     <div class="notif-meta">
-                        <span>${n.created_at}</span>
+                        <span>${escapeAdminText(n.created_at)}</span>
                         ${n.is_broadcast ? '<span class="tag-broadcast">Broadcast</span>' : ''}
                         ${!n.is_read     ? '<span class="tag-unread">Unread</span>' : ''}
                     </div>
@@ -989,6 +1041,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`).join('');
     })
     .catch(() => { document.getElementById('recentNotifications').innerHTML = '<p style="color:var(--kx-danger);text-align:center;padding:16px 0">Failed to load notifications.</p>'; });
+    loadAdminRecentNotifications();
+    setInterval(loadAdminRecentNotifications, 30000);
 
 });
 </script>

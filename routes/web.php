@@ -281,6 +281,9 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::put('onboarding-content', [\App\Http\Controllers\Admin\AdminOnboardingContentController::class, 'update'])->name('admin.onboarding-content.update');
     Route::get('crypto-withdrawals', [\App\Http\Controllers\Admin\AdminCryptoWithdrawalController::class, 'index'])->name('admin.crypto-withdrawals.index');
     Route::patch('crypto-withdrawals/{cryptoWithdrawal}', [\App\Http\Controllers\Admin\AdminCryptoWithdrawalController::class, 'update'])->name('admin.crypto-withdrawals.update');
+    Route::post('crypto-withdrawals/{cryptoWithdrawal}/nowpayments/create', [\App\Http\Controllers\Admin\AdminCryptoWithdrawalController::class, 'createNowPaymentsPayout'])->middleware('throttle:5,1')->name('admin.crypto-withdrawals.nowpayments.create');
+    Route::post('crypto-withdrawals/{cryptoWithdrawal}/nowpayments/verify', [\App\Http\Controllers\Admin\AdminCryptoWithdrawalController::class, 'verifyNowPaymentsPayout'])->middleware('throttle:5,1')->name('admin.crypto-withdrawals.nowpayments.verify');
+    Route::post('crypto-withdrawals/{cryptoWithdrawal}/nowpayments/refresh', [\App\Http\Controllers\Admin\AdminCryptoWithdrawalController::class, 'refreshNowPaymentsPayout'])->middleware('throttle:10,1')->name('admin.crypto-withdrawals.nowpayments.refresh');
     Route::get('campaigns', [\App\Http\Controllers\Admin\AdminCampaignController::class, 'index'])->name('admin.campaigns.index');
     Route::post('campaigns', [\App\Http\Controllers\Admin\AdminCampaignController::class, 'send'])->name('admin.campaigns.send');
     // ── Telegram Bot Management ─────────────────────────────────────────────
@@ -686,18 +689,18 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     Route::get('/buy', [CryptoController::class, 'buy'])->name('buy');
     Route::middleware('auth')->group(function () {
         Route::get('/swap', [CryptoController::class, 'convert'])->name('swap');
-        Route::post('/swap', [CryptoController::class, 'convertSubmit'])->middleware('throttle:8,1')->name('swap.submit');
-        Route::post('/swap/quote', [CryptoController::class, 'convertQuote'])->middleware('throttle:30,1')->name('swap.quote');
-        Route::post('/swap/manual', [CryptoController::class, 'convertManualSubmit'])->middleware('throttle:8,1')->name('swap.manual');
+        Route::post('/swap', [CryptoController::class, 'convertSubmit'])->middleware('throttle:15,1')->name('swap.submit');
+        Route::post('/swap/quote', [CryptoController::class, 'convertQuote'])->middleware('throttle:60,1')->name('swap.quote');
+        Route::post('/swap/manual', [CryptoController::class, 'convertManualSubmit'])->middleware('throttle:15,1')->name('swap.manual');
         Route::get('/swap/success/{id}', [CryptoController::class, 'convertSuccess'])->name('swap.success');
         Route::get('/swap/status/{id}', [CryptoController::class, 'convertStatus'])->middleware('throttle:12,1')->name('swap.status');
         Route::get('/swap/failed/{id}', [CryptoController::class, 'convertFailed'])->name('swap.failed');
 
         // Keep legacy URLs working while directing customers to the new Swap naming.
         Route::get('/convert', fn () => redirect()->route('swap', request()->query(), 301))->name('convert');
-        Route::post('/convert', [CryptoController::class, 'convertSubmit'])->middleware('throttle:8,1')->name('convert.submit');
-        Route::post('/convert/quote', [CryptoController::class, 'convertQuote'])->middleware('throttle:30,1')->name('convert.quote');
-        Route::post('/convert/manual', [CryptoController::class, 'convertManualSubmit'])->middleware('throttle:8,1')->name('convert.manual');
+        Route::post('/convert', [CryptoController::class, 'convertSubmit'])->middleware('throttle:15,1')->name('convert.submit');
+        Route::post('/convert/quote', [CryptoController::class, 'convertQuote'])->middleware('throttle:60,1')->name('convert.quote');
+        Route::post('/convert/manual', [CryptoController::class, 'convertManualSubmit'])->middleware('throttle:15,1')->name('convert.manual');
         Route::get('/convert/success/{id}', fn ($id) => redirect()->route('swap.success', ['id' => $id], 301))->name('convert.success');
         Route::get('/convert/status/{id}', [CryptoController::class, 'convertStatus'])->middleware('throttle:12,1')->name('convert.status');
         Route::get('/convert/failed/{id}', fn ($id) => redirect()->route('swap.failed', ['id' => $id], 301))->name('convert.failed');
@@ -809,13 +812,14 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('settings',                    [\App\Http\Controllers\Admin\AdminSettingsController::class, 'index'])->name('settings.index');
     Route::post('settings',                   [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('settings.update');
+    Route::post('settings/branding', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateBranding'])->middleware('throttle:5,1')->name('settings.branding');
     Route::post('settings/nowpayments-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPayments'])->middleware('throttle:5,1')->name('settings.nowpayments-test');
     Route::post('settings/nowpayments-api-key-preview', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'previewNowPaymentsApiKey'])->middleware('throttle:3,1')->name('settings.nowpayments-api-key-preview');
     Route::post('settings/nowpayments-ipn-secret-preview', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'previewNowPaymentsIpnSecret'])->middleware('throttle:3,1')->name('settings.nowpayments-ipn-secret-preview');
     Route::post('settings/nowpayments-credential-clear', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'clearNowPaymentsCredential'])->middleware('throttle:5,1')->name('settings.nowpayments-credential-clear');
     Route::post('settings/nowpayments-credential-save', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'saveNowPaymentsCredential'])->middleware('throttle:5,1')->name('settings.nowpayments-credential-save');
     Route::post('settings/nowpayments-credential-copy', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'copyNowPaymentsCredential'])->middleware('throttle:3,1')->name('settings.nowpayments-credential-copy');
-    Route::post('settings/nowpayments-custody-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPaymentsCustody'])->middleware('throttle:3,1')->name('settings.nowpayments-custody-test');
+    Route::post('settings/nowpayments-custody-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPaymentsCustody'])->middleware('throttle:10,1')->name('settings.nowpayments-custody-test');
     Route::post('settings/cloudflare-action', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'cloudflareAction'])->name('settings.cloudflare-action');
     Route::get('settings/ai-usage',           [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiUsage'])->name('settings.ai-usage');
     Route::get('settings/ai-test',            [\App\Http\Controllers\Admin\AdminSettingsController::class, 'aiTest'])->name('settings.ai-test');

@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg bg-body-tertiary sticky-top">
     <div class="container-fluid">
         <a class="navbar-brand" href="{{ url('/') }}">
-            <img width="40px" src="{{ asset('Assests/favicon.png') }}" alt="KayXchange" class="me-2">
+            <img width="40px" src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange" class="me-2">
             KayXchange
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ratesNavbarNav" aria-controls="ratesNavbarNav" aria-expanded="false" aria-label="Toggle navigation">

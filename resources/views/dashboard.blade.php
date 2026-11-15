@@ -577,6 +577,27 @@
             </div>
         </div>
 
+        @php
+            $giftCardPurchasesEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+            $giftCardSalesEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        @endphp
+        <div class="kx-card p-3 mb-4" id="kx-tour-gift-cards" data-dashboard-stack="gift_cards" data-dashboard-title="Gift cards">
+            <div class="kx-sec-title mb-3"><i class="bi bi-gift-fill"></i>Gift Cards <span class="kx-sec-tag ms-auto">USA · UK</span></div>
+            <div class="kx-quick">
+                @if($giftCardPurchasesEnabled)
+                    <a href="{{ route('gift-cards.index') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-bag-check-fill"></i></div>Buy Gift Cards</a>
+                @else
+                    <button type="button" class="kx-qbtn" disabled aria-disabled="true"><div class="kx-qicon"><i class="bi bi-bag-check-fill"></i></div>Buy Gift Cards<small>Temporarily unavailable</small></button>
+                @endif
+                @if($giftCardSalesEnabled)
+                    <a href="{{ route('gift-cards.index') }}#sell-gift-card" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-credit-card-2-front-fill"></i></div>Sell Gift Cards</a>
+                @else
+                    <button type="button" class="kx-qbtn" disabled aria-disabled="true"><div class="kx-qicon"><i class="bi bi-credit-card-2-front-fill"></i></div>Sell Gift Cards<small>Temporarily unavailable</small></button>
+                @endif
+                <a href="{{ route('giftcard.rates') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-graph-up-arrow"></i></div>Gift Card Rates</a>
+            </div>
+        </div>
+
         <div class="kx-card p-3 mb-4" id="kx-tour-wallets" data-dashboard-stack="wallets" data-dashboard-title="Wallet shortcuts">
             <div class="kx-sec-title mb-3"><i class="bi bi-wallet2"></i>Wallets <span class="kx-sec-tag ms-auto">USD and crypto</span></div>
             <div class="kx-quick">

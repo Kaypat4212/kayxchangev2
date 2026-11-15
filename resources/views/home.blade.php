@@ -614,7 +614,7 @@
     <nav class="kx-hp-nav navbar navbar-expand-lg" id="kxHomeNav">
         <div class="container">
             <a class="kx-brand" href="@auth {{ url('/dashboard') }} @else {{ url('/') }} @endauth">
-                <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+                <img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange">
                 <span>Kay<span class="kx-brand-g">Xchange</span></span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#kxHomeCollapse" aria-controls="kxHomeCollapse" aria-expanded="false" aria-label="Toggle navigation">
@@ -1984,7 +1984,7 @@
                 <!-- Brand -->
                 <div class="col-lg-4 col-md-12">
                     <a href="{{ url('/') }}" class="kx-footer-logo">
-                        <img src="{{ asset('Assests/favicon.png') }}" alt="KayXchange">
+                        <img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="KayXchange">
                         <span>Kay<b>Xchange</b></span>
                     </a>
                     <p class="kx-footer-desc">{{ $siteContent['footer_tagline'] ?? 'Your trusted platform for seamless cryptocurrency trading. Fast, secure, and competitive NGN rates.' }}</p>

@@ -37,7 +37,7 @@
     @if($isMultiNetworkUsdt)<div class="kw-note mt-2">USDT balance is shared across TRC20, ERC20 and BEP20 deposits. Choose the matching network on each deposit invoice.</div>@endif
     @php($assetNetworks=['BTC'=>['BTC'],'ETH'=>['ERC20'],'LTC'=>['LTC'],'USDT'=>['TRC20','ERC20','BEP20'],'USDC'=>['ERC20','BEP20'],'BNB'=>['BEP20'],'SOL'=>['SOL']][$currency] ?? [])
     @php($suggestedNetwork=in_array(strtoupper((string)$wallet->network),$assetNetworks,true)?strtoupper($wallet->network):($assetNetworks[0]??''))
-    <div class="kw-asset-actions"><a href="{{ route('wallet.deposit', ['currency'=>$currency,'network'=>$suggestedNetwork]) }}">Deposit</a><a href="{{ route('wallet.withdraw', ['currency'=>$currency,'network'=>$suggestedNetwork]) }}">Withdraw · coming soon</a></div>
+    <div class="kw-asset-actions"><a href="{{ route('wallet.deposit', ['currency'=>$currency,'network'=>$suggestedNetwork]) }}">Deposit</a>@if(\App\Models\AdminSetting::getSetting('nowpayments_crypto_withdrawals_enabled', '0') === '1')<a href="{{ route('wallet.withdraw', ['wallet_id'=>$wallet->id,'network'=>$suggestedNetwork]) }}">Withdraw crypto</a>@else<span class="text-muted" aria-disabled="true">Withdraw · paused</span>@endif</div>
    </article></div>
    @endif
   @endforeach

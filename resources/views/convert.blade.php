@@ -63,6 +63,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 .btn-kx-secondary:hover{border-color:var(--kx-green);color:var(--kx-green);}
 
 .notice-warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:.85rem 1rem;font-size:.8rem;color:#fbbf24;margin-bottom:1rem;display:flex;gap:.6rem;align-items:flex-start;}
+#swapFeedback[hidden]{display:none!important;}
 
 .crypto-info{display:flex;align-items:center;gap:.5rem;padding:.75rem;background:linear-gradient(135deg,rgba(0,204,0,.1),rgba(0,100,0,.05));border:1px solid rgba(0,204,0,.2);border-radius:8px;margin-bottom:1rem;}
 .crypto-info-icon{width:32px;height:32px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:#00cc00;overflow:hidden;}
@@ -158,8 +159,14 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     </div>
     @endif
 
+    <div class="notice-warn" style="align-items:flex-start">
+        <i class="bi bi-shield-check"></i>
+        <div><strong>Swap limits</strong><br>Per transaction: <strong>${{ number_format($swapLimits['minimum_usd'], 2) }} – ${{ number_format($swapLimits['maximum_usd'], 2) }} USD</strong>. The limit uses the live USD estimate and is checked again before submission. Swaps may also pause if verified provider reserves are insufficient.</div>
+    </div>
+
     {{-- Swap Form --}}
     <div class="kx-card">
+        <div id="swapFeedback" class="notice-warn" role="alert" aria-live="polite" hidden></div>
         <form id="convertForm" action="{{ $convertMode === 'manual' ? route('swap.manual') : route('swap.submit') }}" method="post">
             @csrf
             @if($convertMode === 'nowpayments')<input type="hidden" name="swap_request_key" value="{{ $swapRequestKey }}">@endif
@@ -174,7 +181,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
                     <div class="coin-select-wrap">
                         <select id="fromCoin" name="from_coin" class="coin-select" required>
                             @foreach($coins as $symbol => $meta)
-                            <option value="{{ $symbol }}" {{ $symbol === 'BTC' ? 'selected' : '' }}>{{ $symbol }}</option>
+                            <option value="{{ $symbol }}" {{ $symbol === 'BTC' ? 'selected' : '' }}>{{ $symbol }} · {{ rtrim(rtrim(number_format((float)($walletBalances[$symbol] ?? 0), 8), '0'), '.') }} available</option>
                             @endforeach
                         </select>
                     </div>
@@ -202,7 +209,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
                     <div class="coin-select-wrap">
                         <select id="toCoin" name="to_coin" class="coin-select" required>
                             @foreach($coins as $symbol => $meta)
-                            <option value="{{ $symbol }}" {{ $symbol === 'USDT' ? 'selected' : '' }}>{{ $symbol }}</option>
+                            <option value="{{ $symbol }}" {{ $symbol === 'USDT' ? 'selected' : '' }}>{{ $symbol }} · wallet {{ rtrim(rtrim(number_format((float)($walletBalances[$symbol] ?? 0), 8), '0'), '.') }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -467,6 +474,9 @@ document.getElementById('convertForm').addEventListener('submit', function(e) {
     e.preventDefault();
 
     const btn = document.getElementById('convertBtn');
+    const feedback = document.getElementById('swapFeedback');
+    feedback.hidden = true;
+    feedback.textContent = '';
     const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="bi bi-arrow-repeat spinning me-1"></i>Processing...';
     btn.disabled = true;
@@ -502,14 +512,18 @@ document.getElementById('convertForm').addEventListener('submit', function(e) {
         } else {
             btn.innerHTML = originalText;
             btn.disabled = false;
-            alert(data.message || 'An error occurred while submitting the swap');
+            feedback.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i><div></div>';
+            feedback.querySelector('div').textContent = data.message || 'We could not submit this swap. Please review the details and try again.';
+            feedback.hidden = false;
         }
     })
     .catch(error => {
         console.error('Swap error:', error);
         btn.innerHTML = originalText;
         btn.disabled = false;
-        alert('Network error. Please try again.');
+        feedback.innerHTML = '<i class="bi bi-wifi-off"></i><div></div>';
+        feedback.querySelector('div').textContent = 'We could not reach the swap service. Check your connection before retrying; an already submitted swap will be protected against duplicate processing.';
+        feedback.hidden = false;
     });
 });
 </script>

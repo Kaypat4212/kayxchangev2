@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'KayXchange') }}</title>
     <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('Assests/favicon.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('Assests/favicon.png') }}">
-    <link rel="shortcut icon" href="{{ asset('Assests/favicon.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('Assests/favicon.png') }}">
+    <link rel="icon" type="{{ $siteFaviconMime ?? 'image/png' }}" sizes="32x32" href="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}">
+    <link rel="icon" type="{{ $siteFaviconMime ?? 'image/png' }}" sizes="16x16" href="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}">
+    <link rel="shortcut icon" href="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     <!-- Preload the above-the-fold hero image for faster LCP -->
     <link rel="preload" as="image" href="{{ asset('Assests/images/kay-xchange-logo-mockup.png') }}">
