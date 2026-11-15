@@ -27,8 +27,8 @@ class AdminGiftCardOrderController extends Controller
 
     public function complete(Request $request, GiftCardOrder $order)
     {
-        $data = $request->validate(['delivery_code' => ['required', 'string', 'max:4000'], 'admin_note' => ['nullable', 'string', 'max:1000']]);
-        DB::transaction(function () use ($request, $order, $data): void {
+        $data = $request->validate(['delivery_code' => ['required', 'string', 'max:4000', 'regex:/\S/'], 'admin_note' => ['nullable', 'string', 'max:1000']]);
+        $completed = DB::transaction(function () use ($request, $order, $data): GiftCardOrder {
             $locked = GiftCardOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== 'pending') throw ValidationException::withMessages(['order' => 'Only pending gift card purchases can be completed.']);
             $before = ['status' => $locked->status, 'delivery_code' => null];
@@ -40,8 +40,35 @@ class AdminGiftCardOrderController extends Controller
             $locked->save();
             AdminAuditLog::create(['admin_id' => $request->user()->id, 'action' => 'gift_card_order.completed', 'subject_type' => GiftCardOrder::class, 'subject_id' => $locked->id, 'before' => $before, 'after' => ['status' => 'completed', 'reference' => $locked->reference], 'ip_address' => $request->ip(), 'user_agent' => substr((string)$request->userAgent(), 0, 1000)]);
             Notification::createForUser($locked->user_id, 'success', 'Gift card ready', 'Your ' . $locked->card_name . ' ' . $locked->country . ' gift card is ready in Gift Cards → Purchase history.', ['type' => 'gift_card_order', 'order_id' => $locked->id]);
+            return $locked->fresh('user');
         });
-        return back()->with('success', 'Gift card purchase marked fulfilled. The delivery code is encrypted at rest and visible only to the buyer and admins.');
+        $delivery = app(\App\Services\GiftCardDeliveryNotificationService::class)->dispatch($completed);
+        $emailSent = in_array($delivery['recipient_email'] ?? '', ['accepted', 'already_sent'], true);
+        $buyerEmail = strtolower(trim((string) ($completed->user?->email ?? '')));
+        $recipientEmail = strtolower(trim((string) $completed->recipient_email));
+        $buyerEmailSent = $buyerEmail === '' || $buyerEmail === $recipientEmail
+            || in_array($delivery['buyer_email'] ?? '', ['accepted', 'already_sent'], true);
+        $message = 'Gift card marked delivered; the code is encrypted at rest and available in the buyer’s purchase history.';
+        $message .= ($emailSent && $buyerEmailSent) ? ' Delivery email accepted for the recipient and buyer.' : ' One or more delivery emails were not accepted; check mail settings and use Retry notifications below.';
+        $message .= in_array($delivery['telegram'] ?? '', ['accepted', 'already_sent'], true) ? ' Telegram notification sent.' : '';
+        return back()->with($emailSent ? 'success' : 'warning', $message);
+    }
+
+    public function notify(Request $request, GiftCardOrder $order)
+    {
+        abort_unless($order->status === 'completed' && trim((string) $order->delivery_code) !== '', 404);
+        $delivery = app(\App\Services\GiftCardDeliveryNotificationService::class)->dispatch($order->fresh('user'));
+        $recipientSent = in_array($delivery['recipient_email'] ?? '', ['accepted', 'already_sent'], true);
+        $order->loadMissing('user');
+        $buyerEmail = strtolower(trim((string) ($order->user?->email ?? '')));
+        $recipientEmail = strtolower(trim((string) $order->recipient_email));
+        $buyerSent = $buyerEmail === '' || $buyerEmail === $recipientEmail
+            || in_array($delivery['buyer_email'] ?? '', ['accepted', 'already_sent'], true);
+        $telegramSent = in_array($delivery['telegram'] ?? '', ['accepted', 'already_sent', 'notifications_off', 'not_linked'], true);
+        $ok = $recipientSent && $buyerSent && $telegramSent;
+        return back()->with($ok ? 'success' : 'warning', $ok
+            ? 'Delivery notification status refreshed. The recipient email is accepted and Telegram was sent or is disabled/unlinked.'
+            : 'Some notifications could not be sent. Review mail/Telegram configuration and retry.');
     }
 
     public function reject(Request $request, GiftCardOrder $order)

@@ -39,6 +39,7 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=mobile-scale-20261114">
+    @include('components.loading-overlay-styles')
 </head>
 
 <body class="bg-light">
@@ -46,9 +47,7 @@
     @include('components.navbar')
 
     <!-- Loader -->
-    <div id="loader">
-        <p>Loading...</p>
-    </div>
+    @include('components.loading-overlay')
 
     <!-- Content Section -->
     <div class="container mt-4">

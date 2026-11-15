@@ -215,6 +215,19 @@ class AdminSettingsController extends Controller
         return redirect()->route('admin.settings.index')->with('success', 'Site logo and favicon updated across the platform.');
     }
 
+    public function updateLoaderTheme(Request $request)
+    {
+        $validated = $request->validate(['loader_theme' => ['required', 'in:classic,festive']]);
+        AdminSetting::updateOrCreate(
+            ['key' => 'loader_theme'],
+            ['value' => $validated['loader_theme'], 'is_encrypted' => false, 'group' => 'general', 'label' => 'Platform loader theme', 'description' => 'Choose the classic spinner or seasonal festive 2027 intro.'],
+        );
+
+        return redirect()->route('admin.settings.index')->with('success', $validated['loader_theme'] === 'festive'
+            ? 'Festive 2027 loader enabled across user and admin pages.'
+            : 'Classic loader restored across user and admin pages.');
+    }
+
     public function update(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
     {
         $data = $request->except(['_token', '_method', 'action', 'clear_settings']);

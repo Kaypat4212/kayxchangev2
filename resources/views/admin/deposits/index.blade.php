@@ -61,6 +61,9 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 .kx-search{background:var(--kx-card2);border:1px solid var(--kx-border);border-radius:8px;display:flex;align-items:center;padding:.45rem .75rem;gap:.5rem;}
 .kx-search-input{background:transparent;border:none;outline:none;color:var(--kx-text);font-size:.83rem;flex:1;}
 .kx-search-input::placeholder{color:var(--kx-muted);}
+.kx-filter-grid{display:grid;grid-template-columns:minmax(200px,2fr) repeat(5,minmax(130px,1fr)) auto auto;gap:.65rem;align-items:end;padding:1rem 1.25rem;border-bottom:1px solid var(--kx-border)}
+@media(max-width:1100px){.kx-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.kx-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:.85rem}.kx-filter-grid .kx-filter-search{grid-column:1/-1}}
 </style>
 <div class="container-fluid py-3 px-3 px-md-4">
     <div class="kx-page-header">
@@ -68,9 +71,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
             <h4><i class="bi bi-bank me-2" style="color:var(--kx-blue)"></i>Deposit Review</h4>
             <small>Review NGN, bank, payment-gateway, manual and crypto deposits in one place</small>
         </div>
-        <div class="kx-search"><i class="bi bi-search" style="color:var(--kx-muted)"></i>
-            <input class="kx-search-input" id="dSearch" placeholder="Search…">
-        </div>
+        <a class="btn-kx-outline" href="#depositFilters"><i class="bi bi-funnel"></i>Filters</a>
     </div>
 
     @if(session('success'))<div class="kx-alert-success"><i class="bi bi-check-circle-fill"></i>{{ session('success') }}</div>@endif
@@ -124,6 +125,15 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 
     <div class="kx-panel">
         <div class="kx-panel-header"><span class="kx-panel-title"><i class="bi bi-list-ul me-2"></i>All Deposits</span></div>
+        <form id="depositFilters" class="kx-filter-grid" method="GET" action="{{ route('admin.deposits.index') }}">
+            <div class="kx-filter-search"><label class="kx-label" for="filterQ">Search user, reference, asset</label><input id="filterQ" name="q" class="kx-input" style="width:100%" value="{{ $filters['q'] ?? '' }}" placeholder="Name, email, reference…"></div>
+            <div><label class="kx-label" for="filterStatus">Status</label><select id="filterStatus" name="status" class="kx-input" style="width:100%"><option value="">All statuses</option>@foreach(['pending','approved','successful','completed','cancelled','awaiting_admin_review','failed','partially_paid','expired'] as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ str_replace('_',' ',ucfirst($status)) }}</option>@endforeach</select></div>
+            <div><label class="kx-label" for="filterMethod">NGN method</label><select id="filterMethod" name="method" class="kx-input" style="width:100%"><option value="">All methods</option>@foreach($methods as $method)<option value="{{ $method }}" @selected(($filters['method'] ?? '') === $method)>{{ str_replace('_',' ',ucfirst($method)) }}</option>@endforeach</select></div>
+            <div><label class="kx-label" for="filterAsset">Crypto asset</label><select id="filterAsset" name="asset" class="kx-input" style="width:100%"><option value="">All assets</option>@foreach($assets as $asset)<option value="{{ strtoupper($asset) }}" @selected(strtoupper((string)($filters['asset'] ?? '')) === strtoupper($asset))>{{ strtoupper($asset) }}</option>@endforeach</select></div>
+            <div><label class="kx-label" for="filterFrom">From</label><input id="filterFrom" type="date" name="from" class="kx-input" style="width:100%" value="{{ $filters['from'] ?? '' }}"></div>
+            <div><label class="kx-label" for="filterTo">To</label><input id="filterTo" type="date" name="to" class="kx-input" style="width:100%" value="{{ $filters['to'] ?? '' }}"></div>
+            <button class="btn-kx-green" type="submit"><i class="bi bi-funnel-fill"></i>Apply</button><a class="btn-kx-outline" href="{{ route('admin.deposits.index') }}"><i class="bi bi-arrow-counterclockwise"></i>Reset</a>
+        </form>
         <div class="kx-table-wrap">
             <table class="kx-table" id="dTable">
                 <thead><tr>
@@ -342,9 +352,5 @@ document.getElementById('depm-confirm-btn').addEventListener('click', function()
     }
 });
 
-document.getElementById('dSearch').addEventListener('input', function(){
-    const q = this.value.toLowerCase();
-    document.querySelectorAll('#dTable tbody tr, #cryptoDepositTable tbody tr').forEach(r=>{ r.style.display=r.textContent.toLowerCase().includes(q)?'':'none'; });
-});
 </script>
 @endsection

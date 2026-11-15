@@ -147,26 +147,26 @@ class LogVisitor
         $browser = $log->browser ?? 'Unknown';
         $os      = $log->platform ?? 'Unknown';
         $loc     = implode(', ', array_filter([$log->city, $log->region, $log->country])) ?: 'Unknown';
-        $isp     = $log->isp ? "\n🏢 *ISP:* " . $this->esc($log->isp) : '';
-        $ref     = $log->referer ? "\n🔗 *Referrer:* " . $this->esc(parse_url($log->referer, PHP_URL_HOST) ?: $log->referer) : '';
-        $user    = $log->user_id ? "\n👤 *User ID:* #{$log->user_id} (logged in)" : '';
+        $isp     = $log->isp ? "\n🏢 <b>ISP:</b> " . $this->esc($log->isp) : '';
+        $ref     = $log->referer ? "\n🔗 <b>Referrer:</b> " . $this->esc(parse_url($log->referer, PHP_URL_HOST) ?: $log->referer) : '';
+        $user    = $log->user_id ? "\n👤 <b>User ID:</b> #" . (int) $log->user_id . ' (logged in)' : '';
         $time    = now()->format('d M Y, H:i') . ' (UTC)';
 
         $msg =
-            "👁️ *New Homepage Visit*\n\n" .
-            "{$flag} *Location:* " . $this->esc($loc) . "\n" .
-            "🌐 *IP:* `{$ip}`\n" .
-            "{$device} — {$browser} on {$os}" .
+            "👁️ <b>New Homepage Visit</b>\n\n" .
+            "{$flag} <b>Location:</b> " . $this->esc($loc) . "\n" .
+            "🌐 <b>IP:</b> <code>" . $this->esc((string) $ip) . "</code>\n" .
+            $this->esc($device . ' — ' . $browser . ' on ' . $os) .
             $isp .
             $ref .
             $user . "\n" .
-            "🕐 *Time:* {$time}";
+            "🕐 <b>Time:</b> " . $this->esc($time);
 
         try {
             $response = Http::timeout(8)->post("https://api.telegram.org/bot{$token}/sendMessage", [
                 'chat_id'    => $ownerChatId,
                 'text'       => $msg,
-                'parse_mode' => 'Markdown',
+                'parse_mode' => 'HTML',
             ]);
             if (!$response->successful() || !$response->json('ok')) {
                 Log::warning('Homepage visit Telegram alert was rejected.', ['visitor_log_id' => $log->id, 'http_status' => $response->status(), 'telegram_error' => $response->json('description')]);
@@ -193,6 +193,6 @@ class LogVisitor
 
     private function esc(string $text): string
     {
-        return str_replace(['_', '*', '[', ']', '`'], ['\\_', '\\*', '\\[', '\\]', '\\`'], $text);
+        return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 }

@@ -52,6 +52,9 @@ class KayBotGiftCardFlow
             $state['rate_id'] = $rate->id;
             $state['step'] = 'face_value';
             $request->session()->put('kaybot_giftcard', $state);
+            if ($kind === 'purchase' && GiftCardPurchaseService::isDenominationCard($rate)) {
+                return $this->denominationPrompt($rate);
+            }
             $rateText = $kind === 'purchase'
                 ? 'Rate: ₦' . number_format((float)$rate->sell_rate, 2) . ' per ' . $rate->currency . ', plus service fee.'
                 : 'Estimated rate: ₦' . number_format((float)$rate->buy_rate, 2) . ' per ' . $rate->currency . '; final payout follows admin review.';
@@ -67,6 +70,9 @@ class KayBotGiftCardFlow
             $value = is_numeric(str_replace(',', '', $message)) ? (float)str_replace(',', '', $message) : 0;
             $unitRate = $kind === 'purchase' ? (float)$rate->sell_rate : (float)$rate->buy_rate;
             if ($value < 1 || $value > 10000 || $unitRate <= 0) return ['reply' => 'Enter a valid face value from 1 to 10,000.'];
+            if ($kind === 'purchase' && !GiftCardPurchaseService::isValidDenomination($rate, $value)) {
+                return $this->denominationPrompt($rate, 'Please choose one of the listed denominations:');
+            }
             $state['face_value'] = round($value, 2);
             $state['step'] = $kind === 'purchase' ? 'recipient' : 'sale_code';
             $request->session()->put('kaybot_giftcard', $state);
@@ -177,5 +183,22 @@ class KayBotGiftCardFlow
             if ($needle !== '' && (str_contains($needle, mb_strtolower($rate->name)) || str_contains(mb_strtolower($rate->name), $needle))) return $rate;
         }
         return null;
+    }
+
+    private function denominationPrompt(GiftCardRate $rate, string $lead = 'Choose one of these USA Apple/iTunes denominations:'): array
+    {
+        $purchaseService = app(GiftCardPurchaseService::class);
+        $choices = [];
+        foreach ($purchaseService->denominationsFor($rate) as $amount) {
+            $quote = $purchaseService->quote($rate, (float) $amount);
+            $choices[] = '$' . $amount . ' = ₦' . number_format($quote['base_total_ngn'], 0);
+        }
+        return [
+            'reply' => $lead . "\n" . implode(' · ', $choices)
+                . "\nRate: ₦" . number_format($purchaseService->quote($rate, 2)['ngn_per_usd'], 2) . '/USD'
+                . ' · Admin service fee: ₦' . number_format((float) ($rate->purchase_markup_ngn ?? 0), 2)
+                . "\nReply with the USD amount. The next step confirms the exact wallet total.",
+            'giftcard_step' => 'face_value',
+        ];
     }
 }

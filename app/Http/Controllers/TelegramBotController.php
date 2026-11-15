@@ -317,8 +317,23 @@ class TelegramBotController extends Controller
 
         try {
             $response = Http::post($url, $data);
+            $result = $response->json();
+
+            // Names, references and other user supplied values may contain
+            // Markdown characters. Retry malformed Markdown messages as plain
+            // text rather than silently losing the bot response.
+            if (!$response->successful()
+                && stripos((string) ($result['description'] ?? ''), "can't parse entities") !== false) {
+                unset($data['parse_mode']);
+                $response = Http::post($url, $data);
+                $result = $response->json();
+                if ($response->successful() && ($result['ok'] ?? false)) {
+                    Log::warning('Telegram bot message delivered as plain text after Markdown parsing failed.', ['chat_id' => $chatId]);
+                    return true;
+                }
+            }
             
-            if ($response->successful()) {
+            if ($response->successful() && ($result['ok'] ?? false)) {
                 Log::info('Telegram message sent successfully', [
                     'chat_id' => $chatId,
                     'message_length' => strlen($text)

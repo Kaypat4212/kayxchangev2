@@ -266,6 +266,13 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
     <div class="collapse navbar-collapse" id="kxNav">
       <ul class="navbar-nav kx-links me-auto mb-2 mb-lg-0 gap-1">
         @auth
+        @php
+        try {
+            $billsNavEnabled = filter_var(\App\Models\AdminSetting::getSetting('bill_payments_enabled', '1'), FILTER_VALIDATE_BOOLEAN);
+            $giftPurchaseNavEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+            $giftSaleNavEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        } catch (\Throwable $e) { $billsNavEnabled = false; $giftPurchaseNavEnabled = false; $giftSaleNavEnabled = false; }
+        @endphp
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('dashboard')) kx-active @endif" href="{{ url('/dashboard') }}" title="Dashboard">
             <i class="bi bi-grid-1x2-fill"></i>Dashboard
@@ -276,11 +283,13 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
             <i class="bi bi-plus-circle-fill"></i>Deposit
           </a>
         </li>
+        @if($billsNavEnabled)
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('bills*')) kx-active @endif" href="{{ route('bills.index') }}" title="Bills and utilities">
             <i class="bi bi-lightning-charge-fill"></i>Pay Bills
           </a>
         </li>
+        @endif
         <li class="nav-item dropdown">
           <a class="kx-nav-link dropdown-toggle @if(request()->is('wallet*')) kx-active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Wallets">
             <i class="bi bi-wallet2"></i>Wallets
@@ -302,11 +311,13 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
             <i class="bi bi-graph-up-arrow"></i>Rates
           </a>
         </li>
+        @if($giftPurchaseNavEnabled || $giftSaleNavEnabled)
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('gift-cards*')) kx-active @endif" href="{{ route('gift-cards.index') }}" title="Buy USA and UK gift cards">
             <i class="bi bi-gift"></i>Gift Cards
           </a>
         </li>
+        @endif
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('forum*')) kx-active @endif" href="{{ route('forum.index') }}" title="KayXchange community forum">
             <i class="bi bi-chat-square-heart"></i>Community

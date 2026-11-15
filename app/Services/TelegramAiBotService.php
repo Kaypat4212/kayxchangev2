@@ -228,7 +228,9 @@ class TelegramAiBotService
             "Be friendly, concise, and helpful. Use emojis sparingly for warmth. " .
             "Always remind users to use /buy or /sell to place actual trades. " .
             "Never invent rates — use only the rates provided below. " .
-            "If you don't know something, say so clearly."
+            "If you don't know something, say so clearly. " .
+            "Understand Nigerian Pidgin (Naija) and English, and reply naturally in the language the user uses. " .
+            "Understand phrases like 'abeg', 'I wan buy/sell', and 'wetin be the rate'. Keep amounts, fees, coin networks, transaction statuses, and security instructions precise; ask for clarification when a financial request is ambiguous."
         );
 
         $canSuggestTrades = (bool) $this->getSetting('ai_bot_trade_suggestions', '1');
@@ -240,6 +242,7 @@ class TelegramAiBotService
             . "\n\nCurrent platform feature guidance:\n{$featureFacts}"
             . "\n\nCurrent platform rates:\n{$ratesText}"
             . "\n\nCurrent user context: {$userContext}"
+            . "\n\nLanguage guidance: Understand Nigerian Pidgin (Naija) and English. Mirror the user's language naturally and keep financial and security details exact."
             . $tradeSuggestionNote
             . "\n\nToday: " . now()->format('d M Y, H:i') . " WAT";
     }

@@ -69,6 +69,17 @@ class AiChatController extends Controller
 
         // Gift-card purchases and sales use a deterministic chat flow, not the
         // AI prompt. Secret card codes and PINs are redacted from stored history.
+        if ($this->isGiftCardStatusQuery($message)) {
+            $this->saveMessage($user?->id, $sessionId, 'user', $message);
+            if (!$user) {
+                $reply = 'Please sign in to check your private gift-card purchase status.';
+            } else {
+                $reply = app(\App\Services\GiftCardStatusService::class)->forUser($user, $message);
+            }
+            $this->saveMessage($user?->id, $sessionId, 'assistant', $reply);
+            return response()->json(['reply' => $reply, 'giftcard_status' => true, 'url' => $user ? url('/gift-cards') : url('/login')]);
+        }
+
         $giftCardState = $request->session()->get('kaybot_giftcard');
         $giftCardIntent = (bool) preg_match('/\b(gift[\s-]?cards?|itunes cards?)\b/i', $message)
             && (bool) preg_match('/\b(buy|purchase|sell|selling|trade|trading|start|want|need)\b/i', $message);
@@ -87,6 +98,30 @@ class AiChatController extends Controller
             $this->saveMessage($user?->id, $sessionId, 'assistant', $giftResult['reply']);
             if ($sensitive) $giftResult['sensitive_input'] = true;
             return response()->json($giftResult);
+        }
+
+        if ($this->isTransactionHistoryQuery($message)) {
+            $this->saveMessage($user?->id, $sessionId, 'user', $message);
+            if (!$user) {
+                $reply = 'Please sign in to view your private transaction history.';
+                $this->saveMessage(null, $sessionId, 'assistant', $reply);
+                return response()->json(['reply' => $reply]);
+            }
+            $history = app(\App\Services\ChatTransactionHistoryService::class)->recent($user, 8);
+            $lines = ['📋 Your recent transactions and account activity'];
+            if ($history->isEmpty()) {
+                $lines[] = 'No transactions yet. Deposits, withdrawals, trades, swaps, bills, and gift-card activity will appear here.';
+            } else {
+                foreach ($history as $item) {
+                    $date = $item['date']?->timezone('Africa/Lagos')->format('d M Y · H:i') ?? 'Date unavailable';
+                    $lines[] = app(\App\Services\ChatTransactionHistoryService::class)->statusIcon($item['status']) . ' ' . $item['label'] . ' — ' . $item['amount']
+                        . "\n   " . ucfirst(str_replace('_', ' ', $item['status'])) . ' · ' . $date
+                        . ($item['reference'] ? "\n   Ref: " . $item['reference'] : '');
+                }
+            }
+            $reply = implode("\n\n", $lines) . "\n\n[Open full transaction history](" . url('/transactions/history') . ')';
+            $this->saveMessage($user->id, $sessionId, 'assistant', $reply);
+            return response()->json(['reply' => $reply]);
         }
 
         // 2. Manual escalation request
@@ -659,12 +694,24 @@ class AiChatController extends Controller
     private function isRatesQuery(string $msg): bool
     {
         if (str_contains($msg, '💹') || str_contains($msg, '🎁') || str_contains($msg, '📈')) return true;
-        return (bool) preg_match('/\b(current\s+rates?|show\s+rates?|check\s+rates?|what\s+are\s+(the|your)\s+rates?|gift[\s\-]?card\s+rates?|crypto\s+rates?|exchange\s+rates?|rates?\s+today|coin\s+rates?|trading\s+rates?|see\s+rates?|your\s+rates?|ngn\s+rates?|naira\s+rates?|live\s+prices?|market\s+prices?)\b/i', $msg);
+        return (bool) preg_match('/\b(current\s+rates?|show\s+rates?|check\s+rates?|what\s+are\s+(the|your)\s+rates?|gift[\s\-]?card\s+rates?|crypto\s+rates?|exchange\s+rates?|rates?\s+today|coin\s+rates?|trading\s+rates?|see\s+rates?|your\s+rates?|ngn\s+rates?|naira\s+rates?|live\s+prices?|market\s+prices?|wetin\s+(?:be|una)\s+(?:the\s+)?(?:rate|rates|price)|abeg\s+(?:show|check)\s+(?:me\s+)?(?:the\s+)?(?:rate|rates|price)|how\s+much\s+(?:una|you)\s+(?:dey\s+)?(?:buy|sell))\b/i', $msg);
     }
 
     private function handleRatesFlow(Request $request, string $message): ?array
     {
         $lower = strtolower(trim($message));
+
+        if ($coin = $this->extractCoin($message)) {
+            $rate = CryptoRate::whereRaw('UPPER(coin) = ?', [$coin])->first();
+            if ($rate) {
+                $request->session()->forget('kaybot_rates');
+                return [
+                    'reply' => "📊 KayXchange {$coin} rates\nBuy from us: ₦" . number_format((float) $rate->buy_rate, 2) . " per \\$1 USD\nSell to us: ₦" . number_format((float) $rate->sell_rate, 2) . " per \\$1 USD\nRates may change before confirmation.",
+                    'rates_type' => 'crypto',
+                    'quick_replies' => ['🛒 Buy crypto', '💰 Sell crypto', '📊 All crypto rates'],
+                ];
+            }
+        }
 
         // Crypto rates — direct match (also handles "💹 Crypto rates" quick reply)
         if (preg_match('/\bcrypto\s*rates?\b/i', $lower) || str_contains($lower, '💹')) {
@@ -820,6 +867,8 @@ class AiChatController extends Controller
             $base .= "\n\nADDITIONAL ADMINISTRATOR GUIDANCE (follow when consistent with the platform facts and safety rules above):\n" . $customPrompt;
         }
 
+        $base .= "\n\nLanguage support: Understand Nigerian Pidgin (Naija) as well as English. Reply naturally in the language the user uses; if they mix both, mirror that style. Understand common phrases such as 'abeg', 'I wan buy/sell', 'wetin be the rate', and 'show my balance'. Keep amounts, fees, networks, statuses, and security instructions precise; never let slang make a financial action ambiguous. If you need clarification, ask in the user's language.";
+
         if ($this->isPricingQuestion($message)) {
             $live     = $this->getLivePrices();
             $platform = $this->getPlatformRatesText();
@@ -901,6 +950,8 @@ class AiChatController extends Controller
 
     private function isTradeIntent(string $msg): bool
     {
+        if (preg_match('/\b(?:i\s+)?(?:wan|wanna|want|need|make\s+i|abeg)\s+(?:to\s+)?(?:buy|sell|swap|trade)\b/i', $msg)) return true;
+        if (preg_match('/\bhow\s+much\s+(?:una|you)\s+(?:dey\s+)?(?:buy|sell)\b/i', $msg) && $this->extractCoin($msg)) return true;
         // Direct buy/sell/swap with a coin name
         if (preg_match('/\b(buy|sell|purchase|trade|swap)\s+(some\s+)?(btc|eth|usdt|usdc|sol|bnb|bitcoin|ethereum|crypto)\b/i', $msg)) return true;
         // "want to buy/sell/exchange/swap"
@@ -928,7 +979,17 @@ class AiChatController extends Controller
 
     private function isPricingQuestion(string $msg): bool
     {
-        return (bool) preg_match('/\b(price|rate|cost|worth|value|how much|market|usd|ngn|naira|dollar)\b/i', $msg);
+        return (bool) preg_match('/\b(price|rate|cost|worth|value|how much|market|usd|ngn|naira|dollar|wetin|dey cost|how e be)\b/i', $msg);
+    }
+
+    private function isTransactionHistoryQuery(string $message): bool
+    {
+        return (bool) preg_match('/\b(?:my|show|view|see|check|all|recent|full)\b.{0,36}\b(?:transaction|transactions|history|trades|activity|txs?)\b|\b(?:transaction|transactions|history|trades|activity)\b.{0,36}\b(?:my|please|abeg|show|view|see)\b/i', $message);
+    }
+
+    private function isGiftCardStatusQuery(string $message): bool
+    {
+        return (bool) preg_match('/\b(gift[\s-]?cards?|itunes cards?)\b.*\b(status|track|delivered|ready|check|where|order|purchase)\b|\b(status|track|delivered|ready|check|where)\b.*\b(gift[\s-]?cards?|itunes cards?)\b/i', $message);
     }
 
     private function aiSignalsUncertainty(string $reply): bool

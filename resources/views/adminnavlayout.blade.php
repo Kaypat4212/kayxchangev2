@@ -88,11 +88,12 @@
     </style>
     <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=mobile-scale-20261114">
     @stack('styles')
+    @include('components.loading-overlay-styles')
 </head>
 <body class="kx-admin-body">
     @include('components.admin-navbar')
 
-    <div id="loader"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>
+    @include('components.loading-overlay')
 
     <main class="kx-admin-shell container-fluid">
         @yield('content')

@@ -356,9 +356,9 @@ class TelegramService
             $payload = [
                 'chat_id' => $chatId,
                 'text' => $message,
-                'parse_mode' => $parseMode,
                 'disable_web_page_preview' => true,
             ];
+            if ($parseMode) $payload['parse_mode'] = $parseMode;
 
             if ($keyboard !== null) {
                 $payload['reply_markup'] = json_encode($keyboard);
@@ -368,7 +368,23 @@ class TelegramService
 
             $result = $response->json();
 
-            if ($response->successful() && $result['ok']) {
+            // Dynamic user data can contain Markdown control characters. If that
+            // makes Telegram reject entity parsing, retry once as plain text so
+            // transaction and status alerts are still delivered.
+            $description = (string) ($result['description'] ?? '');
+            if (!$response->successful()
+                && $parseMode
+                && stripos($description, "can't parse entities") !== false) {
+                unset($payload['parse_mode']);
+                $response = Http::post("{$this->apiUrl}/sendMessage", $payload);
+                $result = $response->json();
+                if ($response->successful() && ($result['ok'] ?? false)) {
+                    Log::warning('Telegram message delivered as plain text after Markdown parsing failed.', ['chat_id' => $chatId]);
+                    return $result;
+                }
+            }
+
+            if ($response->successful() && ($result['ok'] ?? false)) {
                 Log::info('Telegram message sent successfully', [
                     'chat_id' => $chatId,
                     'message_id' => $result['result']['message_id'],
@@ -570,7 +586,17 @@ class TelegramService
         // Extract the first word (command without arguments)
         $command = strtolower(explode(' ', $text)[0]);
 
-        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai', 'upload', 'features', 'wallet', 'crypto_deposit', 'usd_wallet', 'deposit_status', 'giftcards', 'giftcard_buy', 'giftcard_sell', 'buygiftcard', 'sellgiftcard'];
+        if (!str_starts_with($text, '/')) {
+            $lower = mb_strtolower($text);
+            if (preg_match('/\b(gift[\s-]?cards?|itunes cards?)\b.*\b(status|track|delivered|ready|check|where)\b|\b(status|track|delivered|ready|check)\b.*\b(gift[\s-]?cards?|itunes cards?)\b/i', $lower)) return 'giftcard_status';
+            if (preg_match('/\b(abeg|please|show|check|see|view|wetin|how much)\b.*\b(balance|wallet|money)\b|\b(balance|wallet)\b.*\b(mine|my|abeg)\b/i', $lower)) return 'balance';
+            if (preg_match('/\b(history|transaction|transactions|recent trades|my trades|account activity|show all tx)\b/i', $lower)) return 'trades';
+            if (preg_match('/\b(wetin be|abeg show|show|check|current|live|today)\b.*\b(rate|rates|price|prices)\b|\b(rate|rates|price|prices)\b.*\b(una|today|abeg)\b/i', $lower)) return 'rates';
+            if (preg_match('/\b(i wan|i want|make i|abeg)\s+(?:to\s+)?buy\b|\bbuy\s+(crypto|btc|eth|usdt|usdc|sol|bnb|bitcoin|ethereum)\b/i', $lower)) return 'buy';
+            if (preg_match('/\b(i wan|i want|make i|abeg)\s+(?:to\s+)?sell\b|\bsell\s+(crypto|btc|eth|usdt|usdc|sol|bnb|bitcoin|ethereum)\b/i', $lower)) return 'sell';
+        }
+
+        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'history', 'transactions', 'verify', 'help', 'cancel', 'ai', 'upload', 'features', 'wallet', 'crypto_deposit', 'usd_wallet', 'deposit_status', 'giftcards', 'giftcard_status', 'giftcard_buy', 'giftcard_sell', 'buygiftcard', 'sellgiftcard'];
 
         return in_array($command, $known, true) ? $command : null;
     }
@@ -677,7 +703,8 @@ class TelegramService
 
                 // ── Commands take priority over active states ─────────────────────
                 if (preg_match('/\b(gift[\s-]?cards?|itunes cards?)\b/i', $text)) {
-                    $command = preg_match('/\b(sell|selling|trade|trading)\b/i', $text) ? 'giftcard_sell' : (preg_match('/\b(buy|purchase|start|want|need)\b/i', $text) ? 'giftcard_buy' : 'giftcards');
+                    $command = preg_match('/\b(status|track|delivered|ready|check|where)\b/i', $text) ? 'giftcard_status'
+                        : (preg_match('/\b(sell|selling|trade|trading)\b/i', $text) ? 'giftcard_sell' : (preg_match('/\b(buy|purchase|start|want|need)\b/i', $text) ? 'giftcard_buy' : 'giftcards'));
                 } else {
                     $command = $this->resolveCommand($text);
                 }
@@ -689,12 +716,12 @@ class TelegramService
                     match ($command) {
                         'start'    => $this->handleStartCommand($chatId, $firstName),
                         'register' => $this->handleRegisterCommand($chatId),
-                        'rates'    => $this->handleRatesCommand($chatId),
+                    'rates'    => $this->handleRatesCommand($chatId),
                         'buy'      => $this->handleBuyCommand($chatId),
                         'sell'     => $this->handleSellCommand($chatId),
                         'deposit'  => $this->handleDepositCommand($chatId),
                         'balance'  => $this->handleBalanceCommand($chatId),
-                        'trades'   => $this->handleTradesCommand($chatId),
+                    'trades', 'history', 'transactions' => $this->handleTradesCommand($chatId),
                         'verify'   => $this->handleVerifyCommand($chatId, $text, $username),
                         'help'     => $this->handleHelpCommand($chatId),
                         'ai'       => $this->handleAiChatCommand($chatId),
@@ -705,6 +732,7 @@ class TelegramService
                         'usd_wallet' => $this->handleUsdWalletCommand($chatId),
                         'deposit_status' => $this->handleCryptoDepositStatus($chatId),
                         'giftcards' => $this->handleGiftCardsCommand($chatId),
+                        'giftcard_status' => $this->handleGiftCardStatusCommand($chatId, $text),
                         'giftcard_buy' => $this->handleGiftCardPurchaseStart($chatId),
                         'giftcard_sell' => $this->handleGiftCardSaleStart($chatId),
                         'buygiftcard' => $this->handleGiftCardPurchaseStart($chatId),
@@ -848,6 +876,10 @@ class TelegramService
                 }
                 if (str_starts_with($data, 'giftcard_rate:')) {
                     $this->handleGiftCardRateSelected($chatId, (int) substr($data, 14));
+                    return true;
+                }
+                if (str_starts_with($data, 'giftcard_denom:')) {
+                    $this->handleGiftCardDenominationSelected($chatId, (float) substr($data, 15));
                     return true;
                 }
                 if ($data === 'giftcard_note_skip') {
@@ -1010,6 +1042,7 @@ class TelegramService
                     'cmd_usd_wallet' => $this->handleUsdWalletCommand($chatId),
                     'cmd_crypto_status' => $this->handleCryptoDepositStatus($chatId),
                     'cmd_giftcards' => $this->handleGiftCardsCommand($chatId),
+                    'cmd_giftcard_status' => $this->handleGiftCardStatusCommand($chatId, ''),
                     'cmd_giftcard_buy' => $this->handleGiftCardPurchaseStart($chatId),
                     'cmd_giftcard_sell' => $this->handleGiftCardSaleStart($chatId),
                     'cmd_wallet_page' => $this->handleFeatureLink($chatId, 'Wallet overview', '/wallet'),
@@ -1884,7 +1917,18 @@ class TelegramService
             $this->sendMessage($chatId, 'Link your KayXchange account to submit gift-card transactions. Sign in or register, then link Telegram from your profile.', 'Markdown', ['inline_keyboard' => [[['text' => 'Sign in', 'url' => $this->telegramAppUrl() . '/login']], [['text' => 'Register', 'url' => $this->telegramAppUrl() . '/register']]]]);
             return;
         }
-        $this->sendMessage($chatId, 'Choose what you want to do with a USA or UK gift card:', 'Markdown', ['inline_keyboard' => [[['text' => '🎁 Buy a gift card', 'callback_data' => 'giftcard_buy']], [['text' => '💳 Sell a gift card', 'callback_data' => 'giftcard_sell']]]]);
+        $this->sendMessage($chatId, 'Choose what you want to do with a USA or UK gift card:', 'Markdown', ['inline_keyboard' => [[['text' => '🎁 Buy a gift card', 'callback_data' => 'giftcard_buy']], [['text' => '💳 Sell a gift card', 'callback_data' => 'giftcard_sell']], [['text' => '🔎 Check purchase status', 'callback_data' => 'cmd_giftcard_status']]]]);
+    }
+
+    private function handleGiftCardStatusCommand(int $chatId, string $query = ''): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (!$user) {
+            $this->sendMessage($chatId, 'Link your KayXchange account first to check your private gift-card purchases.');
+            return;
+        }
+        $message = app(\App\Services\GiftCardStatusService::class)->forUser($user, $query);
+        $this->sendMessage($chatId, $message, null, ['inline_keyboard' => [[['text' => 'Open gift-card history', 'url' => $this->telegramAppUrl() . '/gift-cards']]]]);
     }
 
     private function handleGiftCardPurchaseStart(int $chatId): void
@@ -2031,7 +2075,37 @@ class TelegramService
         $token = (string) Str::uuid();
         $this->setData($chatId, ['giftcard_rate_id' => $rate->id, 'giftcard_token' => $token]);
         $this->setState($chatId, 'giftcard_face_value');
+        if (\App\Services\GiftCardPurchaseService::isDenominationCard($rate)) {
+            $rows = [];
+            $row = [];
+            $purchaseService = app(GiftCardPurchaseService::class);
+            foreach ($purchaseService->denominationsFor($rate) as $denomination) {
+                $quote = $purchaseService->quote($rate, (float) $denomination);
+                $row[] = [
+                    'text' => '$' . number_format($denomination, 0) . ' · ₦' . number_format($quote['base_total_ngn'], 0),
+                    'callback_data' => 'giftcard_denom:' . $denomination,
+                ];
+                if (count($row) === 3) { $rows[] = $row; $row = []; }
+            }
+            if ($row) $rows[] = $row;
+            $this->sendMessage($chatId, "Selected: *{$rate->name} · USA*\nChoose a supported face value. Prices use ₦" . number_format($purchaseService->quote($rate, 2)['ngn_per_usd'], 2) . " per USD. Admin service fee ₦" . number_format((float) ($rate->purchase_markup_ngn ?? 0), 2) . " is added to the total at review.", 'Markdown', ['inline_keyboard' => $rows]);
+            return;
+        }
         $this->sendMessage($chatId, "Selected: *{$rate->name} · {$rate->country}*\nEnter the card face value in *{$rate->currency}* (between 1 and 10,000). Example: `100`.", 'Markdown');
+    }
+
+    private function handleGiftCardDenominationSelected(int $chatId, float $denomination): void
+    {
+        $data = $this->getData($chatId);
+        $rate = GiftCardRate::query()->whereKey($data['giftcard_rate_id'] ?? 0)->where('is_active', true)->first();
+        if (!$rate || !\App\Services\GiftCardPurchaseService::isValidDenomination($rate, $denomination)) {
+            $this->sendMessage($chatId, 'That denomination is not available for this card. Start again with /giftcards.');
+            return;
+        }
+        $quote = app(GiftCardPurchaseService::class)->quote($rate, $denomination);
+        $this->mergeData($chatId, ['giftcard_face_value' => $denomination]);
+        $this->setState($chatId, 'giftcard_recipient_email');
+        $this->sendMessage($chatId, "Selected *$" . number_format($denomination, 2) . "* · Base value ₦" . number_format($quote['base_total_ngn'], 2) . " · Service fee ₦" . number_format($quote['service_fee_ngn'], 2) . " · Total ₦" . number_format($quote['total_ngn'], 2) . "\n\nEnter the recipient email address.", 'Markdown');
     }
 
     private function handleGiftCardFaceValueInput(int $chatId, string $text): void
@@ -2041,6 +2115,10 @@ class TelegramService
         $rate = GiftCardRate::query()->whereKey($data['giftcard_rate_id'] ?? 0)->where('is_active', true)->first();
         if (!$rate || $value < 1 || $value > 10000) {
             $this->sendMessage($chatId, 'Enter a face value from 1 to 10,000, or use /cancel to stop.');
+            return;
+        }
+        if (!\App\Services\GiftCardPurchaseService::isValidDenomination($rate, $value)) {
+            $this->sendMessage($chatId, 'Please choose one of the listed USA Apple denominations using the buttons above.');
             return;
         }
         $this->mergeData($chatId, ['giftcard_face_value' => round($value, 2)]);
@@ -2172,12 +2250,14 @@ class TelegramService
                     "`/usd_wallet` — Open your read-only crypto portfolio valuation\n" .
                     "`/deposit_status` — Refresh your latest crypto deposit status\n" .
                     "`/giftcards` — Choose to buy or sell a USA/UK gift card\n" .
+                    "`/giftcard_status` — Check recent gift-card purchase status\n" .
                     "`/buygiftcard` — Buy with rate review and transaction PIN confirmation\n" .
                     "`/sellgiftcard` — Submit a card for admin verification (NGN credit only after approval)\n" .
                     "`/features` — Wallets, withdrawals, swaps, bills, gift cards, portfolio and support\n" .
-                    "`/rates` — View live NGN buy & sell rates\n" .
+                    "`/rates` — View current KayXchange NGN buy & sell rates\n" .
                     "`/balance` — Check your account balance\n" .
-                    "`/trades` — View your last 5 trades\n\n" .
+                    "`/transactions` or `/trades` — View recent deposits, withdrawals, trades, swaps, bills and gift cards\n\n" .
+                    "You can message KAI in English or Nigerian Pidgin.\n\n" .
                     "🔒 *Security*\n" .
                     "Transaction PIN is required before every buy or sell trade.\n" .
                     "Wrong PIN 5× = 15-minute lockout. Set/change your PIN on the website.\n\n" .
@@ -2245,24 +2325,23 @@ class TelegramService
     private function handleRatesCommand($chatId)
     {
         try {
-            $rates = CryptoRate::all();
+            $rates = CryptoRate::query()->orderBy('coin')->get();
 
             if ($rates->isEmpty()) {
                 $this->sendMessage($chatId, "⚠️ Rates are currently unavailable. Please try again shortly.");
                 return;
             }
 
-            $message = "📊 *KayXchange Rates*\n_NGN per \\$1 USD_\n\n";
+            $message = "📊 KayXchange platform rates\nNGN per $1 USD · Buy from us / Sell to us\n\n";
 
             foreach ($rates as $rate) {
                 $coin = strtoupper($rate->coin);
                 $buy  = number_format($rate->buy_rate);
                 $sell = number_format($rate->sell_rate);
-                $message .= "🪙 *{$coin}*\n";
-                $message .= "  Buy: ₦{$buy} | Sell: ₦{$sell}\n\n";
+                $message .= "🪙 {$coin}\n  Buy: ₦{$buy} | Sell: ₦{$sell}\n\n";
             }
 
-            $message .= "_Updated: " . now()->format('d M Y, H:i') . "_";
+            $message .= "Updated: " . now()->timezone('Africa/Lagos')->format('d M Y, H:i') . " WAT\nRates can change before a transaction is confirmed.";
 
             $keyboard = [
                 'inline_keyboard' => [[
@@ -2271,7 +2350,7 @@ class TelegramService
                 ]],
             ];
 
-            $this->sendMessage($chatId, $message, 'Markdown', $keyboard);
+            $this->sendMessage($chatId, $message, null, $keyboard);
         } catch (\Exception $e) {
             Log::error('handleRatesCommand error', ['error' => $e->getMessage()]);
             $this->sendMessage($chatId, "❌ Could not fetch rates. Please try again.");
@@ -3256,7 +3335,7 @@ class TelegramService
     }
 
     /**
-     * Handle /trades command - show user's last 5 trades
+     * Handle /trades, /history, and /transactions - show recent account activity.
      */
     private function handleTradesCommand($chatId)
     {
@@ -3269,44 +3348,32 @@ class TelegramService
             return;
         }
 
-        $buys  = BuyTrade::where('user_id', $user->id)->latest()->take(5)->get();
-        $sells = SellTrade::where('user_id', $user->id)->latest()->take(5)->get();
+        $transactions = app(ChatTransactionHistoryService::class)->recent($user, 8);
 
-        // Merge and sort by created_at, take latest 5
-        $trades = $buys->map(fn($t) => ['type' => 'Buy', 'coin' => $t->coin, 'amount' => $t->naira_amount, 'status' => $t->status, 'date' => $t->created_at])
-            ->merge($sells->map(fn($t) => ['type' => 'Sell', 'coin' => $t->coin, 'amount' => $t->naira_amount, 'status' => $t->status, 'date' => $t->created_at]))
-            ->sortByDesc('date')
-            ->take(5);
-
-        if ($trades->isEmpty()) {
-            $this->sendMessage($chatId, "📭 You have no trades yet.\n\nUse /buy or /sell to get started!");
-            return;
-        }
-
-        $message = "📋 *Your Recent Trades*\n\n";
-        foreach ($trades as $trade) {
-            $statusEmoji = match(strtolower($trade['status'])) {
-                'completed', 'approved', 'successful' => '✅',
-                'pending' => '⏳',
-                'cancelled', 'rejected' => '❌',
-                default => '🔄',
-            };
-            $amount = number_format($trade['amount'], 2);
-            $date   = $trade['date']->format('d M, H:i');
-            $message .= "{$statusEmoji} *{$trade['type']} {$trade['coin']}* — ₦{$amount}\n";
-            $message .= "   Status: {$trade['status']} | {$date}\n\n";
+        $message = "📋 Recent transactions and account activity\n\n";
+        if ($transactions->isEmpty()) {
+            $message .= "No transactions yet. Use /buy, /sell, /deposit or /withdraw to get started.\n\n";
+        } else {
+            foreach ($transactions as $transaction) {
+                $icon = app(ChatTransactionHistoryService::class)->statusIcon($transaction['status']);
+                $date = $transaction['date']?->timezone('Africa/Lagos')->format('d M, H:i') ?? 'Date unavailable';
+                $message .= "{$icon} {$transaction['label']} — {$transaction['amount']}\n";
+                $message .= "   Status: {$transaction['status']} · {$date}";
+                if ($transaction['reference']) $message .= "\n   Ref: {$transaction['reference']}";
+                $message .= "\n\n";
+            }
         }
 
         $appUrl = $this->telegramAppUrl();
-        $message .= "📜 Full History: {$appUrl}/dashboard";
+        $message .= "📜 Full transaction history: {$appUrl}/transactions/history";
 
         $keyboard = [
             'inline_keyboard' => [[
-                $this->linkButton('📜 Full History', '/dashboard', 'cmd_start'),
+                $this->linkButton('📜 Full transaction history', '/transactions/history', 'cmd_transactions'),
             ]],
         ];
 
-        $this->sendMessage($chatId, $message, 'Markdown', $keyboard);
+        $this->sendMessage($chatId, $message, null, $keyboard);
     }
 
     /**
@@ -3330,21 +3397,23 @@ class TelegramService
                 ],
             ];
             $this->sendMessage($chatId,
-                "🤔 I didn't catch that.\n\n" .
-                "Want to ask KAI, the AI assistant? Tap *🤖 Ask AI* below, or use one of these commands:\n\n" .
+                "🤔 I couldn't quite understand that.\n\n" .
+                "Want to ask KAI, the AI assistant? Tap 🤖 Ask AI below. You can chat in English or Nigerian Pidgin, for example: “Abeg, show my balance.”\n\n" .
                 "• /buy — Buy cryptocurrency\n" .
                 "• /sell — Sell cryptocurrency\n" .
-                "• /rates — View live rates\n" .
-                "• /balance — Check balance\n" .
-                "• /help — All commands",
+                "• /rates — View platform rates\n" .
+                "• /balance — Check your balances\n" .
+                "• /transactions — View deposits, withdrawals, trades, swaps, bills and gift cards\n" .
+                "• /help — See all commands",
                 'Markdown',
                 $keyboard
             );
         } else {
-            $message = "🤔 *I didn't understand that command.*\n\n" .
+            $message = "🤔 I couldn't quite understand that.\n\n" .
                       "Try one of these:\n" .
                       "• Send me your email address to link your account\n" .
                       "• Type /help for available commands\n" .
+                      "• You can use English or Nigerian Pidgin\n" .
                       "• Type /start to begin setup\n\n" .
                       "How can I help you today? 😊";
             $this->sendMessage($chatId, $message);

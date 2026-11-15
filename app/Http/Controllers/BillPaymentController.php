@@ -172,7 +172,7 @@ class BillPaymentController extends Controller
             $row = BillPayment::query()->lockForUpdate()->findOrFail($payment->id);
             $allowed = $requiresReview ? ['approved'] : ['validated'];
             if (!in_array($row->status, $allowed, true)) throw ValidationException::withMessages(['bill'=>'This bill has already been submitted or is not approved.']);
-            $settlement->adjustNgnBalance((int)$row->user_id, -(float)$row->amount);
+            $settlement->adjustNgnBalance((int)$row->user_id, -(float)$row->amount, 'bill_payment.debit', $row->reference);
             $row->status = 'processing';
             $row->save();
             return $row;
@@ -194,7 +194,7 @@ class BillPaymentController extends Controller
                 $row->receipt_token = data_get($response,'purchased_code') ?? data_get($response,'content.token') ?? data_get($response,'content.transactions.token');
                 $row->status = $status;
                 if ($status === 'failed') {
-                    $settlement->adjustNgnBalance((int)$row->user_id, (float)$row->amount);
+                    $settlement->adjustNgnBalance((int)$row->user_id, (float)$row->amount, 'bill_payment.refund', $row->reference);
                     $row->status = 'failed_refunded';
                     $row->refunded_at = now();
                 }
@@ -237,7 +237,7 @@ class BillPaymentController extends Controller
                 $row->status = $status;
                 if ($status === 'failed') {
                     if (!$row->refunded_at) {
-                        $settlement->adjustNgnBalance((int)$row->user_id, (float)$row->amount);
+                        $settlement->adjustNgnBalance((int)$row->user_id, (float)$row->amount, 'bill_payment.refund', $row->reference);
                         $row->refunded_at = now();
                     }
                     $row->status = 'failed_refunded';
@@ -297,7 +297,7 @@ class BillPaymentController extends Controller
                 $row->status = $status;
                 if ($status === 'failed') {
                     if (!$row->refunded_at) {
-                        $settlement->adjustNgnBalance((int)$row->user_id, (float)$row->amount);
+                        $settlement->adjustNgnBalance((int)$row->user_id, (float)$row->amount, 'bill_payment.refund', $row->reference);
                         $row->refunded_at = now();
                     }
                     $row->status = 'failed_refunded';

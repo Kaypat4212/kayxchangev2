@@ -633,4 +633,43 @@ class WalletController extends Controller
 
         return view('wallet.history', compact('deposits', 'withdrawals', 'awaitingCount', 'ledgerEntries', 'ledgerReady'));
     }
+
+    public function nairaActivity(Request $request)
+    {
+        $user = $request->user();
+        $ledgerReady = \Illuminate\Support\Facades\Schema::hasTable('wallet_ledger_entries');
+        $filters = $request->validate([
+            'direction' => ['nullable', 'in:credit,debit'],
+            'source' => ['nullable', 'string', 'max:64'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'q' => ['nullable', 'string', 'max:100'],
+        ]);
+        $entries = $ledgerReady
+            ? \App\Models\WalletLedgerEntry::query()->where('user_id', $user->id)->where('currency', 'NGN')
+            : null;
+
+        if ($entries && !empty($filters['direction'])) $entries->where('entry_type', $filters['direction']);
+        if ($entries && !empty($filters['source'])) $entries->where('source', $filters['source']);
+        if ($entries && !empty($filters['from'])) $entries->whereDate('created_at', '>=', $filters['from']);
+        if ($entries && !empty($filters['to'])) $entries->whereDate('created_at', '<=', $filters['to']);
+        if ($entries && !empty($filters['q'])) {
+            $needle = trim($filters['q']);
+            $entries->where(function ($query) use ($needle) {
+                $query->where('reference', 'like', "%{$needle}%")
+                    ->orWhere('source', 'like', "%{$needle}%")
+                    ->orWhere('metadata', 'like', "%{$needle}%");
+            });
+        }
+        $sourceOptions = $ledgerReady
+            ? \App\Models\WalletLedgerEntry::query()->where('user_id', $user->id)->where('currency', 'NGN')->whereNotNull('source')->distinct()->orderBy('source')->pluck('source')
+            : collect();
+        $activity = $entries
+            ? $entries->latest()->paginate(20)->withQueryString()
+            : new \Illuminate\Pagination\LengthAwarePaginator([], 0, 20, \Illuminate\Pagination\Paginator::resolveCurrentPage(), [
+                'path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
+            ]);
+
+        return view('wallet.naira-activity', compact('activity', 'ledgerReady', 'sourceOptions', 'filters'));
+    }
 }

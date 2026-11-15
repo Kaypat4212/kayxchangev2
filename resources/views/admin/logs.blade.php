@@ -56,7 +56,7 @@
     @endif
 
     <section class="card bg-dark border-danger border-opacity-25 mb-4">
-        <div class="card-header border-danger border-opacity-25 d-flex justify-content-between align-items-center text-light"><span><i class="bi bi-exclamation-octagon me-2 text-danger"></i>Error and exception entries</span><span class="badge text-bg-danger">{{ $errorCount ?? 0 }} in latest excerpt</span></div>
+        <div class="card-header border-danger border-opacity-25 d-flex justify-content-between align-items-center flex-wrap gap-2 text-light"><span><i class="bi bi-exclamation-octagon me-2 text-danger"></i>Error and exception entries</span><div class="d-flex align-items-center gap-2"><span class="badge text-bg-danger">{{ $errorCount ?? 0 }} in latest excerpt</span>@if(!empty($errorLines))<button class="btn btn-sm btn-outline-light" type="button" id="copyErrorsButton"><i class="bi bi-clipboard me-1"></i>Copy errors</button>@endif</div></div>
         <div class="card-body p-0"><pre class="m-0 p-3 text-light" style="max-height:38vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem">{{ !empty($errorLines) ? implode("\n", $errorLines) : 'No error-level entries found in the latest excerpt.' }}</pre></div>
         <div class="card-footer border-secondary small text-secondary">This section filters the sanitized excerpt shown below. New application errors are written to the selected Laravel log automatically.</div>
     </section>
@@ -89,6 +89,22 @@ document.getElementById('copyLogButton')?.addEventListener('click', async functi
         document.body.appendChild(temp); temp.select();
         const copied = document.execCommand('copy'); temp.remove();
         if (status) status.textContent = copied ? 'Sanitized log excerpt copied.' : 'Copy failed. Select and copy the log text manually.';
+    }
+});
+document.getElementById('copyErrorsButton')?.addEventListener('click', async function () {
+    const text = @json(implode("\n", $errorLines ?? []));
+    const status = document.getElementById('copyLogStatus');
+    try {
+        await navigator.clipboard.writeText(text);
+        if (status) status.textContent = 'Sanitized error entries copied.';
+    } catch (error) {
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        temp.setAttribute('readonly', '');
+        temp.style.position = 'fixed'; temp.style.opacity = '0';
+        document.body.appendChild(temp); temp.select();
+        const copied = document.execCommand('copy'); temp.remove();
+        if (status) status.textContent = copied ? 'Sanitized error entries copied.' : 'Copy failed. Select and copy the error text manually.';
     }
 });
 </script>

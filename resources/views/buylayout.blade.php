@@ -39,6 +39,7 @@
     </style>
     <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=mobile-scale-20261114">
     @stack('styles')
+    @include('components.loading-overlay-styles')
 </head>
 <body>
     @include('components.navbar')
@@ -58,7 +59,7 @@
     </nav>
     @endauth
 
-    <div id="loader"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>
+    @include('components.loading-overlay')
 
     <div class="container-xl py-4">
         @yield('content')

@@ -146,12 +146,14 @@
     }
     </style>
     <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=mobile-scale-20261114">
+    @include('components.loading-overlay-styles')
     @stack('styles')
 </head>
 
 <body>
 
     @include('components.navbar')
+    @include('components.loading-overlay')
 
     <!-- ══ Mobile Bottom Navigation (visible ≤ 992px) ══ -->
     @auth

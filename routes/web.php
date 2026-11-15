@@ -217,6 +217,7 @@ Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () 
     Route::get('/withdraw',  [\App\Http\Controllers\WalletController::class, 'withdraw'])->name('withdraw');
     Route::post('/withdraw', [\App\Http\Controllers\WalletController::class, 'createWithdrawal'])->name('withdraw.create');
     Route::get('/history',   [\App\Http\Controllers\WalletController::class, 'history'])->name('history');
+    Route::get('/naira-activity', [\App\Http\Controllers\WalletController::class, 'nairaActivity'])->name('naira-activity');
 
     Route::get('/send',      [\App\Http\Controllers\P2pTransferController::class, 'showSend'])->name('send');
     Route::post('/send',     [\App\Http\Controllers\P2pTransferController::class, 'send'])->name('send.post');
@@ -517,6 +518,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::delete('/gift-card-rates/{id}', [AdminGiftCardRateController::class, 'destroy'])->name('admin.gift-card-rates.destroy');
     Route::get('/gift-card-orders', [AdminGiftCardOrderController::class, 'index'])->name('admin.gift-card-orders.index');
     Route::post('/gift-card-orders/{order}/complete', [AdminGiftCardOrderController::class, 'complete'])->middleware('throttle:15,1')->name('admin.gift-card-orders.complete');
+    Route::post('/gift-card-orders/{order}/notify', [AdminGiftCardOrderController::class, 'notify'])->middleware('throttle:15,1')->name('admin.gift-card-orders.notify');
     Route::post('/gift-card-orders/{order}/reject', [AdminGiftCardOrderController::class, 'reject'])->middleware('throttle:15,1')->name('admin.gift-card-orders.reject');
     Route::get('/gift-card-sales', [\App\Http\Controllers\Admin\AdminGiftCardSaleController::class, 'index'])->name('admin.gift-card-sales.index');
     Route::get('/gift-card-sales/{order}/image', [\App\Http\Controllers\Admin\AdminGiftCardSaleController::class, 'image'])->name('admin.gift-card-sales.image');
@@ -813,6 +815,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('settings',                    [\App\Http\Controllers\Admin\AdminSettingsController::class, 'index'])->name('settings.index');
     Route::post('settings',                   [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('settings.update');
     Route::post('settings/branding', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateBranding'])->middleware('throttle:5,1')->name('settings.branding');
+    Route::post('settings/loader-theme', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateLoaderTheme'])->name('settings.loader-theme');
     Route::post('settings/nowpayments-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPayments'])->middleware('throttle:5,1')->name('settings.nowpayments-test');
     Route::post('settings/nowpayments-api-key-preview', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'previewNowPaymentsApiKey'])->middleware('throttle:3,1')->name('settings.nowpayments-api-key-preview');
     Route::post('settings/nowpayments-ipn-secret-preview', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'previewNowPaymentsIpnSecret'])->middleware('throttle:3,1')->name('settings.nowpayments-ipn-secret-preview');

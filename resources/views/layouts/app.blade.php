@@ -31,10 +31,12 @@
     .kx-bnav-center-lbl { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); font-size:0.6rem; color:rgba(255,255,255,0.4); white-space:nowrap; }
     </style>
     <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=mobile-scale-20261114">
+    @include('components.loading-overlay-styles')
     @stack('styles')
 </head>
 <body>
     @include('components.navbar')
+    @include('components.loading-overlay')
 
     @auth
     <nav class="kx-bottom-nav" aria-label="Mobile navigation">

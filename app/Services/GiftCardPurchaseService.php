@@ -18,10 +18,37 @@ use RuntimeException;
 
 class GiftCardPurchaseService
 {
+    /** Customer face values published for the USA Apple/iTunes card. */
+    public static function denominations(): array
+    {
+        return array_merge(range(2, 20), [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 125, 150, 200, 225, 250, 275, 300, 325, 350, 375, 400, 450, 500]);
+    }
+
+    public static function isDenominationCard(GiftCardRate $rate): bool
+    {
+        return strtoupper((string) $rate->country) === 'US'
+            && strtoupper((string) $rate->currency) === 'USD'
+            && (str_contains(mb_strtolower((string) $rate->name), 'apple') || str_contains(mb_strtolower((string) $rate->name), 'itunes'));
+    }
+
+    public function denominationsFor(GiftCardRate $rate): array
+    {
+        return self::isDenominationCard($rate) ? self::denominations() : [];
+    }
+
+    public static function isValidDenomination(GiftCardRate $rate, float $faceValue): bool
+    {
+        return !self::isDenominationCard($rate)
+            || in_array($faceValue, array_map(static fn ($value) => (float) $value, self::denominations()), true);
+    }
+
     public function quote(GiftCardRate $rate, float $faceValue): array
     {
         if ($faceValue < 1 || $faceValue > 10000 || $rate->sell_rate <= 0 || $rate->usd_exchange_rate <= 0) {
             throw new GiftCardPurchaseException('This card or face value is not available.');
+        }
+        if (!self::isValidDenomination($rate, $faceValue)) {
+            throw new GiftCardPurchaseException('Choose one of the available USA Apple card denominations from $2 to $500.');
         }
         $usdFaceValue = round($faceValue * (float) $rate->usd_exchange_rate, 2);
         $baseNgn = round($faceValue * (float) $rate->sell_rate, 2);

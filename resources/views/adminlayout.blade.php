@@ -92,6 +92,7 @@
             color: #f9fafb !important;
         }
     </style>
+    @include('components.loading-overlay-styles')
 </head>
 
 <body class="kx-admin-body">
@@ -99,9 +100,7 @@
     @include('components.admin-navbar')
 
     <!-- Loader -->
-    <div id="loader">
-        <p>Loading...</p>
-    </div>
+    @include('components.loading-overlay')
 
     <!-- Content Section -->
     <main class="kx-admin-shell container-fluid">

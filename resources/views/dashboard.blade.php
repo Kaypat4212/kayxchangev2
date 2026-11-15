@@ -89,6 +89,9 @@
     body.light-mode .kx-balance-amount { color:#0a2a0a; }
     .kx-balance-sub { font-size:0.75rem; color:rgba(255,255,255,0.3); }
     body.light-mode .kx-balance-sub { color:rgba(0,80,0,0.4); }
+    .kx-balance-activity-link{position:relative;z-index:2;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid rgba(0,204,0,.25);border-radius:99px;background:rgba(0,204,0,.1);color:#70e890;text-decoration:none;font-weight:700;transition:transform .18s ease,background .18s ease}
+    .kx-balance-activity-link:hover{transform:translateY(-1px);background:rgba(0,204,0,.2);color:#a5ffba}
+    body.light-mode .kx-balance-activity-link{color:#087a27;background:rgba(0,140,30,.08);border-color:rgba(0,120,30,.22)}
     .kx-usd-equiv {
         display:inline-flex; align-items:center; gap:.25rem;
         background:rgba(0,204,0,0.08); border:1px solid rgba(0,204,0,0.18);
@@ -379,6 +382,7 @@
                     <div class="kx-balance-amount">₦{{ number_format(Auth::user()->balance, 2) }}</div>
                     <div class="kx-balance-sub" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                         <span>KayXchange Naira Wallet</span>
+                        <a href="{{ route('wallet.naira-activity') }}" class="kx-balance-activity-link" title="View Naira wallet activity" aria-label="View Naira wallet activity"><i class="bi bi-clock-history"></i><span>Activity</span></a>
                     </div>
                     <div class="kx-bal-actions">
                         <a href="{{ route('deposits.index') }}" class="kx-bal-btn kx-bal-dep">

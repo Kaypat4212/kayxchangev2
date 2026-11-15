@@ -34,6 +34,7 @@
             transform: translate(-50%, -50%);
         }
     </style>
+    @include('components.loading-overlay-styles')
 </head>
 
 <body class="bg-light">
@@ -41,9 +42,7 @@
     @include('components.admin-navbar')
 
     <!-- Loader -->
-    <div id="loader">
-        <p>Loading...</p>
-    </div>
+    @include('components.loading-overlay')
 
     <!-- Content Section -->
     <div class="container" style="margin-top: 120px;">

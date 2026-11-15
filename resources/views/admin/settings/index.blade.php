@@ -43,15 +43,34 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 .kx-switch input:checked + .kx-slider::before{transform:translateX(24px);background:var(--kx-green);}
 .kx-switch-state{font-size:.78rem;font-weight:700;color:var(--kx-muted);letter-spacing:.04em;}
 .kx-switch-state.on{color:var(--kx-green);}
+.kx-settings-shell{max-width:1240px;margin-inline:auto;padding-inline:clamp(.65rem,2vw,1.25rem)}
+.kx-page-header{position:relative;overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,.22)}
+.kx-page-header:after{content:'';position:absolute;width:260px;height:260px;right:-90px;top:-145px;border-radius:50%;background:rgba(0,204,0,.13);filter:blur(2px);pointer-events:none}
+.kx-page-header .header-actions{position:relative;z-index:1;display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1.1rem}
+.kx-page-header .header-actions a{border-radius:10px;font-weight:650}
+.kx-card{box-shadow:0 12px 32px rgba(0,0,0,.12);transition:border-color .2s,transform .2s}
+.kx-card:hover{border-color:rgba(0,204,0,.19)}
+.group-tab{position:sticky;top:72px;z-index:20;padding:.55rem;background:rgba(13,17,23,.92);backdrop-filter:blur(14px);border:1px solid var(--kx-border);border-radius:14px;overflow-x:auto;scrollbar-width:thin}
+.group-tab a{white-space:nowrap;display:inline-flex;align-items:center;gap:.45rem;padding:.65rem 1rem}
+.group-section{scroll-margin-top:140px}
+.field-row{grid-template-columns:minmax(180px,260px) minmax(0,1fr)}
+.field-input input,.field-input textarea,.field-input select{min-height:44px}
+.settings-savebar{position:sticky;bottom:12px;z-index:15;padding:.7rem;background:rgba(22,27,39,.94);border:1px solid var(--kx-border);border-radius:14px;backdrop-filter:blur(12px);box-shadow:0 10px 28px rgba(0,0,0,.28)}
+.settings-savebar .btn{min-height:44px}
+@media(max-width:767.98px){.kx-settings-shell{padding-inline:.5rem}.kx-page-header{padding:20px}.kx-card{padding:1rem}.field-row{grid-template-columns:1fr;gap:.45rem;padding:.75rem 0}.group-tab{top:58px}.group-tab a{padding:.58rem .8rem}.settings-savebar{bottom:6px}.settings-savebar form,.settings-savebar button{width:100%}}
 </style>
 @endpush
 
 @section('content')
-<div class="container-fluid py-4" style="max-width:1100px">
+<div class="container-fluid py-4 kx-settings-shell">
 
     <div class="kx-page-header">
         <h1><i class="bi bi-sliders me-2" style="color:var(--kx-green)"></i>Platform Settings & API Keys</h1>
         <p>Manage integration keys for Cloudflare, AI chatbot, payments, and Telegram. Encrypted fields are stored securely.</p>
+        <div class="header-actions">
+            <a class="btn btn-sm btn-outline-light" href="{{ route('admin.logs.index') }}"><i class="bi bi-file-earmark-text me-1"></i>Open error logs · copy errors</a>
+            <span class="badge rounded-pill text-bg-success align-self-center"><i class="bi bi-shield-lock me-1"></i>Admin-only settings</span>
+        </div>
     </div>
 
     @if(session('success'))
@@ -79,14 +98,28 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             @error('favicon')<span class="text-danger small">{{ $message }}</span>@enderror
         </form>
     </section>
+    <section class="kx-card" aria-labelledby="loader-theme-title">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(145deg,#123f28,#0c1a13);color:#69ef9a;font-size:1.4rem"><i class="bi bi-stars"></i></div>
+            <div class="flex-grow-1"><h2 id="loader-theme-title" class="h5 fw-bold mb-1">Platform loading experience</h2><p class="field-desc mb-0">Keep the original classic spinner or switch every user and admin page to the seasonal, animated 2027 festive intro.</p></div>
+        </div>
+        <form method="POST" action="{{ route('admin.settings.loader-theme') }}" class="mt-3 d-flex gap-2 flex-wrap align-items-center">
+            @csrf
+            <select class="form-select" name="loader_theme" aria-label="Platform loader theme" style="max-width:300px">
+                <option value="classic" {{ ($siteLoaderTheme ?? 'classic') === 'classic' ? 'selected' : '' }}>Classic loader</option>
+                <option value="festive" {{ ($siteLoaderTheme ?? 'classic') === 'festive' ? 'selected' : '' }}>Festive 2027 intro</option>
+            </select>
+            <button class="btn px-4 fw-bold" type="submit" style="background:var(--kx-green);color:#081108;border-radius:10px"><i class="bi bi-check2-circle me-1"></i>Apply loader</button>
+        </form>
+    </section>
 
     {{-- Tab bar --}}
     <div class="group-tab">
-        <a href="#cloudflare" class="active" onclick="showGroup('cloudflare',this)">☁️ Cloudflare</a>
-        <a href="#ai"         onclick="showGroup('ai',this)">🤖 AI Chatbot</a>
-        <a href="#payment"    onclick="showGroup('payment',this)">💳 Payment</a>
-        <a href="#telegram"   onclick="showGroup('telegram',this)">✈️ Telegram</a>
-        <a href="#general"    onclick="showGroup('general',this)">⚙️ General</a>
+        <a href="#cloudflare" class="active" onclick="showGroup('cloudflare',this,event)"><i class="bi bi-cloud"></i> Cloudflare</a>
+        <a href="#ai" onclick="showGroup('ai',this,event)"><i class="bi bi-stars"></i> AI Chatbot</a>
+        <a href="#payment" onclick="showGroup('payment',this,event)"><i class="bi bi-credit-card"></i> Payment</a>
+        <a href="#telegram" onclick="showGroup('telegram',this,event)"><i class="bi bi-telegram"></i> Telegram</a>
+        <a href="#general" onclick="showGroup('general',this,event)"><i class="bi bi-gear"></i> General</a>
     </div>
 
     <form method="POST" action="{{ route('admin.settings.update') }}">
@@ -489,9 +522,10 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             @endforeach
         </div>
 
-        <div class="d-flex gap-3 mt-2">
+        <div class="settings-savebar d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+            <span class="small text-secondary"><i class="bi bi-info-circle me-1"></i>Blank credential inputs keep the saved value. Use dedicated clear controls to erase credentials.</span>
             <button type="submit" class="btn px-4 py-2 fw-bold" style="background:var(--kx-green);color:#081108;border-radius:10px;">
-                <i class="bi bi-floppy me-1"></i>Save All Settings
+                <i class="bi bi-floppy me-1"></i>Save settings
             </button>
         </div>
     </form>
@@ -530,12 +564,13 @@ function credentialReplacementTyped(input) {
     if (clearCheckbox?.checked) clearCheckbox.checked = false;
 }
 
-function showGroup(name, el) {
+function showGroup(name, el, ev) {
     document.querySelectorAll('.group-section').forEach(s => s.style.display = 'none');
     document.querySelectorAll('.group-tab a').forEach(a => a.classList.remove('active'));
     document.getElementById('group-' + name).style.display = '';
     el.classList.add('active');
-    event.preventDefault();
+    ev?.preventDefault();
+    history.replaceState(null, '', '#' + name);
 }
 
 async function cfAction(action) {

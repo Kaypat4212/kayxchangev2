@@ -25,6 +25,9 @@ class GiftCardOrder extends Model
         'effective_ngn_per_usd' => 'decimal:2',
         'delivery_code' => 'encrypted',
         'processed_at' => 'datetime',
+        'delivery_email_sent_at' => 'datetime',
+        'buyer_email_sent_at' => 'datetime',
+        'delivery_telegram_sent_at' => 'datetime',
     ];
 
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
