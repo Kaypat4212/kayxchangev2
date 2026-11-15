@@ -1874,6 +1874,19 @@
         body.light-mode .kx-bp-excerpt { color:rgba(0,0,0,.5); }
         body.light-mode .kx-bp-date { color:rgba(0,0,0,.38); }
         body.light-mode .kx-bp-footer { border-color:rgba(0,0,0,.07); }
+        [data-bs-theme="light"] .kx-bp-card { background:#fff; border-color:rgba(16,42,24,.10); }
+        [data-bs-theme="light"] .kx-bp-title,
+        body.light-mode .kx-bp-title { color:#102418; }
+        [data-bs-theme="light"] .kx-bp-excerpt,
+        body.light-mode .kx-bp-excerpt { color:#4b5b50; }
+        [data-bs-theme="light"] .kx-bp-date,
+        body.light-mode .kx-bp-date { color:#647268; }
+        [data-bs-theme="light"] .kx-bp-cat,
+        body.light-mode .kx-bp-cat { color:#087a2b; background:rgba(0,130,40,.08); border-color:rgba(0,130,40,.20); }
+        [data-bs-theme="light"] .kx-bp-read,
+        body.light-mode .kx-bp-read { color:#087a2b; }
+        [data-bs-theme="light"] .kx-bp-footer,
+        body.light-mode .kx-bp-footer { border-color:rgba(16,42,24,.10); }
         </style>
 
         <div class="kx-bp-grid" data-aos="fade-up" data-aos-delay="100">

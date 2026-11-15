@@ -169,12 +169,29 @@ class AdminController extends Controller
         $totalReferrals = Referral::count();
         $totalReferralRewards = Referral::where('status', 'completed')->sum('reward_amount');
         $siteMode = AdminSetting::getSetting('runtime_mode', 'production');
+        $pendingCounts = $this->dashboardPendingCounts();
+        $newUsersThisMonth = User::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count();
 
-        // Cryptomus statistics
-        $cryptomusEnabled = AdminSetting::getSetting('cryptomus_enabled', '0') === '1';
+        // Swap totals are shown alongside the provider feature switches.
         $totalConversions = Schema::hasTable('conversions') ? Conversion::count() : 0;
         $pendingConversions = Schema::hasTable('conversions') ? Conversion::where('status', 'pending')->count() : 0;
         $completedConversions = Schema::hasTable('conversions') ? Conversion::where('status', 'completed')->count() : 0;
+        $depositProvider = (string) AdminSetting::getSetting('crypto_deposit_provider', 'auto');
+        $nowPaymentsActive = AdminSetting::getSetting('nowpayments_enabled', '0') === '1';
+        $cryptomusActive = AdminSetting::getSetting('cryptomus_enabled', '0') === '1';
+        $cryptoDepositsEnabled = match ($depositProvider) {
+            'nowpayments' => $nowPaymentsActive,
+            'cryptomus' => $cryptomusActive,
+            default => $nowPaymentsActive || $cryptomusActive,
+        };
+        $cryptoDepositProviderName = $cryptoDepositsEnabled
+            ? match ($depositProvider) {
+                'nowpayments' => 'NOWPayments',
+                'cryptomus' => 'Cryptomus',
+                default => ($nowPaymentsActive ? 'NOWPayments' : 'Cryptomus') . ' · Automatic',
+            }
+            : 'No active provider';
+        $swapEnabled = AdminSetting::getSetting('nowpayments_conversion_enabled', '0') === '1';
 
         $cryptoRates = Schema::hasTable('crypto_rates')
             ? CryptoRate::all()->map(fn($r) => ['coin' => $r->coin, 'buy_rate' => $r->buy_rate, 'sell_rate' => $r->sell_rate])->values()
@@ -186,11 +203,47 @@ class AdminController extends Controller
             'totalReferralRewards',
             'siteMode',
             'cryptoRates',
-            'cryptomusEnabled',
             'totalConversions',
             'pendingConversions',
-            'completedConversions'
+            'completedConversions',
+            'pendingCounts',
+            'newUsersThisMonth',
+            'cryptoDepositsEnabled',
+            'cryptoDepositProviderName',
+            'swapEnabled'
         ));
+    }
+
+    private function dashboardPendingCounts(): array
+    {
+        $counts = [
+            'pending_withdrawals' => Withdrawal::where('status', 'pending')->count(),
+            'pending_kyc' => Kyc::where('status', 'pending')->count(),
+            'pending_buy_trades' => BuyTrade::where('status', 'pending')->count(),
+            'pending_sell_trades' => SellTrade::where('status', 'pending')->count(),
+            'pending_deposits' => Schema::hasTable('deposits') ? Deposit::where('status', 'pending')->count() : 0,
+            'crypto_deposits_review' => 0,
+            'crypto_withdrawals' => 0,
+            'bill_requests' => 0,
+            'open_support' => 0,
+        ];
+
+        if (Schema::hasTable('crypto_deposits')) {
+            $counts['crypto_deposits_review'] = \App\Models\CryptoDeposit::where('status', 'awaiting_admin_review')->count()
+                + \App\Models\CryptoDeposit::where('status', 'pending')->where('payment_data->provider', 'manual')->count();
+        }
+        if (Schema::hasTable('crypto_withdrawals')) {
+            $counts['crypto_withdrawals'] = \App\Models\CryptoWithdrawal::where('status', 'pending')->count();
+        }
+        if (Schema::hasTable('bill_payments')) {
+            $counts['bill_requests'] = \App\Models\BillPayment::where('status', 'pending')->count();
+        }
+        if (Schema::hasTable('support_cases')) {
+            $counts['open_support'] = \App\Models\SupportCase::whereIn('status', ['open', 'in_progress'])->count();
+        }
+
+        $counts['pending_trades'] = $counts['pending_buy_trades'] + $counts['pending_sell_trades'];
+        return $counts;
     }
 
     public function toggleSiteMode(Request $request)
@@ -223,17 +276,7 @@ class AdminController extends Controller
     public function getPendingCounts()
     {
         try {
-            $pendingWithdrawals = Withdrawal::where('status', 'pending')->count();
-            $pendingKyc = Kyc::where('status', 'pending')->count();
-            $pendingBuyTrades = BuyTrade::where('status', 'pending')->count();
-            $pendingSellTrades = SellTrade::where('status', 'pending')->count();
-            $pendingTrades = $pendingBuyTrades + $pendingSellTrades;
-
-            return response()->json([
-                'pending_withdrawals' => $pendingWithdrawals,
-                'pending_kyc' => $pendingKyc,
-                'pending_trades' => $pendingTrades,
-            ]);
+            return response()->json($this->dashboardPendingCounts());
         } catch (\Exception $e) {
             Log::error('Error fetching pending counts: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to fetch counts'], 500);

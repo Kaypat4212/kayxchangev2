@@ -218,6 +218,39 @@
     .kx-alert-success { background: rgba(0,204,0,0.1); border: 1px solid rgba(0,204,0,0.25); color: var(--kx-green); border-radius: 8px; padding: 10px 14px; font-size: 0.85rem; }
     .kx-alert-error   { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: var(--kx-danger); border-radius: 8px; padding: 10px 14px; font-size: 0.85rem; }
 
+    .admin-dashboard { max-width: 1600px; margin: 0 auto; padding: clamp(14px,2vw,28px); }
+    .kx-welcome { border-radius: 22px; padding: clamp(22px,3vw,34px); box-shadow: 0 18px 48px rgba(0,0,0,.22); }
+    .kx-welcome-title { font-size: clamp(1.3rem,2.2vw,1.8rem); }
+    .kx-welcome-sub { margin-top: 6px; }
+    .kx-overview-label { color:#80e9a3; font-size:.7rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; margin-bottom:8px; }
+    .kx-overview-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:20px; }
+    .kx-overview-actions .btn-kx-outline { min-height:40px; padding:8px 13px; }
+    .kx-queue-card { min-height:116px; position:relative; overflow:hidden; }
+    .kx-queue-card .kx-queue-number { margin-left:auto; font-size:1.35rem; font-weight:800; color:#fff; }
+    .kx-queue-card .kx-nav-card-title { font-size:.88rem; }
+    .kx-queue-card .kx-nav-card-sub { line-height:1.45; }
+    .kx-section-heading { display:flex; align-items:end; justify-content:space-between; gap:12px; margin:30px 0 14px; }
+    .kx-section-heading h2 { color:#fff; font-weight:800; font-size:1.12rem; margin:0; }
+    .kx-section-heading p { color:var(--kx-muted); font-size:.78rem; margin:4px 0 0; }
+    .kx-stat { border-radius:16px; min-height:100px; padding:18px; }
+    .kx-panel { border-radius:18px; box-shadow:0 14px 34px rgba(0,0,0,.12); }
+    .kx-panel-header { padding:16px 20px; }
+    .kx-panel-body { padding:20px; }
+    .kx-nav-card { border-radius:14px; }
+    .kx-config-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .kx-config-grid .kx-nav-card { min-width:0; }
+    .kx-admin-module-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+    @media(max-width:767px){
+        .admin-dashboard { padding:12px; }
+        .kx-overview-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .kx-overview-actions > * { justify-content:center; }
+        .kx-queue-card { min-height:94px; padding:14px; gap:10px; }
+        .kx-queue-card .kx-stat-icon { width:38px;height:38px;font-size:1rem; }
+        .kx-queue-card .kx-queue-number { font-size:1.15rem; }
+        .kx-section-heading { align-items:flex-start; flex-direction:column; }
+        .kx-config-grid { grid-template-columns:1fr; }
+    }
+
     .kx-spin { display: none; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.3); border-top-color: #000; border-radius: 50%; animation: kxspin 0.7s linear infinite; flex-shrink: 0; }
     @keyframes kxspin { to { transform: rotate(360deg); } }
 
@@ -300,6 +333,7 @@
     </div>
 </div>
 
+<div class="admin-dashboard">
 <!-- WELCOME BAR -->
 <div class="kx-welcome">
     <div class="row align-items-center">
@@ -311,6 +345,12 @@
             <div class="kx-welcome-sub">
                 KayXchange Admin Panel &nbsp;&middot;&nbsp;
                 <span id="kx-clock"></span>
+            </div>
+            <div class="kx-overview-actions">
+                <a href="{{ route('admin.operations') }}" class="btn-kx-outline"><i class="bi bi-heart-pulse"></i>Operations health</a>
+                <a href="{{ route('admin.transactions.index') }}" class="btn-kx-outline"><i class="bi bi-clock-history"></i>All transactions</a>
+                <a href="{{ route('admin.support-cases.index') }}" class="btn-kx-outline"><i class="bi bi-headset"></i>Support inbox</a>
+                <a href="{{ route('admin.settings.index') }}" class="btn-kx-outline"><i class="bi bi-sliders"></i>Platform settings</a>
             </div>
         </div>
         <div class="col-auto d-none d-md-flex gap-2 align-items-center">
@@ -342,9 +382,27 @@
     </div>
 </div>
 
+<div class="kx-section-heading mt-0">
+    <div><h2>Needs your attention</h2><p>Live review queues across payments, accounts, and customer support.</p></div>
+    <span class="small text-secondary"><i class="bi bi-arrow-repeat me-1"></i>Refreshes every 30 seconds</span>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3"><a href="{{ route('admin.deposits.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon blue"><i class="bi bi-cash-coin"></i></div><div><div class="kx-nav-card-title">NGN deposits</div><div class="kx-nav-card-sub">Awaiting review</div></div><span class="kx-queue-number" id="stat-deposits">{{ $pendingCounts['pending_deposits'] ?? 0 }}</span></a></div>
+    <div class="col-6 col-xl-3"><a href="{{ route('admin.manual-crypto-deposits.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon purple"><i class="bi bi-currency-bitcoin"></i></div><div><div class="kx-nav-card-title">Crypto deposits</div><div class="kx-nav-card-sub">Need admin review</div></div><span class="kx-queue-number" id="stat-crypto-deposits">{{ $pendingCounts['crypto_deposits_review'] ?? 0 }}</span></a></div>
+    <div class="col-6 col-xl-3"><a href="{{ route('admin.withdrawals') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon orange"><i class="bi bi-bank"></i></div><div><div class="kx-nav-card-title">Withdrawals</div><div class="kx-nav-card-sub">Awaiting payout approval</div></div><span class="kx-queue-number" id="stat-withdrawals">{{ $pendingCounts['pending_withdrawals'] ?? 0 }}</span></a></div>
+    <div class="col-6 col-xl-3"><a href="{{ route('admin.trades') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon red"><i class="bi bi-arrow-left-right"></i></div><div><div class="kx-nav-card-title">Buy &amp; sell trades</div><div class="kx-nav-card-sub">Pending decisions</div></div><span class="kx-queue-number" id="stat-trades">{{ $pendingCounts['pending_trades'] ?? 0 }}</span></a></div>
+    <div class="col-6 col-xl-3"><a href="{{ route('admin.crypto-withdrawals.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon amber"><i class="bi bi-send-check"></i></div><div><div class="kx-nav-card-title">Crypto payouts</div><div class="kx-nav-card-sub">Pending crypto withdrawals</div></div><span class="kx-queue-number" id="stat-crypto-withdrawals">{{ $pendingCounts['crypto_withdrawals'] ?? 0 }}</span></a></div>
+    <div class="col-6 col-xl-3"><a href="{{ route('admin.bill-payments.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon green"><i class="bi bi-receipt"></i></div><div><div class="kx-nav-card-title">Bill requests</div><div class="kx-nav-card-sub">Pending payment requests</div></div><span class="kx-queue-number" id="stat-bills">{{ $pendingCounts['bill_requests'] ?? 0 }}</span></a></div>
+    <div class="col-6 col-xl-3"><a href="{{ url('/admin/kyc') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon blue"><i class="bi bi-patch-check"></i></div><div><div class="kx-nav-card-title">KYC review</div><div class="kx-nav-card-sub">Documents to verify</div></div><span class="kx-queue-number" id="stat-kyc">{{ $pendingCounts['pending_kyc'] ?? 0 }}</span></a></div>
+    <div class="col-6 col-xl-3"><a href="{{ route('admin.support-cases.index') }}" class="kx-nav-card kx-queue-card"><div class="kx-stat-icon red"><i class="bi bi-chat-square-text"></i></div><div><div class="kx-nav-card-title">Open support cases</div><div class="kx-nav-card-sub">Customer replies needed</div></div><span class="kx-queue-number" id="stat-support">{{ $pendingCounts['open_support'] ?? 0 }}</span></a></div>
+</div>
+
+<div class="kx-section-heading">
+    <div><h2>Platform overview</h2><p>Account growth and trading activity at a glance.</p></div>
+</div>
 <!-- KPI STAT CARDS -->
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-4 col-lg-2">
+    <div class="col-6 col-md-4 col-xl">
         <div class="kx-stat">
             <div class="kx-stat-icon green"><i class="bi bi-people-fill"></i></div>
             <div>
@@ -353,7 +411,7 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-4 col-lg-2">
+    <div class="col-6 col-md-4 col-xl">
         <div class="kx-stat">
             <div class="kx-stat-icon amber"><i class="bi bi-share-fill"></i></div>
             <div>
@@ -362,7 +420,7 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-4 col-lg-2">
+    <div class="col-6 col-md-4 col-xl">
         <div class="kx-stat">
             <div class="kx-stat-icon purple"><i class="bi bi-gift-fill"></i></div>
             <div>
@@ -371,36 +429,9 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-4 col-lg-2">
-        <a href="{{ url('/admin/withdrawals') }}" class="kx-stat">
-            <div class="kx-stat-icon orange"><i class="bi bi-arrow-up-circle-fill"></i></div>
-            <div>
-                <div class="kx-stat-val" id="stat-withdrawals">&#8212;</div>
-                <div class="kx-stat-label">Withdrawals</div>
-            </div>
-        </a>
-    </div>
-    <div class="col-6 col-md-4 col-lg-2">
-        <a href="{{ url('/admin/kyc') }}" class="kx-stat">
-            <div class="kx-stat-icon blue"><i class="bi bi-patch-check-fill"></i></div>
-            <div>
-                <div class="kx-stat-val" id="stat-kyc">&#8212;</div>
-                <div class="kx-stat-label">KYC Pending</div>
-            </div>
-        </a>
-    </div>
-    <div class="col-6 col-md-4 col-lg-2">
-        <a href="{{ url('/admin/trades') }}" class="kx-stat">
-            <div class="kx-stat-icon red"><i class="bi bi-hourglass-split"></i></div>
-            <div>
-                <div class="kx-stat-val" id="stat-trades">&#8212;</div>
-                <div class="kx-stat-label">Pending Trades</div>
-            </div>
-        </a>
-    </div>
-    <div class="col-6 col-md-4 col-lg-2">
+    <div class="col-6 col-md-4 col-xl">
         <div class="kx-stat" style="cursor: default;">
-            <div class="kx-stat-icon {{ $cryptomusEnabled ? 'green' : 'purple' }}">
+            <div class="kx-stat-icon {{ $swapEnabled ? 'green' : 'purple' }}">
                 <i class="bi bi-currency-bitcoin"></i>
             </div>
             <div>
@@ -409,8 +440,14 @@
             </div>
         </div>
     </div>
+    <div class="col-6 col-md-4 col-xl">
+        <div class="kx-stat"><div class="kx-stat-icon blue"><i class="bi bi-person-plus-fill"></i></div><div><div class="kx-stat-val">{{ $newUsersThisMonth ?? 0 }}</div><div class="kx-stat-label">New this month</div></div></div>
+    </div>
 </div>
 
+<div class="kx-section-heading">
+    <div><h2>Operations shortcuts</h2><p>Jump straight to the work that keeps the platform moving.</p></div>
+</div>
 <!-- QUICK NAV -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
@@ -516,20 +553,20 @@
             </div>
         </div>
 
-        {{-- Cryptomus Status Panel --}}
+        {{-- Crypto services panel --}}
         <div class="kx-panel">
             <div class="kx-panel-header">
-                <h5><i class="bi bi-currency-bitcoin me-2" style="color:{{ $cryptomusEnabled ? 'var(--kx-green)' : 'var(--kx-muted)' }}"></i>Cryptomus Status</h5>
-                <span class="badge {{ $cryptomusEnabled ? 'bg-success' : 'bg-secondary' }}" style="font-size:0.7rem;">
-                    {{ $cryptomusEnabled ? 'Enabled' : 'Disabled' }}
+                <h5><i class="bi bi-currency-bitcoin me-2" style="color:{{ $cryptoDepositsEnabled || $swapEnabled ? 'var(--kx-green)' : 'var(--kx-muted)' }}"></i>Crypto services</h5>
+                <span class="badge {{ $cryptoDepositsEnabled ? 'bg-success' : 'bg-secondary' }}" style="font-size:0.7rem;">
+                    {{ $cryptoDepositProviderName }}
                 </span>
             </div>
             <div class="kx-panel-body">
-                @if($cryptomusEnabled)
+                @if($cryptoDepositsEnabled || $swapEnabled)
                     <div class="row g-3">
                         <div class="col-4 text-center">
                             <div style="font-size:1.5rem;font-weight:700;color:var(--kx-green);">{{ $totalConversions }}</div>
-                            <div style="font-size:0.75rem;color:var(--kx-muted);">Total</div>
+                            <div style="font-size:0.75rem;color:var(--kx-muted);">Total swaps</div>
                         </div>
                         <div class="col-4 text-center">
                             <div style="font-size:1.5rem;font-weight:700;color:var(--kx-amber);">{{ $pendingConversions }}</div>
@@ -542,19 +579,20 @@
                     </div>
                     <div class="mt-3 pt-3 border-top border-dark">
                         <div class="d-flex justify-content-between align-items-center">
-                            <span style="font-size:0.85rem;color:var(--kx-text);">Crypto Payments</span>
-                            <span class="badge bg-success" style="font-size:0.7rem;">Active</span>
+                            <span style="font-size:0.85rem;color:var(--kx-text);">Crypto deposits</span>
+                            <span class="badge {{ $cryptoDepositsEnabled ? 'bg-success' : 'bg-secondary' }}" style="font-size:0.7rem;">{{ $cryptoDepositsEnabled ? 'Active' : 'Off' }}</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mt-2">
                             <span style="font-size:0.85rem;color:var(--kx-text);">Swaps</span>
-                            <span class="badge bg-success" style="font-size:0.7rem;">Active</span>
+                            <span class="badge {{ $swapEnabled ? 'bg-success' : 'bg-secondary' }}" style="font-size:0.7rem;">{{ $swapEnabled ? 'Active' : 'Off' }}</span>
                         </div>
                     </div>
                 @else
                     <div class="text-center py-3">
                         <i class="bi bi-currency-bitcoin" style="font-size:2rem;color:var(--kx-muted);margin-bottom:0.5rem;"></i>
-                        <div style="color:var(--kx-muted);font-size:0.9rem;">Cryptomus is disabled</div>
-                        <div style="color:var(--kx-muted);font-size:0.8rem;margin-top:0.25rem;">Enable in Settings → Payment</div>
+                        <div style="color:var(--kx-muted);font-size:0.9rem;">Crypto deposit and swap services are currently off</div>
+                        <div style="color:var(--kx-muted);font-size:0.8rem;margin-top:0.25rem;">Review payment provider settings to enable them.</div>
+                        <a href="{{ route('admin.settings.index') }}#payment" class="btn-kx-outline mt-3"><i class="bi bi-sliders"></i>Payment settings</a>
                     </div>
                 @endif
             </div>
@@ -637,7 +675,7 @@
                     </div>
                     <i class="bi bi-chevron-right ms-auto" style="color:var(--kx-muted)"></i>
                 </a>
-                @if($cryptomusEnabled)
+                @if($swapEnabled)
                 <a href="{{ route('admin.conversions.index') }}" class="kx-nav-card" style="padding:14px;height:auto">
                     <div class="kx-stat-icon green" style="width:38px;height:38px;font-size:1rem"><i class="bi bi-arrow-left-right"></i></div>
                     <div>
@@ -664,7 +702,7 @@
                     <div class="col-6"><a href="{{ url('/admin/notifications') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-bell me-1"></i>Notifications</a></div>
                     <div class="col-6"><a href="{{ url('/admin/crypto-rates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-currency-bitcoin me-1"></i>Crypto Rates</a></div>
                     <div class="col-6"><a href="{{ url('/admin/gift-card-rates') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-gift me-1"></i>Gift Card Rates</a></div>
-                    @if($cryptomusEnabled)
+                    @if($swapEnabled)
                     <div class="col-6"><a href="{{ route('admin.conversions.index') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-arrow-left-right me-1"></i>Swaps</a></div>
                     @endif
                     <div class="col-6"><a href="{{ url('/admin/blog') }}" class="btn-kx-outline w-100 justify-content-center"><i class="bi bi-journal-richtext me-1"></i>Blog</a></div>
@@ -698,6 +736,7 @@
         <div id="ai-report-out" style="margin-top:1rem;font-size:.84rem;color:var(--kx-text);line-height:1.75;"></div>
     </div>
 </div>
+</div><!-- /.admin-dashboard -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -800,9 +839,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const w = data.pending_withdrawals || 0;
             const k = data.pending_kyc        || 0;
             const t = data.pending_trades     || 0;
-            document.getElementById('stat-withdrawals').textContent = w;
-            document.getElementById('stat-kyc').textContent         = k;
-            document.getElementById('stat-trades').textContent      = t;
+            const setCount = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+            setCount('stat-withdrawals', w);
+            setCount('stat-kyc', k);
+            setCount('stat-trades', t);
+            setCount('stat-deposits', data.pending_deposits || 0);
+            setCount('stat-crypto-deposits', data.crypto_deposits_review || 0);
+            setCount('stat-crypto-withdrawals', data.crypto_withdrawals || 0);
+            setCount('stat-bills', data.bill_requests || 0);
+            setCount('stat-support', data.open_support || 0);
             document.getElementById('nav-withdrawals-text').textContent = w ? w + ' pending' : 'All clear';
             document.getElementById('nav-kyc-text').textContent         = k ? k + ' pending' : 'All clear';
             document.getElementById('nav-trades-text').textContent      = t ? t + ' pending' : 'All clear';
