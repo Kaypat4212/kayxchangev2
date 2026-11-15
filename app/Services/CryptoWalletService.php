@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\CryptoDeposit;
 use App\Models\AdminSetting;
 use App\Models\WalletLedgerEntry;
+use App\Models\CryptoRate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +35,11 @@ class CryptoWalletService
     public function createUserCryptoWallets(User $user): void
     {
         $supportedCryptos = ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL'];
+        if (Schema::hasTable('crypto_rates')) {
+            $configured = CryptoRate::query()->pluck('coin')->map(fn ($coin) => strtoupper(trim((string) $coin)))
+                ->filter(fn ($coin) => preg_match('/^[A-Z0-9]{2,10}$/', $coin) && !in_array($coin, ['NGN', 'USD', 'EUR'], true));
+            $supportedCryptos = array_values(array_unique(array_merge($supportedCryptos, $configured->all())));
+        }
 
         foreach ($supportedCryptos as $crypto) {
             Wallet::firstOrCreate([
@@ -56,13 +62,14 @@ class CryptoWalletService
         $networks = [
             'BTC' => 'BTC',
             'ETH' => 'ERC20',
+            'LTC' => 'LTC',
             'USDT' => 'TRC20',
             'USDC' => 'ERC20',
             'BNB' => 'BEP20',
             'SOL' => 'SOL',
         ];
 
-        return $networks[$crypto] ?? 'ERC20';
+        return $networks[$crypto] ?? 'UNSPECIFIED';
     }
 
     /**
@@ -70,6 +77,8 @@ class CryptoWalletService
      */
     public function getUserWallets(User $user): \Illuminate\Database\Eloquent\Collection
     {
+        // Provision newly configured assets for existing users as well as new users.
+        $this->createUserCryptoWallets($user);
         return $user->wallets()->where('is_active', true)->get();
     }
 
@@ -629,6 +638,7 @@ class CryptoWalletService
             'USDC' => ['name' => 'USD Coin', 'networks' => ['ERC20', 'BEP20']],
             'BNB' => ['name' => 'Binance Coin', 'networks' => ['BEP20']],
             'SOL' => ['name' => 'Solana', 'networks' => ['SOL']],
+            'LTC' => ['name' => 'Litecoin', 'networks' => ['LTC']],
         ];
     }
 
@@ -701,7 +711,7 @@ class CryptoWalletService
             'BTC'=>['BTC'=>'btc'], 'ETH'=>['ERC20'=>'eth'],
             'USDT'=>['TRC20'=>'usdttrc20','ERC20'=>'usdterc20','BEP20'=>'usdtbsc'],
             'USDC'=>['ERC20'=>'usdcerc20','BEP20'=>'usdcbsc'],
-            'BNB'=>['BEP20'=>'bnbbsc'], 'SOL'=>['SOL'=>'sol'],
+            'BNB'=>['BEP20'=>'bnbbsc'], 'SOL'=>['SOL'=>'sol'], 'LTC'=>['LTC'=>'ltc'],
         ];
         $code = $map[strtoupper($currency)][strtoupper($network)] ?? null;
         if (!$code) throw new \RuntimeException('That asset and network combination is not supported by NOWPayments.');

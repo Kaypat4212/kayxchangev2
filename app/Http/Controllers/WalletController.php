@@ -104,6 +104,7 @@ class WalletController extends Controller
     public function usd(CryptoTradeRateService $tradeRates)
     {
         $user = Auth::user();
+        $this->cryptoWalletService->getUserWallets($user);
         $wallets = $user->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->orderBy('currency')->get();
         $market = app(ExchangeRateService::class)->getUsdRates();
         $marketPrices = [];
@@ -120,8 +121,9 @@ class WalletController extends Controller
         $configuredSellRate = (float) AdminSetting::getSetting('usd_wallet_sell_rate_ngn', 0);
         $sellRate = $configuredSellRate > 0 ? $configuredSellRate : (float) ($usdtRates['sell_rate'] ?? 0);
         $marketStale = (bool) ($market['_stale'] ?? false);
+        $marketChanges = (array) ($market['_change_24h'] ?? []);
         $minimumWithdrawalNgn = (float) config('withdrawal.minimum', 10);
-        return view('wallet.usd', compact('wallets', 'marketPrices', 'portfolioValueUsd', 'valuationComplete', 'marketStale', 'sellRate', 'minimumWithdrawalNgn'));
+        return view('wallet.usd', compact('wallets', 'marketPrices', 'marketChanges', 'portfolioValueUsd', 'valuationComplete', 'marketStale', 'sellRate', 'minimumWithdrawalNgn'));
     }
 
     public function withdrawUsdToNaira(Request $request, CryptoTradeRateService $tradeRates)
@@ -221,6 +223,7 @@ class WalletController extends Controller
 
     public function crypto(\App\Services\CryptoTradeRateService $tradeRates)
     {
+        $this->cryptoWalletService->getUserWallets(Auth::user());
         $wallets = Auth::user()->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->orderBy('currency')->get();
         $rates = $tradeRates->rates($wallets->pluck('currency')->map(fn ($coin) => strtoupper($coin))->all());
         $completedDeposits = CryptoDeposit::where('user_id', Auth::id())->where('status', 'completed')->get(['currency', 'received_amount', 'payment_data']);

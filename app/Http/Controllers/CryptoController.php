@@ -171,16 +171,18 @@ class CryptoController extends Controller
         $billPaymentsEnabled = $billService->billPaymentsEnabled() && $billService->providers() !== [];
         $utilityPaymentsEnabled = $billPaymentsEnabled && $billService->utilityPaymentsEnabled();
         $currentUser = Auth::user();
+        app(\App\Services\CryptoWalletService::class)->getUserWallets($currentUser);
+        $cryptoWallets = $currentUser->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->orderBy('currency')->get();
         $cryptoPortfolioUsd = 0.0;
         $cryptoPortfolioComplete = true;
-        foreach ($currentUser->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->get() as $cryptoWallet) {
+        foreach ($cryptoWallets as $cryptoWallet) {
             $asset = strtoupper((string) $cryptoWallet->currency);
             if (is_numeric($walletMarket[$asset] ?? null)) $cryptoPortfolioUsd += (float) $cryptoWallet->balance * (float) $walletMarket[$asset];
             elseif ((float) $cryptoWallet->balance > 0) $cryptoPortfolioComplete = false;
         }
         if (!$cryptoPortfolioComplete) $cryptoPortfolioUsd = null;
         $cryptoPortfolioStale = (bool) ($walletMarket['_stale'] ?? false);
-        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts', 'billPaymentsEnabled', 'utilityPaymentsEnabled', 'cryptoPortfolioUsd', 'cryptoPortfolioStale', 'recentActivities', 'totalTradeCount', 'pendingCount'));
+        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts', 'billPaymentsEnabled', 'utilityPaymentsEnabled', 'cryptoPortfolioUsd', 'cryptoPortfolioStale', 'cryptoWallets', 'recentActivities', 'totalTradeCount', 'pendingCount'));
     }
 
     public function buy()

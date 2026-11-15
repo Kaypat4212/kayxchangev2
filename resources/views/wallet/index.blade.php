@@ -35,7 +35,7 @@
     </div>
     @if($wallet->address)<div class="kw-note text-truncate mt-2" title="{{ $wallet->address }}">{{ $wallet->address }}</div>@endif
     @if($isMultiNetworkUsdt)<div class="kw-note mt-2">USDT balance is shared across TRC20, ERC20 and BEP20 deposits. Choose the matching network on each deposit invoice.</div>@endif
-    @php($assetNetworks=['BTC'=>['BTC'],'ETH'=>['ERC20'],'USDT'=>['TRC20','ERC20','BEP20'],'USDC'=>['ERC20','BEP20'],'BNB'=>['BEP20'],'SOL'=>['SOL']][$currency] ?? [])
+    @php($assetNetworks=['BTC'=>['BTC'],'ETH'=>['ERC20'],'LTC'=>['LTC'],'USDT'=>['TRC20','ERC20','BEP20'],'USDC'=>['ERC20','BEP20'],'BNB'=>['BEP20'],'SOL'=>['SOL']][$currency] ?? [])
     @php($suggestedNetwork=in_array(strtoupper((string)$wallet->network),$assetNetworks,true)?strtoupper($wallet->network):($assetNetworks[0]??''))
     <div class="kw-asset-actions"><a href="{{ route('wallet.deposit', ['currency'=>$currency,'network'=>$suggestedNetwork]) }}">Deposit</a><a href="{{ route('wallet.withdraw', ['currency'=>$currency,'network'=>$suggestedNetwork]) }}">Withdraw · coming soon</a></div>
    </article></div>
