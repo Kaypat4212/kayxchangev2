@@ -9,7 +9,16 @@
 <main class="usd-page">
  <header class="usd-hero mb-4"><div class="small text-info fw-bold text-uppercase">Crypto portfolio value</div><h1 class="h2 fw-bold mt-2">USD portfolio</h1><p class="usd-muted mb-4">This is the live USD estimate of crypto held in your wallets. It is not a second balance. Withdraw by choosing the crypto wallets to convert into your Naira wallet.</p><div class="usd-balance">${{ number_format((float)$portfolioValueUsd, 2) }} <span class="fs-5 text-info">USD</span></div><div class="usd-muted">{{ $marketStale ? 'Latest available estimate · prices may be stale' : 'Estimated portfolio value at current market prices' }} @if(!$valuationComplete)<span class="text-warning">· Some assets could not be priced</span>@endif</div></header>
 <section aria-labelledby="asset-wallet-title" class="mb-4">
-  <div class="usd-section-head"><div><div class="small text-success text-uppercase fw-bold">Your assets</div><h2 id="asset-wallet-title">Crypto wallet balances</h2></div><span class="usd-muted small">@if($marketStale)<i class="bi bi-clock-history me-1"></i>Last known prices@else<span class="usd-live-dot"></span>Market prices available@endif</span></div>
+  <div class="usd-section-head">
+   <div><div class="small text-success text-uppercase fw-bold">Your assets</div><h2 id="asset-wallet-title">Crypto wallet balances</h2></div>
+   <span class="usd-muted small">
+    @if($marketStale)
+     <i class="bi bi-clock-history me-1"></i>Last known prices
+    @else
+     <span class="usd-live-dot"></span>Market prices available
+    @endif
+   </span>
+  </div>
   @if($wallets->isNotEmpty())
   <div class="usd-wallet-grid">
    @foreach($wallets as $assetWallet)

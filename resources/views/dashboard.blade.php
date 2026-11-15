@@ -402,8 +402,10 @@
                     </div>
                     <div aria-label="Crypto wallet balances" style="display:flex;gap:.5rem;overflow-x:auto;padding:.8rem 1px .2rem;scrollbar-width:thin">
                         @foreach(($cryptoWallets ?? collect()) as $cryptoWallet)
-                            @php($assetSymbol = strtoupper((string)$cryptoWallet->currency))
-                            @php($assetIcon = ['BTC'=>'bi-currency-bitcoin','LTC'=>'bi-lightning-charge-fill','ETH'=>'bi-gem','USDT'=>'bi-cash-coin','USDC'=>'bi-cash-coin','BNB'=>'bi-hexagon-fill','SOL'=>'bi-sun-fill'][$assetSymbol] ?? 'bi-coin')
+                            @php
+                                $assetSymbol = strtoupper((string) $cryptoWallet->currency);
+                                $assetIcon = ['BTC' => 'bi-currency-bitcoin', 'LTC' => 'bi-lightning-charge-fill', 'ETH' => 'bi-gem', 'USDT' => 'bi-cash-coin', 'USDC' => 'bi-cash-coin', 'BNB' => 'bi-hexagon-fill', 'SOL' => 'bi-sun-fill'][$assetSymbol] ?? 'bi-coin';
+                            @endphp
                             <div title="{{ $assetSymbol }} available balance" style="display:flex;align-items:center;gap:.4rem;flex:0 0 auto;padding:.42rem .62rem;border-radius:11px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);font-size:.73rem;transition:transform .2s ease,border-color .2s ease" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='rgba(0,204,0,.4)'" onmouseout="this.style.transform='';this.style.borderColor='rgba(255,255,255,.08)'">
                                 <i class="bi {{ $assetIcon }}" style="color:#62e58a"></i><strong>{{ $assetSymbol }}</strong><span style="color:rgba(255,255,255,.68)">{{ number_format((float)$cryptoWallet->balance,8) }}</span>
                             </div>

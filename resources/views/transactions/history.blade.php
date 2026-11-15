@@ -343,7 +343,16 @@
                 @php
                     $typClass = 'kx-type-'.($trade->type ?? 'other');
                     $stsClass = 'kx-sts-'.($trade->status ?? 'other');
-                    $typIcon  = $trade->type==='gift_card_purchase' ? 'bi-gift-fill' : ($trade->type==='crypto_swap' ? 'bi-arrow-left-right' : ($trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle'))))));
+                    $tradeType = (string) ($trade->type ?? '');
+                    $typIcon = match ($tradeType) {
+                        'gift_card_purchase', 'gift_card_sale' => 'bi-gift-fill',
+                        'crypto_swap', 'transfer' => 'bi-arrow-left-right',
+                        'buy' => 'bi-arrow-down-circle-fill',
+                        'sell' => 'bi-arrow-up-circle-fill',
+                        'withdrawal', 'crypto_withdrawal' => 'bi-bank',
+                        'bill_payment' => 'bi-receipt',
+                        default => str_contains($tradeType, 'deposit') ? 'bi-box-arrow-in-down' : 'bi-circle',
+                    };
                     $walletLabel = in_array($trade->type, ['buy', 'sell']) ? ($trade->wallet_address ?? '—') : '—';
                     if($trade->payment_method && $trade->type==='withdrawal'){
                         $bd = json_decode($trade->payment_method,true);
@@ -402,7 +411,16 @@
         @php
             $typClass = 'kx-type-'.($trade->type ?? 'other');
             $stsClass = 'kx-sts-'.($trade->status ?? 'other');
-                    $typIcon  = $trade->type==='gift_card_purchase' ? 'bi-gift-fill' : ($trade->type==='crypto_swap' ? 'bi-arrow-left-right' : ($trade->type==='buy' ? 'bi-arrow-down-circle-fill' : ($trade->type==='sell' ? 'bi-arrow-up-circle-fill' : ($trade->type==='withdrawal' ? 'bi-bank' : (str_contains($trade->type,'deposit') ? 'bi-box-arrow-in-down' : ($trade->type==='transfer' ? 'bi-arrow-left-right' : ($trade->type==='bill_payment' ? 'bi-receipt' : 'bi-circle'))))));
+                    $tradeType = (string) ($trade->type ?? '');
+                    $typIcon = match ($tradeType) {
+                        'gift_card_purchase', 'gift_card_sale' => 'bi-gift-fill',
+                        'crypto_swap', 'transfer' => 'bi-arrow-left-right',
+                        'buy' => 'bi-arrow-down-circle-fill',
+                        'sell' => 'bi-arrow-up-circle-fill',
+                        'withdrawal', 'crypto_withdrawal' => 'bi-bank',
+                        'bill_payment' => 'bi-receipt',
+                        default => str_contains($tradeType, 'deposit') ? 'bi-box-arrow-in-down' : 'bi-circle',
+                    };
         @endphp
         <div class="kx-tx-card">
             <div class="kx-tx-card-top">
