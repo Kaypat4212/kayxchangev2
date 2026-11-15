@@ -131,7 +131,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
             @elseif($convertMode === 'manual')
                 <i class="bi bi-person-gear"></i> Manual Mode
             @elseif($convertMode === 'nowpayments')
-                <i class="bi bi-shield-check"></i> NOWPayments Custody Swap
+                <i class="bi bi-shield-check"></i> Secure Wallet Swap
             @else
                 <i class="bi bi-lightning-charge"></i> Instant Swap
             @endif
@@ -148,7 +148,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     @if($convertMode === 'nowpayments' && !$swapReady)
     <div class="notice-warn">
         <i class="bi bi-exclamation-triangle-fill"></i>
-        <div>NOWPayments wallet swaps are not enabled yet. An administrator must configure the Custody credentials and enable swaps.</div>
+        <div>Wallet swaps are temporarily unavailable. Please check back later.</div>
     </div>
     @endif
 
@@ -161,7 +161,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 
     <div class="notice-warn" style="align-items:flex-start">
         <i class="bi bi-shield-check"></i>
-        <div><strong>Swap limits</strong><br>Per transaction: <strong>${{ number_format($swapLimits['minimum_usd'], 2) }} – ${{ number_format($swapLimits['maximum_usd'], 2) }} USD</strong>. The limit uses the live USD estimate and is checked again before submission. Swaps may also pause if verified provider reserves are insufficient.</div>
+        <div><strong>Swap limits</strong><br>Per transaction: <strong>${{ number_format($swapLimits['minimum_usd'], 2) }} – ${{ number_format($swapLimits['maximum_usd'], 2) }} USD</strong>. The limit uses the live USD estimate and is checked again before submission. Swaps may pause temporarily when liquidity is limited.</div>
     </div>
 
     {{-- Swap Form --}}
@@ -220,7 +220,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
             {{-- Quote breakdown --}}
             <div class="quote-box" id="quoteBox">
                 <div class="quote-row"><span class="k">Rate</span><span class="v" id="qRate">—</span></div>
-                <div class="quote-row"><span class="k">{{ $convertMode === 'nowpayments' ? 'Total fee (including provider fee)' : 'Fee' }} · {{ rtrim(rtrim(number_format($feePercent, 2), '0'), '.') }}%</span><span class="v amber" id="qFee">—</span></div>
+                <div class="quote-row"><span class="k">{{ $convertMode === 'nowpayments' ? 'Total swap fee' : 'Fee' }} · {{ rtrim(rtrim(number_format($feePercent, 2), '0'), '.') }}%</span><span class="v amber" id="qFee">—</span></div>
                 <div class="quote-row"><span class="k">You receive</span><span class="v green" id="qReceive">—</span></div>
             </div>
 
@@ -266,23 +266,13 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     </div>
     @endif
 
-    {{-- Swap provider --}}
-    @if($convertMode === 'nowpayments')
     <div class="crypto-info">
         <div class="crypto-info-icon"><i class="bi bi-arrow-left-right"></i></div>
-        <div class="crypto-info-text"><h6>Powered by NOWPayments Custody</h6><p>Swaps are completed from platform Custody liquidity. Your wallet balance is reserved until provider confirmation.</p></div>
-    </div>
-    @else
-    <div class="crypto-info">
-        <div class="crypto-info-icon">
-            <img src="{{ asset('assets/img/cryptomus-logo.svg') }}" alt="Cryptomus" style="width:100%;height:100%;object-fit:contain;border-radius:4px;" onerror="this.parentElement.textContent='C'">
-        </div>
         <div class="crypto-info-text">
-            <h6>Powered by Cryptomus</h6>
-            <p>Secure cryptocurrency swaps at a live quoted rate</p>
+            <h6>Secure crypto swaps</h6>
+            <p>Your source balance stays reserved while the swap is processing. It is credited or restored when the result is confirmed.</p>
         </div>
     </div>
-    @endif
 
     {{-- Recent Swaps --}}
     @if($recentConversions->isNotEmpty())

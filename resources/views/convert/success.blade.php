@@ -32,7 +32,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     {{-- Header --}}
     <div class="kx-hero">
         <h1><i class="bi bi-arrow-left-right me-2"></i>{{ $conversion->status === 'completed' ? 'Swap complete' : ($conversion->status === 'failed' ? 'Swap update' : 'Swap in progress') }}</h1>
-        <p>{{ $conversion->mode === 'nowpayments' && $conversion->status !== 'completed' ? 'We are checking the provider status and will update your wallets after confirmation.' : 'Your cryptocurrency swap status and details' }}</p>
+        <p>{{ $conversion->mode === 'nowpayments' && $conversion->status !== 'completed' ? 'We are confirming your swap and will update your wallets when its status changes.' : 'Your cryptocurrency swap status and details' }}</p>
     </div>
 
     {{-- Success Card --}}
@@ -72,9 +72,9 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             @if($conversion->status === 'completed')
                 Your destination wallet has been credited.
             @elseif($conversion->status === 'failed')
-                The provider rejected the swap. Your source wallet balance has been restored.
+                The swap could not be completed. Your source wallet balance has been restored.
             @else
-                Your source amount is reserved while the provider processes the swap. Do not submit this swap again.
+                Your source amount is reserved while the swap is processing. Do not submit this swap again.
             @endif
         </p>
         @else
@@ -128,10 +128,10 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 messageEl.textContent = 'Your destination wallet has been credited.';
                 window.location.reload();
             } else if (data.status === 'failed') {
-                messageEl.textContent = 'The provider rejected the swap. Your source wallet balance has been restored.';
+                messageEl.textContent = 'The swap could not be completed. Your source wallet balance has been restored.';
                 window.location.reload();
             } else if (data.syncable === false) {
-                messageEl.textContent = data.message || 'The provider response is being reconciled. Your source balance remains reserved; contact support if this status persists.';
+                messageEl.textContent = data.message || 'Your swap is still being confirmed. Your source balance remains reserved; contact support if this status persists.';
                 if (pollTimer) window.clearInterval(pollTimer);
             }
         } catch (e) { /* keep displaying the last confirmed state */ }

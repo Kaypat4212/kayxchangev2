@@ -242,7 +242,7 @@ class CryptoController extends Controller
         if (\App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus') === 'nowpayments') {
             $swapProvider = app(\App\Services\NowPaymentsConversionService::class);
             if (!$swapProvider->supportsCoin($fromCoin) || !$swapProvider->supportsCoin($toCoin)) {
-                return response()->json(['success' => false, 'message' => 'This asset is not currently enabled for Custody swaps.'], 422);
+                return response()->json(['success' => false, 'message' => 'This asset is not currently available for swaps.'], 422);
             }
         }
 
@@ -553,7 +553,7 @@ class CryptoController extends Controller
                 'to_amount' => (float) $conversion->to_amount,
                 'fee_amount' => (float) $conversion->fee_amount,
                 'to_coin' => $conversion->to_coin,
-                'message' => 'The provider response is being reconciled. Your source balance remains reserved; support will verify the request before release.',
+                'message' => 'Your swap is still being confirmed. Your source balance remains reserved while we verify the result.',
             ])->header('Cache-Control', 'private, no-store');
         }
         if ($conversion->mode === 'nowpayments' && in_array($conversion->status, ['pending', 'processing'], true)) {
@@ -570,7 +570,6 @@ class CryptoController extends Controller
             'to_amount' => (float) $conversion->to_amount,
             'fee_amount' => (float) $conversion->fee_amount,
             'to_coin' => $conversion->to_coin,
-            'provider_status' => $conversion->provider_status,
             'syncable' => $conversion->mode === 'nowpayments' && in_array($conversion->status, ['pending', 'processing'], true) && !empty($conversion->provider_conversion_id),
         ])->header('Cache-Control', 'private, no-store');
     }
@@ -605,13 +604,14 @@ class CryptoController extends Controller
                 'message' => $conversion->status === 'completed'
                     ? 'Swap completed and your destination wallet has been credited.'
                     : ($conversion->status === 'failed'
-                        ? 'The provider rejected this swap and your source balance was restored.'
-                        : 'Swap submitted. Your source amount is reserved while NOWPayments confirms the conversion.'),
+                        ? 'The swap could not be completed and your source balance was restored.'
+                        : 'Swap submitted. Your source balance is reserved while the result is confirmed.'),
                 'conversion_id' => $conversion->id,
                 'status' => $conversion->status,
             ]);
         } catch (\RuntimeException $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            $message = str_ireplace(['NOWPayments Custody', 'NOWPayments', 'Custody'], 'swap service', $e->getMessage());
+            return response()->json(['success' => false, 'message' => $message], 422);
         } catch (\Throwable $e) {
             Log::error('NOWPayments wallet swap failed', ['user_id' => Auth::id(), 'from_coin' => $fromCoin, 'to_coin' => $toCoin, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'We could not safely complete this swap request. Please try again or contact support.'], 500);
