@@ -101,16 +101,57 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     <section class="kx-card" aria-labelledby="loader-theme-title">
         <div class="d-flex align-items-center gap-3 flex-wrap">
             <div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(145deg,#123f28,#0c1a13);color:#69ef9a;font-size:1.4rem"><i class="bi bi-stars"></i></div>
-            <div class="flex-grow-1"><h2 id="loader-theme-title" class="h5 fw-bold mb-1">Platform loading experience</h2><p class="field-desc mb-0">Choose the classic spinner, Christmas opening splash, or animated 2027 festive intro across the platform.</p></div>
+            <div class="flex-grow-1"><h2 id="loader-theme-title" class="h5 fw-bold mb-1">Platform loading experience</h2><p class="field-desc mb-0">Pick from ten animated designs. Your choice is saved and used on the opening splash and shared page loader.</p></div>
         </div>
         <form method="POST" action="{{ route('admin.settings.loader-theme') }}" class="mt-3 d-flex gap-2 flex-wrap align-items-center">
             @csrf
-            <select class="form-select" name="loader_theme" aria-label="Platform loader theme" style="max-width:300px">
+            <select class="form-select" name="loader_theme" id="loaderThemeSelect" aria-label="Platform loader theme" style="max-width:300px">
                 <option value="classic" {{ ($siteLoaderTheme ?? 'classic') === 'classic' ? 'selected' : '' }}>Classic loader</option>
                 <option value="festive" {{ ($siteLoaderTheme ?? 'classic') === 'festive' ? 'selected' : '' }}>Festive 2027 intro</option>
                 <option value="christmas" {{ ($siteLoaderTheme ?? 'classic') === 'christmas' ? 'selected' : '' }}>Christmas loader</option>
+                <option value="aurora" {{ ($siteLoaderTheme ?? 'classic') === 'aurora' ? 'selected' : '' }}>Aurora Glow</option>
+                <option value="orbit" {{ ($siteLoaderTheme ?? 'classic') === 'orbit' ? 'selected' : '' }}>Neon Orbit</option>
+                <option value="gold" {{ ($siteLoaderTheme ?? 'classic') === 'gold' ? 'selected' : '' }}>Golden Luxe</option>
+                <option value="ocean" {{ ($siteLoaderTheme ?? 'classic') === 'ocean' ? 'selected' : '' }}>Ocean Wave</option>
+                <option value="cosmic" {{ ($siteLoaderTheme ?? 'classic') === 'cosmic' ? 'selected' : '' }}>Cosmic Pulse</option>
+                <option value="matrix" {{ ($siteLoaderTheme ?? 'classic') === 'matrix' ? 'selected' : '' }}>Matrix Grid</option>
+                <option value="neon" {{ ($siteLoaderTheme ?? 'classic') === 'neon' ? 'selected' : '' }}>Neon Pulse</option>
             </select>
-            <button class="btn px-4 fw-bold" type="submit" style="background:var(--kx-green);color:#081108;border-radius:10px"><i class="bi bi-check2-circle me-1"></i>Apply loader</button>
+            <button class="btn btn-outline-light px-4 fw-bold" type="button" id="previewLoaderTheme" style="border-radius:10px"><i class="bi bi-eye me-1"></i>Preview</button>
+            <button class="btn px-4 fw-bold" type="submit" style="background:var(--kx-green);color:#081108;border-radius:10px"><i class="bi bi-check2-circle me-1"></i>Save selected loader</button>
+        </form>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const preview = document.getElementById('previewLoaderTheme');
+            const selector = document.getElementById('loaderThemeSelect');
+            const overlay = document.getElementById('loader');
+            if (!preview || !selector || !overlay) return;
+            preview.addEventListener('click', function () {
+                const theme = selector.value;
+                overlay.className = 'kx-loader kx-loader--' + theme;
+                const labels = {classic:['Loading…','Please wait'],festive:['Welcome to 2027','A bright new year. A little festive magic.'],christmas:['Merry Christmas','Warm wishes from KayXchange.'],aurora:['Aurora Glow','A calm, luminous loading experience.'],orbit:['Neon Orbit','Your KayXchange experience is coming into orbit.'],gold:['Golden Luxe','A refined loading experience, prepared for you.'],ocean:['Ocean Wave','Smoothly preparing your secure experience.'],cosmic:['Cosmic Pulse','Connecting your KayXchange universe.'],matrix:['Matrix Grid','Secure connection in progress.'],neon:['Neon Pulse','Powering up your KayXchange experience.']};
+                const copy = labels[theme] || labels.classic;
+                window.kxLoading?.show(copy[0], copy[1]);
+                window.setTimeout(() => window.kxLoading?.hide(), 2600);
+            });
+        });
+        </script>
+    </section>
+
+    <section class="kx-card" aria-labelledby="homepage-scroll-fx-title">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(145deg,#123f28,#0c1a13);color:#69ef9a;font-size:1.4rem"><i class="bi bi-currency-bitcoin"></i></div>
+            <div class="flex-grow-1"><h2 id="homepage-scroll-fx-title" class="h5 fw-bold mb-1">Homepage scroll reveal</h2><p class="field-desc mb-0">Reveal homepage sections with a subtle falling Bitcoin matrix effect as visitors scroll. This setting affects the homepage only and honors reduced-motion preferences.</p></div>
+        </div>
+        <form method="POST" action="{{ route('admin.settings.homepage-scroll-effects') }}" class="mt-3 d-flex gap-3 flex-wrap align-items-center">
+            @csrf
+            <input type="hidden" name="enabled" value="0">
+            <label class="kx-switch" aria-label="Toggle homepage Bitcoin scroll reveal">
+                <input type="checkbox" name="enabled" value="1" {{ ($homepageScrollFxEnabled ?? false) ? 'checked' : '' }} onchange="this.form.submit()">
+                <span class="kx-slider"></span>
+            </label>
+            <span class="kx-switch-state {{ ($homepageScrollFxEnabled ?? false) ? 'on' : '' }}">{{ ($homepageScrollFxEnabled ?? false) ? 'ON · homepage only' : 'OFF' }}</span>
+            <noscript><button class="btn btn-outline-light" type="submit">Save animation setting</button></noscript>
         </form>
     </section>
 

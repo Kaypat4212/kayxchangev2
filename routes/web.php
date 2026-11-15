@@ -816,6 +816,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('settings',                   [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('settings.update');
     Route::post('settings/branding', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateBranding'])->middleware('throttle:5,1')->name('settings.branding');
     Route::post('settings/loader-theme', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateLoaderTheme'])->name('settings.loader-theme');
+    Route::post('settings/homepage-scroll-effects', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateHomepageScrollFx'])->name('settings.homepage-scroll-effects');
     Route::post('settings/nowpayments-test', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'testNowPayments'])->middleware('throttle:5,1')->name('settings.nowpayments-test');
     Route::post('settings/nowpayments-api-key-preview', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'previewNowPaymentsApiKey'])->middleware('throttle:3,1')->name('settings.nowpayments-api-key-preview');
     Route::post('settings/nowpayments-ipn-secret-preview', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'previewNowPaymentsIpnSecret'])->middleware('throttle:3,1')->name('settings.nowpayments-ipn-secret-preview');

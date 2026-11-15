@@ -2075,6 +2075,60 @@
     <!-- Back to Top -->
     <a href="#" class="kx-btt" id="kxBtt" aria-label="Back to top"><i class="bi bi-arrow-up-short"></i></a>
 
+    @if($homepageScrollFxEnabled ?? false)
+    <style>
+        .kx-home-reveal { position: relative; }
+        body.kx-scroll-fx-ready .kx-home-reveal:not(.kx-home-reveal--shown) {
+            opacity: 0; transform: translate3d(0, 30px, 0) scale(.99);
+            filter: blur(3px); transition: opacity .7s ease, transform .75s cubic-bezier(.2,.75,.25,1), filter .7s ease;
+        }
+        .kx-home-reveal.kx-home-reveal--shown { opacity: 1; transform: none; filter: none; }
+        .kx-btc-matrix-piece { position: absolute; z-index: 5; top: 5%; left: var(--piece-x); color: #43ef82;
+            font: 700 var(--piece-size)/1 monospace; text-shadow: 0 0 12px rgba(30,255,100,.8);
+            pointer-events: none; opacity: 0; animation: kx-btc-piece-fall .95s ease-out forwards; }
+        @keyframes kx-btc-piece-fall { 0% { opacity: 0; transform: translateY(-8px) rotate(-12deg) scale(.65); }
+            18% { opacity: .8; } 100% { opacity: 0; transform: translateY(82px) rotate(18deg) scale(1.08); } }
+        @media (prefers-reduced-motion: reduce) {
+            body.kx-scroll-fx-ready .kx-home-reveal:not(.kx-home-reveal--shown) { opacity: 1; transform: none; filter: none; }
+            .kx-btc-matrix-piece { display: none !important; animation: none !important; }
+        }
+    </style>
+    <script>
+    (function () {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var targets = Array.from(document.querySelectorAll('#hero, .kx-tg-banner, #main > .kx-sec, #newsletter, #footer'));
+        if (!targets.length) return;
+        targets.forEach(function (el) { el.classList.add('kx-home-reveal'); });
+        if (reduced || !('IntersectionObserver' in window)) {
+            targets.forEach(function (el) { el.classList.add('kx-home-reveal--shown'); });
+            return;
+        }
+        document.body.classList.add('kx-scroll-fx-ready');
+        function matrixPieces(target) {
+            var count = Math.min(6, Math.max(3, Math.round(target.getBoundingClientRect().width / 170)));
+            for (var i = 0; i < count; i++) {
+                var piece = document.createElement('span');
+                piece.className = 'kx-btc-matrix-piece'; piece.textContent = i % 2 ? '₿' : '01';
+                piece.setAttribute('aria-hidden', 'true');
+                piece.style.setProperty('--piece-x', (8 + Math.random() * 84) + '%');
+                piece.style.setProperty('--piece-size', (12 + Math.random() * 12) + 'px');
+                target.appendChild(piece);
+                window.setTimeout(function (node) { node.remove(); }, 1050, piece);
+            }
+        }
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add('kx-home-reveal--shown');
+                matrixPieces(entry.target);
+                observer.unobserve(entry.target);
+            });
+        }, { threshold: 0.12, rootMargin: '0px 0px -5% 0px' });
+        targets.forEach(function (el) { observer.observe(el); });
+    })();
+    </script>
+    @endif
+
     <script>
     // Year
     document.getElementById('kxYear').textContent = new Date().getFullYear();

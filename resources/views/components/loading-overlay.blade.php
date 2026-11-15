@@ -28,6 +28,17 @@
         <p class="kx-loader__hint">Warm wishes from KayXchange. Loading your secure experience…</p>
         <div class="kx-festive-progress" aria-hidden="true"><i></i></div>
     </div>
+    <div class="kx-loader__panel kx-loader__variant" role="status" aria-live="polite" aria-label="KayXchange animated loader">
+        <div class="kx-loader__brand"><img src="{{ $siteFaviconUrl ?? asset('Assests/favicon.png') }}" alt="" width="34" height="34"><span>Kay<span style="color:#35e878">Xchange</span></span></div>
+        <div class="kx-variant-stage" aria-hidden="true">
+            <i class="kx-variant-orbit kx-variant-orbit--one"></i><i class="kx-variant-orbit kx-variant-orbit--two"></i>
+            <i class="kx-variant-orbit kx-variant-orbit--three"></i><span class="kx-variant-core">K</span>
+            <span class="kx-variant-spark kx-variant-spark--one">✦</span><span class="kx-variant-spark kx-variant-spark--two">✧</span>
+        </div>
+        <p class="kx-loader__title">Loading securely</p>
+        <p class="kx-loader__hint">Preparing your KayXchange experience…</p>
+        <div class="kx-festive-progress" aria-hidden="true"><i></i></div>
+    </div>
 </div>
 <script>
 window.kxLoading = window.kxLoading || {
@@ -36,11 +47,12 @@ window.kxLoading = window.kxLoading || {
         if (!overlay) return;
         const christmas = overlay.classList.contains('kx-loader--christmas');
         const festive = overlay.classList.contains('kx-loader--festive');
-        const panel = overlay.querySelector(christmas ? '.kx-loader__christmas' : (festive ? '.kx-loader__festive' : '.kx-loader__classic'));
+        const classic = overlay.classList.contains('kx-loader--classic');
+        const panel = overlay.querySelector(christmas ? '.kx-loader__christmas' : (festive ? '.kx-loader__festive' : (classic ? '.kx-loader__classic' : '.kx-loader__variant')));
         const title = panel?.querySelector('.kx-loader__title');
         const subtitle = panel?.querySelector('.kx-loader__hint');
-        if (title) title.textContent = message || (christmas ? 'Merry Christmas' : (festive ? 'Welcome to 2027' : 'Loading…'));
-        if (subtitle) subtitle.textContent = hint || (christmas ? 'Warm wishes from KayXchange. Loading your secure experience…' : (festive ? 'A bright new year. A little festive magic.' : 'Please wait'));
+        if (title) title.textContent = message || (christmas ? 'Merry Christmas' : (festive ? 'Welcome to 2027' : (classic ? 'Loading…' : 'Loading securely')));
+        if (subtitle) subtitle.textContent = hint || (christmas ? 'Warm wishes from KayXchange. Loading your secure experience…' : (festive ? 'A bright new year. A little festive magic.' : (classic ? 'Please wait' : 'Preparing your KayXchange experience…')));
         overlay.style.display = 'block';
         overlay.setAttribute('aria-hidden', 'false');
     },

@@ -217,18 +217,38 @@ class AdminSettingsController extends Controller
 
     public function updateLoaderTheme(Request $request)
     {
-        $validated = $request->validate(['loader_theme' => ['required', 'in:classic,festive,christmas']]);
+        $themes = ['classic', 'festive', 'christmas', 'aurora', 'orbit', 'gold', 'ocean', 'cosmic', 'matrix', 'neon'];
+        $validated = $request->validate(['loader_theme' => ['required', 'in:' . implode(',', $themes)]]);
         AdminSetting::updateOrCreate(
             ['key' => 'loader_theme'],
-            ['value' => $validated['loader_theme'], 'is_encrypted' => false, 'group' => 'general', 'label' => 'Platform loader theme', 'description' => 'Choose the classic spinner, Christmas loader, or seasonal festive 2027 intro.'],
+            ['value' => $validated['loader_theme'], 'is_encrypted' => false, 'group' => 'general', 'label' => 'Platform loader theme', 'description' => 'Select and save one of ten animated platform loading styles.'],
         );
 
-        $message = match ($validated['loader_theme']) {
-            'festive' => 'Festive 2027 loader enabled across user and admin pages.',
-            'christmas' => 'Christmas loader enabled across user and admin pages.',
-            default => 'Classic loader restored across user and admin pages.',
-        };
+        $themeLabel = [
+            'classic' => 'Classic', 'festive' => 'Festive 2027', 'christmas' => 'Christmas',
+            'aurora' => 'Aurora Glow', 'orbit' => 'Neon Orbit', 'gold' => 'Golden Luxe',
+            'ocean' => 'Ocean Wave', 'cosmic' => 'Cosmic Pulse', 'matrix' => 'Matrix Grid', 'neon' => 'Neon Pulse',
+        ][$validated['loader_theme']];
+        $message = $themeLabel . ' loader saved for user and admin pages.';
         return redirect()->route('admin.settings.index')->with('success', $message);
+    }
+
+    public function updateHomepageScrollFx(Request $request)
+    {
+        AdminSetting::updateOrCreate(
+            ['key' => 'homepage_scroll_fx_enabled'],
+            [
+                'value' => $request->boolean('enabled') ? '1' : '0',
+                'is_encrypted' => false,
+                'group' => 'general',
+                'label' => 'Homepage Bitcoin matrix scroll reveal',
+                'description' => 'Controls the Bitcoin particle reveal animation on homepage sections only.',
+            ],
+        );
+
+        return redirect()->route('admin.settings.index')->with('success', $request->boolean('enabled')
+            ? 'Homepage Bitcoin matrix scroll reveal enabled.'
+            : 'Homepage Bitcoin matrix scroll reveal disabled.');
     }
 
     public function update(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)

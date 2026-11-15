@@ -54,11 +54,13 @@ class AppServiceProvider extends ServiceProvider
             View::share('siteFaviconUrl', asset($faviconPath));
             View::share('siteFaviconMime', $faviconMime);
             $loaderTheme = AdminSetting::getSetting('loader_theme', 'classic');
-            View::share('siteLoaderTheme', in_array($loaderTheme, ['classic', 'festive', 'christmas'], true) ? $loaderTheme : 'classic');
+            View::share('siteLoaderTheme', in_array($loaderTheme, ['classic', 'festive', 'christmas', 'aurora', 'orbit', 'gold', 'ocean', 'cosmic', 'matrix', 'neon'], true) ? $loaderTheme : 'classic');
+            View::share('homepageScrollFxEnabled', AdminSetting::getSetting('homepage_scroll_fx_enabled', '0') === '1');
         } catch (\Throwable $e) {
             View::share('siteFaviconUrl', asset('Assests/favicon.png'));
             View::share('siteFaviconMime', 'image/png');
             View::share('siteLoaderTheme', 'classic');
+            View::share('homepageScrollFxEnabled', false);
         }
 
         // Share homepage editable content with home/index views
