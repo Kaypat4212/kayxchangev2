@@ -101,13 +101,14 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     <section class="kx-card" aria-labelledby="loader-theme-title">
         <div class="d-flex align-items-center gap-3 flex-wrap">
             <div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(145deg,#123f28,#0c1a13);color:#69ef9a;font-size:1.4rem"><i class="bi bi-stars"></i></div>
-            <div class="flex-grow-1"><h2 id="loader-theme-title" class="h5 fw-bold mb-1">Platform loading experience</h2><p class="field-desc mb-0">Keep the original classic spinner or switch every user and admin page to the seasonal, animated 2027 festive intro.</p></div>
+            <div class="flex-grow-1"><h2 id="loader-theme-title" class="h5 fw-bold mb-1">Platform loading experience</h2><p class="field-desc mb-0">Choose the classic spinner, Christmas opening splash, or animated 2027 festive intro across the platform.</p></div>
         </div>
         <form method="POST" action="{{ route('admin.settings.loader-theme') }}" class="mt-3 d-flex gap-2 flex-wrap align-items-center">
             @csrf
             <select class="form-select" name="loader_theme" aria-label="Platform loader theme" style="max-width:300px">
                 <option value="classic" {{ ($siteLoaderTheme ?? 'classic') === 'classic' ? 'selected' : '' }}>Classic loader</option>
                 <option value="festive" {{ ($siteLoaderTheme ?? 'classic') === 'festive' ? 'selected' : '' }}>Festive 2027 intro</option>
+                <option value="christmas" {{ ($siteLoaderTheme ?? 'classic') === 'christmas' ? 'selected' : '' }}>Christmas loader</option>
             </select>
             <button class="btn px-4 fw-bold" type="submit" style="background:var(--kx-green);color:#081108;border-radius:10px"><i class="bi bi-check2-circle me-1"></i>Apply loader</button>
         </form>

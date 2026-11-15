@@ -96,8 +96,9 @@ class AdminCryptoRateController extends Controller
      */
     public function add(Request $request)
     {
+        $request->merge(['coin' => strtoupper(trim((string) $request->input('coin', '')))]);
         $validator = Validator::make($request->all(), [
-            'coin' => 'required|string|max:10|unique:crypto_rates,coin',
+            'coin' => ['required', 'string', 'max:10', 'regex:/^[A-Z0-9]{2,10}$/', 'unique:crypto_rates,coin'],
             'buy_rate' => 'required|numeric|min:0',
             'sell_rate' => 'required|numeric|min:0',
         ]);

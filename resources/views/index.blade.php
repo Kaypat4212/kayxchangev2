@@ -11,7 +11,18 @@
 </head>
 <body>
 
-<div class="splash-screen" id="splashScreen">
+<div class="splash-screen splash-theme-{{ in_array($siteLoaderTheme ?? 'classic', ['classic','festive','christmas'], true) ? $siteLoaderTheme : 'classic' }}" id="splashScreen">
+
+    @if(($siteLoaderTheme ?? 'classic') === 'christmas')
+    <div class="holiday-snow" aria-hidden="true">
+        <span>✦</span><span>❄</span><span>✧</span><span>❄</span><span>✦</span><span>❄</span><span>✧</span><span>❄</span><span>✦</span><span>❄</span>
+    </div>
+    <div class="holiday-tree" aria-hidden="true">
+        <span class="holiday-star">✦</span><i></i><i></i><i></i><b></b>
+        <span class="holiday-bauble bauble-one"></span><span class="holiday-bauble bauble-two"></span><span class="holiday-bauble bauble-three"></span>
+        <span class="holiday-gift gift-one"></span><span class="holiday-gift gift-two"></span>
+    </div>
+    @endif
 
     <!-- Floating crypto icons background -->
     <div class="bg-icons" aria-hidden="true">
@@ -41,6 +52,11 @@
         </h1>
 
         <p class="tagline">Fast · Secure · Best Rates</p>
+    @if(($siteLoaderTheme ?? 'classic') === 'christmas')
+        <p class="holiday-greeting">Merry Christmas <span aria-hidden="true">✦</span> Warm wishes from KayXchange</p>
+    @elseif(($siteLoaderTheme ?? 'classic') === 'festive')
+        <p class="holiday-greeting">Welcome to 2027 <span aria-hidden="true">✦</span> A bright new year ahead</p>
+    @endif
 
         <!-- Coin row -->
         <div class="coins-row" aria-hidden="true">
@@ -53,7 +69,7 @@
         <div class="progress-track">
             <div class="progress-bar" id="progressBar"></div>
         </div>
-        <p class="loading-text">Loading your experience…</p>
+        <p class="loading-text">{{ ($siteLoaderTheme ?? 'classic') === 'christmas' ? 'Preparing a little holiday magic…' : 'Loading your experience…' }}</p>
 
     </div>
 </div>
@@ -228,6 +244,32 @@
         letter-spacing: 1px;
         animation: fadeIn 0.5s ease 1.3s both;
     }
+
+    /* Seasonal styling for the branded opening splash. */
+    .holiday-greeting{color:#f4d58a;font-size:clamp(.68rem,2.4vw,.82rem);font-weight:700;letter-spacing:1.1px;text-transform:uppercase;text-shadow:0 0 18px rgba(240,197,104,.25);animation:fadeIn .7s ease 1.05s both}
+    .holiday-greeting span{color:#ed6871;margin:0 .35rem}
+    .splash-theme-festive{background:radial-gradient(ellipse at 30% 40%,#153c23 0%,#07130d 70%)}
+    .splash-theme-festive .progress-bar{background:linear-gradient(90deg,#16a34a,#f2c86f,#42db83)}
+    .splash-theme-christmas{background:radial-gradient(ellipse at 25% 18%,rgba(24,105,64,.6),transparent 39%),radial-gradient(ellipse at 85% 80%,rgba(161,35,55,.3),transparent 42%),linear-gradient(145deg,#07140e,#090e0d 58%,#12100d)!important}
+    .splash-theme-christmas .bg-icon{color:rgba(242,205,130,.095)}
+    .splash-theme-christmas .logo-img{box-shadow:0 0 26px rgba(54,219,124,.38),0 0 46px rgba(194,51,72,.12)}
+    .splash-theme-christmas .headline-kay{text-shadow:0 0 28px rgba(34,197,94,.44),0 0 44px rgba(207,57,77,.18)}
+    .splash-theme-christmas .progress-bar{background:linear-gradient(90deg,#16874c,#d84c59,#f2d183,#35c777);background-size:220% 100%;animation:holiday-shimmer 2.2s ease-in-out infinite}
+    .splash-theme-christmas .progress-track{box-shadow:0 0 18px rgba(210,62,78,.12)}
+    .splash-theme-christmas .coin{box-shadow:0 8px 24px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.12)}
+    .holiday-snow{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+    .holiday-snow span{position:absolute;top:-8vh;left:var(--x);color:rgba(239,248,255,.75);font-size:var(--s);filter:drop-shadow(0 0 7px rgba(255,255,255,.35));animation:snow-drift var(--d) linear var(--delay) infinite}
+    .holiday-snow span:nth-child(1){--x:7%;--s:12px;--d:8s;--delay:-2s}.holiday-snow span:nth-child(2){--x:19%;--s:17px;--d:11s;--delay:-7s}.holiday-snow span:nth-child(3){--x:31%;--s:10px;--d:9s;--delay:-3s}.holiday-snow span:nth-child(4){--x:43%;--s:15px;--d:12s;--delay:-9s}.holiday-snow span:nth-child(5){--x:56%;--s:11px;--d:8.5s;--delay:-5s}.holiday-snow span:nth-child(6){--x:67%;--s:16px;--d:10s;--delay:-1s}.holiday-snow span:nth-child(7){--x:77%;--s:10px;--d:12s;--delay:-8s}.holiday-snow span:nth-child(8){--x:88%;--s:14px;--d:9.5s;--delay:-4s}.holiday-snow span:nth-child(9){--x:96%;--s:9px;--d:11s;--delay:-6s}.holiday-snow span:nth-child(10){--x:25%;--s:13px;--d:13s;--delay:-10s}
+    .holiday-tree{position:absolute;right:clamp(14px,7vw,100px);bottom:clamp(20px,7vh,72px);width:104px;height:138px;opacity:.72;filter:drop-shadow(0 15px 22px rgba(0,0,0,.34));transform-origin:50% 100%;animation:tree-sway 5s ease-in-out infinite;z-index:1}
+    .holiday-tree i{position:absolute;left:50%;width:0;height:0;transform:translateX(-50%);border-left:var(--w) solid transparent;border-right:var(--w) solid transparent;border-bottom:var(--h) solid var(--green);filter:drop-shadow(0 5px 7px rgba(0,0,0,.18))}
+    .holiday-tree i:nth-of-type(1){--w:24px;--h:40px;--green:#43c47a;top:16px}.holiday-tree i:nth-of-type(2){--w:37px;--h:48px;--green:#15834c;top:39px}.holiday-tree i:nth-of-type(3){--w:51px;--h:54px;--green:#075b37;top:67px}
+    .holiday-tree b{position:absolute;left:47px;bottom:0;width:12px;height:24px;border-radius:2px;background:linear-gradient(90deg,#68411e,#bd8545,#68411e)}
+    .holiday-star{position:absolute;z-index:2;top:1px;left:50%;transform:translateX(-50%);color:#ffe29a;font-size:21px;text-shadow:0 0 17px #f5ca62;animation:star-glow 1.8s ease-in-out infinite}
+    .holiday-bauble{position:absolute;z-index:3;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 30% 25%,#fff5dc,#e9c262 36%,#966019);box-shadow:0 0 10px rgba(255,205,93,.48);animation:bauble-float 2.8s ease-in-out infinite}.bauble-one{top:52px;left:40px}.bauble-two{top:83px;left:64px;background:radial-gradient(circle at 30% 25%,#fff1f1,#ef7680 36%,#982e46);animation-delay:.5s}.bauble-three{top:104px;left:31px;background:radial-gradient(circle at 30% 25%,#f4ffff,#7fd5e5 36%,#287487);animation-delay:1s}
+    .holiday-gift{position:absolute;z-index:2;bottom:7px;width:25px;height:21px;border-radius:4px;box-shadow:0 7px 12px rgba(0,0,0,.28);animation:gift-bob 2.5s ease-in-out infinite}.holiday-gift:before{content:"";position:absolute;left:10px;top:0;width:5px;height:100%;background:rgba(255,239,199,.82)}.holiday-gift:after{content:"";position:absolute;left:7px;top:-6px;width:11px;height:7px;border:2px solid #f4dc9e;border-radius:50% 50% 0 50%;transform:rotate(15deg)}.gift-one{left:2px;background:linear-gradient(135deg,#ee777a,#a92843)}.gift-two{right:0;bottom:12px;background:linear-gradient(135deg,#f2d587,#a9782b);animation-delay:.7s}
+    @keyframes snow-drift{to{transform:translate3d(22px,115vh,0) rotate(220deg);opacity:.1}}@keyframes holiday-shimmer{50%{background-position:100% 0}}@keyframes tree-sway{50%{transform:rotate(1.2deg)}}@keyframes star-glow{50%{transform:translateX(-50%) scale(1.18);filter:brightness(1.35)}}@keyframes bauble-float{50%{translate:0 -5px;scale:1.08}}@keyframes gift-bob{50%{translate:0 -3px}}
+    @media(max-width:680px){.holiday-tree{width:70px;height:96px;right:9px;bottom:14px;opacity:.42;transform:scale(.74);transform-origin:bottom right}.holiday-greeting{max-width:86vw;text-align:center;letter-spacing:.7px}.splash-theme-christmas .splash-content{gap:1.15rem;padding:1.5rem}}
+    @media(prefers-reduced-motion:reduce){.splash-content,.logo-img,.headline-trade,.headline-with,.headline-kay,.tagline,.coins-row,.coin,.progress-track,.loading-text,.holiday-greeting,.holiday-snow span,.holiday-tree,.holiday-star,.holiday-bauble,.holiday-gift,.progress-bar{animation:none!important}.holiday-snow{display:none}}
 </style>
 
 <script>

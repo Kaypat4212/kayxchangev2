@@ -53,7 +53,8 @@ class AppServiceProvider extends ServiceProvider
             $faviconMime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp'][$faviconExtension] ?? 'image/png';
             View::share('siteFaviconUrl', asset($faviconPath));
             View::share('siteFaviconMime', $faviconMime);
-            View::share('siteLoaderTheme', AdminSetting::getSetting('loader_theme', 'classic') === 'festive' ? 'festive' : 'classic');
+            $loaderTheme = AdminSetting::getSetting('loader_theme', 'classic');
+            View::share('siteLoaderTheme', in_array($loaderTheme, ['classic', 'festive', 'christmas'], true) ? $loaderTheme : 'classic');
         } catch (\Throwable $e) {
             View::share('siteFaviconUrl', asset('Assests/favicon.png'));
             View::share('siteFaviconMime', 'image/png');

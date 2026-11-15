@@ -116,6 +116,7 @@
 .coin-icon.btc  { background:rgba(247,147,26,0.15);  color:#f7931a; }
 .coin-icon.eth  { background:rgba(98,126,234,0.15);  color:#627eea; }
 .coin-icon.sol  { background:rgba(153,69,255,0.15); color:#9945ff; }
+.coin-icon.generic { background:rgba(0,204,0,0.12); color:#00cc00; }
 .kx-network-card {
     display:none;
     background:var(--kx-card2); border:1px solid var(--kx-border);
@@ -298,26 +299,23 @@
                 {{-- Hidden native select for form submission --}}
                 <select name="coin" id="coinSelect" style="display:none" required>
                     <option value="">Choose a coin</option>
-                    @foreach(['BTC'=>'Bitcoin','ETH'=>'Ethereum','USDT'=>'USDT','SOL'=>'Solana'] as $symbol => $name)
+                    @foreach(($coins ?? []) as $symbol => $name)
                     <option value="{{ $symbol }}" {{ $selectedCoin === $symbol ? 'selected' : '' }}>{{ $name }} ({{ $symbol }})</option>
                     @endforeach
                 </select>
 
                 <div class="kx-coin-grid">
                     @php
-                        $coinMeta = [
-                            'BTC'  => ['icon'=>'btc',  'label'=>'Bitcoin',  'sym'=>'BTC',  'ico'=>'₿'],
-                            'ETH'  => ['icon'=>'eth',  'label'=>'Ethereum', 'sym'=>'ETH',  'ico'=>'Ξ'],
-                            'USDT' => ['icon'=>'usdt', 'label'=>'USDT',     'sym'=>'USDT', 'ico'=>'₮'],
-                            'SOL'  => ['icon'=>'sol',  'label'=>'Solana',   'sym'=>'SOL',  'ico'=>'◎'],
-                        ];
+                        $coinGlyphs = ['BTC'=>'₿', 'ETH'=>'Ξ', 'USDT'=>'₮', 'USDC'=>'$', 'SOL'=>'◎', 'BNB'=>'◆', 'LTC'=>'Ł', 'DOGE'=>'Ð', 'XRP'=>'✕'];
+                        $coinClasses = ['BTC'=>'btc', 'ETH'=>'eth', 'SOL'=>'sol'];
                     @endphp
-                    @foreach($coinMeta as $sym => $meta)
+                    @foreach(($coins ?? []) as $sym => $name)
+                    @php $glyph = $coinGlyphs[$sym] ?? mb_substr($sym, 0, 1); $iconClass = $coinClasses[$sym] ?? 'generic'; @endphp
                     <div class="kx-coin-btn {{ $selectedCoin === $sym ? 'selected' : '' }}"
                          data-coin="{{ $sym }}"
                          onclick="selectCoin('{{ $sym }}')">
-                        <div class="coin-icon {{ $meta['icon'] }}">{{ $meta['ico'] }}</div>
-                        <div class="coin-name">{{ $meta['sym'] }}</div>
+                        <div class="coin-icon {{ $iconClass }}">{{ $glyph }}</div>
+                        <div class="coin-name">{{ $sym }}</div>
                         <div class="coin-rate" id="rate_{{ $sym }}">
                             @if(isset($rates[$sym]) && is_numeric($rates[$sym]) && $rates[$sym] > 0)
                                 ₦{{ number_format($rates[$sym],0) }}/USD
@@ -329,19 +327,11 @@
                     @endforeach
                 </div>
 
-                {{-- USDT Network Picker --}}
-                <div class="kx-network-card {{ in_array($selectedCoin,['USDT']) ? 'visible' : '' }}" id="networkPicker">
-                    <div class="kx-network-label"><i class="bi bi-diagram-3-fill me-1"></i>Select USDT Network</div>
-                    <input type="hidden" name="network" id="networkInput" value="{{ session('sell.network','TRC20') }}">
-                    <div class="kx-net-grid">
-                        @foreach(['ERC20'=>['#627eea','Ethereum'],'TRC20'=>['#e84142','Tron'],'BEP20'=>['#f0b90b','BNB Chain']] as $net=>[$color,$label])
-                        <div class="kx-net-btn {{ session('sell.network','TRC20')===$net ? 'selected':'' }}"
-                             data-net="{{ $net }}" onclick="selectNetwork('{{ $net }}')">
-                            <span class="kx-net-dot" style="background:{{ $color }}"></span>
-                            {{ $net }}<br><span style="font-size:.65rem;font-weight:400;opacity:.6">{{ $label }}</span>
-                        </div>
-                        @endforeach
-                    </div>
+                {{-- Network choices follow the admin-configured asset/network catalog. --}}
+                <div class="kx-network-card" id="networkPicker">
+                    <div class="kx-network-label"><i class="bi bi-diagram-3-fill me-1"></i><span id="networkTitle">Select network</span></div>
+                    <input type="hidden" name="network" id="networkInput" value="{{ session('sell.network','') }}">
+                    <div class="kx-net-grid" id="networkChoices"></div>
                 </div>
             </div>
         </div>
@@ -422,6 +412,7 @@
 @push('scripts')
 <script>
 const rates    = {!! json_encode($rates ?? []) !!};
+const coinNetworks = {!! json_encode($coinNetworks ?? []) !!};
 let isUSD      = {{ $inputType === 'usd' ? 'true' : 'false' }};
 let activeCoin = '{{ $selectedCoin }}';
 
@@ -453,17 +444,33 @@ function selectCoin(sym) {
     activeCoin = sym;
     document.getElementById('coinSelect').value = sym;
     document.querySelectorAll('.kx-coin-btn').forEach(b => b.classList.remove('selected'));
-    document.querySelector(`.kx-coin-btn[data-coin="${sym}"]`).classList.add('selected');
+    document.querySelector(`.kx-coin-btn[data-coin="${sym}"]`)?.classList.add('selected');
 
-    // Show/hide network picker for USDT
     const picker = document.getElementById('networkPicker');
-    if (picker) picker.classList.toggle('visible', sym === 'USDT');
+    const options = coinNetworks[sym] || [];
+    const choiceBox = document.getElementById('networkChoices');
+    const currentNetwork = document.getElementById('networkInput').value;
+    choiceBox.replaceChildren();
+    document.getElementById('networkTitle').textContent = 'Select ' + sym + ' network';
+    options.forEach((net, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'kx-net-btn' + (currentNetwork === net ? ' selected' : '');
+        button.dataset.net = net;
+        button.innerHTML = '<span class="kx-net-dot"></span>';
+        button.append(document.createTextNode(net));
+        button.addEventListener('click', () => selectNetwork(net));
+        choiceBox.append(button);
+    });
+    picker?.classList.toggle('visible', options.length > 0);
+    if (options.length === 1) selectNetwork(options[0]);
+    else if (currentNetwork && !options.includes(currentNetwork)) document.getElementById('networkInput').value = '';
 
     updateRatePill();
     calculateConversion();
 }
 
-/* ── Network selection (USDT) ── */
+/* ── Network selection ── */
 function selectNetwork(net) {
     document.getElementById('networkInput').value = net;
     document.querySelectorAll('.kx-net-btn').forEach(b => b.classList.toggle('selected', b.dataset.net === net));
@@ -596,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const qAmount    = parseFloat(urlParams.get('amount')) || 0;
     const qInputType = urlParams.get('input_type') || 'usd';
 
-    if (qCoin && ['BTC','ETH','USDT','SOL'].includes(qCoin)) {
+    if (qCoin && Object.prototype.hasOwnProperty.call(rates, qCoin)) {
         selectCoin(qCoin);
     }
     if (qInputType === 'naira') {
@@ -607,7 +614,8 @@ document.addEventListener('DOMContentLoaded', () => {
         calculateConversion();
     }
 
-    if (activeCoin) updateRatePill();
+    if (activeCoin && Object.prototype.hasOwnProperty.call(rates, activeCoin)) selectCoin(activeCoin);
+    else updateRatePill();
     calculateConversion();
     fetchCoinPrices();
     const errs = @json($errors->all());

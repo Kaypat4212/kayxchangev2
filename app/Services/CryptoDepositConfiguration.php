@@ -8,7 +8,7 @@ class CryptoDepositConfiguration
 {
     public function assets(): array
     {
-        return [
+        $assets = [
             'BTC'=>['name'=>'Bitcoin','networks'=>['BTC']],
             'ETH'=>['name'=>'Ethereum','networks'=>['ERC20']],
             'USDT'=>['name'=>'Tether','networks'=>['TRC20','ERC20','BEP20']],
@@ -16,6 +16,21 @@ class CryptoDepositConfiguration
             'BNB'=>['name'=>'BNB','networks'=>['BEP20']],
             'SOL'=>['name'=>'Solana','networks'=>['SOL']],
         ];
+
+        return $assets;
+    }
+
+    /** Assets available to manual sell trades, including admin-added coins. */
+    public function sellAssets(): array
+    {
+        $assets = $this->assets();
+        $names = ['LTC'=>'Litecoin', 'XRP'=>'XRP', 'DOGE'=>'Dogecoin', 'TRX'=>'TRON', 'ADA'=>'Cardano', 'TON'=>'Toncoin'];
+        foreach (\App\Models\CryptoRate::query()->orderBy('coin')->get(['coin']) as $row) {
+            $symbol = strtoupper(trim((string) $row->coin));
+            if ($symbol === '' || !preg_match('/^[A-Z0-9]{2,10}$/', $symbol)) continue;
+            $assets[$symbol] ??= ['name' => $names[$symbol] ?? $symbol, 'networks' => [$symbol]];
+        }
+        return $assets;
     }
 
     public function minimumUsdKey(string $currency, string $network): string
@@ -48,10 +63,10 @@ class CryptoDepositConfiguration
         return trim($fallback);
     }
 
-    public function walletAddressSettings(): array
+    public function walletAddressSettings(?array $assets = null): array
     {
         $settings = [];
-        foreach ($this->assets() as $currency=>$asset) {
+        foreach ($assets ?? $this->assets() as $currency=>$asset) {
             foreach ($asset['networks'] as $network) {
                 $settings[$currency][$network] = [
                     'minimum_usd' => number_format($this->minimumUsd($currency, $network), 2, '.', ''),

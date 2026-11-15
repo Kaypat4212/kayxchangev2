@@ -48,9 +48,17 @@ class CryptoRateUpdateController extends Controller
     public function update(Request $request)
     {
         try {
+            $normalizedRates = collect($request->input('rates', []))->map(function ($rate) {
+                if (is_array($rate) && array_key_exists('coin', $rate)) {
+                    $rate['coin'] = strtoupper(trim((string) $rate['coin']));
+                }
+                return $rate;
+            })->all();
+            $request->merge(['rates' => $normalizedRates]);
+
             $validator = Validator::make($request->all(), [
                 'rates' => 'required|array|min:1',
-                'rates.*.coin' => 'required|string|max:10',
+                'rates.*.coin' => ['required', 'string', 'max:10', 'regex:/^[A-Z0-9]{2,10}$/'],
                 'rates.*.buy_rate' => 'required|numeric|min:0',
                 'rates.*.sell_rate' => 'required|numeric|min:0',
             ]);

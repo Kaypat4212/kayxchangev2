@@ -217,15 +217,18 @@ class AdminSettingsController extends Controller
 
     public function updateLoaderTheme(Request $request)
     {
-        $validated = $request->validate(['loader_theme' => ['required', 'in:classic,festive']]);
+        $validated = $request->validate(['loader_theme' => ['required', 'in:classic,festive,christmas']]);
         AdminSetting::updateOrCreate(
             ['key' => 'loader_theme'],
-            ['value' => $validated['loader_theme'], 'is_encrypted' => false, 'group' => 'general', 'label' => 'Platform loader theme', 'description' => 'Choose the classic spinner or seasonal festive 2027 intro.'],
+            ['value' => $validated['loader_theme'], 'is_encrypted' => false, 'group' => 'general', 'label' => 'Platform loader theme', 'description' => 'Choose the classic spinner, Christmas loader, or seasonal festive 2027 intro.'],
         );
 
-        return redirect()->route('admin.settings.index')->with('success', $validated['loader_theme'] === 'festive'
-            ? 'Festive 2027 loader enabled across user and admin pages.'
-            : 'Classic loader restored across user and admin pages.');
+        $message = match ($validated['loader_theme']) {
+            'festive' => 'Festive 2027 loader enabled across user and admin pages.',
+            'christmas' => 'Christmas loader enabled across user and admin pages.',
+            default => 'Classic loader restored across user and admin pages.',
+        };
+        return redirect()->route('admin.settings.index')->with('success', $message);
     }
 
     public function update(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)

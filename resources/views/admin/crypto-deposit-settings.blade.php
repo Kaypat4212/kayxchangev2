@@ -37,6 +37,17 @@
      @endforeach
     </div></div>
    @endforeach
+   @php $manualSellAssets = array_diff_key($sellAssets ?? [], $assets); @endphp
+   @if($manualSellAssets)
+    <div class="border-top border-secondary border-opacity-25 pt-4 mt-4"><h3 class="h6 text-white mb-1">Admin-added sell assets</h3><p class="cd-muted small">Coins added through Crypto Rates appear here automatically. Configure the receiving address before enabling users to submit sell trades for them.</p></div>
+    @foreach($manualSellAssets as $currency=>$asset)
+     <div class="border-top border-secondary border-opacity-25 pt-3 mt-3"><div class="d-flex align-items-center gap-2 mb-3"><span class="badge text-bg-secondary">{{ $currency }}</span><h3 class="h6 text-white mb-0">{{ $asset['name'] }}</h3></div><div class="cd-grid">
+      @foreach($asset['networks'] as $network)
+       <div class="cd-network"><span class="cd-pill">{{ $network }}</span><label class="cd-label" for="sell_address_{{ $currency }}_{{ $network }}">Sell receiving address</label><input class="cd-input address" type="text" id="sell_address_{{ $currency }}_{{ $network }}" name="sell_addresses[{{ $currency }}][{{ $network }}]" value="{{ old("sell_addresses.{$currency}.{$network}",data_get($sellWalletSettings,"{$currency}.{$network}.address")) }}" placeholder="Configure a wallet address for {{ $network }}"></div>
+      @endforeach
+     </div></div>
+    @endforeach
+   @endif
    <div class="mt-4" style="max-width:360px"><label class="cd-label" for="wallet_change_pin">Admin security PIN <span class="cd-muted fw-normal">(required only if an address changes)</span></label><input class="cd-input" type="password" inputmode="numeric" autocomplete="current-password" maxlength="4" pattern="[0-9]{4}" id="wallet_change_pin" name="wallet_change_pin" placeholder="4-digit PIN"></div>
   </section>
   <div class="cd-save"><button class="btn btn-success btn-lg px-4" type="submit"><i class="bi bi-shield-check me-1"></i>Save deposit settings</button></div>

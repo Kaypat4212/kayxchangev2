@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class SellController extends Controller
 {
@@ -249,13 +250,22 @@ class SellController extends Controller
     public function step1()
     {
         Log::info('Accessing sell.step1');
-        $resolved = app(\App\Services\CryptoTradeRateService::class)->rates(['BTC', 'ETH', 'USDT', 'SOL']);
+        $catalog = app(\App\Services\CryptoDepositConfiguration::class);
+        $assets = $catalog->sellAssets();
+        $symbols = CryptoRate::query()->pluck('coin')->map(fn ($coin) => strtoupper(trim((string) $coin)))->filter()->unique()->values()->all();
+        $resolved = app(\App\Services\CryptoTradeRateService::class)->rates($symbols);
         $rates = array_map(fn ($rate) => $rate['sell_rate'], $resolved);
-        if (empty($rates)) {
-            Log::warning('No rates found in crypto_rates table');
-            return view('sell.step1', ['rates' => [], 'error' => 'No crypto rates available.']);
+        $coins = [];
+        foreach ($assets as $symbol => $asset) {
+            if (($rates[$symbol] ?? 0) <= 0) continue;
+            $coins[$symbol] = $asset['name'] ?? $symbol;
         }
-        return view('sell.step1', compact('rates'));
+        $coinNetworks = array_map(fn ($asset) => array_values($asset['networks'] ?? []), array_intersect_key($assets, $coins));
+        if (empty($coins)) {
+            Log::warning('No rates found in crypto_rates table');
+            return view('sell.step1', ['rates' => [], 'coins' => [], 'coinNetworks' => [], 'error' => 'No crypto rates available.']);
+        }
+        return view('sell.step1', compact('rates', 'coins', 'coinNetworks'));
     }
 
     /**
@@ -268,16 +278,30 @@ class SellController extends Controller
     {
         Log::info('postStep1 request data', $request->all());
 
+        $catalog = app(\App\Services\CryptoDepositConfiguration::class);
+        $assets = $catalog->sellAssets();
+        $sellableCoins = CryptoRate::query()->pluck('coin')->map(fn ($coin) => strtoupper(trim((string) $coin)))->filter(fn ($coin) => isset($assets[$coin]))->unique()->values()->all();
+        $coin = strtoupper(trim((string) $request->input('coin')));
+        $networks = $assets[$coin]['networks'] ?? [];
+
         $request->validate([
-            'coin' => 'required|in:BTC,ETH,USDT,SOL',
+            'coin' => ['required', 'string', Rule::in($sellableCoins)],
             'amount' => 'required|numeric|min:0.01',
             'input_type' => 'required|in:usd,naira',
             'usd_amount' => 'required|numeric|min:0.01',
             'naira_amount' => 'required|numeric|min:0.01',
-            'network' => 'nullable|in:ERC20,TRC20,BEP20,SOL,BTC',
+            'network' => ['nullable', 'string', Rule::in($networks)],
         ]);
 
-        $coin = $request->coin;
+        $network = strtoupper(trim((string) $request->input('network')));
+        if ($network === '' && count($networks) === 1) $network = $networks[0];
+        if ($network === '' || !in_array($network, $networks, true)) {
+            return back()->withErrors(['network' => 'Choose a supported network for this coin.'])->withInput();
+        }
+        if ($catalog->fallbackAddress($coin, $network) === '') {
+            return back()->withErrors(['coin' => "{$coin} is listed, but its receiving wallet is not configured yet. Please contact support or try another coin."])->withInput();
+        }
+
         $inputAmount = $request->amount;
         $inputType = $request->input_type;
         $submittedUsdAmount = $request->usd_amount;
@@ -314,17 +338,6 @@ class SellController extends Controller
         }
 
         // Resolve network
-        $network = $request->network;
-        if (empty($network)) {
-            $network = match($coin) {
-                'BTC'  => 'BTC',
-                'ETH'  => 'ERC20',
-                'USDT' => 'TRC20',
-                'SOL'  => 'SOL',
-                default => null,
-            };
-        }
-
         Session::put('sell', [
             'coin' => $coin,
             'network' => $network,
@@ -366,9 +379,7 @@ class SellController extends Controller
         $amountInUsd = Session::get('sell.usd_amount');
         $nairaAmount = Session::get('sell.naira_amount');
 
-        $walletMap = config('wallets', []);
-        $walletKey = ($coin === 'USDT' && $network) ? "USDT_{$network}" : $coin;
-        $walletAddress = $walletMap[$walletKey] ?? $walletMap[$coin] ?? 'N/A';
+        $walletAddress = app(\App\Services\CryptoDepositConfiguration::class)->fallbackAddress($coin, $network);
 
         $proofPath = Session::get('sell.proof');
         $proofUrl = $proofPath ? asset('storage/' . $proofPath) : null;
@@ -513,18 +524,11 @@ class SellController extends Controller
             $sellTrade->name = $user->name ?? $user->email ?? 'Unknown';
             $sellTrade->transaction_ref = 'SELL-' . Str::upper(Str::random(10));
 
-            $walletMap = config('wallets', []);
-
             $coin    = Session::get('sell.coin');
             $network = Session::get('sell.network');
 
-            // Pick the most specific wallet key
-            $walletKey = ($coin === 'USDT' && $network)
-                ? "USDT_{$network}"
-                : $coin;
-
             $sellTrade->network       = $network;
-            $sellTrade->wallet_address = $walletMap[$walletKey] ?? $walletMap[$coin] ?? 'N/A';
+            $sellTrade->wallet_address = app(\App\Services\CryptoDepositConfiguration::class)->fallbackAddress($coin, $network);
             $sellTrade->sender_wallet_address = trim((string) $request->input('sender_wallet_address')) ?: null;
 
             if ($request->payout_method === 'default_bank') {
@@ -703,16 +707,12 @@ class SellController extends Controller
         $trade = SellTrade::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
         $coin = strtoupper((string) $trade->coin);
         $network = strtoupper((string) ($trade->network ?: $coin));
-        $supportedNetworks = match ($coin) {
-            'BTC' => ['BTC'], 'ETH' => ['ERC20'], 'USDT' => ['TRC20', 'ERC20', 'BEP20'],
-            'USDC' => ['ERC20', 'BEP20'], 'SOL' => ['SOL'], 'BNB' => ['BEP20'], default => [],
-        };
+        $supportedNetworks = app(\App\Services\CryptoDepositConfiguration::class)->sellAssets()[$coin]['networks'] ?? [];
         $networkValid = in_array($network, $supportedNetworks, true);
-        $walletKey = in_array($coin, ['USDT', 'USDC'], true) && $networkValid ? $coin . '_' . $network : $coin;
         $storedAddress = trim((string) $trade->wallet_address);
         $walletAddress = !$networkValid
             ? null
-            : ($storedAddress !== '' && strtoupper($storedAddress) !== 'N/A' ? $storedAddress : config("wallets.{$walletKey}", null));
+            : ($storedAddress !== '' && strtoupper($storedAddress) !== 'N/A' ? $storedAddress : app(\App\Services\CryptoDepositConfiguration::class)->fallbackAddress($coin, $network));
         return view('sell.payment', compact('trade', 'walletAddress', 'network', 'networkValid'));
     }
 

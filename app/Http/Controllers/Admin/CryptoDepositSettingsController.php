@@ -15,9 +15,12 @@ class CryptoDepositSettingsController extends Controller
 {
     public function index(CryptoDepositConfiguration $configuration)
     {
+        $sellAssets = $configuration->sellAssets();
         return view('admin.crypto-deposit-settings', [
             'assets'=>$configuration->assets(),
+            'sellAssets'=>$sellAssets,
             'walletSettings'=>$configuration->walletAddressSettings(),
+            'sellWalletSettings'=>$configuration->walletAddressSettings($sellAssets),
             'fallbackEnabled'=>$configuration->fallbackEnabled(),
             'fixedRate'=>AdminSetting::getSetting('nowpayments_fixed_rate', '0') === '1',
             'feePaidByUser'=>AdminSetting::getSetting('nowpayments_fee_paid_by_user', '0') === '1',
@@ -65,6 +68,7 @@ class CryptoDepositSettingsController extends Controller
         $request->validate([
             'minimums'=>'nullable|array', 'minimums.*'=>'nullable|array', 'minimums.*.*'=>'nullable|numeric|min:0|max:10000000',
             'addresses'=>'nullable|array', 'addresses.*'=>'nullable|array', 'addresses.*.*'=>'nullable|string|max:255',
+            'sell_addresses'=>'nullable|array', 'sell_addresses.*'=>'nullable|array', 'sell_addresses.*.*'=>'nullable|string|max:255',
             'wallet_change_pin'=>'nullable|digits:4',
             'fallback_enabled'=>'nullable|boolean', 'nowpayments_fixed_rate'=>'nullable|boolean',
             'nowpayments_fee_paid_by_user'=>'nullable|boolean', 'expiry_hours'=>'required|integer|min:1|max:72',
@@ -81,6 +85,23 @@ class CryptoDepositSettingsController extends Controller
                 if ($newAddress !== $configuration->fallbackAddress($currency, $network)) {
                     if ($newAddress !== '' && !$this->validAddress($currency, $network, $newAddress)) {
                         return back()->withInput()->withErrors(["addresses.{$currency}.{$network}"=>'That address format does not match the selected asset network.']);
+                    }
+                    $changedWallets[$currency . '_' . $network] = [
+                        'key'=>$configuration->walletAddressKey($currency, $network),
+                        'value'=>$newAddress,
+                        'previous'=>$configuration->fallbackAddress($currency, $network),
+                    ];
+                }
+            }
+        }
+        $providerAssets = $configuration->assets();
+        foreach ($configuration->sellAssets() as $currency=>$asset) {
+            if (isset($providerAssets[$currency])) continue;
+            foreach ($asset['networks'] as $network) {
+                $newAddress = trim((string)data_get($request->input('sell_addresses', []), "{$currency}.{$network}", $configuration->fallbackAddress($currency, $network)));
+                if ($newAddress !== $configuration->fallbackAddress($currency, $network)) {
+                    if ($newAddress !== '' && !$this->validAddress($currency, $network, $newAddress)) {
+                        return back()->withInput()->withErrors(["sell_addresses.{$currency}.{$network}"=>'That address format does not match the selected asset network.']);
                     }
                     $changedWallets[$currency . '_' . $network] = [
                         'key'=>$configuration->walletAddressKey($currency, $network),
@@ -143,6 +164,12 @@ class CryptoDepositSettingsController extends Controller
         if ($network === 'ERC20' || $network === 'BEP20') return (bool)preg_match('/^0x[a-fA-F0-9]{40}$/', $address);
         if ($network === 'TRC20') return (bool)preg_match('/^T[1-9A-HJ-NP-Za-km-z]{33}$/', $address);
         if ($network === 'SOL') return (bool)preg_match('/^[1-9A-HJ-NP-Za-km-z]{32,44}$/', $address);
-        return false;
+        if ($currency === 'LTC') return (bool)preg_match('/^(ltc1[ac-hj-np-z02-9]{20,}|[LM3][a-km-zA-HJ-NP-Z1-9]{26,33})$/i', $address);
+        // New admin-added assets use their ticker as the network until a
+        // network-specific validator is introduced. Accept common address
+        // encodings while still rejecting whitespace and malformed inputs.
+        return strlen($address) >= 20 && strlen($address) <= 255
+            && !preg_match('/\s/', $address)
+            && (bool)preg_match('/^(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]+)$/', $address);
     }
 }
