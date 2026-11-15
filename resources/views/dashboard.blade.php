@@ -297,6 +297,7 @@
         .kx-balance-amount { font-size:1.65rem; }
         .kx-sec-title { flex-direction:column; align-items:flex-start; gap:8px; }
     }
+.kx-dashboard-stacks{display:flex;flex-direction:column;gap:0}.kx-stack-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 18px;border:1px solid rgba(95,220,136,.16);border-radius:16px;background:linear-gradient(110deg,rgba(13,43,26,.72),rgba(15,24,30,.78))}.kx-stack-eyebrow{color:#59df84;text-transform:uppercase;font-size:.63rem;font-weight:850;letter-spacing:.14em}.kx-stack-toolbar-title{font-size:.9rem;font-weight:800;color:#edf7f0;margin-top:2px}.kx-stack-toolbar-copy{color:rgba(230,245,235,.48);font-size:.72rem;margin-top:2px}.kx-stack-button{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.13);border-radius:10px;padding:9px 12px;background:rgba(255,255,255,.045);color:#eaf5ed;font-size:.74rem;font-weight:750}.kx-stack-button:hover{border-color:rgba(74,222,128,.46);background:rgba(74,222,128,.09)}.kx-stack-button.kx-stack-save{background:linear-gradient(135deg,#22c55e,#0c9b43);color:#06160b;border-color:transparent}.kx-stack-visibility{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:rgba(6,13,10,.38)}.kx-stack-check{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid rgba(255,255,255,.075);border-radius:10px;color:#cfddd4;font-size:.74rem;cursor:pointer}.kx-stack-check input{accent-color:#20c55a}.kx-dashboard-stacks.is-editing [data-dashboard-stack]{position:relative;border-style:dashed!important;border-color:rgba(74,222,128,.38)!important;cursor:grab}.kx-dashboard-stacks.is-editing [data-dashboard-stack]:active{cursor:grabbing}.kx-stack-card-tools{display:flex;justify-content:flex-end;gap:5px;margin:-3px 0 10px}.kx-stack-tool{width:30px;height:29px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.06);color:#e2f1e7}.kx-stack-drag{cursor:grab}.kx-dashboard-stacks [data-dashboard-stack][hidden]{display:none!important}.kx-dashboard-stacks.is-editing [data-dashboard-stack].is-dragging{opacity:.42;transform:scale(.99)}body.light-mode .kx-stack-toolbar{background:linear-gradient(110deg,#f0faf2,#fff);border-color:#d8ebdc}body.light-mode .kx-stack-toolbar-title{color:#17251c}body.light-mode .kx-stack-toolbar-copy{color:#64766b}body.light-mode .kx-stack-button{color:#26392d;border-color:#d8e2da;background:#fff}body.light-mode .kx-stack-visibility{background:#f8fbf8;border-color:#dce8df}body.light-mode .kx-stack-check{color:#26392d;border-color:#e0e9e2}body.light-mode .kx-stack-tool{color:#24372b;background:#fff;border-color:#dce8df}@media(max-width:620px){.kx-stack-toolbar{align-items:flex-start;flex-direction:column}.kx-stack-toolbar>div:last-child{width:100%;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))}.kx-stack-button{justify-content:center;padding:9px 7px}.kx-stack-visibility{grid-template-columns:1fr 1fr}}@media(prefers-reduced-motion:reduce){.kx-stack-button,.kx-stack-tool{transition:none!important}}
 </style>
 
 <div class="kx-db">
@@ -362,8 +363,15 @@
             </div>
         </div>
 
+        <section id="kxDashboardStacks" class="kx-dashboard-stacks" aria-label="Customizable dashboard stacks">
+            <div class="kx-stack-toolbar mb-3">
+                <div><div class="kx-stack-eyebrow">Your workspace</div><div class="kx-stack-toolbar-title">Arrange your dashboard</div><div class="kx-stack-toolbar-copy">Move the sections you use most to the top. Hide or show sections any time.</div></div>
+                <div class="d-flex gap-2 flex-wrap"><span class="kx-stack-status align-self-center small" id="kxStackStatus" aria-live="polite"></span><button type="button" class="kx-stack-button" id="kxCustomizeStacks"><i class="bi bi-sliders2"></i>Customize</button><button type="button" class="kx-stack-button kx-stack-save" id="kxSaveStacks" hidden><i class="bi bi-check2"></i>Save layout</button><button type="button" class="kx-stack-button" id="kxCancelStacks" hidden>Cancel</button><button type="button" class="kx-stack-button" id="kxResetStacks" hidden><i class="bi bi-arrow-counterclockwise"></i>Reset to default</button></div>
+            </div>
+            <div class="kx-stack-visibility mb-3" id="kxStackVisibility" hidden aria-label="Show or hide dashboard sections"></div>
+
         <!-- ===== Balance + Stats Row ===== -->
-        <div class="row g-4 mb-4" id="kx-tour-balance">
+        <div class="row g-4 mb-4" id="kx-tour-balance" data-dashboard-stack="balance_stats" data-dashboard-title="Balances and account stats">
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="d-grid gap-3">
                 <div class="kx-balance-card" style="height:auto">
@@ -432,10 +440,10 @@
         </div>
 
         <!-- ===== Recent Account Activity ===== -->
-        <section class="kx-card p-3 p-md-4 mb-4" id="kx-account-activity" aria-labelledby="kx-activity-title">
+        <section class="kx-card p-3 p-md-4 mb-4" id="kx-account-activity" data-dashboard-stack="recent_activity" data-dashboard-title="Recent account activity" aria-labelledby="kx-activity-title">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
                 <div><div class="kx-sec-title mb-1" id="kx-activity-title"><i class="bi bi-activity"></i>Recent account activity</div><div class="small" style="color:rgba(255,255,255,.42)">Your latest transactions, account updates and successful sign-ins.</div></div>
-                <a href="{{ route('transactions.history') }}" class="kx-btn-more"><i class="bi bi-clock-history"></i>Full history</a>
+                <a href="{{ route('account.activity.index') }}" class="kx-btn-more"><i class="bi bi-clock-history"></i>Full activity</a>
             </div>
             @if(isset($recentActivities) && $recentActivities->isNotEmpty())
             <div class="kx-activity-grid">
@@ -448,9 +456,10 @@
                     <div class="kx-activity-icon"><i class="bi {{ $activity['icon'] ?? 'bi-activity' }}"></i></div>
                     <div class="kx-activity-copy">
                         <div class="d-flex align-items-start gap-2 flex-wrap"><div class="kx-activity-title">{{ $activity['title'] ?? 'Account activity' }}</div>@if(isset($activity['amount']) && $activity['amount'] !== null)<div class="kx-activity-amount">{{ ($activity['currency'] ?? 'NGN') === 'NGN' ? '₦' : '' }}{{ number_format((float)$activity['amount'], ($activity['currency'] ?? 'NGN') === 'NGN' ? 2 : 8) }} {{ ($activity['currency'] ?? 'NGN') !== 'NGN' ? $activity['currency'] : '' }}</div>@endif</div>
-                        <div class="kx-activity-detail">{{ $activity['detail'] ?? '' }}</div>
+                        <div class="kx-activity-detail">{{ ($activity['type'] ?? '') === 'account' ? \Illuminate\Support\Str::limit($activity['detail'] ?? '', 150) : ($activity['detail'] ?? '') }}</div>
                         @if(isset($activity['amount_ngn']) || isset($activity['amount_usd']))<div class="kx-activity-values">@if(isset($activity['amount_ngn']) && $activity['amount_ngn'] !== null)<span>NGN value <strong>₦{{ number_format((float)$activity['amount_ngn'],2) }}</strong></span>@endif @if(isset($activity['amount_usd']) && $activity['amount_usd'] !== null)<span>USD value <strong>${{ number_format((float)$activity['amount_usd'],2) }}</strong></span>@endif</div>@endif
                         <div class="kx-activity-meta"><span>{{ $activity['created_at']?->timezone('Africa/Lagos')->format('d M Y · H:i') }}</span><span class="kx-activity-status" style="color:{{ $activityStatusColor }}">{{ str_replace('_',' ',$activityStatus) }}</span>@if(!empty($activity['balance_effect']))<span class="kx-activity-effect {{ ($activity['direction'] ?? '') === 'in' ? 'is-in' : ((($activity['direction'] ?? '') === 'out') ? 'is-out' : '') }}"><i class="bi {{ ($activity['direction'] ?? '') === 'in' ? 'bi-arrow-down-left' : ((($activity['direction'] ?? '') === 'out') ? 'bi-arrow-up-right' : 'bi-hourglass-split') }}"></i>{{ $activity['balance_effect'] }}</span>@endif @if(!empty($activity['reference']))<span>Ref {{ $activity['reference'] }}</span>@endif</div>
+                        @if(!empty($activity['url']))<a href="{{ $activity['url'] }}" class="kx-btn-more mt-2"><i class="bi bi-eye"></i>{{ $activity['action'] ?? 'View details' }}</a>@endif
                     </div>
                 </article>
                 @endforeach
@@ -461,7 +470,7 @@
         </section>
 
         <!-- ===== AI Personalised Insight ===== -->
-        <div class="kx-card mb-4" id="ai-insight-card" style="padding:1.1rem 1.4rem;border-color:rgba(0,204,0,.18);min-height:62px;display:flex;align-items:center;gap:.875rem">
+        <div class="kx-card mb-4" id="ai-insight-card" data-dashboard-stack="ai_insight" data-dashboard-title="KayBot insight" style="padding:1.1rem 1.4rem;border-color:rgba(0,204,0,.18);min-height:62px;display:flex;align-items:center;gap:.875rem">
             <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,204,0,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--primary-green);font-size:1rem">
                 <i class="bi bi-robot"></i>
             </div>
@@ -476,7 +485,7 @@
             $totalBadgeCount = Auth::user()->badges()->count();
         @endphp
         @if($pinnedBadges->count() > 0 || $totalBadgeCount > 0)
-        <div class="kx-card mb-4" style="padding:1rem 1.4rem;">
+        <div class="kx-card mb-4" data-dashboard-stack="badges" data-dashboard-title="Achievements" style="padding:1rem 1.4rem;">
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <div class="kx-sec-title mb-0" style="font-size:.85rem">
                     <i class="bi bi-award-fill" style="color:#fbbf24"></i> My Badges
@@ -506,7 +515,7 @@
         @endif
 
         <!-- ===== Quick Actions Row ===== -->
-        <div class="kx-card p-3 mb-4" id="kx-tour-actions">
+        <div class="kx-card p-3 mb-4" id="kx-tour-actions" data-dashboard-stack="quick_actions" data-dashboard-title="Quick actions">
             <div class="kx-quick">
                 <a href="{{ Auth::user()->kyc_verified ? route('buy') : route('kyc.form') }}" class="kx-qbtn kx-qi-buy">
                     <div class="kx-qicon"><i class="bi bi-cart-fill"></i></div>
@@ -547,7 +556,7 @@
             </div>
         </div>
 
-        <div class="kx-card p-3 mb-4" id="kx-tour-bills">
+        <div class="kx-card p-3 mb-4" id="kx-tour-bills" data-dashboard-stack="bills_utilities" data-dashboard-title="Bills and utilities">
             <div class="kx-sec-title mb-3"><i class="bi bi-lightning-charge-fill"></i>Bills & Utilities <span class="kx-sec-tag ms-auto">Airtime · Data · Utilities</span></div>
             <div class="kx-quick">
                 @foreach([
@@ -566,7 +575,7 @@
             </div>
         </div>
 
-        <div class="kx-card p-3 mb-4" id="kx-tour-wallets">
+        <div class="kx-card p-3 mb-4" id="kx-tour-wallets" data-dashboard-stack="wallets" data-dashboard-title="Wallet shortcuts">
             <div class="kx-sec-title mb-3"><i class="bi bi-wallet2"></i>Wallets <span class="kx-sec-tag ms-auto">USD and crypto</span></div>
             <div class="kx-quick">
                 <a href="{{ route('wallet.usd') }}" class="kx-qbtn"><div class="kx-qicon"><i class="bi bi-currency-dollar"></i></div>USD Wallet</a>
@@ -577,7 +586,7 @@
         </div>
 
         <!-- ===== Rates + Prices Row ===== -->
-        <div class="row g-4 mb-4">
+        <div class="row g-4 mb-4" data-dashboard-stack="rates_prices" data-dashboard-title="Rates and live prices">
             <!-- Buy/Sell Rates -->
             <div class="col-12 col-lg-6">
                 <div class="kx-card p-4 h-100">
@@ -619,7 +628,7 @@
         </div>
 
         <!-- ===== Transaction History ===== -->
-        <div class="kx-card p-4 mb-4" id="kx-tour-history">
+        <div class="kx-card p-4 mb-4" id="kx-tour-history" data-dashboard-stack="transaction_history" data-dashboard-title="Transaction history">
             <div class="kx-sec-title mb-4">
                 <i class="bi bi-receipt-cutoff"></i>Transaction History
                 <div class="ms-auto d-flex gap-2 flex-wrap">
@@ -675,7 +684,7 @@
 
         @if(isset($blogPosts) && $blogPosts->isNotEmpty())
         <!-- ===== Blog Carousel ===== -->
-        <div class="kx-card p-4 mb-4">
+        <div class="kx-card p-4 mb-4" data-dashboard-stack="blog" data-dashboard-title="Latest news">
             <div class="kx-sec-title mb-3">
                 <i class="bi bi-newspaper"></i>Latest Blog Posts
                 <a href="{{ url('/blog') }}" class="kx-sec-tag ms-auto" style="text-decoration:none;cursor:pointer;">View All <i class="bi bi-arrow-right"></i></a>
@@ -764,6 +773,8 @@
             </script>
         </div>
         @endif
+
+        </section>
 
     </div>
 </div>
@@ -1127,6 +1138,64 @@ document.querySelectorAll('[data-coming-soon]').forEach(button=>button.addEventL
     .catch(() => {
         clearTimeout(timeout);
         if (el) el.textContent = greeting;
+    });
+})();
+</script>
+
+<script>
+(function(){
+    const root=document.getElementById('kxDashboardStacks');
+    if(!root)return;
+    const layoutUrl=@json(route('dashboard.layout.update'));
+    const csrf=@json(csrf_token());
+    const initial=@json($dashboardLayout ?? ['order'=>[],'visible'=>[]]);
+    const nodes=()=>Array.from(root.children).filter(node=>node.hasAttribute('data-dashboard-stack'));
+    const all=nodes();
+    let current={order:[...(initial.order||[])],visible:[...(initial.visible||[])]};
+    let original=JSON.parse(JSON.stringify(current));
+    let editing=false,dragging=null;
+    const byId=Object.fromEntries(all.map(node=>[node.dataset.dashboardStack,node]));
+    const orderNodes=order=>{const ids=[...order,...all.map(n=>n.dataset.dashboardStack).filter(id=>!order.includes(id))];ids.forEach(id=>{if(byId[id])root.appendChild(byId[id])})};
+    const setVisible=visible=>all.forEach(node=>node.hidden=!visible.includes(node.dataset.dashboardStack));
+    orderNodes(current.order);setVisible(current.visible);
+    const customize=document.getElementById('kxCustomizeStacks'),save=document.getElementById('kxSaveStacks'),cancel=document.getElementById('kxCancelStacks'),reset=document.getElementById('kxResetStacks'),panel=document.getElementById('kxStackVisibility'),status=document.getElementById('kxStackStatus');
+    function announce(message,error=false){if(status){status.textContent=message;status.style.color=error?'#fb9c9c':'#7ce39b'}}
+    function syncCurrent(){current.order=nodes().map(node=>node.dataset.dashboardStack);current.visible=all.filter(node=>!node.hidden).map(node=>node.dataset.dashboardStack)}
+    function move(node,delta){const visible=nodes().filter(item=>!item.hidden),index=visible.indexOf(node),target=visible[index+delta];if(!target)return;if(delta<0)root.insertBefore(node,target);else root.insertBefore(target,node);syncCurrent()}
+    function buildEditor(){
+        panel.innerHTML='';
+        all.forEach(node=>{
+            const id=node.dataset.dashboardStack,label=node.dataset.dashboardTitle||id;
+            const row=document.createElement('label');row.className='kx-stack-check';
+            const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!node.hidden;checkbox.dataset.stackVisible=id;
+            checkbox.addEventListener('change',()=>{if(!checkbox.checked&&panel.querySelectorAll('input[type="checkbox"]:checked').length===0){checkbox.checked=true;announce('Keep at least one dashboard section visible.',true);return}node.hidden=!checkbox.checked;syncCurrent()});
+            const text=document.createElement('span');text.textContent=label;
+            row.append(checkbox,text);panel.appendChild(row);
+            const tools=document.createElement('div');tools.className='kx-stack-card-tools';
+            const grip=document.createElement('button');grip.type='button';grip.className='kx-stack-tool kx-stack-drag';grip.draggable=true;grip.title='Drag to move';grip.setAttribute('aria-label','Drag to rearrange '+label);grip.innerHTML='<i class="bi bi-grip-vertical"></i>';
+            grip.addEventListener('dragstart',event=>{dragging=node;node.classList.add('is-dragging');event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',id)});
+            grip.addEventListener('dragend',()=>{node.classList.remove('is-dragging');dragging=null;syncCurrent()});
+            const up=document.createElement('button');up.type='button';up.className='kx-stack-tool';up.title='Move up';up.setAttribute('aria-label','Move '+label+' up');up.innerHTML='<i class="bi bi-arrow-up"></i>';up.addEventListener('click',()=>move(node,-1));
+            const down=document.createElement('button');down.type='button';down.className='kx-stack-tool';down.title='Move down';down.setAttribute('aria-label','Move '+label+' down');down.innerHTML='<i class="bi bi-arrow-down"></i>';down.addEventListener('click',()=>move(node,1));
+            tools.append(grip,up,down);node.prepend(tools);
+            node.addEventListener('dragover',event=>{if(!editing||!dragging||dragging===node)return;event.preventDefault();const rect=node.getBoundingClientRect();const after=event.clientY>rect.top+rect.height/2;root.insertBefore(dragging,after?node.nextSibling:node)});
+        });
+    }
+    function setEditing(on){editing=on;root.classList.toggle('is-editing',on);customize.hidden=on;save.hidden=!on;cancel.hidden=!on;reset.hidden=!on;panel.hidden=!on;if(on){original=JSON.parse(JSON.stringify(current));buildEditor();announce('Drag sections or use the arrow controls. Choose what stays visible.')}else{root.querySelectorAll('.kx-stack-card-tools').forEach(el=>el.remove());announce('')}}
+    customize?.addEventListener('click',()=>setEditing(true));
+    cancel?.addEventListener('click',()=>{current=JSON.parse(JSON.stringify(original));orderNodes(current.order);setVisible(current.visible);setEditing(false)});
+    save?.addEventListener('click',async()=>{
+        syncCurrent();
+        const rendered=new Set(current.order);current.order.push(...(original.order||[]).filter(id=>!rendered.has(id)));
+        const visibleSet=new Set(current.visible);current.visible.push(...(original.visible||[]).filter(id=>!all.some(node=>node.dataset.dashboardStack===id)&&!visibleSet.has(id)));
+        save.disabled=true;announce('Saving your arrangement…');
+        try{const response=await fetch(layoutUrl,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrf,'X-Requested-With':'XMLHttpRequest'},body:JSON.stringify(current)});const data=await response.json();if(!response.ok)throw new Error(data.message||'Could not save your layout.');setEditing(false);announce(data.message||'Layout saved.');}
+        catch(error){announce(error.message||'Could not save your layout.',true)}finally{save.disabled=false}
+    });
+    reset?.addEventListener('click',async()=>{
+        reset.disabled=true;announce('Restoring the admin default…');
+        try{const response=await fetch(layoutUrl,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrf,'X-Requested-With':'XMLHttpRequest'},body:JSON.stringify({reset:true})});const data=await response.json();if(!response.ok)throw new Error(data.message||'Could not reset the layout.');location.reload()}
+        catch(error){announce(error.message||'Could not reset the layout.',true);reset.disabled=false}
     });
 })();
 </script>

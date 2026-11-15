@@ -105,6 +105,7 @@ class User extends Authenticatable
         'kx_tag',
         'date_of_birth',
         'crypto_deposit_settlement_preference',
+        'dashboard_layout',
     ];
 
     /**
@@ -135,6 +136,7 @@ class User extends Authenticatable
         'telegram_verified' => 'boolean',
         'two_factor_enabled' => 'boolean',
         'two_factor_confirmed_at' => 'datetime',
+        'dashboard_layout' => 'array',
     ];
 
 

@@ -108,6 +108,7 @@ class TelegramBotController extends Controller
         $message .= "1️⃣ Type `/verify` to link your account\n";
         $message .= "2️⃣ Enter your KayXchange email\n";
         $message .= "3️⃣ Start receiving notifications!\n\n";
+        $message .= "Use the buttons below for crypto deposits (NOWPayments when enabled), your USD wallet and other platform services. Wallet actions continue on the secure website and require sign-in.\n\n";
         $message .= "_Type /help for more commands_";
 
         $keyboard = [
@@ -115,6 +116,22 @@ class TelegramBotController extends Controller
                 [
                     ['text' => '🔗 Link Account', 'callback_data' => 'verify_account'],
                     ['text' => '❓ Help', 'callback_data' => 'show_help']
+                ],
+                [
+                    ['text' => '₿ Crypto Deposit', 'url' => url('/wallet/deposit')],
+                    ['text' => '💵 USD Wallet', 'url' => url('/wallet/usd')],
+                ],
+                [
+                    ['text' => '👛 Wallets', 'url' => url('/wallet')],
+                    ['text' => '🔁 Swap Crypto', 'url' => url('/swap')],
+                ],
+                [
+                    ['text' => '🧾 Bills', 'url' => url('/bills')],
+                    ['text' => '🎁 Gift Cards', 'url' => url('/gift-cards')],
+                ],
+                [
+                    ['text' => '📈 Portfolio', 'url' => url('/portfolio')],
+                    ['text' => '🛟 Support', 'url' => url('/support/cases')],
                 ]
             ]
         ];
@@ -393,6 +410,7 @@ class TelegramBotController extends Controller
         $message .= "/status - Check your account status\n";
         $message .= "/help - Show this help message\n";
         $message .= "/unlink - Disconnect your account\n\n";
+        $message .= "Platform access: Crypto deposits, USD crypto portfolio, wallet history, swaps, bills, gift cards, portfolio tracking and support are available on the secure KayXchange website. Use /start for quick links.\n\n";
         $message .= "*What I can do:*\n";
         $message .= "• Send trade confirmations\n";
         $message .= "• Notify about rate changes\n";

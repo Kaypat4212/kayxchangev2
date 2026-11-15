@@ -556,7 +556,7 @@ class TelegramService
         // Extract the first word (command without arguments)
         $command = strtolower(explode(' ', $text)[0]);
 
-        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai', 'upload'];
+        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'verify', 'help', 'cancel', 'ai', 'upload', 'features', 'wallet', 'crypto_deposit', 'usd_wallet'];
 
         return in_array($command, $known, true) ? $command : null;
     }
@@ -672,6 +672,10 @@ class TelegramService
                         'help'     => $this->handleHelpCommand($chatId),
                         'ai'       => $this->handleAiChatCommand($chatId),
                         'upload'   => $this->handleUploadCommand($chatId),
+                        'features' => $this->handleFeaturesCommand($chatId),
+                        'wallet'   => $this->handleFeatureLink($chatId, 'Wallet overview', '/wallet'),
+                        'crypto_deposit' => $this->handleCryptoDepositCommand($chatId),
+                        'usd_wallet' => $this->handleUsdWalletCommand($chatId),
                         default    => $this->handleUnknownCommand($chatId),
                     };
                     return true;
@@ -896,6 +900,21 @@ class TelegramService
                     'cmd_trades'   => $this->handleTradesCommand($chatId),
                     'cmd_help'     => $this->handleHelpCommand($chatId),
                     'cmd_ai'       => $this->handleAiChatCommand($chatId),
+                    'cmd_crypto_deposit' => $this->handleCryptoDepositCommand($chatId),
+                    'cmd_usd_wallet' => $this->handleUsdWalletCommand($chatId),
+                    'cmd_wallet_page' => $this->handleFeatureLink($chatId, 'Wallet overview', '/wallet'),
+                    'cmd_withdraw' => $this->handleFeatureLink($chatId, 'Withdraw', '/wallet/withdraw'),
+                    'cmd_swap' => $this->handleFeatureLink($chatId, 'Swap crypto', '/swap'),
+                    'cmd_bills' => $this->handleFeatureLink($chatId, 'Bills and utilities', '/bills'),
+                    'cmd_giftcards' => $this->handleFeatureLink($chatId, 'Gift cards', '/gift-cards'),
+                    'cmd_portfolio' => $this->handleFeatureLink($chatId, 'Portfolio', '/portfolio'),
+                    'cmd_support' => $this->handleFeatureLink($chatId, 'Support cases', '/support/cases'),
+                    'cmd_history' => $this->handleFeatureLink($chatId, 'Wallet history', '/wallet/history'),
+                    'cmd_transactions' => $this->handleFeatureLink($chatId, 'Transaction history', '/transactions/history'),
+                    'cmd_activity' => $this->handleFeatureLink($chatId, 'Recent account activity', '/account/activity'),
+                    'cmd_notifications' => $this->handleFeatureLink($chatId, 'Notifications', '/notifications'),
+                    'cmd_forum' => $this->handleFeatureLink($chatId, 'Community forum', '/forum'),
+                    'cmd_features' => $this->handleFeaturesCommand($chatId),
                     default        => null,
                 };
             }
@@ -946,6 +965,7 @@ class TelegramService
                        "• `/buy` — Buy cryptocurrency\n" .
                        "• `/rates` — View live rates\n" .
                        "• `/trades` — Your recent trades\n" .
+                       "• `/features` — Open platform features\n" .
                        "• `/balance` — Check balance\n\n" .
                        "_" . now()->format('d M Y, H:i') . "_";
 
@@ -965,6 +985,22 @@ class TelegramService
                     ],
                     [
                         ['text' => '🤖 AI Assistant', 'callback_data' => 'cmd_ai'],
+                    ],
+                    [
+                        $this->linkButton('₿ Deposit Crypto', '/wallet/deposit', 'cmd_crypto_deposit'),
+                        $this->linkButton('💵 USD Wallet', '/wallet/usd', 'cmd_usd_wallet'),
+                    ],
+                    [
+                        $this->linkButton('👛 Wallets', '/wallet', 'cmd_wallet_page'),
+                        $this->linkButton('🔁 Swap', '/swap', 'cmd_swap'),
+                    ],
+                    [
+                        $this->linkButton('🧾 Bills', '/bills', 'cmd_bills'),
+                        $this->linkButton('🎁 Gift Cards', '/gift-cards', 'cmd_giftcards'),
+                    ],
+                    [
+                        $this->linkButton('📈 Portfolio', '/portfolio', 'cmd_portfolio'),
+                        $this->linkButton('🛟 Support', '/support/cases', 'cmd_support'),
                     ],
                 ],
             ];
@@ -995,6 +1031,10 @@ class TelegramService
                 ],
                 [
                     ['text' => '❓ Help', 'callback_data' => 'cmd_help'],
+                ],
+                [
+                    $this->linkButton('💱 Explore KayXchange', '/rate-calculator', 'cmd_features'),
+                    $this->linkButton('🎁 Gift Cards', '/gift-cards', 'cmd_features'),
                 ],
             ],
         ];
@@ -1495,6 +1535,81 @@ class TelegramService
 
     // ─────────────────────────────────────────────────────────────────────────────
 
+    /** Present current platform tools through secure, authenticated web destinations. */
+    private function handleFeaturesCommand(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        $message = $user
+            ? "✨ *KayXchange features*\nChoose a service below. Wallet actions open the secure website so your account session and payment review rules remain active."
+            : "✨ *Explore KayXchange*\nLink or create your account to use wallet and trading services. Crypto deposits open the secure site; NOWPayments is used when enabled by the platform.";
+
+        $keyboard = ['inline_keyboard' => [
+            [
+                $this->linkButton('₿ Crypto deposit', '/wallet/deposit', 'cmd_crypto_deposit'),
+                $this->linkButton('💵 USD wallet', '/wallet/usd', 'cmd_usd_wallet'),
+            ],
+            [
+                $this->linkButton('👛 Wallet overview', '/wallet', 'cmd_wallet_page'),
+                $this->linkButton('💸 Withdraw', '/wallet/withdraw', 'cmd_withdraw'),
+            ],
+            [
+                $this->linkButton('🔁 Swap', '/swap', 'cmd_swap'),
+                $this->linkButton('🧾 Bills', '/bills', 'cmd_bills'),
+            ],
+            [
+                $this->linkButton('🎁 Gift cards', '/gift-cards', 'cmd_giftcards'),
+                $this->linkButton('📈 Portfolio', '/portfolio', 'cmd_portfolio'),
+            ],
+            [
+                $this->linkButton('📜 Wallet history', '/wallet/history', 'cmd_history'),
+                $this->linkButton('🛟 Support', '/support/cases', 'cmd_support'),
+            ],
+            [
+                $this->linkButton('🧾 Transactions', '/transactions/history', 'cmd_transactions'),
+                $this->linkButton('🔔 Notifications', '/notifications', 'cmd_notifications'),
+            ],
+            [
+                $this->linkButton('🕘 Account activity', '/account/activity', 'cmd_activity'),
+                $this->linkButton('💬 Community forum', '/forum', 'cmd_forum'),
+            ],
+            [
+                ['text' => '📊 Live rates', 'callback_data' => 'cmd_rates'],
+                ['text' => '🤖 Ask KayX AI', 'callback_data' => 'cmd_ai'],
+            ],
+        ]];
+
+        $this->sendMessage($chatId, $message, 'Markdown', $keyboard);
+    }
+
+    private function handleFeatureLink(int $chatId, string $label, string $path): void
+    {
+        $destination = $this->telegramAppUrl() . $path;
+        $message = "🔐 *{$label}*\nOpen the secure KayXchange page to continue. Sign in if requested.\n\n" . $destination;
+        $keyboard = null;
+        if ($this->shouldUseUrlButtons()) {
+            $keyboard = ['inline_keyboard' => [[['text' => 'Open ' . $label, 'url' => $destination]], [['text' => '✨ All features', 'callback_data' => 'cmd_features']]]];
+        }
+        $this->sendMessage($chatId, $message, 'Markdown', $keyboard);
+    }
+
+    private function handleCryptoDepositCommand(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        $note = $user
+            ? "Choose a supported coin and network on the deposit page. When NOWPayments is enabled, the site creates and tracks the invoice; provider confirmation and the configured admin review decide when funds are credited."
+            : "Sign in to your KayXchange account first. The deposit page will create an invoice through the active provider (NOWPayments when enabled).";
+        $this->sendMessage($chatId, "₿ *Crypto deposit*\n{$note}", 'Markdown', ['inline_keyboard' => [[['text' => 'Open crypto deposit', 'url' => $this->telegramAppUrl() . '/wallet/deposit']], [['text' => 'USD wallet', 'url' => $this->telegramAppUrl() . '/wallet/usd']]]]);
+    }
+
+    private function handleUsdWalletCommand(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        $message = $user
+            ? "💵 *USD crypto portfolio*\nView the live USD valuation of your supported crypto holdings and use the wallet page to manage available actions. This is a portfolio valuation, not a separate cash balance."
+            : "💵 *USD crypto portfolio*\nSign in to view your live portfolio valuation across supported crypto holdings.";
+        $this->sendMessage($chatId, $message, 'Markdown', ['inline_keyboard' => [[['text' => 'Open USD wallet', 'url' => $this->telegramAppUrl() . '/wallet/usd']], [['text' => 'Open crypto deposit', 'url' => $this->telegramAppUrl() . '/wallet/deposit']]]]);
+    }
+
     /**
      * Handle /help command
      */
@@ -1523,6 +1638,9 @@ class TelegramService
                     "  └ PIN required if set → choose coin → amount → wallet → proof (photo or txid)\n" .
                     "`/deposit` — Deposit NGN into your wallet balance\n" .
                     "  └ Pick account → enter amount → upload proof photo\n" .
+                    "`/crypto_deposit` — Open secure crypto deposits (NOWPayments when enabled)\n" .
+                    "`/usd_wallet` — Open your read-only crypto portfolio valuation\n" .
+                    "`/features` — Wallets, withdrawals, swaps, bills, gift cards, portfolio and support\n" .
                     "`/rates` — View live NGN buy & sell rates\n" .
                     "`/balance` — Check your account balance\n" .
                     "`/trades` — View your last 5 trades\n\n" .

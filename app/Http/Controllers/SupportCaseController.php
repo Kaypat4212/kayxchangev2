@@ -8,6 +8,7 @@ use App\Models\EmailSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 
 class SupportCaseController extends Controller
 {
@@ -31,6 +32,64 @@ class SupportCaseController extends Controller
         return view('support.cases', compact('cases'));
     }
 
+    public function show(SupportCase $supportCase)
+    {
+        abort_unless((int)$supportCase->user_id === (int)auth()->id(), 404);
+        $supportCase->load(['deposit', 'messages']);
+        return view('support.case-detail', compact('supportCase'));
+    }
+
+    public function reply(Request $request, SupportCase $supportCase)
+    {
+        abort_unless((int)$supportCase->user_id === (int)$request->user()->id, 404);
+        $data = $request->validate(['message' => 'required|string|min:2|max:4000']);
+
+        DB::transaction(function () use ($request, $supportCase, $data): void {
+            $case = SupportCase::query()->lockForUpdate()->findOrFail($supportCase->id);
+            $this->ensureLegacyConversation($case);
+            $case->messages()->create([
+                'sender_id' => $request->user()->id,
+                'sender_role' => 'user',
+                'message' => trim($data['message']),
+            ]);
+            if ($case->status === 'resolved') {
+                $case->status = 'in_progress';
+                $case->resolved_at = null;
+                $case->save();
+            }
+        });
+
+        foreach (\App\Models\User::where('is_admin', true)->get(['id']) as $admin) {
+            \App\Models\Notification::create([
+                'admin_id' => $admin->id,
+                'type' => 'info',
+                'title' => 'Customer replied to a support case',
+                'message' => 'A new reply was added to case #' . $supportCase->id . '.',
+                'data' => ['support_case_id' => $supportCase->id, 'url' => route('admin.support-cases.index')],
+            ]);
+        }
+
+        return back()->with('success', 'Your reply was sent to the support team.');
+    }
+
+    public function resolve(SupportCase $supportCase)
+    {
+        abort_unless((int)$supportCase->user_id === (int)auth()->id(), 404);
+        if ($supportCase->status !== 'resolved') {
+            $supportCase->update(['status' => 'resolved', 'resolved_at' => now()]);
+            foreach (\App\Models\User::where('is_admin', true)->get(['id']) as $admin) {
+                \App\Models\Notification::create([
+                    'admin_id' => $admin->id,
+                    'type' => 'success',
+                    'title' => 'Customer marked support case resolved',
+                    'message' => 'The customer marked case #' . $supportCase->id . ' as resolved.',
+                    'data' => ['support_case_id' => $supportCase->id, 'url' => route('admin.support-cases.index')],
+                ]);
+            }
+        }
+        return back()->with('success', 'Case marked as resolved. You can still reply to reopen it.');
+    }
+
     public function store(Request $request, ?CryptoDeposit $deposit = null)
     {
         if ($deposit && (int) $deposit->user_id !== (int) auth()->id()) abort(404);
@@ -47,6 +106,11 @@ class SupportCaseController extends Controller
             'category' => $deposit ? 'deposit' : ($data['category'] ?? 'general'),
             'subject' => $data['subject'], 'message' => $data['message'],
         ]);
+        $case->messages()->create([
+            'sender_id' => $request->user()->id,
+            'sender_role' => 'user',
+            'message' => $data['message'],
+        ]);
         $isComplaint = $case->category === 'complaint';
         foreach (\App\Models\User::where('is_admin', true)->get(['id']) as $admin) {
             \App\Models\Notification::create([
@@ -60,7 +124,7 @@ class SupportCaseController extends Controller
             'success',
             $isComplaint ? 'Complaint received' : 'Support request received',
             ($isComplaint ? 'Your complaint' : 'Your support request') . ' #' . $case->id . ' has been sent to our support team. We will notify you when an admin replies.',
-            ['support_case_id' => $case->id, 'category' => $case->category]
+            ['support_case_id' => $case->id, 'category' => $case->category, 'url' => route('support.cases.show', $case)]
         );
 
         $this->notifySupportTelegram($case, $request->user()->name ?? 'Customer');
@@ -71,7 +135,7 @@ class SupportCaseController extends Controller
 
     public function adminIndex()
     {
-        $cases = SupportCase::with(['user', 'deposit', 'assignedAdmin'])->latest()->paginate(25);
+        $cases = SupportCase::with(['user', 'deposit', 'assignedAdmin', 'messages'])->latest()->paginate(25);
         return view('admin.support-cases', compact('cases'));
     }
 
@@ -81,18 +145,45 @@ class SupportCaseController extends Controller
             'admin_response' => 'required|string|min:2|max:4000',
             'status' => 'required|in:in_progress,resolved',
         ]);
+        $this->ensureLegacyConversation($supportCase);
         $supportCase->update([
             ...$data, 'assigned_admin_id' => auth()->id(),
             'resolved_at' => $data['status'] === 'resolved' ? now() : null,
+        ]);
+        $supportCase->messages()->create([
+            'sender_id' => auth()->id(),
+            'sender_role' => 'admin',
+            'message' => trim($data['admin_response']),
         ]);
         \App\Models\Notification::createForUser(
             (int) $supportCase->user_id,
             'info',
             'Support replied to your case',
             'A response was added to support case #' . $supportCase->id . '.',
-            ['support_case_id' => $supportCase->id]
+            ['support_case_id' => $supportCase->id, 'url' => route('support.cases.show', $supportCase)]
         );
         return back()->with('success', 'Support case updated.');
+    }
+
+    private function ensureLegacyConversation(SupportCase $case): void
+    {
+        if ($case->messages()->exists()) return;
+        $original = $case->messages()->create([
+            'sender_id' => $case->user_id,
+            'sender_role' => 'user',
+            'message' => $case->message,
+        ]);
+        $original->created_at = $case->created_at;
+        $original->save();
+        if (trim((string)$case->admin_response) !== '') {
+            $legacyReply = $case->messages()->create([
+                'sender_id' => $case->assigned_admin_id,
+                'sender_role' => 'admin',
+                'message' => $case->admin_response,
+            ]);
+            $legacyReply->created_at = $case->updated_at;
+            $legacyReply->save();
+        }
     }
 
     private function notifySupportTelegram(SupportCase $case, string $customerName): void

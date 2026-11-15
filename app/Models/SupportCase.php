@@ -16,4 +16,5 @@ class SupportCase extends Model
     public function user() { return $this->belongsTo(User::class); }
     public function deposit() { return $this->belongsTo(CryptoDeposit::class, 'crypto_deposit_id'); }
     public function assignedAdmin() { return $this->belongsTo(User::class, 'assigned_admin_id'); }
+    public function messages() { return $this->hasMany(SupportCaseMessage::class)->with('sender')->orderBy('created_at'); }
 }

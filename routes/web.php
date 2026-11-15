@@ -240,6 +240,8 @@ use App\Http\Controllers\Admin\AdminBackupController;
 use App\Http\Controllers\Admin\AdminProfileController;
 
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('dashboard-layout', [\App\Http\Controllers\DashboardLayoutController::class, 'adminIndex'])->name('admin.dashboard-layout.index');
+    Route::put('dashboard-layout', [\App\Http\Controllers\DashboardLayoutController::class, 'saveAdminDefault'])->name('admin.dashboard-layout.update');
     Route::get('logs', [\App\Http\Controllers\Admin\AdminLogController::class, 'index'])->name('admin.logs.index');
     Route::post('logs/analyze', [\App\Http\Controllers\Admin\AdminLogController::class, 'analyze'])->middleware('throttle:5,1')->name('admin.logs.analyze');
     Route::get('logs/download', [\App\Http\Controllers\Admin\AdminLogController::class, 'download'])->name('admin.logs.download');
@@ -634,6 +636,7 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
 
 Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     Route::get('/dashboard', [CryptoController::class, 'dashboard'])->name('dashboard');
+    Route::put('/dashboard/layout', [\App\Http\Controllers\DashboardLayoutController::class, 'saveUser'])->middleware('throttle:10,1')->name('dashboard.layout.update');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/kx-tag', [ProfileController::class, 'updateKxTag'])->name('profile.kx-tag');
@@ -771,7 +774,11 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/account/activity', [\App\Http\Controllers\UserActivityController::class, 'index'])->name('account.activity.index');
     Route::get('/support/cases', [\App\Http\Controllers\SupportCaseController::class, 'index'])->name('support.cases.index');
+    Route::get('/support/cases/{supportCase}', [\App\Http\Controllers\SupportCaseController::class, 'show'])->name('support.cases.show');
+    Route::post('/support/cases/{supportCase}/reply', [\App\Http\Controllers\SupportCaseController::class, 'reply'])->middleware('throttle:8,1')->name('support.cases.reply');
+    Route::post('/support/cases/{supportCase}/resolve', [\App\Http\Controllers\SupportCaseController::class, 'resolve'])->middleware('throttle:5,1')->name('support.cases.resolve');
     Route::get('/support/deposit/{deposit}', [\App\Http\Controllers\SupportCaseController::class, 'createDeposit'])->name('support.cases.deposit.create');
     Route::post('/support/cases', [\App\Http\Controllers\SupportCaseController::class, 'store'])->middleware('throttle:5,1')->name('support.cases.store');
     Route::post('/support/deposit/{deposit}', [\App\Http\Controllers\SupportCaseController::class, 'store'])->middleware('throttle:5,1')->name('support.cases.deposit');

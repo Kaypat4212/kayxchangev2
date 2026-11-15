@@ -44,9 +44,26 @@ class NotificationController extends Controller
         if (!$notification->is_read) {
             $notification->markAsRead();
         }
+        $notificationData = is_array($notification->data) ? $notification->data : [];
+        $actionUrl = route('account.activity.index');
+        $actionLabel = 'View account activity';
+        $supportUrl = route('support.cases.index');
+        if (!empty($notificationData['support_case_id']) && \App\Models\SupportCase::query()
+            ->where('id', (int)$notificationData['support_case_id'])->where('user_id', Auth::id())->exists()) {
+            $actionUrl = route('support.cases.show', (int)$notificationData['support_case_id']);
+            $actionLabel = 'Open support case';
+        } elseif (!empty($notificationData['deposit_id']) && \App\Models\CryptoDeposit::query()
+            ->where('id', (int)$notificationData['deposit_id'])->where('user_id', Auth::id())->exists()) {
+            $actionUrl = route('wallet.deposit.success', (int)$notificationData['deposit_id']);
+            $actionLabel = 'View deposit status';
+            $supportUrl = route('support.cases.deposit.create', (int)$notificationData['deposit_id']);
+        } elseif (str_starts_with((string)($notificationData['type'] ?? ''), 'gift_card')) {
+            $actionUrl = route('gift-cards.index');
+            $actionLabel = 'View gift card activity';
+        }
 
         if (request()->expectsJson() || request()->wantsJson()) {
-            $data = is_array($notification->data) ? $notification->data : [];
+            $data = $notificationData;
 
             return response()->json([
                 'id' => $notification->id,
@@ -63,10 +80,13 @@ class NotificationController extends Controller
                 'source' => $notification->is_broadcast
                     ? 'System Broadcast'
                     : ($notification->admin?->name ? 'Admin: ' . $notification->admin->name : 'Account Alert'),
+                'action_url' => $actionUrl,
+                'action_label' => $actionLabel,
+                'support_url' => $supportUrl,
             ]);
         }
 
-        return view('notifications.show', compact('notification'));
+        return view('notifications.show', compact('notification', 'notificationData', 'actionUrl', 'actionLabel', 'supportUrl'));
     }
 
     public function markAsRead($id)

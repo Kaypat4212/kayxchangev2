@@ -557,6 +557,7 @@
                                             <span class="nx-pill exp">Expires {{ $notification->expires_at->diffForHumans() }}</span>
                                         @endif
                                     </div>
+                                    <a href="{{ route('notifications.show',$notification->id) }}" class="btn btn-sm btn-outline-success mt-2" onclick="event.stopPropagation()"><i class="bi bi-eye me-1"></i>View full notification</a>
                                 </div>
                             </div>
                             @endforeach

@@ -112,47 +112,8 @@ class CryptoController extends Controller
         $transactions = $buyTransactions->concat($sellTransactions)->concat($withdrawalTransactions)->concat($depositTransactions)->concat($cryptoDepositTransactions)->concat($cryptoWithdrawalTransactions)
             ->sortByDesc('created_at')->values()->take(5);
 
-        // Full account activity feed, kept user-scoped and tolerant of optional modules on older installs.
-        $recentActivities = collect();
-        $appendActivities = function (string $modelClass, string $type, callable $mapper) use (&$recentActivities, $userId): void {
-            try {
-                $items = $modelClass::where('user_id', $userId)->latest()->limit(8)->get();
-                foreach ($items as $item) $recentActivities->push(array_merge($mapper($item, $type), ['type' => $type, 'created_at' => $item->created_at]));
-            } catch (\Throwable $exception) {
-                // A module table may not exist yet on an incompletely migrated deployment.
-            }
-        };
-        $appendActivities(BuyTrade::class, 'buy', fn ($item) => ['title' => 'Crypto buy request', 'detail' => strtoupper((string)$item->coin) . ' purchase', 'amount' => $item->naira_amount, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->transaction_ref, 'icon' => 'bi-arrow-down-left']);
-        $appendActivities(SellTrade::class, 'sell', function ($item) use ($usdtRate) { $settled = strtolower((string)$item->status) === 'completed'; $walletCredit = $settled && (string)$item->payment_method === 'wallet_balance'; $ngn = (float)($item->naira_amount ?? 0); return ['title' => 'Crypto sell request', 'detail' => strtoupper((string)$item->coin) . ' sale · ' . ($walletCredit ? 'Naira wallet credited' : ($settled ? 'Payout marked completed' : 'Payout after approval')), 'amount' => $ngn, 'currency' => 'NGN', 'amount_ngn' => $ngn, 'amount_usd' => $usdtRate > 0 ? $ngn / $usdtRate : (float)($item->usd_amount ?? 0), 'balance_effect' => $walletCredit ? 'Balance increased' : ($settled ? 'Payout completed' : 'Awaiting payout'), 'direction' => $walletCredit ? 'in' : 'pending', 'status' => $item->status, 'reference' => $item->transaction_ref, 'icon' => 'bi-arrow-up-right']; });
-        $appendActivities(Withdrawal::class, 'withdrawal', function ($item) use ($usdtRate) { $approved = in_array(strtolower((string)$item->status), ['approved','successful','completed'], true); $ngn = (float)$item->amount + (float)($item->fee_amount ?? 0); return ['title' => 'Naira withdrawal', 'detail' => 'Bank payout request · ' . ($approved ? 'Naira wallet debited' : 'Debit on approval'), 'amount' => $ngn, 'currency' => 'NGN', 'amount_ngn' => $ngn, 'amount_usd' => $usdtRate > 0 ? $ngn / $usdtRate : null, 'balance_effect' => $approved ? 'Balance decreased' : 'Awaiting approval', 'direction' => $approved ? 'out' : 'pending', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-bank']; });
-        $appendActivities(\App\Models\Deposit::class, 'deposit', function ($item) use ($usdtRate) { $net = max(0, (float)$item->amount - (float)($item->fee_amount ?? 0)); $posted = in_array(strtolower((string)$item->status), ['approved','completed','successful'], true); return ['title' => 'Naira deposit', 'detail' => ucfirst((string)($item->payment_method ?? 'Deposit')) . ($posted ? ' · Naira wallet credited' : ' · Credit after confirmation'), 'amount' => $net, 'currency' => 'NGN', 'amount_ngn' => $net, 'amount_usd' => $usdtRate > 0 ? $net / $usdtRate : null, 'balance_effect' => $posted ? 'Balance increased' : 'Awaiting credit', 'direction' => $posted ? 'in' : 'pending', 'status' => $item->status, 'reference' => $item->transaction_ref, 'icon' => 'bi-box-arrow-in-down']; });
-        $appendActivities(\App\Models\CryptoDeposit::class, 'crypto_deposit', function ($item) use ($walletMarket, $usdtRate) { $coin = strtoupper((string)$item->currency); $crypto = (float)($item->received_amount ?: $item->expected_amount); $usd = $crypto * (float)($walletMarket[$coin] ?? 0); $ngn = (float)($item->ngn_credited_amount ?? 0); $posted = strtolower((string)$item->status) === 'completed'; return ['title' => 'Crypto deposit', 'detail' => number_format($crypto, 8) . ' ' . $coin . ($posted ? ' · Crypto balance credited' : ' · Credit after provider confirmation'), 'amount' => $crypto, 'currency' => $coin, 'amount_usd' => $usd > 0 ? $usd : null, 'amount_ngn' => $ngn > 0 ? $ngn : ($usd > 0 && $usdtRate > 0 ? $usd * $usdtRate : null), 'balance_effect' => $posted ? 'Balance increased' : 'Awaiting credit', 'direction' => $posted ? 'in' : 'pending', 'status' => $item->status, 'reference' => $item->transaction_hash ?: ('Deposit #' . $item->id), 'icon' => 'bi-currency-bitcoin']; });
-        $appendActivities(\App\Models\CryptoWithdrawal::class, 'crypto_withdrawal', function ($item) use ($walletMarket, $usdtRate) { $item->loadMissing('wallet'); $coin = strtoupper((string)($item->wallet?->currency ?? 'Crypto')); $usd = (float)($item->usd_value_at_request ?? 0); if ($usd <= 0) $usd = (float)$item->amount * (float)($walletMarket[$coin] ?? 0); $posted = strtolower((string)$item->status) === 'completed'; return ['title' => 'Crypto withdrawal', 'detail' => number_format((float)$item->amount, 8) . ' ' . $coin . ' · ' . ($posted ? 'Crypto wallet debited' : 'Debit on payout completion'), 'amount' => $item->amount, 'currency' => $coin, 'amount_usd' => $usd > 0 ? $usd : null, 'amount_ngn' => $usd > 0 && $usdtRate > 0 ? $usd * $usdtRate : null, 'balance_effect' => $posted ? 'Balance decreased' : 'Awaiting payout', 'direction' => $posted ? 'out' : 'pending', 'status' => $item->status, 'reference' => $item->transaction_hash ?: ('Withdrawal #' . $item->id), 'icon' => 'bi-box-arrow-up-right']; });
-        $appendActivities(Conversion::class, 'swap', fn ($item) => ['title' => 'Crypto swap', 'detail' => number_format((float)$item->from_amount, 8) . ' ' . strtoupper((string)$item->from_coin) . ' → ' . strtoupper((string)$item->to_coin), 'amount' => $item->to_amount, 'currency' => strtoupper((string)$item->to_coin), 'status' => $item->status, 'reference' => $item->provider_conversion_id ?: ('Swap #' . $item->id), 'icon' => 'bi-arrow-left-right']);
-        $appendActivities(\App\Models\PortfolioWithdrawal::class, 'portfolio', fn ($item) => ['title' => 'Crypto portfolio converted', 'detail' => 'Crypto assets converted to your Naira wallet', 'amount' => $item->naira_amount, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-pie-chart']);
-        $appendActivities(\App\Models\GiftCardOrder::class, 'gift_card_purchase', fn ($item) => ['title' => 'Gift card purchase', 'detail' => $item->card_name . ' · ' . $item->country, 'amount' => $item->total_ngn, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-gift']);
-        $appendActivities(\App\Models\GiftCardSaleOrder::class, 'gift_card_sale', fn ($item) => ['title' => 'Gift card sale', 'detail' => $item->card_name . ' · ' . $item->country, 'amount' => $item->approved_ngn ?? $item->estimated_ngn, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-gift']);
-        $appendActivities(\App\Models\BillPayment::class, 'bill', fn ($item) => ['title' => 'Bill payment', 'detail' => ucfirst(str_replace('_', ' ', (string)$item->category)), 'amount' => (float)$item->amount + (float)$item->fee, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-receipt']);
-        try {
-            foreach (\App\Models\P2pTransfer::where(fn ($q) => $q->where('sender_id', $userId)->orWhere('recipient_id', $userId))->latest()->limit(8)->get() as $item) {
-                $sent = (int)$item->sender_id === (int)$userId;
-                $recentActivities->push(['type' => 'transfer', 'title' => $sent ? 'Wallet transfer sent' : 'Wallet transfer received', 'detail' => $sent ? 'You sent funds to another user' : 'Funds received from another user', 'amount' => $sent ? $item->amount : $item->recipient_amount, 'currency' => 'NGN', 'status' => $item->status, 'reference' => $item->reference, 'icon' => 'bi-arrow-left-right', 'created_at' => $item->created_at]);
-            }
-        } catch (\Throwable $exception) {}
-        try {
-            foreach (\App\Models\LoginLog::where('user_id', $userId)->where('status', 'success')->latest()->limit(5)->get() as $item) {
-                $recentActivities->push(['type' => 'security', 'title' => 'Successful sign in', 'detail' => 'Account access · ' . ($item->ip_address ?: 'IP unavailable'), 'amount' => null, 'currency' => null, 'status' => 'secure', 'reference' => null, 'icon' => 'bi-shield-check', 'created_at' => $item->created_at]);
-            }
-        } catch (\Throwable $exception) {}
-        try {
-            foreach (\App\Models\Notification::where('user_id', $userId)->latest()->limit(8)->get() as $item) {
-                $recentActivities->push(['type' => 'account', 'title' => $item->title, 'detail' => $item->message, 'amount' => null, 'currency' => null, 'status' => 'update', 'reference' => null, 'icon' => 'bi-bell', 'created_at' => $item->created_at]);
-            }
-        } catch (\Throwable $exception) {}
-        $recentActivities = $recentActivities->map(function ($item) {
-            $item['created_at'] = $item['created_at'] ?? now();
-            return $item;
-        })->sortByDesc('created_at')->take(10)->values();
+        // Keep the dashboard focused on the five most recent account events; the activity page shows the paginated feed.
+        $recentActivities = app(\App\Services\UserActivityFeedService::class)->forUser(Auth::user(), 20, $walletMarket, (float)$usdtRate)->take(5)->values();
         $totalTradeCount = (int) BuyTrade::where('user_id', $userId)->count() + (int) SellTrade::where('user_id', $userId)->count();
         $pendingCount = 0;
         foreach ([BuyTrade::class, SellTrade::class, Withdrawal::class, \App\Models\Deposit::class, \App\Models\CryptoDeposit::class, \App\Models\CryptoWithdrawal::class, Conversion::class, \App\Models\BillPayment::class, \App\Models\GiftCardOrder::class, \App\Models\GiftCardSaleOrder::class] as $pendingModel) {
@@ -182,7 +143,10 @@ class CryptoController extends Controller
         }
         if (!$cryptoPortfolioComplete) $cryptoPortfolioUsd = null;
         $cryptoPortfolioStale = (bool) ($walletMarket['_stale'] ?? false);
-        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts', 'billPaymentsEnabled', 'utilityPaymentsEnabled', 'cryptoPortfolioUsd', 'cryptoPortfolioStale', 'cryptoWallets', 'recentActivities', 'totalTradeCount', 'pendingCount'));
+        $dashboardLayoutService = app(\App\Services\DashboardStackService::class);
+        $dashboardLayout = $dashboardLayoutService->forUser($currentUser);
+        $dashboardDefaults = $dashboardLayoutService->adminDefaults();
+        return view('dashboard', compact('transactions', 'rates', 'usdtRate', 'referralCount', 'blogPosts', 'billPaymentsEnabled', 'utilityPaymentsEnabled', 'cryptoPortfolioUsd', 'cryptoPortfolioStale', 'cryptoWallets', 'recentActivities', 'totalTradeCount', 'pendingCount', 'dashboardLayout', 'dashboardDefaults'));
     }
 
     public function buy()

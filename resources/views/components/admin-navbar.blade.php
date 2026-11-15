@@ -253,7 +253,7 @@
 
         {{-- Settings dropdown --}}
         <div class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle @if(request()->is('admin/settings*') || request()->is('admin/site-content*') || request()->is('admin/email-settings*') || request()->is('admin/email-templates*') || request()->is('admin/env-editor*') || request()->is('admin/diagnostics*') || request()->is('admin/onboarding-content*') || request()->is('admin/features*') || request()->is('admin/crypto-deposit-settings*') || request()->is('install/complete*') || request()->is('install/status*')) active @endif"
+          <a class="nav-link dropdown-toggle @if(request()->is('admin/settings*') || request()->is('admin/site-content*') || request()->is('admin/email-settings*') || request()->is('admin/email-templates*') || request()->is('admin/env-editor*') || request()->is('admin/diagnostics*') || request()->is('admin/onboarding-content*') || request()->is('admin/features*') || request()->is('admin/dashboard-layout*') || request()->is('admin/crypto-deposit-settings*') || request()->is('install/complete*') || request()->is('install/status*')) active @endif"
              href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Settings">
             <i class="bi bi-gear-fill me-1"></i>Settings
           </a>
@@ -308,6 +308,11 @@
             <li>
               <a class="dropdown-item @if(request()->is('admin/features*')) active @endif" href="{{ route('admin.features.index') }}">
                 <i class="bi bi-toggle-on me-2"></i>Feature Controls
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item @if(request()->is('admin/dashboard-layout*')) active @endif" href="{{ route('admin.dashboard-layout.index') }}">
+                <i class="bi bi-grid-1x2 me-2"></i>Dashboard Layout Defaults
               </a>
             </li>
             <li>
