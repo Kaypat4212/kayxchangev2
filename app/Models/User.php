@@ -77,6 +77,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'bank_name',
         'bank_code',
         'account_number',
+        'payout_details_changed_at',
         'account_name',
         'kyc_verified',
         'role',
@@ -137,6 +138,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'telegram_verified' => 'boolean',
         'two_factor_enabled' => 'boolean',
         'two_factor_confirmed_at' => 'datetime',
+        'payout_details_changed_at' => 'datetime',
         'dashboard_layout' => 'array',
     ];
 

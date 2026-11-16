@@ -209,4 +209,21 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
         </div>
     </div>
 </div>
+
+<div class="container-fluid" style="max-width:1180px;padding:0 1rem 3rem;">
+    <section class="kx-panel">
+        <div class="kx-panel-header"><span class="kx-panel-title"><i class="bi bi-clock-history me-2" style="color:var(--kx-green)"></i>Recent customer timeline</span><a class="btn-kx-outline" href="{{ route('admin.transactions.index', ['user_id' => $user->id]) }}"><i class="bi bi-receipt"></i>Transactions</a></div>
+        <div class="kx-table-wrap">
+            @forelse($recentActivities as $activity)
+                <article class="d-flex align-items-start gap-3 p-3 border-bottom" style="border-color:var(--kx-border)!important">
+                    <span class="kx-stat-icon icon-green" style="width:36px;height:36px;font-size:.95rem"><i class="bi {{ $activity['icon'] ?? 'bi-activity' }}"></i></span>
+                    <div class="flex-grow-1 min-w-0"><div class="d-flex justify-content-between gap-3 flex-wrap"><strong>{{ $activity['title'] }}</strong><small style="color:var(--kx-muted)">{{ \Illuminate\Support\Carbon::parse($activity['created_at'])->format('d M Y · H:i') }}</small></div><div class="small mt-1" style="color:var(--kx-muted)">{{ $activity['detail'] }}</div>@if(!empty($activity['reference']))<code class="small">{{ $activity['reference'] }}</code>@endif</div>
+                    <span class="kx-badge {{ in_array(strtolower((string)($activity['status'] ?? '')), ['completed','successful','secure'], true) ? 'kx-badge-green' : (in_array(strtolower((string)($activity['status'] ?? '')), ['pending','processing','awaiting_admin_review'], true) ? 'kx-badge-yellow' : 'kx-badge-gray') }}">{{ ucfirst(str_replace('_',' ',(string)($activity['status'] ?? 'update'))) }}</span>
+                </article>
+            @empty
+                <div class="p-4 text-center" style="color:var(--kx-muted)">No recent account or transaction activity recorded.</div>
+            @endforelse
+        </div>
+    </section>
+</div>
 @endsection

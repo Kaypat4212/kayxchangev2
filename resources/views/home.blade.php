@@ -2018,6 +2018,7 @@
                         <li><a href="{{ url('/blog') }}"><i class="bi bi-chevron-right"></i>Blog</a></li>
                         <li><a href="{{ url('/privacy') }}"><i class="bi bi-chevron-right"></i>Privacy Policy</a></li>
                         <li><a href="{{ url('/terms') }}"><i class="bi bi-chevron-right"></i>Terms of Service</a></li>
+                        <li><a href="{{ route('service.status') }}"><i class="bi bi-activity"></i>Service Status</a></li>
                     </ul>
                 </div>
 
@@ -2080,7 +2081,7 @@
         .kx-home-reveal { position: relative; }
         body.kx-scroll-fx-ready .kx-home-reveal:not(.kx-home-reveal--shown) {
             opacity: 0; transform: translate3d(0, 30px, 0) scale(.99);
-            filter: blur(3px); transition: opacity .7s ease, transform .75s cubic-bezier(.2,.75,.25,1), filter .7s ease;
+            filter: blur(3px); transition: opacity .7s ease var(--kx-reveal-delay, 0ms), transform .75s cubic-bezier(.2,.75,.25,1) var(--kx-reveal-delay, 0ms), filter .7s ease var(--kx-reveal-delay, 0ms);
         }
         .kx-home-reveal.kx-home-reveal--shown { opacity: 1; transform: none; filter: none; }
         .kx-btc-matrix-piece { position: absolute; z-index: 5; top: 5%; left: var(--piece-x); color: #43ef82;
@@ -2096,16 +2097,28 @@
     <script>
     (function () {
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var targets = Array.from(document.querySelectorAll('#hero, .kx-tg-banner, #main > .kx-sec, #newsletter, #footer'));
+        var targets = Array.from(document.querySelectorAll(
+            '#hero .kx-h-badge, #hero .kx-h-title, #hero .kx-h-sub, #hero .kx-h-stats, #hero .kx-h-ctas, #hero .kx-h-trust, #hero .kx-h-card-wrap, #hero .kx-h-coin,' +
+            '.kx-tg-banner .container > *, #main .kx-stats-strip .kx-stat-item, #main > .kx-sec .container > .text-center,' +
+            '#main > .kx-sec .container > .row > [class*="col-"], #main > .kx-sec .kx-bp-grid > .kx-bp-card,' +
+            '#newsletter .container .row > [class*="col-"], #footer .container > .row > [class*="col-"]'
+        ));
         if (!targets.length) return;
-        targets.forEach(function (el) { el.classList.add('kx-home-reveal'); });
+        targets = targets.filter(function (el, index) {
+            if (el.closest('#kxMainNav')) return false;
+            el.classList.add('kx-home-reveal');
+            el.style.setProperty('--kx-reveal-delay', (index % 4) * 75 + 'ms');
+            // Let this homepage-only reveal own the transition on these blocks.
+            el.removeAttribute('data-aos'); el.removeAttribute('data-aos-delay');
+            return true;
+        });
         if (reduced || !('IntersectionObserver' in window)) {
             targets.forEach(function (el) { el.classList.add('kx-home-reveal--shown'); });
             return;
         }
         document.body.classList.add('kx-scroll-fx-ready');
         function matrixPieces(target) {
-            var count = Math.min(6, Math.max(3, Math.round(target.getBoundingClientRect().width / 170)));
+            var count = Math.min(5, Math.max(2, Math.round(target.getBoundingClientRect().width / 260)));
             for (var i = 0; i < count; i++) {
                 var piece = document.createElement('span');
                 piece.className = 'kx-btc-matrix-piece'; piece.textContent = i % 2 ? '₿' : '01';

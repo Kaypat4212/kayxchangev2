@@ -227,7 +227,7 @@ body { background: var(--kx-dark); color: var(--kx-text); }
                 <div class="coin-name-lbl">{{ $symbol }}</div>
                 <div class="coin-rate-lbl" id="coin-rate-{{ $symbol }}">
                     @if ($r)
-                        ₦{{ number_format((float) $r->sell_rate, 0) }} / USD
+                        ₦{{ number_format((float) data_get($r, 'sell_rate', 0), 0) }} / USD
                     @else
                         Rate unavailable
                     @endif
@@ -321,9 +321,9 @@ body { background: var(--kx-dark); color: var(--kx-text); }
                                 </div>
                             </div>
                         </td>
-                        <td><span class="buy-rate-val">₦{{ number_format($r->buy_rate, 2) }}</span></td>
-                        <td><span class="sell-rate-val">₦{{ number_format($r->sell_rate, 2) }}</span></td>
-                        <td><span class="spread-val">₦{{ number_format(abs($r->buy_rate - $r->sell_rate), 2) }}</span></td>
+                        <td><span class="buy-rate-val">₦{{ number_format((float) data_get($r, 'buy_rate', 0), 2) }}</span></td>
+                        <td><span class="sell-rate-val">₦{{ number_format((float) data_get($r, 'sell_rate', 0), 2) }}</span></td>
+                        <td><span class="spread-val">₦{{ number_format(abs((float) data_get($r, 'buy_rate', 0) - (float) data_get($r, 'sell_rate', 0)), 2) }}</span></td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -345,7 +345,7 @@ body { background: var(--kx-dark); color: var(--kx-text); }
     let currentCoin = 'BTC';
     let amtType = 'usd';       // usd | ngn
 
-    const rates = @json($rates->map(fn($r) => ['buy_rate' => (float)$r->buy_rate, 'sell_rate' => (float)$r->sell_rate]));
+    const rates = @json($rates);
 
     // ── Set mode ──
     window.setMode = function(mode) {

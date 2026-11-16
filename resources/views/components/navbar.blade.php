@@ -137,10 +137,19 @@
 .kx-wallet-menu .dropdown-item i { width:20px; color:#62dc8b; font-size:1rem; }
 .kx-wallet-menu .dropdown-item:hover,.kx-wallet-menu .dropdown-item:focus { color:#fff; background:rgba(53,188,103,.15); transform:translateX(2px); }
 .kx-wallet-menu .dropdown-divider { border-color:rgba(255,255,255,.1); margin:7px 4px; }
+.kx-nav-category-menu { min-width:225px; padding:9px; border:1px solid rgba(84,211,126,.22); border-radius:15px; background:rgba(13,23,19,.98); box-shadow:0 18px 44px rgba(0,0,0,.35); }
+.kx-nav-category-menu .kx-wallet-menu-head { padding:8px 10px 9px; color:#93a79a; font-size:.67rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.kx-nav-category-menu .dropdown-item { display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:9px; color:#eaf3ed; font-size:.85rem; }
+.kx-nav-category-menu .dropdown-item i { width:19px; color:#62dc8b; }
+.kx-nav-category-menu .dropdown-item:hover,.kx-nav-category-menu .dropdown-item:focus { color:#fff; background:rgba(53,188,103,.15); }
 [data-bs-theme="light"] .kx-wallet-menu { background:rgba(255,255,255,.99); border-color:rgba(0,140,50,.18); box-shadow:0 18px 48px rgba(22,47,30,.16); }
 [data-bs-theme="light"] .kx-wallet-menu .kx-wallet-menu-head { color:#6b7d70; }
 [data-bs-theme="light"] .kx-wallet-menu .dropdown-item { color:#23352a; }
 [data-bs-theme="light"] .kx-wallet-menu .dropdown-item:hover { color:#075f2a; background:rgba(0,160,58,.09); }
+[data-bs-theme="light"] .kx-nav-category-menu { background:rgba(255,255,255,.99); border-color:rgba(0,140,50,.18); box-shadow:0 18px 44px rgba(22,47,30,.16); }
+[data-bs-theme="light"] .kx-nav-category-menu .kx-wallet-menu-head { color:#6b7d70; }
+[data-bs-theme="light"] .kx-nav-category-menu .dropdown-item { color:#23352a; }
+[data-bs-theme="light"] .kx-nav-category-menu .dropdown-item:hover { color:#075f2a; background:rgba(0,160,58,.09); }
 @media (max-width: 991.98px) {
     .kx-navbar .navbar-collapse {
         background: rgba(8, 14, 8, 0.98);
@@ -278,18 +287,6 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
             <i class="bi bi-grid-1x2-fill"></i>Dashboard
           </a>
         </li>
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('deposits*')) kx-active @endif" href="{{ url('/deposits/create') }}" title="Deposit">
-            <i class="bi bi-plus-circle-fill"></i>Deposit
-          </a>
-        </li>
-        @if($billsNavEnabled)
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('bills*')) kx-active @endif" href="{{ route('bills.index') }}" title="Bills and utilities">
-            <i class="bi bi-lightning-charge-fill"></i>Pay Bills
-          </a>
-        </li>
-        @endif
         <li class="nav-item dropdown">
           <a class="kx-nav-link dropdown-toggle @if(request()->is('wallet*')) kx-active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Wallets">
             <i class="bi bi-wallet2"></i>Wallets
@@ -306,33 +303,6 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
             <li><a class="dropdown-item" href="{{ route('wallet.history') }}"><i class="bi bi-clock-history me-2"></i>Wallet history</a></li>
           </ul>
         </li>
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('rate')) kx-active @endif" href="{{ url('/rate') }}">
-            <i class="bi bi-graph-up-arrow"></i>Rates
-          </a>
-        </li>
-        @if($giftPurchaseNavEnabled || $giftSaleNavEnabled)
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('gift-cards*')) kx-active @endif" href="{{ route('gift-cards.index') }}" title="Buy USA and UK gift cards">
-            <i class="bi bi-gift"></i>Gift Cards
-          </a>
-        </li>
-        @endif
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('forum*')) kx-active @endif" href="{{ route('forum.index') }}" title="KayXchange community forum">
-            <i class="bi bi-chat-square-heart"></i>Community
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('rate-calculator')) kx-active @endif" href="{{ url('/rate-calculator') }}">
-            <i class="bi bi-calculator-fill"></i>Calculator
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('buy*')) kx-active @endif" href="{{ url('/buy') }}" title="Buy">
-            <i class="bi bi-arrow-down-circle-fill"></i>Buy
-          </a>
-        </li>
         @php
         try {
             $kaybotVisible = \App\Models\AdminSetting::getSetting('ai_chatbot_enabled','1') == '1' &&
@@ -343,47 +313,58 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
             $swapVisible = true;
         }
         @endphp
-        @if($swapVisible)
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('swap*')) kx-active @endif" href="{{ url('/swap') }}" title="Swap">
-            <i class="bi bi-arrow-left-right"></i>Swap
+        <li class="nav-item dropdown">
+          <a class="kx-nav-link dropdown-toggle @if(request()->is('buy*') || request()->is('sell*') || request()->is('swap*')) kx-active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Trading">
+            <i class="bi bi-arrow-left-right"></i>Trade
           </a>
+          <ul class="dropdown-menu dropdown-menu-dark kx-nav-category-menu">
+            <li class="kx-wallet-menu-head">Crypto trading</li>
+            <li><a class="dropdown-item" href="{{ url('/buy') }}"><i class="bi bi-arrow-down-circle-fill"></i>Buy crypto</a></li>
+            <li><a class="dropdown-item" href="{{ url('/sell') }}"><i class="bi bi-arrow-up-circle-fill"></i>Sell crypto</a></li>
+            @if($swapVisible)<li><a class="dropdown-item" href="{{ url('/swap') }}"><i class="bi bi-arrow-left-right"></i>Swap crypto</a></li>@endif
+          </ul>
         </li>
-        @endif
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('sell*')) kx-active @endif" href="{{ url('/sell') }}" title="Sell">
-            <i class="bi bi-arrow-up-circle-fill"></i>Sell
+        <li class="nav-item dropdown">
+          <a class="kx-nav-link dropdown-toggle @if(request()->is('deposits*') || request()->is('bills*') || request()->is('gift-cards*')) kx-active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Services">
+            <i class="bi bi-grid-fill"></i>Services
           </a>
+          <ul class="dropdown-menu dropdown-menu-dark kx-nav-category-menu">
+            <li class="kx-wallet-menu-head">Platform services</li>
+            <li><a class="dropdown-item" href="{{ url('/deposits/create') }}"><i class="bi bi-plus-circle-fill"></i>Deposit</a></li>
+            @if($billsNavEnabled)<li><a class="dropdown-item" href="{{ route('bills.index') }}"><i class="bi bi-lightning-charge-fill"></i>Pay bills</a></li>@endif
+            @if($giftPurchaseNavEnabled || $giftSaleNavEnabled)<li><a class="dropdown-item" href="{{ route('gift-cards.index') }}"><i class="bi bi-gift"></i>Gift cards</a></li>@endif
+          </ul>
         </li>
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('settings*')) kx-active @endif" href="{{ url('/settings') }}" title="Settings">
-            <i class="bi bi-gear-fill"></i>Settings
+        <li class="nav-item dropdown">
+          <a class="kx-nav-link dropdown-toggle @if(request()->is('rate*') || request()->is('forum*')) kx-active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Explore">
+            <i class="bi bi-compass"></i>Explore
           </a>
+          <ul class="dropdown-menu dropdown-menu-dark kx-nav-category-menu">
+            <li class="kx-wallet-menu-head">Rates & community</li>
+            <li><a class="dropdown-item" href="{{ url('/rate') }}"><i class="bi bi-graph-up-arrow"></i>Rates</a></li>
+            <li><a class="dropdown-item" href="{{ url('/rate-calculator') }}"><i class="bi bi-calculator-fill"></i>Rate calculator</a></li>
+            <li><a class="dropdown-item" href="{{ route('forum.index') }}"><i class="bi bi-chat-square-heart"></i>Community</a></li>
+          </ul>
         </li>
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('support/chat')) kx-active @endif" href="{{ route('support.chat') }}" title="Support">
-            <i class="bi bi-headset"></i>Support
+        <li class="nav-item dropdown">
+          <a class="kx-nav-link dropdown-toggle @if(request()->is('settings*') || request()->is('support*') || request()->is('referrals')) kx-active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Account">
+            <i class="bi bi-person-circle"></i>Account
           </a>
-        </li>
+          <ul class="dropdown-menu dropdown-menu-dark kx-nav-category-menu">
+            <li class="kx-wallet-menu-head">Account & help</li>
+            <li><a class="dropdown-item" href="{{ url('/settings') }}"><i class="bi bi-gear-fill"></i>Settings</a></li>
+            <li><a class="dropdown-item" href="{{ route('support.chat') }}"><i class="bi bi-headset"></i>Support</a></li>
+            <li><a class="dropdown-item" href="{{ route('service.status') }}"><i class="bi bi-activity"></i>Service status</a></li>
+            <li><a class="dropdown-item" href="{{ url('/referrals') }}"><i class="bi bi-people-fill"></i>Referrals</a></li>
         @if($kaybotVisible)
-        <li class="nav-item">
-          <button type="button" onclick="kaybotToggle()" class="kx-nav-link" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:.4rem;" title="Chat with KayBot AI">
-            <i class="bi bi-robot" style="color:#00cc00"></i><span style="color:inherit">KayBot</span>
-          </button>
-        </li>
+            <li><button type="button" onclick="kaybotToggle()" class="dropdown-item" title="Chat with KayBot AI"><i class="bi bi-robot"></i>KayBot AI</button></li>
         @endif
-        <li class="nav-item">
-          <a class="kx-nav-link @if(request()->is('referrals')) kx-active @endif" href="{{ url('/referrals') }}" title="Referrals">
-            <i class="bi bi-people-fill"></i>Referrals
-          </a>
-        </li>
         @if(session('admin_id'))
-        <li class="nav-item">
-          <a class="kx-nav-link" href="{{ route('admin.revert') }}" title="Back to Admin">
-            <i class="bi bi-arrow-return-left"></i>Back to Admin
-          </a>
-        </li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ route('admin.revert') }}"><i class="bi bi-arrow-return-left"></i>Back to Admin</a></li>
         @endif
+          </ul>
+        </li>
         @else
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('/')) kx-active @endif" href="{{ url('/') }}" title="Home">

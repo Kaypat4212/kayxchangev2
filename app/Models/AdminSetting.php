@@ -144,10 +144,12 @@ class AdminSetting extends Model
             ['key' => 'runtime_mode', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Platform runtime mode', 'description' => 'Production hides debug details, Local shows diagnostics to admins only, Off displays maintenance to customers while preserving admin access and payment webhooks.'],
             ['key' => 'blocked_countries', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Blocked countries', 'description' => 'Choose countries to restrict, then add any other two-letter ISO country codes if needed. Uses Cloudflare country headers or IP geolocation.'],
             ['key' => 'support_whatsapp',  'group' => 'general', 'is_encrypted' => false, 'label' => 'Support WhatsApp', 'description' => 'Phone number for support WhatsApp button'],
+            ['key' => 'withdrawal_security_cooldown_hours', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Payout destination safety hold (hours)', 'description' => 'Block new Naira withdrawal requests for this many hours after saved bank payout details change. Set 0 to disable.'],
         ];
 
         foreach ($defaults as $def) {
             static::firstOrCreate(['key' => $def['key']], array_merge($def, ['value' => null]));
         }
+        static::where('key', 'withdrawal_security_cooldown_hours')->whereNull('value')->update(['value' => '24']);
     }
 }

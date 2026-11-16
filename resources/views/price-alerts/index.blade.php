@@ -85,10 +85,13 @@ body { background: var(--pa-bg); color: var(--pa-text); }
                     {{-- Coin --}}
                     <div class="mb-3">
                         <label class="form-label">Coin</label>
-                        <select name="coin" class="form-select" required>
-                            @foreach(['BTC','ETH','USDT','SOL','BNB'] as $c)
-                            <option value="{{ $c }}" {{ old('coin') === $c ? 'selected' : '' }}>{{ $c }}</option>
-                            @endforeach
+                        <select name="coin" class="form-select" id="alertCoin" required>
+                            <optgroup label="Platform rates · NGN" id="platformCoinOptions">
+                                @foreach($platformCoins as $c)<option value="{{ $c }}" data-alert-type="platform" @selected(old('coin') === $c)>{{ $c }}</option>@endforeach
+                            </optgroup>
+                            <optgroup label="Live market prices · USD" id="marketCoinOptions" hidden>
+                                @foreach($marketCoins as $c)<option value="{{ $c }}" data-alert-type="market" @selected(old('coin') === $c)>{{ $c }}</option>@endforeach
+                            </optgroup>
                         </select>
                     </div>
 
@@ -218,12 +221,25 @@ body { background: var(--pa-bg); color: var(--pa-text); }
     const input  = document.getElementById('typeInput');
     const hint   = document.getElementById('typeHint');
     const label  = document.getElementById('currencyLabel');
+    const coinSelect = document.getElementById('alertCoin');
+    const platformOptions = document.getElementById('platformCoinOptions');
+    const marketOptions = document.getElementById('marketCoinOptions');
+
+    function setCoinType(type) {
+        platformOptions.hidden = type !== 'platform';
+        marketOptions.hidden = type !== 'market';
+        const options = coinSelect.querySelectorAll('option');
+        const first = Array.from(options).find(option => option.dataset.alertType === type);
+        options.forEach(option => { option.disabled = option.dataset.alertType !== type; });
+        if (first) coinSelect.value = first.value;
+    }
 
     btns.forEach(btn => btn.addEventListener('click', () => {
         btns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const type = btn.dataset.type;
         input.value = type;
+        setCoinType(type);
         if (type === 'platform') {
             hint.textContent  = 'Platform rate = what KayXchange offers for buy/sell in NGN.';
             label.textContent = '₦';
@@ -232,6 +248,7 @@ body { background: var(--pa-bg); color: var(--pa-text); }
             label.textContent = '$';
         }
     }));
+    setCoinType(input.value || 'platform');
 })();
 </script>
 @endpush

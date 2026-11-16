@@ -102,6 +102,7 @@ Route::get('/blog/{slug}', [\App\Http\Controllers\BlogController::class, 'show']
 Route::get('/offline', fn() => view('offline'))->name('offline');
 Route::get('/privacy', fn() => view('privacy'))->name('privacy');
 Route::get('/terms', fn() => view('terms'))->name('terms');
+Route::get('/status', [\App\Http\Controllers\ServiceStatusController::class, 'index'])->name('service.status');
 
 // Member-only community forum. All user-generated content stays escaped in the views.
 Route::middleware(['auth', 'verified_or_backdoor'])->prefix('forum')->name('forum.')->group(function () {

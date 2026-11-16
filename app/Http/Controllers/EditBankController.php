@@ -105,6 +105,7 @@ class EditBankController extends Controller
                 'bank_code' => $request->bank_code,
                 'account_name' => $response->json('data.account_name'), // always store Paystack-verified name
                 'account_number' => $request->account_number,
+                'payout_details_changed_at' => now(),
             ]);
         } catch (\Exception $e) {
             \Log::error('Failed to update bank details: ' . $e->getMessage());

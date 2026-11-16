@@ -773,11 +773,12 @@ class AdminController extends Controller
         return view('admin.users', compact('users'));
     }
 
-    public function usersShow(User $user)
+    public function usersShow(User $user, \App\Services\UserActivityFeedService $activityFeed)
     {
         $user->load('badges');
         $latestKyc = Kyc::where('user_id', $user->id)->latest()->first();
-        return view('admin.users.show', compact('user', 'latestKyc'));
+        $recentActivities = $activityFeed->forUser($user, 5, [], 0)->take(20);
+        return view('admin.users.show', compact('user', 'latestKyc', 'recentActivities'));
     }
 
     public function sendKycReminder(User $user)
@@ -918,6 +919,7 @@ class AdminController extends Controller
                 'bank_code'      => $request->bank_code,
                 'account_number' => $request->account_number,
                 'account_name'   => $request->account_name,
+                'payout_details_changed_at' => now(),
             ]);
             Log::info('Admin #' . Auth::id() . ' updated bank details for user #' . $user->id);
             return redirect()->route('admin.users.edit', $user->id)->with('success', 'Bank details updated successfully.');

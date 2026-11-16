@@ -181,6 +181,7 @@ class OnboardingController extends Controller
         $user->bank_name      = $request->bank_name;
         $user->account_number = $request->account_number;
         $user->account_name   = $verifiedName;
+        $user->payout_details_changed_at = now();
         $user->save();
 
         // Award bank badge

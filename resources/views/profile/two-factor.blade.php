@@ -10,4 +10,5 @@
  @endif
 @else<form method="post" action="{{ route('profile.two-factor.disable') }}" class="mt-4">@csrf<label class="form-label">Current password</label><input class="form-control" type="password" name="current_password" required><label class="form-label mt-3">Authenticator code</label><input name="code" class="form-control" inputmode="numeric" maxlength="6" required><button class="btn btn-outline-danger mt-3">Disable 2FA</button></form>@endif
 </div></div></div>
+<div class="alert alert-light border mt-3" style="max-width:760px;margin-inline:auto"><strong>Other account safeguards</strong><ul class="mb-0 mt-2"><li>KayXchange records successful sign-ins and alerts you when a new browser or device is detected.</li><li>Naira withdrawals pause for {{ (int) \App\Models\AdminSetting::getSetting('withdrawal_security_cooldown_hours', '24') }} hours after payout bank details change.</li><li>Your transaction PIN continues to protect sensitive wallet actions.</li></ul></div>
 @endsection

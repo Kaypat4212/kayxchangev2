@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PriceAlert;
+use App\Models\CryptoRate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,7 +15,10 @@ class PriceAlertController extends Controller
             ->latest()
             ->paginate(20);
 
-        return view('price-alerts.index', compact('alerts'));
+        $platformCoins = CryptoRate::query()->orderBy('coin')->pluck('coin')->map(fn ($coin) => trim(strtoupper((string) $coin)))->filter()->unique()->values();
+        $marketCoins = ['BTC', 'ETH', 'USDT', 'SOL', 'BNB'];
+
+        return view('price-alerts.index', compact('alerts', 'platformCoins', 'marketCoins'));
     }
 
     public function store(Request $request)
@@ -29,6 +33,14 @@ class PriceAlertController extends Controller
             'notify_app'       => 'nullable|boolean',
         ]);
 
+        $coin = strtoupper(trim($data['coin']));
+        $coinAvailable = $data['type'] === 'platform'
+            ? CryptoRate::query()->whereRaw('UPPER(coin) = ?', [$coin])->exists()
+            : in_array($coin, ['BTC', 'ETH', 'USDT', 'SOL', 'BNB'], true);
+        if (!$coinAvailable) {
+            return back()->withInput()->withErrors(['coin' => 'Choose a coin that has a platform rate or a supported live market feed.']);
+        }
+
         // Limit to 20 active alerts per user
         $activeCount = PriceAlert::where('user_id', Auth::id())->where('is_active', true)->count();
         if ($activeCount >= 20) {
@@ -38,7 +50,7 @@ class PriceAlertController extends Controller
         PriceAlert::create([
             'user_id'         => Auth::id(),
             'type'            => $data['type'],
-            'coin'            => strtoupper($data['coin']),
+            'coin'            => $coin,
             'direction'       => $data['direction'],
             'target_price'    => $data['target_price'],
             'notify_telegram' => $request->boolean('notify_telegram', true),

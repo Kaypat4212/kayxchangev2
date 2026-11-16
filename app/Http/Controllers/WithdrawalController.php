@@ -59,6 +59,15 @@ class WithdrawalController extends Controller
     {
         $user = Auth::user();
 
+        $cooldownHours = max(0, min(720, (int) AdminSetting::getSetting('withdrawal_security_cooldown_hours', '24')));
+        if ($cooldownHours > 0 && $user->payout_details_changed_at && !$request->session()->has('admin_id')) {
+            $cooldownEndsAt = $user->payout_details_changed_at->copy()->addHours($cooldownHours);
+            if (now()->lt($cooldownEndsAt)) {
+                $message = 'For your security, Naira withdrawals are paused after payout bank details change. Try again after ' . $cooldownEndsAt->format('d M Y, H:i') . ' WAT.';
+                return response()->json(['errors' => ['withdrawal' => [$message]]], 422);
+            }
+        }
+
         Log::debug('Processing withdrawal request', ['request' => $request->all()]);
 
         // Validation rules with custom messages

@@ -22,7 +22,9 @@ class PlatformAccessMiddleware
 
         $mode = (string) AdminSetting::getSetting('runtime_mode', 'production');
         $maintenance = $mode === 'off' || (string) AdminSetting::getSetting('site_maintenance', '0') === '1';
-        if ($maintenance) {
+        // Keep the read-only status page available so visitors can see why
+        // customer-facing services are paused during planned maintenance.
+        if ($maintenance && ! $request->is('status')) {
             if ($request->expectsJson()) return response()->json(['message' => 'The platform is temporarily unavailable for maintenance.'], 503);
             return response()->view('errors.maintenance', [], 503)->header('Retry-After', '900');
         }
