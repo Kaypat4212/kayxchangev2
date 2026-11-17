@@ -169,6 +169,7 @@ Route::get('/crypto-rates', [CryptoRateController::class, 'index'])->name('rates
 Route::get('/rate-calculator', [RateCalculatorController::class, 'index'])->name('calc.index');
 Route::get('/rate-calculator/rates', [RateCalculatorController::class, 'apiRates'])->name('calc.rates');
 Route::get('/rate-calculator/market-prices', [RateCalculatorController::class, 'marketPrices'])->middleware('throttle:web-public')->name('calc.market-prices');
+Route::get('/rate-calculator/coingecko-prices', [RateCalculatorController::class, 'converterPrices'])->middleware('throttle:web-public')->name('calc.coingecko-prices');
 Route::get('/gift-card-rates', [RatesController::class, 'giftCardRates'])->name('giftcard.rates');
 
 Route::patch('admin/withdrawals/{id}/status', [WithdrawalController::class, 'updateStatus'])->name('withdrawal.updateStatus')->middleware(['auth', 'admin']);

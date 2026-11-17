@@ -1272,6 +1272,98 @@
     })();
     </script>
 
+    <!-- ======= Homepage crypto converter & platform calculator ======= -->
+    <style>
+    .kx-home-tools{padding:clamp(34px,5vw,68px) 0;background:radial-gradient(ellipse at 12% 8%,rgba(0,204,0,.075),transparent 34%),radial-gradient(ellipse at 92% 92%,rgba(31,121,72,.1),transparent 34%)}
+    .kx-home-tools-head{text-align:center;margin:0 auto 26px;max-width:720px}.kx-home-tools-kicker{display:inline-flex;align-items:center;gap:8px;color:#55d47a;font-size:.7rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase}.kx-home-tools-head h2{margin:10px 0 8px;color:var(--bs-body-color,#f5f8f5);font-size:clamp(1.55rem,3vw,2.15rem);font-weight:780;letter-spacing:-.04em}.kx-home-tools-head p{margin:0;color:var(--bs-secondary-color,#98a49b);font-size:.9rem;line-height:1.65}
+    .kx-home-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}.kx-home-tool{position:relative;overflow:hidden;padding:clamp(18px,3vw,25px);border:1px solid rgba(124,165,133,.22);border-radius:20px;background:linear-gradient(145deg,rgba(19,31,24,.97),rgba(11,18,14,.98));box-shadow:0 18px 45px rgba(0,0,0,.16)}.kx-home-tool:before{position:absolute;content:"";width:220px;height:220px;right:-110px;top:-130px;border-radius:50%;background:radial-gradient(circle,rgba(18,212,90,.12),transparent 68%);pointer-events:none}.kx-home-tool-top{position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px}.kx-home-tool-title{display:flex;align-items:center;gap:11px}.kx-home-tool-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border:1px solid rgba(42,201,99,.2);border-radius:13px;background:rgba(18,212,90,.1);color:#72e895;font-size:1.1rem}.kx-home-tool-title h3{margin:0;color:#f4f8f4;font-size:1rem;font-weight:750}.kx-home-tool-title p{margin:3px 0 0;color:#91a197;font-size:.72rem}.kx-home-live{display:inline-flex;align-items:center;gap:6px;color:#79e99a;font-size:.66rem;font-weight:700;white-space:nowrap}.kx-home-live i{font-size:.55rem}.kx-home-tool label{display:block;margin:12px 0 6px;color:#b4c2b7;font-size:.72rem;font-weight:650}.kx-home-tool select,.kx-home-tool input{width:100%;min-height:44px;padding:10px 12px;border:1px solid rgba(210,231,215,.14);border-radius:10px;background:#0c130f;color:#f3f7f4;font-size:.86rem;outline:none}.kx-home-tool select:focus,.kx-home-tool input:focus{border-color:rgba(61,212,111,.65);box-shadow:0 0 0 3px rgba(61,212,111,.1)}.kx-home-tool select option{background:#101812;color:#f3f7f4}.kx-home-convert-row{display:grid;grid-template-columns:1fr 42px 1fr;align-items:end;gap:10px}.kx-home-swap-mark{display:grid;place-items:center;width:38px;height:38px;margin-bottom:3px;border:1px solid rgba(255,255,255,.12);border-radius:50%;background:#17251b;color:#80e69c}.kx-home-amount{position:relative}.kx-home-amount input{font-size:1.02rem;font-weight:680}.kx-home-out{margin-top:16px;padding:15px;border:1px solid rgba(52,199,96,.2);border-radius:13px;background:linear-gradient(115deg,rgba(18,212,90,.09),rgba(18,212,90,.025))}.kx-home-out small{display:block;color:#95a69a;font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.kx-home-out strong{display:block;overflow-wrap:anywhere;margin-top:4px;color:#86efa3;font-size:clamp(1.22rem,2.4vw,1.65rem);font-weight:780;letter-spacing:-.025em}.kx-home-footnote{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:11px;color:#829188;font-size:.66rem;line-height:1.5}.kx-home-modes{display:flex;gap:5px;padding:4px;border:1px solid rgba(255,255,255,.1);border-radius:11px;background:rgba(0,0,0,.16)}.kx-home-modes button{border:0;border-radius:8px;padding:7px 12px;background:transparent;color:#9aa99e;font-size:.72rem;font-weight:700}.kx-home-modes button.active{background:#183222;color:#8af0a7;box-shadow:inset 0 0 0 1px rgba(99,229,139,.15)}.kx-home-rate-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;padding:11px 12px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.025)}.kx-home-rate-strip span{color:#9caaa0;font-size:.72rem}.kx-home-rate-strip strong{color:#f0f6f0;font-size:.8rem}.kx-home-cta{display:inline-flex;align-items:center;justify-content:center;gap:7px;margin-top:14px;color:#88eaa3!important;text-decoration:none;font-size:.75rem;font-weight:730}.kx-home-cta:hover{color:#c4f7d1!important}.kx-home-tool-status{min-height:1.2em;margin-top:9px;color:#85948a;font-size:.68rem}.kx-home-tool-status.error{color:#ff9696}
+    [data-bs-theme="light"] .kx-home-tool{border-color:rgba(28,96,47,.13);background:linear-gradient(145deg,#fff,#f5faf6);box-shadow:0 14px 38px rgba(26,74,37,.08)}[data-bs-theme="light"] .kx-home-tool-title h3{color:#14231a}[data-bs-theme="light"] .kx-home-tool-title p,[data-bs-theme="light"] .kx-home-tools-head p{color:#68766d}[data-bs-theme="light"] .kx-home-tool label{color:#4d5d52}[data-bs-theme="light"] .kx-home-tool select,[data-bs-theme="light"] .kx-home-tool input{border-color:#dbe6dd;background:#fff;color:#15251a}[data-bs-theme="light"] .kx-home-tool select option{background:#fff;color:#15251a}[data-bs-theme="light"] .kx-home-modes{border-color:#dce8de;background:#f0f5f1}[data-bs-theme="light"] .kx-home-modes button{color:#68766d}[data-bs-theme="light"] .kx-home-modes button.active{background:#e0f6e7;color:#17612e}[data-bs-theme="light"] .kx-home-rate-strip{border-color:#e1eae3;background:#f7faf7}[data-bs-theme="light"] .kx-home-rate-strip strong{color:#18251b}[data-bs-theme="light"] .kx-home-swap-mark{border-color:#dfe9e0;background:#eff6f0;color:#16833b}[data-bs-theme="light"] .kx-home-tools-head h2{color:#14231a}
+    @media(max-width:767.98px){.kx-home-tools{padding:34px 0}.kx-home-tools-grid{grid-template-columns:1fr;gap:12px}.kx-home-tool{border-radius:16px;padding:17px}.kx-home-tool-top{margin-bottom:15px}.kx-home-convert-row{grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);gap:7px}.kx-home-swap-mark{width:32px;height:32px}.kx-home-tool select,.kx-home-tool input{padding-inline:9px;font-size:.82rem}.kx-home-live{font-size:.61rem}}
+    @media(prefers-reduced-motion:reduce){.kx-home-tool,.kx-home-tool *{scroll-behavior:auto!important;transition:none!important}}
+    </style>
+    <section class="kx-home-tools" aria-labelledby="kx-home-tools-heading">
+        <div class="container">
+            <header class="kx-home-tools-head">
+                <span class="kx-home-tools-kicker"><i class="bi bi-stars"></i>Quick market tools</span>
+                <h2 id="kx-home-tools-heading">Convert with live prices. Calculate with our rates.</h2>
+                <p>Compare market values from CoinGecko with KayXchange’s current buy and sell rates before you trade.</p>
+            </header>
+            <div class="kx-home-tools-grid">
+                <article class="kx-home-tool" aria-labelledby="kx-home-converter-title">
+                    <div class="kx-home-tool-top"><div class="kx-home-tool-title"><span class="kx-home-tool-icon"><i class="bi bi-arrow-left-right"></i></span><div><h3 id="kx-home-converter-title">Crypto price converter</h3><p>Live market estimate · CoinGecko</p></div></div><span class="kx-home-live"><i class="bi bi-circle-fill"></i>LIVE</span></div>
+                    <div class="kx-home-convert-row">
+                        <div><label for="kx-home-cg-from">From</label><select id="kx-home-cg-from" disabled><option>Loading assets…</option></select></div>
+                        <span class="kx-home-swap-mark" aria-hidden="true"><i class="bi bi-arrow-right"></i></span>
+                        <div><label for="kx-home-cg-to">To</label><select id="kx-home-cg-to" disabled><option>USD</option><option>NGN</option></select></div>
+                    </div>
+                    <div class="kx-home-amount"><label for="kx-home-cg-amount">Amount</label><input id="kx-home-cg-amount" type="number" inputmode="decimal" min="0" step="any" value="1" placeholder="Enter amount"></div>
+                    <div class="kx-home-out"><small>Estimated conversion</small><strong id="kx-home-cg-result" aria-live="polite">Loading CoinGecko prices…</strong></div>
+                    <div class="kx-home-footnote"><span id="kx-home-cg-updated">Fetching current market prices</span><span>Informational, not a KayXchange trade quote.</span></div>
+                    <div class="kx-home-tool-status" id="kx-home-cg-status" role="status" aria-live="polite"></div>
+                </article>
+
+                <article class="kx-home-tool" aria-labelledby="kx-home-platform-title">
+                    <div class="kx-home-tool-top"><div class="kx-home-tool-title"><span class="kx-home-tool-icon"><i class="bi bi-calculator"></i></span><div><h3 id="kx-home-platform-title">KayXchange rate calculator</h3><p>Current platform buy and sell rates</p></div></div><span class="kx-home-live"><i class="bi bi-arrow-clockwise"></i>REFRESHES</span></div>
+                    <div class="kx-home-tool-top" style="align-items:center;margin-bottom:4px"><div><label for="kx-home-platform-coin" style="margin-top:0">Crypto asset</label><select id="kx-home-platform-coin" disabled><option>Loading platform rates…</option></select></div><div class="kx-home-modes" role="group" aria-label="Trade direction"><button type="button" class="active" data-kx-home-mode="sell" aria-pressed="true">Sell</button><button type="button" data-kx-home-mode="buy" aria-pressed="false">Buy</button></div></div>
+                    <div class="kx-home-convert-row"><div><label for="kx-home-platform-amount">Amount</label><input id="kx-home-platform-amount" type="number" inputmode="decimal" min="0" step="any" value="1"></div><div><label for="kx-home-platform-unit">In</label><select id="kx-home-platform-unit"><option value="usd">USD</option><option value="ngn">NGN</option></select></div><div><label>Rate</label><div class="kx-home-rate-strip" style="margin:0;padding:9px 10px"><strong id="kx-home-platform-rate">—</strong></div></div></div>
+                    <div class="kx-home-out"><small id="kx-home-platform-label">Estimated Naira payout</small><strong id="kx-home-platform-result" aria-live="polite">Choose an amount</strong></div>
+                    <div class="kx-home-footnote"><span id="kx-home-platform-updated">Using platform rates</span><span>Final quote is confirmed before trade.</span></div>
+                    <div class="kx-home-tool-status" id="kx-home-platform-status" role="status" aria-live="polite"></div>
+                    <a class="kx-home-cta" href="{{ route('calc.index') }}">Open full calculator <i class="bi bi-arrow-up-right"></i></a>
+                </article>
+            </div>
+        </div>
+    </section>
+    <script>
+    (()=>{
+        const cgUrl=@json(route('calc.coingecko-prices'));
+        const ratesUrl=@json(route('calc.rates'));
+        const cgFrom=document.getElementById('kx-home-cg-from'),cgTo=document.getElementById('kx-home-cg-to'),cgAmount=document.getElementById('kx-home-cg-amount'),cgResult=document.getElementById('kx-home-cg-result'),cgUpdated=document.getElementById('kx-home-cg-updated'),cgStatus=document.getElementById('kx-home-cg-status');
+        const platformCoin=document.getElementById('kx-home-platform-coin'),platformAmount=document.getElementById('kx-home-platform-amount'),platformUnit=document.getElementById('kx-home-platform-unit'),platformRate=document.getElementById('kx-home-platform-rate'),platformResult=document.getElementById('kx-home-platform-result'),platformLabel=document.getElementById('kx-home-platform-label'),platformUpdated=document.getElementById('kx-home-platform-updated'),platformStatus=document.getElementById('kx-home-platform-status');
+        const currency=(value,code,precision=2)=>new Intl.NumberFormat('en-NG',{style:'currency',currency:code,maximumFractionDigits:precision}).format(value);
+        let cgCoins=[],platformRates={},mode='sell';
+        function updateConverter(){
+            const amount=Number(cgAmount.value),from=cgCoins.find(coin=>coin.symbol===cgFrom.value),to=cgTo.value;
+            if(!from||!Number.isFinite(amount)||amount<=0){cgResult.textContent='Enter an amount to convert';return;}
+            let result,label;
+            if(to==='USD'){result=amount*from.price_usd;label=currency(result,'USD',result<1?6:2);}
+            else if(to==='NGN'){result=amount*from.price_ngn;label=currency(result,'NGN',2);}
+            else {const target=cgCoins.find(coin=>coin.symbol===to);if(!target){cgResult.textContent='That market price is unavailable';return;}result=amount*from.price_usd/target.price_usd;label=new Intl.NumberFormat('en-NG',{maximumFractionDigits:8}).format(result)+' '+to;}
+            cgResult.textContent=label;
+        }
+        function updatePlatform(){
+            const coin=platformCoin.value,rateRow=platformRates[coin],amount=Number(platformAmount.value),rate=Number(rateRow?.[mode==='sell'?'sell_rate':'buy_rate']||0),unit=platformUnit.value;
+            platformRate.textContent=rate>0?currency(rate,'NGN',2)+' / USD':'—';
+            platformLabel.textContent=mode==='sell'?(unit==='usd'?'Estimated Naira payout':'USD value at sell rate'):(unit==='usd'?'Estimated Naira cost':'USD value at buy rate');
+            if(!rate||!Number.isFinite(amount)||amount<=0){platformResult.textContent='Enter an amount to calculate';return;}
+            const value=unit==='usd'?(mode==='sell'?amount*rate:amount*rate):amount/rate;
+            platformResult.textContent=unit==='usd'?currency(value,'NGN',2):currency(value,'USD',2);
+        }
+        function loadCoinGecko(){
+            fetch(cgUrl,{headers:{Accept:'application/json'},cache:'no-store'}).then(response=>response.ok?response.json():response.json().then(body=>Promise.reject(new Error(body.message||'Market prices are temporarily unavailable.')))).then(data=>{
+                cgCoins=(data.coins||[]).filter(coin=>coin.symbol&&Number(coin.price_usd)>0).map(coin=>({...coin,symbol:String(coin.symbol).toUpperCase()}));
+                if(!cgCoins.length)throw new Error('No CoinGecko prices are available for the platform coins.');
+                const keepFrom=cgFrom.value,keepTo=cgTo.value;
+                cgFrom.innerHTML=cgCoins.map(coin=>`<option value="${coin.symbol}">${coin.symbol} · ${coin.name}</option>`).join('');
+                cgTo.innerHTML='<option value="USD">USD · US Dollar</option><option value="NGN">NGN · Naira</option>'+cgCoins.map(coin=>`<option value="${coin.symbol}">${coin.symbol} · ${coin.name}</option>`).join('');
+                cgFrom.value=cgCoins.some(coin=>coin.symbol===keepFrom)?keepFrom:cgCoins[0].symbol;
+                cgTo.value=keepTo&&[...cgCoins.map(coin=>coin.symbol),'USD','NGN'].includes(keepTo)?keepTo:'NGN';
+                cgFrom.disabled=false;cgTo.disabled=false;cgUpdated.textContent='CoinGecko · '+(data.updated_at?new Date(data.updated_at).toLocaleTimeString():'updated just now');cgStatus.textContent='';updateConverter();
+            }).catch(error=>{cgResult.textContent='Market conversion unavailable';cgStatus.className='kx-home-tool-status error';cgStatus.textContent=error.message||'CoinGecko prices could not be loaded.';cgUpdated.textContent='Market data will retry shortly.';});
+        }
+        function loadPlatformRates(){
+            fetch(ratesUrl,{headers:{Accept:'application/json'},cache:'no-store'}).then(response=>{if(!response.ok)throw new Error();return response.json();}).then(data=>{
+                platformRates=data||{};const coins=Object.keys(platformRates).filter(symbol=>Number(platformRates[symbol]?.buy_rate)>0||Number(platformRates[symbol]?.sell_rate)>0);
+                if(!coins.length)throw new Error();const current=platformCoin.value;platformCoin.innerHTML=coins.map(symbol=>`<option value="${symbol}">${symbol}</option>`).join('');platformCoin.value=coins.includes(current)?current:coins[0];platformCoin.disabled=false;platformUpdated.textContent='Platform rates · refreshed '+new Date().toLocaleTimeString();platformStatus.textContent='';updatePlatform();
+            }).catch(()=>{platformStatus.className='kx-home-tool-status error';platformStatus.textContent='Could not load platform rates. Please try again shortly.';platformUpdated.textContent='Platform rates unavailable';});
+        }
+        cgAmount.addEventListener('input',updateConverter);cgFrom.addEventListener('change',updateConverter);cgTo.addEventListener('change',updateConverter);
+        [platformAmount,platformUnit,platformCoin].forEach(control=>control.addEventListener('input',updatePlatform));platformCoin.addEventListener('change',updatePlatform);
+        document.querySelectorAll('[data-kx-home-mode]').forEach(button=>button.addEventListener('click',()=>{mode=button.dataset.kxHomeMode;document.querySelectorAll('[data-kx-home-mode]').forEach(item=>{const active=item===button;item.classList.toggle('active',active);item.setAttribute('aria-pressed',active?'true':'false');});updatePlatform();}));
+        loadCoinGecko();loadPlatformRates();window.setInterval(loadCoinGecko,60000);window.setInterval(loadPlatformRates,60000);
+    })();
+    </script>
+
     <!-- ======= Telegram Banner ======= -->
     <style>
     .kx-tg-banner {
