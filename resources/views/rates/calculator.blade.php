@@ -158,6 +158,20 @@ body { background: var(--kx-dark); color: var(--kx-text); }
     font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
     color: var(--kx-muted);
 }
+.market-panel { background:var(--kx-card); border:1px solid var(--kx-border); border-radius:20px; overflow:hidden; margin:0 0 20px; }
+.market-panel-head { padding:16px 22px; border-bottom:1px solid var(--kx-border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.market-panel-title { color:#fff; font-size:.9rem; font-weight:750; margin:0; }
+.market-panel-meta { margin-left:auto; color:var(--kx-muted); font-size:.72rem; }
+.market-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; padding:16px; }
+.market-coin { min-width:0; border:1px solid var(--kx-border); background:var(--kx-card2); border-radius:13px; padding:13px; }
+.market-coin-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.market-coin-name { color:#fff; font-size:.78rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.market-coin-symbol { color:var(--kx-muted); font-size:.65rem; font-weight:700; }
+.market-price { color:#fff; font:700 .95rem ui-monospace,SFMono-Regular,Menlo,monospace; margin-top:10px; overflow-wrap:anywhere; }
+.market-change { font-size:.69rem; font-weight:700; margin-top:4px; }
+.market-change.up { color:#38d990; }.market-change.down { color:#ff7777; }.market-change.flat { color:var(--kx-muted); }
+.market-state { padding:0 16px 14px; color:var(--kx-muted); font-size:.7rem; }
+.icon-generic { background:rgba(148,163,184,.14); color:#dce6f2; }
 .rates-table { width: 100%; border-collapse: collapse; }
 .rates-table th {
     padding: 10px 22px; font-size: .7rem; font-weight: 700; text-transform: uppercase;
@@ -182,6 +196,10 @@ body { background: var(--kx-dark); color: var(--kx-text); }
 
 @media (max-width: 576px) {
     .kx-coin-grid { grid-template-columns: repeat(3,1fr); }
+    .market-grid { grid-template-columns:repeat(2,minmax(0,1fr)); padding:12px; gap:8px; }
+    .market-coin { padding:11px; }
+    .market-panel-head { padding:14px 16px; }
+    .market-panel-meta { width:100%; margin-left:0; }
     .calc-hero h1 { font-size: 1.4rem; }
     .calc-input { font-size: 1.1rem; }
     .calc-res-val { font-size: 1rem; }
@@ -202,6 +220,21 @@ body { background: var(--kx-dark); color: var(--kx-text); }
         <p>Instantly calculate how much you'll get — before you trade.</p>
     </div>
 
+    <section class="market-panel" aria-labelledby="marketPanelTitle">
+        <div class="market-panel-head">
+            <span class="live-dot" aria-hidden="true"></span>
+            <h2 class="market-panel-title" id="marketPanelTitle">Live crypto market</h2>
+            <span class="market-panel-meta" id="marketUpdated">Loading current USD prices…</span>
+        </div>
+        <div class="market-grid" id="marketGrid" aria-live="polite">
+            <div class="market-coin"><span class="market-coin-symbol">BTC</span><div class="market-price">Loading…</div></div>
+            <div class="market-coin"><span class="market-coin-symbol">ETH</span><div class="market-price">Loading…</div></div>
+            <div class="market-coin"><span class="market-coin-symbol">USDT</span><div class="market-price">Loading…</div></div>
+            <div class="market-coin"><span class="market-coin-symbol">SOL</span><div class="market-price">Loading…</div></div>
+        </div>
+        <div class="market-state" id="marketState">Market prices are informational. Buy and sell quotes below use KayXchange platform rates.</div>
+    </section>
+
     {{-- Mode tabs --}}
     <div class="calc-tabs" id="calcTabs">
         <button class="calc-tab sell active" data-mode="sell" onclick="setMode('sell')">
@@ -217,8 +250,18 @@ body { background: var(--kx-dark); color: var(--kx-text); }
 
         {{-- Coin selector --}}
         <div class="kx-coin-grid" id="coinGrid">
-            @foreach(['BTC' => ['Bitcoin','icon-btc','BTC'], 'ETH' => ['Ethereum','icon-eth','ETH'], 'USDT' => ['Tether','icon-usdt','₮']] as $symbol => [$name, $iconCls, $symIcon])
-            @php $r = $rates[$symbol] ?? null; @endphp
+            @foreach($rates as $symbol => $r)
+            @php
+                $coinMeta = [
+                    'BTC' => ['Bitcoin','icon-btc','₿'], 'ETH' => ['Ethereum','icon-eth','Ξ'],
+                    'USDT' => ['Tether','icon-usdt','₮'], 'USDC' => ['USD Coin','icon-usdt','$'],
+                    'BNB' => ['BNB','icon-generic','BNB'], 'SOL' => ['Solana','icon-generic','◎'],
+                    'XRP' => ['XRP','icon-generic','X'], 'DOGE' => ['Dogecoin','icon-generic','Ð'],
+                    'LTC' => ['Litecoin','icon-generic','Ł'], 'TRX' => ['TRON','icon-generic','T'],
+                    'ADA' => ['Cardano','icon-generic','₳'], 'TON' => ['Toncoin','icon-generic','TON'],
+                ];
+                [$name, $iconCls, $symIcon] = $coinMeta[$symbol] ?? [ucfirst(strtolower($symbol)), 'icon-generic', substr($symbol, 0, 3)];
+            @endphp
             <div class="kx-coin-btn {{ $loop->first ? 'active' : '' }}"
                  id="coin-btn-{{ $symbol }}"
                  onclick="selectCoin('{{ $symbol }}')"
@@ -226,11 +269,7 @@ body { background: var(--kx-dark); color: var(--kx-text); }
                 <div class="coin-icon-w {{ $iconCls }}">{{ $symIcon }}</div>
                 <div class="coin-name-lbl">{{ $symbol }}</div>
                 <div class="coin-rate-lbl" id="coin-rate-{{ $symbol }}">
-                    @if ($r)
-                        ₦{{ number_format((float) data_get($r, 'sell_rate', 0), 0) }} / USD
-                    @else
-                        Rate unavailable
-                    @endif
+                    ₦{{ number_format((float) data_get($r, 'sell_rate', 0), 0) }} / USD
                 </div>
             </div>
             @endforeach
@@ -306,18 +345,23 @@ body { background: var(--kx-dark); color: var(--kx-text); }
                 <tbody id="ratesTableBody">
                     @foreach($rates as $symbol => $r)
                     @php
-                        $icons = ['BTC'=>['icon-btc','#f7931a','BTC'], 'ETH'=>['icon-eth','#627eea','ETH'], 'USDT'=>['icon-usdt','#26a17b','₮']];
-                        [$ic, $clr, $sym] = $icons[$symbol] ?? ['','#aaa',$symbol];
+                        $icons = [
+                            'BTC'=>['icon-btc','₿','Bitcoin'], 'ETH'=>['icon-eth','Ξ','Ethereum'],
+                            'USDT'=>['icon-usdt','₮','Tether'], 'USDC'=>['icon-usdt','$','USD Coin'],
+                            'BNB'=>['icon-generic','BNB','BNB'], 'SOL'=>['icon-generic','◎','Solana'],
+                            'XRP'=>['icon-generic','X','XRP'], 'DOGE'=>['icon-generic','Ð','Dogecoin'],
+                            'LTC'=>['icon-generic','Ł','Litecoin'], 'TRX'=>['icon-generic','T','TRON'],
+                            'ADA'=>['icon-generic','₳','Cardano'], 'TON'=>['icon-generic','TON','Toncoin'],
+                        ];
+                        [$ic, $sym, $coinName] = $icons[$symbol] ?? ['icon-generic', substr($symbol, 0, 3), ucfirst(strtolower($symbol))];
                     @endphp
-                    <tr>
+                    <tr data-platform-rate-row="{{ $symbol }}">
                         <td>
                             <div class="coin-cell">
                                 <div class="coin-cell-icon {{ $ic }}" style="font-size:.8rem;">{{ $sym }}</div>
                                 <div>
                                     <div style="font-weight:700;color:#fff;font-size:.88rem;">{{ $symbol }}</div>
-                                    <div style="font-size:.7rem;color:var(--kx-muted);">
-                                        @if($symbol==='BTC') Bitcoin @elseif($symbol==='ETH') Ethereum @else Tether @endif
-                                    </div>
+                                    <div style="font-size:.7rem;color:var(--kx-muted);">{{ $coinName }}</div>
                                 </div>
                             </div>
                         </td>
@@ -342,10 +386,9 @@ body { background: var(--kx-dark); color: var(--kx-text); }
 (function(){
     // ── State ──
     let currentMode = 'sell';  // sell | buy
-    let currentCoin = 'BTC';
-    let amtType = 'usd';       // usd | ngn
-
     const rates = @json($rates);
+    let currentCoin = Object.keys(rates)[0] || 'BTC';
+    let amtType = 'usd';       // usd | ngn
 
     // ── Set mode ──
     window.setMode = function(mode) {
@@ -459,9 +502,62 @@ body { background: var(--kx-dark); color: var(--kx-text); }
             const el = document.getElementById('coin-rate-' + coin);
             if(!el) return;
             const r = rates[coin];
-            const v = currentMode === 'sell' ? r.sell_rate : r.buy_rate;
-            el.textContent = '₦' + fmt(v, 0) + '/USD';
+            const v = currentMode === 'sell' ? Number(r.sell_rate || 0) : Number(r.buy_rate || 0);
+            el.textContent = v > 0 ? '₦' + fmt(v, 0) + ' / USD' : 'Rate unavailable';
         });
+    }
+
+    function updatePlatformTable() {
+        document.querySelectorAll('[data-platform-rate-row]').forEach(function(row) {
+            const rate = rates[row.dataset.platformRateRow];
+            if (!rate) return;
+            const values = row.querySelectorAll('.buy-rate-val, .sell-rate-val, .spread-val');
+            const buy = Number(rate.buy_rate || 0);
+            const sell = Number(rate.sell_rate || 0);
+            if (values[0]) values[0].textContent = '₦' + fmt(buy, 2);
+            if (values[1]) values[1].textContent = '₦' + fmt(sell, 2);
+            if (values[2]) values[2].textContent = '₦' + fmt(Math.abs(buy - sell), 2);
+        });
+    }
+
+    function marketPrice(value) {
+        const n = Number(value);
+        const digits = n >= 1000 ? 2 : (n >= 1 ? 4 : 8);
+        return '$' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: digits});
+    }
+
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, function(char) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char];
+        });
+    }
+
+    function refreshMarketPrices() {
+        fetch('{{ route("calc.market-prices") }}', {headers: {'Accept': 'application/json'}})
+            .then(function(response) {
+                if (!response.ok) throw new Error('Market feed unavailable');
+                return response.json();
+            })
+            .then(function(data) {
+                if (!Array.isArray(data.coins) || !data.coins.length) throw new Error('No market prices');
+                document.getElementById('marketGrid').innerHTML = data.coins.map(function(coin) {
+                    const hasChange = coin.change_24h !== null && coin.change_24h !== '' && Number.isFinite(Number(coin.change_24h));
+                    const change = hasChange ? Number(coin.change_24h) : 0;
+                    const changeClass = hasChange ? (change > 0 ? 'up' : (change < 0 ? 'down' : 'flat')) : 'flat';
+                    const changeText = hasChange ? ((change > 0 ? '+' : '') + change.toFixed(2) + '% · 24h') : '24h change unavailable';
+                    const liveLabel = coin.is_live ? '' : ' · reference';
+                    return '<article class="market-coin"><div class="market-coin-top"><span class="market-coin-name">' + escapeHtml(coin.name) + '</span><span class="market-coin-symbol">' + escapeHtml(coin.symbol) + '</span></div><div class="market-price">' + marketPrice(coin.price_usd) + '</div><div class="market-change ' + changeClass + '">' + changeText + escapeHtml(liveLabel) + '</div></article>';
+                }).join('');
+                const updated = data.updated_at ? new Date(data.updated_at).toLocaleTimeString() : 'just now';
+                document.getElementById('marketUpdated').textContent = 'Updated ' + updated + ' · ' + String(data.source || 'market feed').toUpperCase();
+                document.getElementById('marketState').textContent = data.stale
+                    ? 'Showing the last saved market snapshot. Prices are informational; trade quotes use KayXchange platform rates.'
+                    : 'Market prices are informational. Buy and sell quotes below use KayXchange platform rates.';
+            })
+            .catch(function() {
+                document.getElementById('marketUpdated').textContent = 'Live market feed temporarily unavailable';
+                document.getElementById('marketState').textContent = 'Your calculator and platform rates remain available. Live USD market prices will retry automatically.';
+            });
     }
 
     // ── Live rate refresh every 60s ──
@@ -471,6 +567,7 @@ body { background: var(--kx-dark); color: var(--kx-text); }
             .then(data => {
                 Object.assign(rates, data);
                 updateCoinRateLabels();
+                updatePlatformTable();
                 calculate();
                 // Update table
                 document.getElementById('lastRefreshed').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -478,6 +575,8 @@ body { background: var(--kx-dark); color: var(--kx-text); }
             .catch(() => {});
     }
     setInterval(refreshRates, 60000);
+    refreshMarketPrices();
+    setInterval(refreshMarketPrices, 60000);
     document.getElementById('lastRefreshed').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
     // ── Also update CTA on direct amount typing ──

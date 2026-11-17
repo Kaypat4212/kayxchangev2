@@ -38,7 +38,8 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
 /* Coin selector */
 .coin-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem;}
-.coin-card{background:var(--kx-card2);border:2px solid var(--kx-border);border-radius:12px;padding:.85rem .5rem;text-align:center;cursor:pointer;transition:all .2s;}
+.coin-card{appearance:none;width:100%;background:var(--kx-card2);border:2px solid var(--kx-border);border-radius:12px;padding:.85rem .5rem;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;}
+.coin-card.selected-coin{border-color:var(--kx-green);background:rgba(0,204,0,.1);}
 .coin-card:hover{border-color:rgba(255,255,255,.2);}
 .coin-card.selected-btc{border-color:#f7931a;background:rgba(247,147,26,.1);}
 .coin-card.selected-eth{border-color:#627eea;background:rgba(98,126,234,.1);}
@@ -129,7 +130,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
 <div class="kx-hero">
     <h1><i class="bi bi-arrow-down-circle-fill me-2" style="color:var(--kx-green);"></i>Buy Crypto</h1>
-    <p>Purchase BTC, ETH or USDT instantly with Naira</p>
+    <p>Choose from the cryptocurrencies currently enabled by KayXchange</p>
 </div>
 
 <div class="container-fluid px-3 pb-4">
@@ -166,28 +167,17 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
             <!-- Coin cards -->
             <div class="kx-label mb-1">Select Cryptocurrency</div>
-            <div class="coin-cards">
-                <div class="coin-card" id="coinCardBTC" onclick="selectCoin('BTC')">
-                    <div class="coin-icon btc"><i class="bi bi-currency-bitcoin"></i></div>
-                    <div class="coin-name">Bitcoin</div>
-                    <div class="coin-ticker">BTC</div>
-                </div>
-                <div class="coin-card" id="coinCardETH" onclick="selectCoin('ETH')">
-                    <div class="coin-icon eth"><i class="bi bi-gem"></i></div>
-                    <div class="coin-name">Ethereum</div>
-                    <div class="coin-ticker">ETH</div>
-                </div>
-                <div class="coin-card" id="coinCardUSDT" onclick="selectCoin('USDT')">
-                    <div class="coin-icon usdt"><i class="bi bi-cashstack"></i></div>
-                    <div class="coin-name">Tether</div>
-                    <div class="coin-ticker">USDT-TRC20</div>
-                </div>
+            <div class="coin-cards" id="coinCards">
+                @forelse(($coinOptions ?? []) as $symbol => $option)
+                    <button type="button" class="coin-card" id="coinCard{{ $symbol }}" data-coin="{{ $symbol }}" onclick="selectCoin('{{ $symbol }}')" aria-label="Select {{ $option['name'] }} ({{ $symbol }})">
+                        <span class="coin-icon" style="background:rgba(18,212,90,.12);color:#75ef9a">{{ ['BTC'=>'₿','ETH'=>'Ξ','USDT'=>'₮','USDC'=>'＄','LTC'=>'Ł','SOL'=>'◎','BNB'=>'◆','DOGE'=>'Ð'][$symbol] ?? strtoupper(substr($symbol,0,1)) }}</span>
+                        <span class="coin-name">{{ $option['name'] }}</span><span class="coin-ticker">{{ $symbol }}</span>
+                    </button>
+                @empty<div class="kx-guide">Crypto purchases are temporarily unavailable while the platform has no configured coin rates.</div>@endforelse
             </div>
             <select name="coin" id="coin" class="d-none" required>
                 <option value="">Choose</option>
-                <option value="BTC">BTC</option>
-                <option value="ETH">ETH</option>
-                <option value="USDT">USDT</option>
+                @foreach(($coinOptions ?? []) as $symbol => $option)<option value="{{ $symbol }}">{{ $symbol }}</option>@endforeach
             </select>
 
             <!-- Rate badge -->
@@ -384,7 +374,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     const rates = {!! json_encode($rates ?? ['BTC' => 1600, 'ETH' => 1500, 'USDT' => 1400]) !!};
 
     // Live USD prices for crypto quantity calculation (fetched once, cached in memory)
-    let cryptoUsdPrices = { BTC: 65000, ETH: 3500, USDT: 1.0 };
+    let cryptoUsdPrices = {!! json_encode(collect($cryptoUsdPrices ?? [])->only(array_keys($coinOptions ?? []))->all()) !!};
     fetch('/api/crypto-prices').then(r => r.json()).then(d => { cryptoUsdPrices = d; calculateConversion(); }).catch(() => {});
 
     // Conversion view state: 'fiat' shows NGN/USD, 'crypto' shows coin quantity
@@ -394,20 +384,11 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         updateConversionDisplay();
     });
 
-    const networks = {
-        BTC:  [{ value: 'Bitcoin',  text: 'Bitcoin Network'  }],
-        ETH:  [{ value: 'Ethereum', text: 'Ethereum Network' }],
-        USDT: [{ value: 'Tron',     text: 'Tron Network'     }]
-    };
+    const coinOptions = {!! json_encode($coinOptions ?? []) !!};
+    const networks = Object.fromEntries(Object.entries(coinOptions).map(([coin, option]) => [coin, (option.networks || [coin]).map((network) => ({ value: network, text: `${network} Network` }))]));
 
-    const fallbackPatterns = {
-        BTC:  { Bitcoin:  /^(1|3|bc1)[A-Za-z0-9]{25,74}$/ },
-        ETH:  { Ethereum: /^0x[a-fA-F0-9]{40}$/ },
-        USDT: { Tron:     /^T[A-Za-z0-9]{33}$/ }
-    };
-
-    const coinColors = { BTC: '#f7931a', ETH: '#627eea', USDT: '#26a17b' };
-    const coinLabels = { BTC: 'Bitcoin (BTC)', ETH: 'Ethereum (ETH)', USDT: 'USDT-TRC20' };
+    const coinColors = { BTC: '#f7931a', ETH: '#627eea', USDT: '#26a17b', LTC: '#b9c2ce' };
+    const coinLabels = Object.fromEntries(Object.entries(coinOptions).map(([coin, option]) => [coin, `${option.name} (${coin})`]));
 
     // Toast
     function showToast(msg, type) {
@@ -436,47 +417,16 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     async function validateWallet(address, coin, network) {
         if (!address) return { valid: false };
         address = address.trim();
-        const lib = {
-            bitcoin: typeof bitcoinAddressValidation !== 'undefined',
-            ethers:  typeof ethers !== 'undefined',
-            tronweb: typeof TronWeb !== 'undefined'
-        };
-        try {
-            if (coin === 'BTC' && network === 'Bitcoin') {
-                if (lib.bitcoin) {
-                    const v = bitcoinAddressValidation(address);
-                    if (!v.valid) throw new Error('Invalid Bitcoin address');
-                    return { valid: true };
-                }
-                throw new Error('bitcoin-address-validation not loaded');
-            } else if (coin === 'ETH' && network === 'Ethereum') {
-                if (lib.ethers) {
-                    if (!ethers.utils.isAddress(address)) throw new Error('Invalid Ethereum address');
-                    return { valid: true };
-                }
-                throw new Error('ethers not loaded');
-            } else if (coin === 'USDT' && network === 'Tron') {
-                if (lib.tronweb) {
-                    const tw = new TronWeb({ fullHost: 'https://api.trongrid.io' });
-                    if (!await tw.isAddress(address)) throw new Error('Invalid Tron address');
-                    return { valid: true };
-                }
-                throw new Error('tronweb not loaded');
-            }
-        } catch(err) {
-            logErr('Wallet validation error', { coin, network, address, error: err.message });
-            if (fallbackPatterns[coin]?.[network]?.test(address)) return { valid: true };
-        }
-        return { valid: false };
+        if (coin === 'BTC') return { valid: /^(1|3)[1-9A-HJ-NP-Za-km-z]{25,34}$|^bc1[ac-hj-np-z02-9]{11,71}$/i.test(address) };
+        if (coin === 'LTC') return { valid: /^(L|M|3)[1-9A-HJ-NP-Za-km-z]{25,34}$|^ltc1[0-9ac-hj-np-z]{20,60}$/i.test(address) };
+        if (['ETH','USDC'].includes(coin) || (['USDT'].includes(coin) && ['ERC20','BEP20'].includes(network))) return { valid: /^0x[a-fA-F0-9]{40}$/.test(address) };
+        if (coin === 'USDT' && ['Tron','TRC20'].includes(network)) return { valid: /^T[A-Za-z0-9]{33}$/.test(address) };
+        return { valid: /^[A-Za-z0-9:_-]{20,128}$/.test(address) };
     }
 
     // Select coin
     window.selectCoin = function(coin) {
-        ['BTC','ETH','USDT'].forEach(c => {
-            document.getElementById('coinCard' + c).classList.remove('selected-btc','selected-eth','selected-usdt');
-        });
-        const cls = { BTC: 'selected-btc', ETH: 'selected-eth', USDT: 'selected-usdt' };
-        document.getElementById('coinCard' + coin).classList.add(cls[coin]);
+        document.querySelectorAll('.coin-card').forEach((card) => card.classList.toggle('selected-coin', card.dataset.coin === coin));
         coinSelect.value = coin;
         selectedCoin = coin;
         updateRate();
@@ -517,17 +467,17 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             usdAmt = amount / rate;
         }
         // Crypto quantity
-        const coinPrice = cryptoUsdPrices[coin] || 1;
+        const coinPrice = Number(cryptoUsdPrices[coin]);
+        if (!(coinPrice > 0)) { conversionBox.classList.remove('visible'); nextButton.disabled = true; return; }
         const cryptoQty = usdAmt / coinPrice;
-        const decimals  = coin === 'USDT' ? 2 : (coin === 'BTC' ? 8 : 6);
+        const decimals  = ['USDT','USDC'].includes(coin) ? 2 : (coin === 'BTC' || coin === 'LTC' ? 8 : 6);
         const ticker    = coin === 'USDT' ? 'USDT' : coin;
         // Store on element for view toggle
         convertedAmountEl.dataset.ngn = '\u20A6' + ngnAmt.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         convertedAmountEl.dataset.usd = '$' + usdAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         cryptoEquivEl.dataset.qty = '\u2248 ' + cryptoQty.toFixed(decimals) + ' ' + ticker;
         // Update crypto color class
-        const colorMap = { BTC: '', ETH: 'eth', USDT: 'usdt' };
-        cryptoEquivEl.className = 'conv-crypto-value' + (colorMap[coin] ? ' ' + colorMap[coin] : '');
+        cryptoEquivEl.className = 'conv-crypto-value';
         updateConversionDisplay(usdAmt, ngnAmt, cryptoQty, decimals, ticker);
         conversionBox.classList.add('visible');
         nextButton.disabled = false;
@@ -603,7 +553,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         amountInput.classList.remove('border-danger');
         selectedCoinInput.value = selectedCoin;
 
-        step2CoinDisplay.innerHTML = '<span style="color:' + coinColors[selectedCoin] + '">' + (coinLabels[selectedCoin] || selectedCoin) + '</span>';
+        step2CoinDisplay.textContent = coinLabels[selectedCoin] || selectedCoin;
         if (isUSD) {
             step2AmountDisplay.textContent = '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         } else {
@@ -694,7 +644,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         var qAmount     = parseFloat(urlParams.get('amount')) || 0;
         var qInputType  = urlParams.get('input_type') || 'usd';
 
-        if (qCoin && ['BTC','ETH','USDT'].includes(qCoin)) {
+        if (qCoin && coinOptions[qCoin]) {
             selectCoin(qCoin);
         }
         // Switch to NGN mode if calculator was in NGN

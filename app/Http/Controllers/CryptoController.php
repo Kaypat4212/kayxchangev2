@@ -24,7 +24,7 @@ class CryptoController extends Controller
         Log::info('Signed-in User ID: ', ['user_id' => $userId]);
 
         // Fetch crypto rates
-        $rateCoins = CryptoRate::query()->pluck('coin')->map(fn ($coin) => strtoupper((string) $coin))->merge(['BTC', 'ETH', 'USDT', 'SOL', 'BNB', 'USDC', 'LTC', 'ADA', 'DOGE'])->unique()->values()->all();
+        $rateCoins = app(\App\Services\CryptoTradeRateService::class)->configuredCoins();
         $rates = app(\App\Services\CryptoTradeRateService::class)->rates($rateCoins);
         Log::info('Rates fetched for dashboard: ', ['rates' => $rates]);
         $usdtRate = app(\App\Services\CryptoTradeRateService::class)->rate('USDT', 'sell') ?? 0;
@@ -151,9 +151,21 @@ class CryptoController extends Controller
 
     public function buy()
     {
-        $resolved = app(\App\Services\CryptoTradeRateService::class)->rates(['BTC', 'ETH', 'USDT']);
+        $rateService = app(\App\Services\CryptoTradeRateService::class);
+        $coins = $rateService->configuredCoins();
+        $resolved = $rateService->rates($coins);
         $rates = array_map(fn ($rate) => $rate['buy_rate'], $resolved);
-        return view('buy', compact('rates'));
+        $assetCatalog = app(\App\Services\CryptoDepositConfiguration::class)->assets();
+        $coinOptions = [];
+        foreach ($coins as $symbol) {
+            $meta = \App\Services\ExchangeRateService::SUPPORTED_COINS[$symbol] ?? [];
+            $coinOptions[$symbol] = [
+                'name' => $meta['name'] ?? ($assetCatalog[$symbol]['name'] ?? $symbol),
+                'networks' => array_values($assetCatalog[$symbol]['networks'] ?? [$symbol]),
+            ];
+        }
+        $cryptoUsdPrices = app(\App\Services\ExchangeRateService::class)->getUsdRates();
+        return view('buy', compact('rates', 'coinOptions', 'cryptoUsdPrices'));
     }
 
     public function sell()
@@ -181,9 +193,11 @@ class CryptoController extends Controller
 
         $convertMode = \App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus'); // compare | cryptomus | manual | nowpayments
         if (!in_array($convertMode, ['compare', 'cryptomus', 'nowpayments', 'manual'], true)) $convertMode = 'cryptomus';
-        $coinSymbols = $convertMode === 'nowpayments'
+        $configuredCoins = app(\App\Services\CryptoTradeRateService::class)->configuredCoins();
+        $providerCoins = $convertMode === 'nowpayments'
             ? app(\App\Services\NowPaymentsConversionService::class)->supportedCoins()
             : array_keys(\App\Services\ExchangeRateService::SUPPORTED_COINS);
+        $coinSymbols = array_values(array_intersect($providerCoins, $configuredCoins));
         $coins = [];
         foreach ($coinSymbols as $symbol) {
             $meta = \App\Services\ExchangeRateService::SUPPORTED_COINS[$symbol] ?? null;
@@ -236,7 +250,8 @@ class CryptoController extends Controller
 
         $rateService = new \App\Services\ExchangeRateService();
 
-        if (!$rateService->isSupported($fromCoin) || !$rateService->isSupported($toCoin)) {
+        $configuredCoins = app(\App\Services\CryptoTradeRateService::class)->configuredCoins();
+        if (!in_array($fromCoin, $configuredCoins, true) || !in_array($toCoin, $configuredCoins, true) || !$rateService->isSupported($fromCoin) || !$rateService->isSupported($toCoin)) {
             return response()->json(['success' => false, 'message' => 'Unsupported coin selected'], 400);
         }
         if (\App\Models\AdminSetting::getSetting('convert_mode', 'cryptomus') === 'nowpayments') {
@@ -337,7 +352,8 @@ class CryptoController extends Controller
 
             $rateService = new \App\Services\ExchangeRateService();
 
-            if (!$rateService->isSupported($fromCoin) || !$rateService->isSupported($toCoin) || $fromCoin === $toCoin) {
+            $configuredCoins = app(\App\Services\CryptoTradeRateService::class)->configuredCoins();
+            if (!in_array($fromCoin, $configuredCoins, true) || !in_array($toCoin, $configuredCoins, true) || !$rateService->isSupported($fromCoin) || !$rateService->isSupported($toCoin) || $fromCoin === $toCoin) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid cryptocurrency pair selected'

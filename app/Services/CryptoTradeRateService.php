@@ -7,6 +7,15 @@ use App\Models\CryptoRate;
 /** Resolves configured NGN-per-USD crypto trade rates with a stablecoin fallback. */
 class CryptoTradeRateService
 {
+    /** The admin-managed rate table is the platform's source of truth. */
+    public function configuredCoins(): array
+    {
+        return CryptoRate::query()->orderBy('coin')->pluck('coin')
+            ->map(fn ($coin) => strtoupper(trim((string) $coin)))
+            ->filter(fn ($coin) => preg_match('/^[A-Z0-9]{2,10}$/', $coin))
+            ->unique()->values()->all();
+    }
+
     /**
      * Return positive configured buy/sell rates. When an asset has no usable
      * rate, use the corresponding platform USDT rate as its USD/NGN reference.

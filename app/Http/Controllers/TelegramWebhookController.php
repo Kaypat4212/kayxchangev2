@@ -17,7 +17,12 @@ class TelegramWebhookController extends Controller
 
     public function handle(Request $request)
     {
-        Log::info("Telegram webhook received", ["payload" => $request->all()]);
+        // Updates can contain PINs, passwords, and gift-card codes. Log only
+        // identifying metadata so private chat content never lands in laravel.log.
+        Log::info('Telegram webhook received', [
+            'update_id' => $request->input('update_id'),
+            'update_type' => $request->has('message') ? 'message' : ($request->has('callback_query') ? 'callback_query' : 'other'),
+        ]);
 
         try {
             $update = $request->all();
@@ -40,7 +45,7 @@ class TelegramWebhookController extends Controller
         } catch (\Exception $e) {
             Log::error("Error processing Telegram webhook", [
                 "error" => $e->getMessage(),
-                "request" => $request->all(),
+                "update_id" => $request->input('update_id'),
             ]);
 
             return response()->json(["status" => "error", "message" => $e->getMessage()], 500);

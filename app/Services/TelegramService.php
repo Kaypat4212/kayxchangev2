@@ -596,7 +596,7 @@ class TelegramService
             if (preg_match('/\b(i wan|i want|make i|abeg)\s+(?:to\s+)?sell\b|\bsell\s+(crypto|btc|eth|usdt|usdc|sol|bnb|bitcoin|ethereum)\b/i', $lower)) return 'sell';
         }
 
-        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'balance', 'trades', 'history', 'transactions', 'verify', 'help', 'cancel', 'ai', 'upload', 'features', 'wallet', 'crypto_deposit', 'usd_wallet', 'deposit_status', 'giftcards', 'giftcard_status', 'giftcard_buy', 'giftcard_sell', 'buygiftcard', 'sellgiftcard'];
+        $known = ['start', 'register', 'rates', 'buy', 'sell', 'deposit', 'withdraw', 'balance', 'trades', 'history', 'transactions', 'verify', 'status', 'help', 'cancel', 'ai', 'upload', 'features', 'tools', 'wallet', 'crypto_deposit', 'usd_wallet', 'deposit_status', 'giftcards', 'giftcard_status', 'giftcard_buy', 'giftcard_sell', 'buygiftcard', 'sellgiftcard'];
 
         return in_array($command, $known, true) ? $command : null;
     }
@@ -723,10 +723,13 @@ class TelegramService
                         'balance'  => $this->handleBalanceCommand($chatId),
                     'trades', 'history', 'transactions' => $this->handleTradesCommand($chatId),
                         'verify'   => $this->handleVerifyCommand($chatId, $text, $username),
+                        'status'   => $this->handleVerifyCommand($chatId, $text, $username),
                         'help'     => $this->handleHelpCommand($chatId),
                         'ai'       => $this->handleAiChatCommand($chatId),
                         'upload'   => $this->handleUploadCommand($chatId),
                         'features' => $this->handleFeaturesCommand($chatId),
+                        'tools'    => $this->handleFeatureLink($chatId, 'Digital tools', '/tools'),
+                        'withdraw' => $this->handleFeatureLink($chatId, 'Withdraw', '/wallet/withdraw'),
                         'wallet'   => $this->handleFeatureLink($chatId, 'Wallet overview', '/wallet'),
                         'crypto_deposit' => $this->handleCryptoDepositCommand($chatId),
                         'usd_wallet' => $this->handleUsdWalletCommand($chatId),
@@ -1055,6 +1058,8 @@ class TelegramService
                     'cmd_transactions' => $this->handleFeatureLink($chatId, 'Transaction history', '/transactions/history'),
                     'cmd_activity' => $this->handleFeatureLink($chatId, 'Recent account activity', '/account/activity'),
                     'cmd_notifications' => $this->handleFeatureLink($chatId, 'Notifications', '/notifications'),
+                    'cmd_tools' => $this->handleFeatureLink($chatId, 'Digital tools', '/tools'),
+                    'cmd_price_alerts' => $this->handleFeatureLink($chatId, 'Price alerts', '/price-alerts'),
                     'cmd_forum' => $this->handleFeatureLink($chatId, 'Community forum', '/forum'),
                     'cmd_features' => $this->handleFeaturesCommand($chatId),
                     default        => null,
@@ -1681,6 +1686,16 @@ class TelegramService
     /** Present current platform tools through secure, authenticated web destinations. */
     private function handleFeaturesCommand(int $chatId): void
     {
+        $giftPurchaseEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        $giftSalesEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        $giftRows = [];
+        if ($giftPurchaseEnabled || $giftSalesEnabled) {
+            $giftButtons = [];
+            if ($giftPurchaseEnabled) $giftButtons[] = $this->linkButton('🎁 Buy gift cards', '/gift-cards', 'cmd_giftcard_buy');
+            if ($giftSalesEnabled) $giftButtons[] = $this->linkButton('💳 Sell gift cards', '/gift-cards', 'cmd_giftcard_sell');
+            $giftRows[] = $giftButtons;
+        }
+
         $user = User::where('telegram_chat_id', $chatId)->first();
         $message = $user
             ? "✨ *KayXchange features*\nChoose a service below. Wallet actions open the secure website so your account session and payment review rules remain active."
@@ -1699,9 +1714,10 @@ class TelegramService
                 $this->linkButton('🔁 Swap', '/swap', 'cmd_swap'),
                 $this->linkButton('🧾 Bills', '/bills', 'cmd_bills'),
             ],
+            ...$giftRows,
             [
-                $this->linkButton('🎁 Gift cards', '/gift-cards', 'cmd_giftcards'),
                 $this->linkButton('📈 Portfolio', '/portfolio', 'cmd_portfolio'),
+                $this->linkButton('🔔 Price alerts', '/price-alerts', 'cmd_price_alerts'),
             ],
             [
                 $this->linkButton('📜 Wallet history', '/wallet/history', 'cmd_history'),
@@ -1714,6 +1730,10 @@ class TelegramService
             [
                 $this->linkButton('🕘 Account activity', '/account/activity', 'cmd_activity'),
                 $this->linkButton('💬 Community forum', '/forum', 'cmd_forum'),
+            ],
+            [
+                $this->linkButton('🧰 Digital tools', '/tools', 'cmd_tools'),
+                $this->linkButton('📋 All transactions', '/transactions/history', 'cmd_transactions'),
             ],
             [
                 ['text' => '📊 Live rates', 'callback_data' => 'cmd_rates'],
@@ -1917,7 +1937,16 @@ class TelegramService
             $this->sendMessage($chatId, 'Link your KayXchange account to submit gift-card transactions. Sign in or register, then link Telegram from your profile.', 'Markdown', ['inline_keyboard' => [[['text' => 'Sign in', 'url' => $this->telegramAppUrl() . '/login']], [['text' => 'Register', 'url' => $this->telegramAppUrl() . '/register']]]]);
             return;
         }
-        $this->sendMessage($chatId, 'Choose what you want to do with a USA or UK gift card:', 'Markdown', ['inline_keyboard' => [[['text' => '🎁 Buy a gift card', 'callback_data' => 'giftcard_buy']], [['text' => '💳 Sell a gift card', 'callback_data' => 'giftcard_sell']], [['text' => '🔎 Check purchase status', 'callback_data' => 'cmd_giftcard_status']]]]);
+        $purchaseEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_cards_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        $salesEnabled = filter_var(\App\Models\AdminSetting::getSetting('gift_card_sales_enabled', '0'), FILTER_VALIDATE_BOOLEAN);
+        $buttons = [];
+        if ($purchaseEnabled) $buttons[] = [['text' => '🎁 Buy a gift card', 'callback_data' => 'giftcard_buy']];
+        if ($salesEnabled) $buttons[] = [['text' => '💳 Sell a gift card', 'callback_data' => 'giftcard_sell']];
+        $buttons[] = [['text' => '🔎 Check purchase status', 'callback_data' => 'cmd_giftcard_status']];
+        $prompt = ($purchaseEnabled || $salesEnabled)
+            ? 'Choose an available USA or UK gift-card service:'
+            : 'Gift-card trading is temporarily paused. You can still check the status of an existing purchase.';
+        $this->sendMessage($chatId, $prompt, 'Markdown', ['inline_keyboard' => $buttons]);
     }
 
     private function handleGiftCardStatusCommand(int $chatId, string $query = ''): void
@@ -2240,7 +2269,7 @@ class TelegramService
                     "`Email address` — Send your email to link an existing account\n" .
                     "  └ If your account has a PIN, you\'ll be asked to verify it\n\n" .
                     "💱 *Trading Commands*\n" .
-                    "`/sell` — Sell cryptocurrency (BTC, ETH, USDT, SOL)\n" .
+                    "`/sell` — Sell a supported cryptocurrency (choose from the live list)\n" .
                     "  └ PIN required if set → choose coin → amount → proof (photo or txid) → payout\n" .
                     "`/buy` — Buy cryptocurrency\n" .
                     "  └ PIN required if set → choose coin → amount → wallet → proof (photo or txid)\n" .
@@ -2254,6 +2283,8 @@ class TelegramService
                     "`/buygiftcard` — Buy with rate review and transaction PIN confirmation\n" .
                     "`/sellgiftcard` — Submit a card for admin verification (NGN credit only after approval)\n" .
                     "`/features` — Wallets, withdrawals, swaps, bills, gift cards, portfolio and support\n" .
+                    "`/tools` — Open the digital tools workspace\n" .
+                    "`/withdraw` — Open the secure wallet withdrawal page\n" .
                     "`/rates` — View current KayXchange NGN buy & sell rates\n" .
                     "`/balance` — Check your account balance\n" .
                     "`/transactions` or `/trades` — View recent deposits, withdrawals, trades, swaps, bills and gift cards\n\n" .
@@ -2263,7 +2294,7 @@ class TelegramService
                     "Wrong PIN 5× = 15-minute lockout. Set/change your PIN on the website.\n\n" .
                     "👤 *Account Commands*\n" .
                     "`/start` — Main menu (personalised when linked)\n" .
-                    "`/verify` — Show your account & verification status\n" .
+                    "`/verify` or `/status` — Show your account & verification status\n" .
                     "`/cancel` — Cancel any active flow at any time\n" .
                     "`/help` — Show this message\n\n";
 

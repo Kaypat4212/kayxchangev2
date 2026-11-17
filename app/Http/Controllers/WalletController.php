@@ -538,10 +538,13 @@ class WalletController extends Controller
         }
         $selectedWalletId = old('wallet_id', $request->query('wallet_id'));
         $selectedNetwork = strtoupper((string) old('network', $request->query('network', '')));
+        $configured = array_flip(app(\App\Services\CryptoTradeRateService::class)->configuredCoins());
+        $supportedNetworkOptions = array_intersect_key(app(\App\Services\CryptoDepositConfiguration::class)->assets(), $configured);
+        $supportedNetworkOptions = array_map(fn ($asset) => array_combine($asset['networks'], $asset['networks']), $supportedNetworkOptions);
         $recentWithdrawals = \App\Models\CryptoWithdrawal::with('wallet')->where('user_id', $user->id)->latest()->limit(4)->get();
         $withdrawalRequestKey = (string) Str::uuid();
         $withdrawalEnabled = true;
-        return view('wallet.withdraw', compact('wallets', 'selectedWalletId', 'selectedNetwork', 'recentWithdrawals', 'withdrawalEnabled', 'withdrawalRequestKey'));
+        return view('wallet.withdraw', compact('wallets', 'selectedWalletId', 'selectedNetwork', 'recentWithdrawals', 'withdrawalEnabled', 'withdrawalRequestKey', 'supportedNetworkOptions'));
     }
 
     /**
@@ -564,12 +567,11 @@ class WalletController extends Controller
         if ($existing) return redirect()->route('wallet.withdraw')->with('success', 'Withdrawal request CW-' . $existing->id . ' was already submitted.');
         $wallet = Wallet::whereKey($data['wallet_id'])->where('user_id', $user->id)->where('is_active', true)->firstOrFail();
         $currency = strtoupper((string) $wallet->currency);
-        $networkMap = [
-            'BTC' => ['BTC'], 'ETH' => ['ERC20'], 'LTC' => ['LTC'], 'TRX' => ['TRC20'], 'XRP' => ['XRP'], 'DOGE' => ['DOGE'], 'ADA' => ['ADA'], 'TON' => ['TON'],
-            'USDT' => ['TRC20', 'ERC20', 'BEP20'], 'USDC' => ['ERC20', 'BEP20'], 'BNB' => ['BEP20'], 'SOL' => ['SOL'],
-        ];
+        $configured = app(\App\Services\CryptoTradeRateService::class)->configuredCoins();
+        abort_unless(in_array($currency, $configured, true), 422, 'This asset is no longer enabled for withdrawals.');
+        $networkMap = app(\App\Services\CryptoDepositConfiguration::class)->assets();
         $network = strtoupper($data['network']);
-        if (!in_array($network, $networkMap[$currency] ?? [], true)) {
+        if (!in_array($network, $networkMap[$currency]['networks'] ?? [], true)) {
             return back()->withInput()->withErrors(['network' => 'Select a supported network for ' . $currency . '.']);
         }
         $amount = round((float) $data['amount'], 8);

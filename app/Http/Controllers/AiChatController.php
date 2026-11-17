@@ -100,6 +100,13 @@ class AiChatController extends Controller
             return response()->json($giftResult);
         }
 
+        if (preg_match('/\b(tools?|calculators?|profit\s*(?:and|&)\s*loss|average\s*(?:buy|entry))\b/i', $message)) {
+            $this->saveMessage($user?->id, $sessionId, 'user', $message);
+            $reply = "Open your KayXchange Tools workspace for the live-rate estimator, profit/loss checker, average-entry calculator, and wallet shortcuts: [Open Tools](" . url('/tools') . ')';
+            $this->saveMessage($user?->id, $sessionId, 'assistant', $reply);
+            return response()->json(['reply' => $reply, 'url' => url('/tools')]);
+        }
+
         if ($this->isTransactionHistoryQuery($message)) {
             $this->saveMessage($user?->id, $sessionId, 'user', $message);
             if (!$user) {

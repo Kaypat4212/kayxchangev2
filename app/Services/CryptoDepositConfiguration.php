@@ -17,13 +17,6 @@ class CryptoDepositConfiguration
             'SOL'=>['name'=>'Solana','networks'=>['SOL']],
         ];
 
-        return $assets;
-    }
-
-    /** Assets available to manual sell trades, including admin-added coins. */
-    public function sellAssets(): array
-    {
-        $assets = $this->assets();
         $names = ['LTC'=>'Litecoin', 'XRP'=>'XRP', 'DOGE'=>'Dogecoin', 'TRX'=>'TRON', 'ADA'=>'Cardano', 'TON'=>'Toncoin'];
         foreach (\App\Models\CryptoRate::query()->orderBy('coin')->get(['coin']) as $row) {
             $symbol = strtoupper(trim((string) $row->coin));
@@ -31,6 +24,12 @@ class CryptoDepositConfiguration
             $assets[$symbol] ??= ['name' => $names[$symbol] ?? $symbol, 'networks' => [$symbol]];
         }
         return $assets;
+    }
+
+    /** Assets available to manual sell trades, including admin-added coins. */
+    public function sellAssets(): array
+    {
+        return $this->assets();
     }
 
     public function minimumUsdKey(string $currency, string $network): string

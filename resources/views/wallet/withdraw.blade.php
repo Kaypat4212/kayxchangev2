@@ -5,15 +5,7 @@
 @section('content')
 @php
     $withdrawableWallets = $wallets->filter(fn ($wallet) => $wallet->isCrypto() && $wallet->is_active && (float) $wallet->available_balance > 0)->values();
-    $walletNetworkOptions = [
-        'BTC' => ['BTC' => 'Bitcoin'],
-        'ETH' => ['ERC20' => 'Ethereum · ERC-20'],
-        'LTC' => ['LTC' => 'Litecoin'], 'TRX' => ['TRC20' => 'TRON'], 'XRP' => ['XRP' => 'XRP Ledger'], 'DOGE' => ['DOGE' => 'Dogecoin'], 'ADA' => ['ADA' => 'Cardano'], 'TON' => ['TON' => 'TON'],
-        'USDT' => ['TRC20' => 'Tron · TRC-20', 'ERC20' => 'Ethereum · ERC-20', 'BEP20' => 'BNB Smart Chain · BEP-20'],
-        'USDC' => ['ERC20' => 'Ethereum · ERC-20', 'BEP20' => 'BNB Smart Chain · BEP-20'],
-        'BNB' => ['BEP20' => 'BNB Smart Chain · BEP-20'],
-        'SOL' => ['SOL' => 'Solana'],
-    ];
+    $walletNetworkOptions = $supportedNetworkOptions ?? [];
     $recentWithdrawals = \App\Models\CryptoWithdrawal::with('wallet')->where('user_id', auth()->id())->latest()->limit(4)->get();
 @endphp
 

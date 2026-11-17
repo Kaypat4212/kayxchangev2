@@ -168,6 +168,7 @@ Route::get('/crypto-rates', [CryptoRateController::class, 'index'])->name('rates
 // Rate Calculator
 Route::get('/rate-calculator', [RateCalculatorController::class, 'index'])->name('calc.index');
 Route::get('/rate-calculator/rates', [RateCalculatorController::class, 'apiRates'])->name('calc.rates');
+Route::get('/rate-calculator/market-prices', [RateCalculatorController::class, 'marketPrices'])->middleware('throttle:web-public')->name('calc.market-prices');
 Route::get('/gift-card-rates', [RatesController::class, 'giftCardRates'])->name('giftcard.rates');
 
 Route::patch('admin/withdrawals/{id}/status', [WithdrawalController::class, 'updateStatus'])->name('withdrawal.updateStatus')->middleware(['auth', 'admin']);
@@ -641,6 +642,9 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
+    Route::get('/tools', function () {
+        return view('tools.index');
+    })->name('tools.index');
     Route::get('/dashboard', [CryptoController::class, 'dashboard'])->name('dashboard');
     Route::put('/dashboard/layout', [\App\Http\Controllers\DashboardLayoutController::class, 'saveUser'])->middleware('throttle:10,1')->name('dashboard.layout.update');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

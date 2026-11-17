@@ -37,9 +37,18 @@ class BuyController extends Controller
                 ->with('error', 'KYC verification is required before you can buy crypto.');
         }
 
-        $resolved = app(\App\Services\CryptoTradeRateService::class)->rates(['BTC', 'ETH', 'USDT']);
+        $rateService = app(\App\Services\CryptoTradeRateService::class);
+        $coins = $rateService->configuredCoins();
+        $resolved = $rateService->rates($coins);
         $rates = array_map(fn ($rate) => $rate['buy_rate'], $resolved);
-        return view('buy', compact('rates'));
+        $assetCatalog = app(\App\Services\CryptoDepositConfiguration::class)->assets();
+        $coinOptions = [];
+        foreach ($coins as $symbol) {
+            $meta = \App\Services\ExchangeRateService::SUPPORTED_COINS[$symbol] ?? [];
+            $coinOptions[$symbol] = ['name' => $meta['name'] ?? ($assetCatalog[$symbol]['name'] ?? $symbol), 'networks' => array_values($assetCatalog[$symbol]['networks'] ?? [$symbol])];
+        }
+        $cryptoUsdPrices = app(\App\Services\ExchangeRateService::class)->getUsdRates();
+        return view('buy', compact('rates', 'coinOptions', 'cryptoUsdPrices'));
     }
 
     /**
@@ -436,19 +445,22 @@ class BuyController extends Controller
 
     private function fetchCryptoUsdPrices(): array
     {
-        return Cache::remember('buy_crypto_usd_prices', 120, function () {
+        $symbols = app(\App\Services\CryptoTradeRateService::class)->configuredCoins();
+        $cacheKey = 'buy_crypto_usd_prices_v2_' . md5(implode(',', $symbols));
+        return Cache::remember($cacheKey, 120, function () use ($symbols) {
             try {
-                $data = app(CoinGeckoService::class)->getCryptoPrices(['bitcoin', 'ethereum', 'tether']);
-                $map = ['BTC' => 65000.0, 'ETH' => 3500.0, 'USDT' => 1.0];
+            $supported = array_intersect_key(\App\Services\ExchangeRateService::SUPPORTED_COINS, array_flip($symbols));
+            $ids = array_values(array_unique(array_column($supported, 'coingecko')));
+            $data = $ids ? app(CoinGeckoService::class)->getCryptoPrices($ids) : [];
+                $map = [];
                 foreach ($data as $item) {
-                    if ($item['id'] === 'bitcoin')  $map['BTC']  = (float) ($item['price_usd'] ?? 65000);
-                    if ($item['id'] === 'ethereum') $map['ETH']  = (float) ($item['price_usd'] ?? 3500);
-                    if ($item['id'] === 'tether')   $map['USDT'] = (float) ($item['price_usd'] ?? 1.0);
+                    foreach ($supported as $symbol => $meta) if (($item['id'] ?? null) === $meta['coingecko'] && (float)($item['price_usd'] ?? 0) > 0) $map[$symbol] = (float)$item['price_usd'];
                 }
                 return $map;
             } catch (\Throwable $e) {
                 Log::warning('CoinGecko price fetch failed: ' . $e->getMessage());
-                return ['BTC' => 65000.0, 'ETH' => 3500.0, 'USDT' => 1.0];
+                $supported = array_intersect_key(\App\Services\ExchangeRateService::SUPPORTED_COINS, array_flip($symbols));
+                return array_map(fn ($meta) => (float) $meta['fallback'], $supported);
             }
         });
     }

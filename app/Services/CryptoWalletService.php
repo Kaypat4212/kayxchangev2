@@ -38,7 +38,7 @@ class CryptoWalletService
         if (Schema::hasTable('crypto_rates')) {
             $configured = CryptoRate::query()->pluck('coin')->map(fn ($coin) => strtoupper(trim((string) $coin)))
                 ->filter(fn ($coin) => preg_match('/^[A-Z0-9]{2,10}$/', $coin) && !in_array($coin, ['NGN', 'USD', 'EUR'], true));
-            $supportedCryptos = array_values(array_unique(array_merge($supportedCryptos, $configured->all())));
+            $supportedCryptos = array_values(array_unique($configured->all()));
         }
 
         foreach ($supportedCryptos as $crypto) {
@@ -631,7 +631,7 @@ class CryptoWalletService
      */
     public function getSupportedCryptos(): array
     {
-        return [
+        $catalog = [
             'BTC' => ['name' => 'Bitcoin', 'networks' => ['BTC']],
             'ETH' => ['name' => 'Ethereum', 'networks' => ['ERC20']],
             'USDT' => ['name' => 'Tether', 'networks' => ['TRC20', 'ERC20', 'BEP20']],
@@ -640,6 +640,10 @@ class CryptoWalletService
             'SOL' => ['name' => 'Solana', 'networks' => ['SOL']],
             'LTC' => ['name' => 'Litecoin', 'networks' => ['LTC']],
         ];
+        $catalog = array_replace_recursive($catalog, $this->depositConfiguration->assets());
+        if (!Schema::hasTable('crypto_rates')) return $catalog;
+        $configured = array_flip(app(CryptoTradeRateService::class)->configuredCoins());
+        return array_intersect_key($catalog, $configured);
     }
 
     private function buildManualFallbackContext(string $currency, string $network, float $usdAmount, array $inputDetails): ?array
