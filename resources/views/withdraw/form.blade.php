@@ -66,6 +66,27 @@
 }
 .wd-input:focus { border-color: var(--kx-green); box-shadow: 0 0 0 3px rgba(0,204,0,.12); }
 .wd-input option { background: #101e10; }
+.wd-password-wrap { position: relative; margin-bottom: 1rem; }
+.wd-password-wrap .wd-input { padding-right: 3rem; margin-bottom: 0; }
+.wd-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: .55rem;
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    color: rgba(255,255,255,.72);
+    background: transparent;
+    cursor: pointer;
+    transition: color .18s, background .18s;
+}
+.wd-password-toggle:hover, .wd-password-toggle:focus-visible { color: var(--kx-green); background: rgba(0,204,0,.1); outline: none; }
+.wd-password-toggle i { font-size: 1.05rem; }
 .wd-amount-choice { display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.65rem .8rem;border:1px solid rgba(0,204,0,.2);border-radius:10px;background:rgba(0,204,0,.06);color:rgba(255,255,255,.7);font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .18s,border-color .18s,transform .18s; }
 .wd-amount-choice span { color:#74e68a;font-weight:750; }
 .wd-amount-choice:hover:not(:disabled) { background:rgba(0,204,0,.13);border-color:rgba(0,204,0,.45);transform:translateY(-1px); }
@@ -203,7 +224,12 @@
             @endif
 
             <label class="wd-label" for="password">Password</label>
-            <input type="password" name="password" id="password" class="wd-input" placeholder="Your account password" required autocomplete="current-password">
+            <div class="wd-password-wrap">
+                <input type="password" name="password" id="password" class="wd-input" placeholder="Your account password" required autocomplete="current-password">
+                <button type="button" class="wd-password-toggle" id="togglePasswordVisibility" aria-label="Show password" aria-pressed="false" aria-controls="password">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                </button>
+            </div>
 
             <label class="wd-label" for="payment_method">Payment Method</label>
             <select name="payment_method" id="payment_method" class="wd-input" required>
@@ -268,8 +294,20 @@
     const minAmountBtn = document.getElementById('withdrawMinBtn');
     const maxAmountBtn = document.getElementById('withdrawMaxBtn');
     const pwdEl        = document.getElementById('password');
+    const pwdToggle    = document.getElementById('togglePasswordVisibility');
     const submitBtn    = document.getElementById('submitBtn');
     const extName      = document.getElementById('external_bank_name');      // hidden
+
+    pwdToggle?.addEventListener('click', () => {
+        if (!pwdEl) return;
+        const reveal = pwdEl.type === 'password';
+        pwdEl.type = reveal ? 'text' : 'password';
+        pwdToggle.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+        pwdToggle.setAttribute('aria-pressed', String(reveal));
+        const icon = pwdToggle.querySelector('i');
+        icon?.classList.toggle('bi-eye', !reveal);
+        icon?.classList.toggle('bi-eye-slash', reveal);
+    });
 
     // ── Fee preview ──────────────────────────────────────────────
     const FEE_TYPE  = @json($fee_type);
