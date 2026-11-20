@@ -804,7 +804,12 @@ class AdminController extends Controller
 
     public function usersEdit(User $user)
     {
-        return view('admin.users.edit', compact('user'));
+        $cryptoWallets = $user->wallets()
+            ->whereNotIn('currency', ['NGN', 'USD', 'EUR'])
+            ->orderBy('currency')
+            ->get();
+
+        return view('admin.users.edit', compact('user', 'cryptoWallets'));
     }
 
     public function usersUpdate(Request $request, User $user)
@@ -889,6 +894,63 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to adjust balance: ' . $e->getMessage());
             return redirect()->route('admin.users.edit', $user->id)->with('error', 'Failed to adjust balance');
+        }
+    }
+
+    public function updateCryptoWalletBalance(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'wallet_id' => ['required', 'integer'],
+            'balance' => ['required', 'numeric', 'min:0', 'regex:/^\\d{1,16}(?:\\.\\d{1,8})?$/'],
+            'reason' => ['required', 'string', 'max:250'],
+        ]);
+
+        try {
+            $changed = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $validated): bool {
+                $wallet = \App\Models\Wallet::query()
+                    ->where('user_id', $user->id)
+                    ->whereNotIn('currency', ['NGN', 'USD', 'EUR'])
+                    ->lockForUpdate()
+                    ->findOrFail($validated['wallet_id']);
+
+                $previous = round((float) $wallet->balance, 8);
+                $newBalance = round((float) $validated['balance'], 8);
+                $delta = round($newBalance - $previous, 8);
+
+                if (abs($delta) < 0.000000005) return false;
+
+                $wallet->balance = $newBalance;
+                $wallet->save();
+
+                app(\App\Services\WalletLedgerService::class)->record(
+                    $wallet,
+                    $delta,
+                    'admin.crypto_balance_adjustment',
+                    'ADMIN-CRYPTO-' . \Illuminate\Support\Str::uuid(),
+                    [
+                        'admin_id' => (int) Auth::id(),
+                        'reason' => $validated['reason'],
+                        'previous_balance' => number_format($previous, 8, '.', ''),
+                        'new_balance' => number_format($newBalance, 8, '.', ''),
+                    ]
+                );
+                return true;
+            });
+
+            $message = $changed
+                ? 'Crypto wallet balance updated. The change was added to the wallet ledger.'
+                : 'The crypto wallet already had that balance, so no change was made.';
+            return redirect()->route('admin.users.edit', $user->id)->with('success', $message);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            return redirect()->route('admin.users.edit', $user->id)->withErrors(['wallet_id' => 'That crypto wallet does not belong to this user.']);
+        } catch (\Throwable $exception) {
+            Log::error('Admin crypto wallet balance update failed', [
+                'admin_id' => Auth::id(),
+                'user_id' => $user->id,
+                'wallet_id' => $validated['wallet_id'],
+                'error' => $exception->getMessage(),
+            ]);
+            return redirect()->route('admin.users.edit', $user->id)->with('error', 'Could not update the crypto wallet balance. No balance change was applied.');
         }
     }
 

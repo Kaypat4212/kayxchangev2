@@ -155,6 +155,50 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     </div>
                 </form>
             </div>
+
+            {{-- Crypto wallet balances --}}
+            <div class="kx-panel">
+                <div class="kx-panel-header">
+                    <span class="kx-panel-title"><i class="bi bi-currency-bitcoin me-2" style="color:var(--kx-green)"></i>Crypto Wallet Balances</span>
+                    <span style="font-size:.72rem;color:var(--kx-muted)">Set each wallet’s exact balance</span>
+                </div>
+                <div class="kx-table-wrap">
+                    @if($cryptoWallets->isEmpty())
+                        <div style="padding:1.25rem;color:var(--kx-muted);font-size:.82rem">This user has no crypto wallets yet.</div>
+                    @else
+                        <table class="kx-table">
+                            <thead><tr><th>Asset</th><th>Current balance</th><th>New balance</th><th>Reason for change</th><th></th></tr></thead>
+                            <tbody>
+                            @foreach($cryptoWallets as $cryptoWallet)
+                                <tr>
+                                    <td><strong>{{ strtoupper($cryptoWallet->currency) }}</strong></td>
+                                    <td>{{ number_format((float)$cryptoWallet->balance, 8, '.', '') }}</td>
+                                    <td colspan="3">
+                                        <form action="{{ route('admin.users.crypto-balance.update', $user->id) }}" method="POST" class="d-flex flex-wrap align-items-start gap-2">
+                                            @csrf @method('PATCH')
+                                            <input type="hidden" name="wallet_id" value="{{ $cryptoWallet->id }}">
+                                            <input type="number" name="balance" class="form-control kx-input" style="min-width:150px;max-width:190px" step="0.00000001" min="0" max="9999999999999999.99999999" value="{{ old('wallet_id') == $cryptoWallet->id ? old('balance') : number_format((float)$cryptoWallet->balance, 8, '.', '') }}" aria-label="New {{ strtoupper($cryptoWallet->currency) }} balance" required>
+                                            <input type="text" name="reason" class="form-control kx-input" style="min-width:190px;flex:1" maxlength="250" placeholder="Reason (required)" value="{{ old('wallet_id') == $cryptoWallet->id ? old('reason') : '' }}" aria-label="Reason for {{ strtoupper($cryptoWallet->currency) }} balance change" required>
+                                            <button type="submit" class="btn-kx-green"><i class="bi bi-save me-1"></i>Save</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </div>
+                @if($errors->has('wallet_id') || $errors->has('balance') || $errors->has('reason'))
+                    <div style="padding:0 1.25rem 1rem;color:var(--kx-red);font-size:.75rem">
+                        @foreach(['wallet_id', 'balance', 'reason'] as $field)
+                            @error($field)<div>{{ $message }}</div>@enderror
+                        @endforeach
+                    </div>
+                @endif
+                <div style="padding:.85rem 1.25rem;border-top:1px solid var(--kx-border);color:var(--kx-muted);font-size:.72rem;line-height:1.55">
+                    Changes are written to the crypto wallet ledger with the admin, previous and new balances, reason, and timestamp.
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-5">
