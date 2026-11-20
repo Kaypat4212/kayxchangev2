@@ -130,7 +130,8 @@
 
 @section('content')
 @php
-    $balance = auth()->user()?->balance ?? 0;
+    $balance = $balance ?? (auth()->user()?->balance ?? 0);
+    $pending_reserved = $pending_reserved ?? 0;
     $minimum_withdrawal = config('withdrawal.minimum', 10);
     $bank_details = [
         'bank_name' => auth()->user()?->bank_name ?? 'N/A',
@@ -155,6 +156,7 @@
         <div class="wd-balance-amount">&#x20A6;{{ number_format($balance, 2) }}</div>
         <div class="wd-balance-currency">NGN</div>
         <div class="wd-min">Minimum withdrawal: <strong>&#x20A6;{{ number_format($minimum_withdrawal, 2) }}</strong></div>
+        @if($pending_reserved > 0)<div class="wd-min">Reserved for pending withdrawals: <strong>&#x20A6;{{ number_format($pending_reserved, 2) }}</strong>. This amount is excluded from the available balance.</div>@endif
     </div>
 
     <!-- Withdraw form -->

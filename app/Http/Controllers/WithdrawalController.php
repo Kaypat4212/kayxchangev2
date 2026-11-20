@@ -42,8 +42,14 @@ class WithdrawalController extends Controller
     public function withdraw()
     {
         $user = Auth::user();
+        $pendingReserved = (float) Withdrawal::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->sum(DB::raw('amount + COALESCE(fee_amount, 0)'));
+        $availableBalance = max(0, (float) ($user->balance ?? 0) - $pendingReserved);
         return view('withdraw.form', [
-            'balance'            => $user->balance ?? 0,
+            'balance'            => $availableBalance,
+            'pending_reserved'   => $pendingReserved,
             'minimum_withdrawal' => config('withdrawal.minimum', 10),
             'bank_details'       => [
                 'bank_name'      => $user->bank_name ?? 'N/A',
@@ -68,20 +74,34 @@ class WithdrawalController extends Controller
             }
         }
 
-        Log::debug('Processing withdrawal request', ['request' => $request->all()]);
-
         // Validation rules with custom messages
         $feeType  = AdminSetting::getSetting('withdrawal_fee_type', 'none');
         $feeValue = (float) AdminSetting::getSetting('withdrawal_fee_value', '0');
         $reqAmount = (float) $request->input('amount', 0);
         $fee = $this->calculateFee($reqAmount, $feeType, $feeValue);
+        $pendingReserved = (float) Withdrawal::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->sum(DB::raw('amount + COALESCE(fee_amount, 0)'));
+        $availableBalance = max(0, (float) ($user->balance ?? 0) - $pendingReserved);
+        $maximumWithdrawable = match ($feeType) {
+            'flat' => max(0, $availableBalance - $feeValue),
+            'percentage' => $feeValue >= 0 ? floor(($availableBalance / (1 + $feeValue / 100)) * 100) / 100 : $availableBalance,
+            default => $availableBalance,
+        };
+        Log::debug('Processing Naira withdrawal request', [
+            'user_id' => $user->id,
+            'amount' => $reqAmount,
+            'payment_method' => $request->input('payment_method'),
+            'bank_option' => $request->input('bank_option'),
+        ]);
 
         $validator = Validator::make($request->all(), [
             'amount' => [
                 'required',
                 'numeric',
                 'min:' . config('withdrawal.minimum', 10),
-                'max:' . max(0, ($user->balance ?? 0) - $fee),
+                'max:' . $maximumWithdrawable,
             ],
             'password' => [
                 'required',
@@ -141,7 +161,7 @@ class WithdrawalController extends Controller
                 ->where('status', 'pending')
                 ->sum(DB::raw('amount + COALESCE(fee_amount, 0)'));
             if ((float) $lockedUser->balance - $pendingReserved < $validatedAmount + $fee) {
-                throw new \RuntimeException('Insufficient available balance after pending withdrawals and fees.');
+                throw new \RuntimeException('Your available Naira balance is ₦' . number_format(max(0, (float) $lockedUser->balance - $pendingReserved), 2) . ' after pending withdrawals. The requested amount plus the ₦' . number_format($fee, 2) . ' fee exceeds it.');
             }
 
             // Create withdrawal record
@@ -211,14 +231,18 @@ class WithdrawalController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Withdrawal failed: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $user->id,
-                'request' => $request->all(),
-            ]);
-            if (str_contains($e->getMessage(), 'Insufficient available balance')) {
+            if (str_contains($e->getMessage(), 'available Naira balance')) {
+                Log::warning('Naira withdrawal declined because available balance is insufficient.', [
+                    'user_id' => $user->id,
+                    'amount' => (float) $request->input('amount', 0),
+                ]);
                 return response()->json(['errors' => ['amount' => [$e->getMessage()]]], 422);
             }
+            Log::error('Naira withdrawal processing failed.', [
+                'user_id' => $user->id,
+                'amount' => (float) $request->input('amount', 0),
+                'exception' => $e->getMessage(),
+            ]);
             return response()->json(['error' => 'Withdrawal failed: ' . $e->getMessage()], 500);
         }
     }
