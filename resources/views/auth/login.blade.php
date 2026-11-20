@@ -147,7 +147,7 @@
         <h2>Welcome<br>back, <em>trader.</em></h2>
         <p>Sign in to access your dashboard, check live rates, and manage your crypto trades instantly.</p>
         <ul class="lx-left-features">
-          <li><i class="bi bi-shield-check-fill"></i>Secure &amp; encrypted transactions</li>
+          <li><i class="bi bi-shield-lock-fill" aria-hidden="true"></i><span>Secure &amp; encrypted transactions</span></li>
           <li><i class="bi bi-lightning-charge-fill"></i>Instant NGN settlements</li>
           <li><i class="bi bi-graph-up-arrow"></i>Live crypto rates — BTC, ETH, USDT &amp; more</li>
           <li><i class="bi bi-headset"></i>24/7 customer support</li>

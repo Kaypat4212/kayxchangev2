@@ -34,9 +34,21 @@ class WithdrawalController extends Controller
     // ── Fee helper ────────────────────────────────────────────────────────────
     private function calculateFee(float $amount, string $type, float $value): float
     {
+        $value = max(0, $value);
         if ($type === 'flat') return $value;
         if ($type === 'percentage') return round($amount * $value / 100, 2);
         return 0.0;
+    }
+
+    private function maximumWithdrawableAmount(float $availableBalance, string $feeType, float $feeValue): float
+    {
+        return match ($feeType) {
+            'flat' => max(0, round($availableBalance - $feeValue, 2)),
+            'percentage' => $feeValue >= 0
+                ? max(0, floor(($availableBalance / (1 + $feeValue / 100)) * 100) / 100)
+                : max(0, round($availableBalance, 2)),
+            default => max(0, round($availableBalance, 2)),
+        };
     }
 
     public function withdraw()
@@ -47,17 +59,21 @@ class WithdrawalController extends Controller
             ->where('status', 'pending')
             ->sum(DB::raw('amount + COALESCE(fee_amount, 0)'));
         $availableBalance = max(0, (float) ($user->balance ?? 0) - $pendingReserved);
+        $feeType = (string) AdminSetting::getSetting('withdrawal_fee_type', 'none');
+        $feeValue = max(0, (float) AdminSetting::getSetting('withdrawal_fee_value', '0'));
+        $maxWithdrawable = $this->maximumWithdrawableAmount($availableBalance, $feeType, $feeValue);
         return view('withdraw.form', [
             'balance'            => $availableBalance,
             'pending_reserved'   => $pendingReserved,
+            'max_withdrawable'  => $maxWithdrawable,
             'minimum_withdrawal' => config('withdrawal.minimum', 10),
             'bank_details'       => [
                 'bank_name'      => $user->bank_name ?? 'N/A',
                 'account_number' => $user->account_number ?? 'N/A',
                 'account_name'   => $user->account_name ?? 'N/A',
             ],
-            'fee_type'  => AdminSetting::getSetting('withdrawal_fee_type', 'none'),
-            'fee_value' => (float) AdminSetting::getSetting('withdrawal_fee_value', '0'),
+            'fee_type'  => $feeType,
+            'fee_value' => $feeValue,
         ]);
     }
 
@@ -76,7 +92,7 @@ class WithdrawalController extends Controller
 
         // Validation rules with custom messages
         $feeType  = AdminSetting::getSetting('withdrawal_fee_type', 'none');
-        $feeValue = (float) AdminSetting::getSetting('withdrawal_fee_value', '0');
+        $feeValue = max(0, (float) AdminSetting::getSetting('withdrawal_fee_value', '0'));
         $reqAmount = (float) $request->input('amount', 0);
         $fee = $this->calculateFee($reqAmount, $feeType, $feeValue);
         $pendingReserved = (float) Withdrawal::query()
@@ -84,11 +100,7 @@ class WithdrawalController extends Controller
             ->where('status', 'pending')
             ->sum(DB::raw('amount + COALESCE(fee_amount, 0)'));
         $availableBalance = max(0, (float) ($user->balance ?? 0) - $pendingReserved);
-        $maximumWithdrawable = match ($feeType) {
-            'flat' => max(0, $availableBalance - $feeValue),
-            'percentage' => $feeValue >= 0 ? floor(($availableBalance / (1 + $feeValue / 100)) * 100) / 100 : $availableBalance,
-            default => $availableBalance,
-        };
+        $maximumWithdrawable = $this->maximumWithdrawableAmount($availableBalance, $feeType, $feeValue);
         Log::debug('Processing Naira withdrawal request', [
             'user_id' => $user->id,
             'amount' => $reqAmount,
@@ -116,7 +128,7 @@ class WithdrawalController extends Controller
         ], [
             'amount.required' => 'Please enter an amount.',
             'amount.min' => 'Amount must be at least ₦' . config('withdrawal.minimum', 10) . '.',
-            'amount.max' => 'Insufficient balance.',
+            'amount.max' => 'This exceeds your available Naira withdrawal amount after pending withdrawals and fees.',
             'password.required' => 'Please enter your password.',
             'payment_method.required' => 'Please select a payment method.',
             'bank_option.required_if' => 'Please select a bank option.',

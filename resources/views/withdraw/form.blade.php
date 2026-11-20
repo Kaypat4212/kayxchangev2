@@ -66,6 +66,10 @@
 }
 .wd-input:focus { border-color: var(--kx-green); box-shadow: 0 0 0 3px rgba(0,204,0,.12); }
 .wd-input option { background: #101e10; }
+.wd-amount-choice { display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.65rem .8rem;border:1px solid rgba(0,204,0,.2);border-radius:10px;background:rgba(0,204,0,.06);color:rgba(255,255,255,.7);font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .18s,border-color .18s,transform .18s; }
+.wd-amount-choice span { color:#74e68a;font-weight:750; }
+.wd-amount-choice:hover:not(:disabled) { background:rgba(0,204,0,.13);border-color:rgba(0,204,0,.45);transform:translateY(-1px); }
+.wd-amount-choice:disabled { opacity:.45;cursor:not-allowed; }
 
 .wd-bank-info {
     background: rgba(0,204,0,.07);
@@ -167,7 +171,12 @@
             @csrf
 
             <label class="wd-label" for="amount">Amount (&#x20A6;)</label>
-            <input type="number" name="amount" id="amount" class="wd-input" step="0.01" min="{{ $minimum_withdrawal }}" max="{{ $balance }}" placeholder="Enter amount" required>
+            <input type="number" name="amount" id="amount" class="wd-input" step="0.01" min="{{ $minimum_withdrawal }}" max="{{ $max_withdrawable ?? $balance }}" placeholder="Enter amount" required>
+            <div class="wd-min" style="margin-top:-.7rem;margin-bottom:1rem">Maximum request after pending holds and withdrawal fee: <strong>₦{{ number_format($max_withdrawable ?? $balance, 2) }}</strong></div>
+            <div class="wd-amount-shortcuts" role="group" aria-label="Choose withdrawal amount" style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin:-.45rem 0 1rem">
+                <button type="button" class="wd-amount-choice" id="withdrawMinBtn" {{ ($max_withdrawable ?? $balance) < $minimum_withdrawal ? 'disabled' : '' }}>Min <span>₦{{ number_format($minimum_withdrawal, 2) }}</span></button>
+                <button type="button" class="wd-amount-choice" id="withdrawMaxBtn" {{ ($max_withdrawable ?? $balance) < $minimum_withdrawal ? 'disabled' : '' }}>Max <span>₦{{ number_format($max_withdrawable ?? $balance, 2) }}</span></button>
+            </div>
 
             @if($fee_type !== 'none' && $fee_value > 0)
             {{-- Live fee breakdown row --}}
@@ -257,6 +266,8 @@
     const defGroup     = document.getElementById('default_bank_group');
     const extGroup     = document.getElementById('external_bank_group');
     const amtEl        = document.getElementById('amount');
+    const minAmountBtn = document.getElementById('withdrawMinBtn');
+    const maxAmountBtn = document.getElementById('withdrawMaxBtn');
     const pwdEl        = document.getElementById('password');
     const submitBtn    = document.getElementById('submitBtn');
     const extName      = document.getElementById('external_bank_name');      // hidden
@@ -293,7 +304,17 @@
     const extAccName   = document.getElementById('external_account_name');
     const verifyStatus = document.getElementById('acct_verify_status');
     const MIN          = {{ $minimum_withdrawal }};
-    const BAL          = {{ $balance }};
+    const BAL          = {{ $max_withdrawable ?? $balance }};
+
+    function setWithdrawalAmount(amount) {
+        if (!amtEl || amount < MIN || amount > BAL) return;
+        amtEl.value = amount.toFixed(2);
+        amtEl.dispatchEvent(new Event('input', { bubbles: true }));
+        amtEl.focus();
+    }
+
+    minAmountBtn?.addEventListener('click', () => setWithdrawalAmount(MIN));
+    maxAmountBtn?.addEventListener('click', () => setWithdrawalAmount(Math.floor(BAL * 100) / 100));
 
     // ── Toast ───────────────────────────────────────────────────────────────
     function showToast(msg, type) {
