@@ -58,13 +58,13 @@ class WithdrawalController extends Controller
             ->where('user_id', $user->id)
             ->where('status', 'pending')
             ->sum(DB::raw('amount + COALESCE(fee_amount, 0)'));
-        $availableBalance = max(0, (float) ($user->balance ?? 0) - $pendingReserved);
+        $walletBalance = max(0, (float) ($user->balance ?? 0));
+        $availableBalance = max(0, $walletBalance - $pendingReserved);
         $feeType = (string) AdminSetting::getSetting('withdrawal_fee_type', 'none');
         $feeValue = max(0, (float) AdminSetting::getSetting('withdrawal_fee_value', '0'));
         $maxWithdrawable = $this->maximumWithdrawableAmount($availableBalance, $feeType, $feeValue);
         return view('withdraw.form', [
-            'balance'            => $availableBalance,
-            'pending_reserved'   => $pendingReserved,
+            'balance'            => $walletBalance,
             'max_withdrawable'  => $maxWithdrawable,
             'minimum_withdrawal' => config('withdrawal.minimum', 10),
             'bank_details'       => [

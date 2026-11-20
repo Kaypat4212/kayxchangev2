@@ -156,11 +156,10 @@
 
     <!-- Balance card -->
     <div class="wd-balance-card">
-        <div class="wd-balance-label">Available Balance</div>
+        <div class="wd-balance-label">Naira Wallet Balance</div>
         <div class="wd-balance-amount">&#x20A6;{{ number_format($balance, 2) }}</div>
         <div class="wd-balance-currency">NGN</div>
         <div class="wd-min">Minimum withdrawal: <strong>&#x20A6;{{ number_format($minimum_withdrawal, 2) }}</strong></div>
-        @if($pending_reserved > 0)<div class="wd-min">Reserved for pending withdrawals: <strong>&#x20A6;{{ number_format($pending_reserved, 2) }}</strong>. This amount is excluded from the available balance.</div>@endif
     </div>
 
     <!-- Withdraw form -->
@@ -172,7 +171,7 @@
 
             <label class="wd-label" for="amount">Amount (&#x20A6;)</label>
             <input type="number" name="amount" id="amount" class="wd-input" step="0.01" min="{{ $minimum_withdrawal }}" max="{{ $max_withdrawable ?? $balance }}" placeholder="Enter amount" required>
-            <div class="wd-min" style="margin-top:-.7rem;margin-bottom:1rem">Maximum request after pending holds and withdrawal fee: <strong>₦{{ number_format($max_withdrawable ?? $balance, 2) }}</strong></div>
+            <div class="wd-min" style="margin-top:-.7rem;margin-bottom:1rem">Maximum withdrawal request: <strong>₦{{ number_format($max_withdrawable ?? $balance, 2) }}</strong></div>
             <div class="wd-amount-shortcuts" role="group" aria-label="Choose withdrawal amount" style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin:-.45rem 0 1rem">
                 <button type="button" class="wd-amount-choice" id="withdrawMinBtn" {{ ($max_withdrawable ?? $balance) < $minimum_withdrawal ? 'disabled' : '' }}>Min <span>₦{{ number_format($minimum_withdrawal, 2) }}</span></button>
                 <button type="button" class="wd-amount-choice" id="withdrawMaxBtn" {{ ($max_withdrawable ?? $balance) < $minimum_withdrawal ? 'disabled' : '' }}>Max <span>₦{{ number_format($max_withdrawable ?? $balance, 2) }}</span></button>

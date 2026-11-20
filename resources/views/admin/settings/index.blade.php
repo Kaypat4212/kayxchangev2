@@ -562,10 +562,11 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <option value="1" {{ ($row->value ?? '') == '1' ? 'selected' : '' }}>🔧 Maintenance Mode</option>
                         </select>
                     @elseif($row->key === 'tools_page_enabled')
-                        <select id="tools-page-enabled" aria-label="User tools page availability" data-save-url="{{ route('admin.settings.tools-page') }}" data-csrf="{{ csrf_token() }}">
-                            <option value="1" {{ ($row->value ?? '1') == '1' ? 'selected' : '' }}>✅ On · available to users</option>
-                            <option value="0" {{ ($row->value ?? '1') == '0' ? 'selected' : '' }}>⏸ Off · hidden from the platform</option>
-                        </select>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="tools-page-enabled" value="1" aria-label="Enable or disable the user tools page" data-save-url="{{ route('admin.settings.tools-page') }}" data-csrf="{{ csrf_token() }}" {{ (string)($row->value ?? '1') === '1' ? 'checked' : '' }}>
+                            <label class="form-check-label fw-semibold" for="tools-page-enabled">Show Tools to users</label>
+                        </div>
+                        <span class="field-desc d-block mt-2">When off, Tools is removed from user navigation and direct page/API requests are unavailable.</span>
                         <span id="tools-page-save-status" class="field-desc d-block mt-2" role="status" aria-live="polite"></span>
                     @else
                         <input type="text" name="{{ $row->key }}" value="{{ $row->value ?? '' }}" placeholder="{{ $row->label }}">
@@ -586,33 +587,34 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 
 <script>
 document.getElementById('tools-page-enabled')?.addEventListener('change', async (event) => {
-    const select = event.currentTarget;
+    const toggle = event.currentTarget;
     const status = document.getElementById('tools-page-save-status');
-    const previousValue = select.dataset.savedValue || (select.value === '1' ? '0' : '1');
-    select.disabled = true;
+    const previousValue = toggle.dataset.savedValue || (toggle.checked ? '0' : '1');
+    const enabled = toggle.checked ? '1' : '0';
+    toggle.disabled = true;
     status.textContent = 'Saving tools page availability…';
     try {
-        const response = await fetch(select.dataset.saveUrl, {
+        const response = await fetch(toggle.dataset.saveUrl, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                'X-CSRF-TOKEN': select.dataset.csrf,
+                'X-CSRF-TOKEN': toggle.dataset.csrf,
                 'Accept': 'application/json',
             },
-            body: new URLSearchParams({enabled: select.value}),
+            body: new URLSearchParams({enabled}),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.success) throw new Error(data.message || `Save failed (HTTP ${response.status}).`);
-        select.dataset.savedValue = select.value;
+        toggle.dataset.savedValue = enabled;
         status.textContent = data.message;
         status.style.color = '#75ef9a';
     } catch (error) {
-        select.value = previousValue;
+        toggle.checked = previousValue === '1';
         status.textContent = error.message || 'Could not save the tools page setting.';
         status.style.color = '#ff8585';
     } finally {
-        select.disabled = false;
+        toggle.disabled = false;
     }
 });
 
