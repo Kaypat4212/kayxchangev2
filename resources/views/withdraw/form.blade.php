@@ -91,6 +91,12 @@
 .wd-amount-choice span { color:#74e68a;font-weight:750; }
 .wd-amount-choice:hover:not(:disabled) { background:rgba(0,204,0,.13);border-color:rgba(0,204,0,.45);transform:translateY(-1px); }
 .wd-amount-choice:disabled { opacity:.45;cursor:not-allowed; }
+.wd-remaining-card { display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem 1rem;margin:0 0 1rem;border:1px solid rgba(0,204,0,.2);border-radius:12px;background:rgba(0,204,0,.06); }
+.wd-remaining-copy { min-width:0; }
+.wd-remaining-label { color:rgba(255,255,255,.7);font-size:.8rem;font-weight:650; }
+.wd-remaining-hint { color:rgba(255,255,255,.45);font-size:.72rem;margin-top:.2rem; }
+.wd-remaining-value { color:#74e68a;font-size:1rem;font-weight:750;white-space:nowrap;text-align:right; }
+.wd-remaining-value.is-invalid { color:#fca5a5; }
 
 .wd-bank-info {
     background: rgba(0,204,0,.07);
@@ -196,6 +202,14 @@
             <div class="wd-amount-shortcuts" role="group" aria-label="Choose withdrawal amount" style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin:-.45rem 0 1rem">
                 <button type="button" class="wd-amount-choice" id="withdrawMinBtn" {{ ($max_withdrawable ?? $balance) < $minimum_withdrawal ? 'disabled' : '' }}>Min <span>₦{{ number_format($minimum_withdrawal, 2) }}</span></button>
                 <button type="button" class="wd-amount-choice" id="withdrawMaxBtn" {{ ($max_withdrawable ?? $balance) < $minimum_withdrawal ? 'disabled' : '' }}>Max <span>₦{{ number_format($max_withdrawable ?? $balance, 2) }}</span></button>
+            </div>
+
+            <div class="wd-remaining-card" aria-live="polite" aria-atomic="true">
+                <div class="wd-remaining-copy">
+                    <div class="wd-remaining-label">Estimated balance after withdrawal</div>
+                    <div class="wd-remaining-hint" id="remainingBalanceHint">Enter an amount to see your estimate, including any fee.</div>
+                </div>
+                <div class="wd-remaining-value" id="remainingBalanceValue">—</div>
             </div>
 
             @if($fee_type !== 'none' && $fee_value > 0)
@@ -312,7 +326,14 @@
     // ── Fee preview ──────────────────────────────────────────────
     const FEE_TYPE  = @json($fee_type);
     const FEE_VALUE = {{ (float) $fee_value }};
+    const AVAILABLE_BALANCE = {{ (float) ($available_balance ?? ($max_withdrawable ?? $balance)) }};
     const feeRow    = document.getElementById('feeBreakdown');
+    const remainingBalanceValue = document.getElementById('remainingBalanceValue');
+    const remainingBalanceHint = document.getElementById('remainingBalanceHint');
+
+    function formatNaira(amount) {
+        return '₦' + amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
     function calcFee(amount) {
         if (FEE_TYPE === 'flat')       return FEE_VALUE;
@@ -321,15 +342,33 @@
     }
 
     function updateFeePreview() {
-        if (!feeRow) return;
-        const amt = parseFloat(amtEl.value);
-        if (!amt || amt <= 0) { feeRow.style.display = 'none'; return; }
+        const amt = parseFloat(amtEl?.value);
+        if (!amt || amt <= 0) {
+            if (feeRow) feeRow.style.display = 'none';
+            remainingBalanceValue.textContent = '—';
+            remainingBalanceValue.classList.remove('is-invalid');
+            remainingBalanceHint.textContent = 'Enter an amount to see your estimate, including any fee.';
+            return;
+        }
         const fee   = calcFee(amt);
         const total = amt + fee;
-        document.getElementById('feeBaseAmt').textContent  = '₦' + amt.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
-        document.getElementById('feeAmt').textContent      = '₦' + fee.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
-        document.getElementById('feeTotalAmt').textContent = '₦' + total.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
-        feeRow.style.display = 'block';
+        if (feeRow) {
+            document.getElementById('feeBaseAmt').textContent  = formatNaira(amt);
+            document.getElementById('feeAmt').textContent      = formatNaira(fee);
+            document.getElementById('feeTotalAmt').textContent = formatNaira(total);
+            feeRow.style.display = 'block';
+        }
+
+        const remaining = AVAILABLE_BALANCE - total;
+        if (remaining < -0.005) {
+            remainingBalanceValue.textContent = 'Amount exceeds available balance';
+            remainingBalanceValue.classList.add('is-invalid');
+            remainingBalanceHint.textContent = 'Reduce the amount or check the maximum withdrawal shown above.';
+        } else {
+            remainingBalanceValue.textContent = formatNaira(Math.max(0, remaining));
+            remainingBalanceValue.classList.remove('is-invalid');
+            remainingBalanceHint.textContent = 'After this request and the ' + formatNaira(fee) + ' fee.';
+        }
     }
 
     if (amtEl) amtEl.addEventListener('input', updateFeePreview);

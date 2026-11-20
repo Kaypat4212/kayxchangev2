@@ -65,6 +65,7 @@ class WithdrawalController extends Controller
         $maxWithdrawable = $this->maximumWithdrawableAmount($availableBalance, $feeType, $feeValue);
         return view('withdraw.form', [
             'balance'            => $walletBalance,
+            'available_balance' => $availableBalance,
             'max_withdrawable'  => $maxWithdrawable,
             'minimum_withdrawal' => config('withdrawal.minimum', 10),
             'bank_details'       => [
