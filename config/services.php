@@ -2,6 +2,13 @@
 
 return [
 
+    'binlookup' => [
+        'api_key' => env('BINLOOKUP_API_KEY', ''),
+    ],
+    'cardbincheck' => [
+        'api_key' => env('CARDBINCHECK_API_KEY', ''),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

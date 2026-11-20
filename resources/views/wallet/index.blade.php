@@ -48,22 +48,19 @@
   @forelse($recentDeposits as $deposit)
    @php($paymentData = $deposit->payment_data ?? [])
    @php($input = $paymentData['deposit_input'] ?? [])
-   @php($snapshot = $paymentData['deposit_valuation'] ?? [])
    @php($symbol = strtoupper($deposit->currency))
-   @php($currentSpot = $symbol === 'USD' ? 1 : ($prices[$symbol]['price_usd'] ?? null))
-   @php($liveDepositValue = $deposit->status === 'completed' && $currentSpot !== null && $deposit->received_amount ? (float)$deposit->received_amount * $currentSpot : null)
    <article class="kw-deposit"><div class="kw-deposit-grid">
     <div class="kw-deposit-main"><div class="kw-deposit-value">{{ $symbol }} deposit <span class="kw-status-pill {{ $deposit->status }} ms-1">{{ ucfirst($deposit->status) }}</span></div><div class="kw-note mt-1">{{ $deposit->created_at->format('M d, Y · H:i') }} @if($deposit->transaction_hash) · {{ \Illuminate\Support\Str::limit($deposit->transaction_hash, 18) }}@endif</div></div>
     <div><div class="kw-label">You entered</div><div class="kw-deposit-value">@if(isset($input['input_amount'])){{ number_format((float)$input['input_amount'], ($input['input_type'] ?? '') === 'crypto' ? 8 : 2) }} {{ $input['input_currency'] ?? 'USD' }}@else${{ number_format((float)$deposit->expected_amount,2) }} USD @endif</div></div>
-    <div><div class="kw-label">Value at deposit</div><div class="kw-deposit-value">{{ isset($snapshot['market_value_usd']) ? '$'.number_format((float)$snapshot['market_value_usd'],2) : '—' }}</div><div class="kw-note">{{ isset($snapshot['market_price_usd']) ? '$'.number_format((float)$snapshot['market_price_usd'],2).' / '.$symbol : 'No snapshot yet' }}</div></div>
-    <div><div class="kw-label">Current spot value</div><div class="kw-deposit-value" data-deposit-value data-currency="{{ $symbol }}" data-amount="{{ (float)($deposit->received_amount ?? 0) }}">{{ $liveDepositValue !== null ? '$'.number_format($liveDepositValue,2) : '—' }}</div>@if($deposit->ngn_credited_amount)<div class="kw-note">₦{{ number_format((float)$deposit->ngn_credited_amount,2) }} credited</div>@endif</div>
+    <div><div class="kw-label">Crypto received</div><div class="kw-deposit-value">{{ $deposit->received_amount ? number_format((float)$deposit->received_amount,8).' '.$symbol : 'Awaiting transfer' }}</div></div>
+    <div><div class="kw-label">Wallet credit</div><div class="kw-deposit-value">@if($deposit->ngn_credited_amount)₦{{ number_format((float)$deposit->ngn_credited_amount,2) }}@elseif($deposit->status === 'completed' && $deposit->received_amount){{ number_format((float)$deposit->received_amount,8) }} {{ $symbol }}@else Pending confirmation @endif</div></div>
     <div><a class="kw-link" href="{{ route('wallet.deposit.success', $deposit->id) }}">Details</a></div>
    </div></article>
   @empty
    <div class="kw-empty"><div class="kw-empty-icon"><i class="bi bi-inbox"></i></div><div class="fw-bold text-light">No deposits yet</div><p class="mb-3">Create a crypto deposit invoice to start building your wallet history.</p><a class="kw-action primary" href="{{ route('wallet.deposit') }}">Create a deposit</a></div>
   @endforelse
  </section>
- <footer class="kw-note text-center">Market values are estimates based on the latest available spot price. Your actual credited balances and saved deposit-time values remain unchanged.</footer>
+ <footer class="kw-note text-center">Deposit activity shows the amount received and the wallet credit recorded for each transfer.</footer>
 </main>
 <script>
 (()=>{
@@ -85,7 +82,6 @@
     else{card.querySelector('.wallet-value').textContent=amount===0?money(0):'—';if(amount>0)complete=false}
     const priceEl=card.querySelector('.kw-price');if(currency!=='USD'&&prices[currency]){const p=Number(prices[currency].price_usd),change=prices[currency].change_24h;priceEl.firstChild.textContent='Spot price: '+money(p)+' ';if(change!==null&&change!==undefined){let badge=priceEl.querySelector('.kw-change');if(!badge){badge=document.createElement('span');badge.className='kw-change ms-1';priceEl.appendChild(badge)}badge.className='kw-change ms-1 '+(Number(change)>=0?'kw-up':'kw-down');badge.textContent=(Number(change)>=0?'+':'')+Number(change).toFixed(2)+'% 24h'}}
    }
-   for(const node of document.querySelectorAll('[data-deposit-value]')){const price=Number(prices[node.dataset.currency]?.price_usd),amount=Number(node.dataset.amount);if(price>0&&amount>0)node.textContent=money(price*amount)}
    document.getElementById('portfolioUsd').innerHTML=complete?money(total)+' <small>USD</small>':'— <small>USD</small>';
    document.getElementById('portfolioNgn').textContent=complete&&Number(data.ngn_per_usd)>0?'≈ ₦'+(total*Number(data.ngn_per_usd)).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2}):'Naira estimate unavailable';
    const source=(data.source||'').toLowerCase(),live=!data.stale&&source!=='fallback'&&Object.keys(prices).length>0;

@@ -21,7 +21,12 @@ class AdminDepositAlertService
             $isCrypto = $deposit instanceof CryptoDeposit;
             $reference = $isCrypto ? ('CRYPTO-DEP-' . $deposit->id) : ($deposit->transaction_ref ?: ('DEP-' . $deposit->id));
             $amount = $isCrypto
-                ? number_format((float) $deposit->expected_amount, 8) . ' ' . strtoupper((string) $deposit->currency)
+                ? (strtolower((string) data_get($deposit->payment_data, 'provider')) === 'manual'
+                    ? number_format((float) ($deposit->expectedCryptoAmount() ?? 0), 8) . ' ' . strtoupper((string) $deposit->currency) . ' expected'
+                    : ('$' . number_format($deposit->invoiceUsdAmount(), 2) . ' USD invoice'
+                        . ($deposit->expectedCryptoAmount() !== null
+                            ? ' · expected ' . number_format((float) $deposit->expectedCryptoAmount(), 8) . ' ' . strtoupper((string) $deposit->currency)
+                            : ' · crypto amount pending provider quote')))
                 : '₦' . number_format((float) $deposit->amount, 2);
             $method = $isCrypto
                 ? strtoupper((string) data_get($deposit->payment_data, 'provider', 'crypto')) . ' crypto deposit'

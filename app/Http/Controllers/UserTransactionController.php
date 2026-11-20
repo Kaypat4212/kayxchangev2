@@ -86,7 +86,7 @@ class UserTransactionController extends Controller
             DB::raw('transaction_ref as reference'),
         ]);
         $cryptoDepositQuery = CryptoDeposit::where('user_id', $user->id)->select([
-            'id', 'currency as coin', DB::raw('COALESCE(received_amount, expected_amount) as amount'),
+            'id', 'currency as coin', DB::raw("COALESCE(received_amount, JSON_UNQUOTE(JSON_EXTRACT(payment_data, '$.expected_crypto_amount')), 0) as amount"),
             DB::raw('NULL as naira_amount'), DB::raw('NULL as usd_amount'), 'status',
             DB::raw('"Crypto wallet" as payment_method'), 'payment_address as wallet_address',
             'created_at', DB::raw('"crypto_deposit" as type'), DB::raw('transaction_hash as reference'),
@@ -380,7 +380,7 @@ class UserTransactionController extends Controller
 
             case 'crypto_deposit':
                 $record = CryptoDeposit::where('id', $id)->where('user_id', $user->id)->firstOrFail();
-                $data = ['type'=>'crypto_deposit','id'=>$record->id,'coin'=>$record->currency,'amount'=>$record->received_amount ?? $record->expected_amount,'status'=>$record->status,'reference'=>$record->transaction_hash,'payment_address'=>$record->payment_address,'created_at'=>$record->created_at->format('d M Y, H:i'),'updated_at'=>$record->updated_at->format('d M Y, H:i'),'created_at_unix'=>$record->created_at->timestamp];
+                $data = ['type'=>'crypto_deposit','id'=>$record->id,'coin'=>$record->currency,'amount'=>$record->received_amount ?: $record->expectedCryptoAmount(),'usd_invoice_amount'=>(float)$record->expected_amount,'status'=>$record->status,'reference'=>$record->transaction_hash,'payment_address'=>$record->payment_address,'created_at'=>$record->created_at->format('d M Y, H:i'),'updated_at'=>$record->updated_at->format('d M Y, H:i'),'created_at_unix'=>$record->created_at->timestamp];
                 break;
             case 'crypto_withdrawal':
                 $record = CryptoWithdrawal::where('id', $id)->where('user_id', $user->id)->firstOrFail();

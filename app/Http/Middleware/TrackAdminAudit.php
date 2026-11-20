@@ -13,6 +13,11 @@ class TrackAdminAudit
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // SMTP credentials are transient probe input and must never enter audit logs.
+        if ($request->is('tools/api/smtp-probe')) {
+            return $next($request);
+        }
+
         $subject = collect($request->route()?->parameters() ?? [])->first(fn ($value) => $value instanceof Model);
         $before = $subject ? $this->safeModelSnapshot($subject) : null;
         $response = $next($request);

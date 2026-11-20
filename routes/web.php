@@ -646,7 +646,12 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
 Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     Route::get('/tools', function () {
         return view('tools.index');
-    })->name('tools.index');
+    })->middleware(\App\Http\Middleware\EnsureToolsPageEnabled::class)->name('tools.index');
+    Route::get('/tools/api/bin', [\App\Http\Controllers\ToolsController::class, 'bin'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:30,1'])->name('tools.api.bin');
+    Route::get('/tools/api/username', [\App\Http\Controllers\ToolsController::class, 'username'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:30,1'])->name('tools.api.username');
+    Route::get('/tools/api/dns', [\App\Http\Controllers\ToolsController::class, 'dns'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:30,1'])->name('tools.api.dns');
+    Route::get('/tools/api/github-repository', [\App\Http\Controllers\ToolsController::class, 'githubRepository'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:30,1'])->name('tools.api.github-repository');
+    Route::post('/tools/api/smtp-probe', [\App\Http\Controllers\ToolsController::class, 'smtpProbe'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:5,1'])->name('tools.api.smtp-probe');
     Route::get('/dashboard', [CryptoController::class, 'dashboard'])->name('dashboard');
     Route::put('/dashboard/layout', [\App\Http\Controllers\DashboardLayoutController::class, 'saveUser'])->middleware('throttle:10,1')->name('dashboard.layout.update');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -821,6 +826,8 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('settings',                    [\App\Http\Controllers\Admin\AdminSettingsController::class, 'index'])->name('settings.index');
     Route::post('settings',                   [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('settings.update');
+    Route::post('settings/tools-page',        [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateToolsPage'])->middleware('throttle:10,1')->name('settings.tools-page');
+    Route::post('settings/cardbincheck-credential', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'saveCardBinCheckCredential'])->middleware('throttle:5,1')->name('settings.cardbincheck-credential');
     Route::post('settings/branding', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateBranding'])->middleware('throttle:5,1')->name('settings.branding');
     Route::post('settings/loader-theme', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateLoaderTheme'])->name('settings.loader-theme');
     Route::post('settings/homepage-scroll-effects', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateHomepageScrollFx'])->name('settings.homepage-scroll-effects');

@@ -22,6 +22,7 @@ class LogVisitor
         '/service-worker', '/serviceworker', '/sw.js',
         '/telescope', '/horizon', '/debugbar',
         '/ajax/', '/api/',
+        '/tools/api/smtp-probe',
         '/telegram/webhook',
     ];
 

@@ -361,6 +361,25 @@ class NowPaymentsService
             Log::error('NOWPayments returned incomplete payment details', ['response'=>$data]);
             throw new \RuntimeException('NOWPayments returned incomplete payment instructions. Please try again or contact support.');
         }
+
+        // A BTC quote is a crypto quantity, while price_amount above is USD.
+        // Guard against a provider/configuration unit error (for example $25
+        // being quoted as 25 BTC) before showing an address to the customer.
+        if (str_starts_with(strtolower($currencyCode), 'btc')) {
+            $marketRates = app(ExchangeRateService::class)->getUsdRates();
+            $btcUsd = (float) ($marketRates['BTC'] ?? 0);
+            $quotedCrypto = (float) $data['pay_amount'];
+            $expectedCrypto = $btcUsd > 0 ? $usdAmount / $btcUsd : 0;
+            if ($expectedCrypto > 0 && ($quotedCrypto > $expectedCrypto * 100 || $quotedCrypto < $expectedCrypto / 100)) {
+                Log::error('NOWPayments BTC quote is materially inconsistent with USD invoice value', [
+                    'order_id' => $orderId,
+                    'usd_invoice' => round($usdAmount, 2),
+                    'provider_btc_amount' => $quotedCrypto,
+                    'market_estimate_btc' => round($expectedCrypto, 8),
+                ]);
+                throw new \RuntimeException('NOWPayments returned an invalid BTC amount for this USD invoice. No payment address was issued; please retry or contact support.');
+            }
+        }
         return $data;
     }
 

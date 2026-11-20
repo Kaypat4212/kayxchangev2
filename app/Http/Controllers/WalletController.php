@@ -416,19 +416,10 @@ class WalletController extends Controller
             ->where('user_id', Auth::id())
             ->firstOrFail();
         $deposit = $this->cryptoWalletService->refreshDepositStatus($deposit);
-
-        $market = app(ExchangeRateService::class)->getUsdRates();
-        $symbol = strtoupper($deposit->currency);
-        $liveCoins = $market['_live_coins'] ?? [];
-        $currentSpot = !($market['_stale'] ?? false) && in_array($symbol, $liveCoins, true)
-            ? (float) ($market[$symbol] ?? 0) : 0.0;
-        $currentMarketValue = $deposit->status === 'completed' && $currentSpot > 0 && $deposit->received_amount
-            ? (float) $deposit->received_amount * $currentSpot : null;
         $paymentData = $deposit->payment_data ?? [];
         $depositInput = $paymentData['deposit_input'] ?? [];
-        $depositValuation = $paymentData['deposit_valuation'] ?? [];
 
-        return response()->view('wallet.deposit-success', compact('deposit', 'depositInput', 'depositValuation', 'currentMarketValue'))
+        return response()->view('wallet.deposit-success', compact('deposit', 'depositInput'))
             ->header('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache')
             ->header('Expires', '0');
@@ -482,28 +473,23 @@ class WalletController extends Controller
         $deposit = CryptoDeposit::where('user_id', Auth::id())->findOrFail($id);
         $deposit = $this->cryptoWalletService->refreshDepositStatus($deposit);
         $paymentData = $deposit->payment_data ?? [];
-        $required = (int) ($paymentData['bitcoin_required_confirmations'] ?? 3);
-        $confirmations = (int) ($paymentData['bitcoin_confirmations'] ?? 0);
-        $market = app(ExchangeRateService::class)->getUsdRates();
-        $symbol = strtoupper($deposit->currency);
-        $currentMarketValue = $deposit->status === 'completed'
-            && !($market['_stale'] ?? false)
-            && in_array($symbol, $market['_live_coins'] ?? [], true)
-            && $deposit->received_amount
-                ? (float) $deposit->received_amount * (float) ($market[$symbol] ?? 0)
-                : null;
+        $required = 3;
+        $providerStatus = strtolower((string) data_get($paymentData, 'provider_status', 'waiting'));
+        $providerConfirmed = in_array($providerStatus, ['confirmed', 'sending', 'finished', 'paid', 'paid_over'], true);
+        $paymentConfirmed = $providerConfirmed || in_array($deposit->status, ['awaiting_admin_review', 'completed'], true);
+        $networkConfirmations = strtoupper((string) $deposit->currency) === 'BTC'
+            ? min($required, max(0, (int) data_get($paymentData, 'bitcoin_confirmations', 0)))
+            : 0;
+        $confirmations = $paymentConfirmed ? $required : $networkConfirmations;
 
         return response()->json([
             'status' => $deposit->status,
             'wallet_credited' => $deposit->status === 'completed',
             'expires_at' => optional($deposit->expires_at)->toIso8601String(),
             'local_window_expired' => (bool)data_get($paymentData, 'local_window_expired', false),
-            'provider_status' => $paymentData['provider_status'] ?? 'waiting',
-            'payment_id' => $paymentData['provider_payment_id'] ?? null,
-            'expected_crypto_amount' => (float)data_get($paymentData, 'expected_crypto_amount', 0),
+            'provider_status' => $providerStatus,
             'partial_payment' => ($paymentData['provider_status'] ?? '') === 'partially_paid',
             'remaining_crypto_amount' => data_get($paymentData, 'partial_remaining_crypto'),
-            'remaining_usd_amount' => data_get($paymentData, 'partial_remaining_usd'),
             'transaction_hash' => $deposit->transaction_hash,
             'explorer_url' => $deposit->transaction_hash && strtoupper($deposit->currency) === 'BTC'
                 ? 'https://blockstream.info/tx/' . rawurlencode($deposit->transaction_hash)
@@ -512,10 +498,7 @@ class WalletController extends Controller
             'required_confirmations' => $required,
             'remaining_confirmations' => $deposit->status === 'completed' ? 0 : max(0, $required - $confirmations),
             'ngn_credited_amount' => $deposit->ngn_credited_amount,
-            'ngn_rate_used' => $deposit->ngn_rate_used,
             'received_amount' => $deposit->received_amount,
-            'deposit_valuation' => data_get($deposit->payment_data, 'deposit_valuation', []),
-            'current_market_value_usd' => $currentMarketValue,
             'currency' => $deposit->currency,
         ])->header('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache')

@@ -98,8 +98,12 @@ class ChatTransactionHistoryService
 
     private function cryptoDepositAmount(object $record): string
     {
-        $amount = (float) $record->received_amount > 0 ? $record->received_amount : $record->expected_amount;
-        $text = $this->cryptoAmount($amount, $record->currency);
+        $amount = (float) $record->received_amount > 0
+            ? (float) $record->received_amount
+            : $record->expectedCryptoAmount();
+        $text = $amount !== null
+            ? $this->cryptoAmount($amount, $record->currency)
+            : '$' . number_format($record->invoiceUsdAmount(), 2) . ' USD invoice · crypto amount pending';
         if ((float) $record->ngn_credited_amount > 0) $text .= ' · ' . $this->money($record->ngn_credited_amount, 'NGN') . ' credited';
         return $text;
     }

@@ -251,6 +251,30 @@ class AdminSettingsController extends Controller
             : 'Homepage Bitcoin matrix scroll reveal disabled.');
     }
 
+    public function updateToolsPage(Request $request)
+    {
+        $validated = $request->validate(['enabled' => ['required', 'in:0,1']]);
+
+        AdminSetting::updateOrCreate(
+            ['key' => 'tools_page_enabled'],
+            [
+                'value' => $validated['enabled'],
+                'is_encrypted' => false,
+                'group' => 'general',
+                'label' => 'User tools page',
+                'description' => 'Show or hide the tools page and its lookup endpoints for users (1 = on, 0 = off).',
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'enabled' => $validated['enabled'] === '1',
+            'message' => $validated['enabled'] === '1'
+                ? 'Tools page is now available to users.'
+                : 'Tools page and its lookup endpoints are now hidden.',
+        ]);
+    }
+
     public function update(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
     {
         $data = $request->except(['_token', '_method', 'action', 'clear_settings']);
@@ -378,6 +402,40 @@ class AdminSettingsController extends Controller
             ? 'Saved credential(s) cleared from the database: ' . implode(', ', array_unique($clearedCredentials)) . '. Environment fallback credentials, if configured on the server, remain active.'
             : ($changedCredentials ? 'Settings saved. Updated credentials are encrypted and ready to use.' : 'Settings saved successfully.');
         return back()->with('success', $successMessage);
+    }
+
+    public function saveCardBinCheckCredential(Request $request, \App\Services\AdminSecurityAlertService $securityAlerts)
+    {
+        $data = $request->validate([
+            'api_key' => ['required', 'string', 'min:8', 'max:1000'],
+        ]);
+        $plainValue = trim($data['api_key']);
+        if ($plainValue === '') {
+            return response()->json(['ok' => false, 'message' => 'Enter a CardBinCheck API key before saving.'], 422);
+        }
+
+        $setting = AdminSetting::firstOrNew(['key' => 'cardbincheck_api_key']);
+        $previousValue = (string) AdminSetting::getSetting('cardbincheck_api_key', '');
+        $changed = $previousValue === '' || !hash_equals($previousValue, $plainValue);
+        $setting->fill([
+            'group' => 'payment',
+            'label' => 'CardBinCheck API Key',
+            'description' => 'Optional X-Api-Key for higher lookup quota. Stored encrypted and used server-side only.',
+            'is_encrypted' => true,
+        ]);
+        $setting->value = Crypt::encryptString($plainValue);
+        $setting->save();
+
+        if ($changed) {
+            $securityAlerts->credentialChanged($request->user(), ['CardBinCheck API key']);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'saved' => true,
+            'message' => 'CardBinCheck API key was saved encrypted and is active for BIN lookups.',
+        ])->header('Cache-Control', 'private, no-store, max-age=0')
+          ->header('Pragma', 'no-cache');
     }
 
     private function credentialSource(string $settingKey, string $configKey): string

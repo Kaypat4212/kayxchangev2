@@ -341,7 +341,9 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
           </a>
           <ul class="dropdown-menu dropdown-menu-dark kx-nav-category-menu">
             <li class="kx-wallet-menu-head">Rates & community</li>
-            <li><a class="dropdown-item" href="{{ route('tools.index') }}"><i class="bi bi-tools"></i>Tools</a></li>
+            @if((string) (\App\Models\AdminSetting::getSetting('tools_page_enabled') ?? '1') === '1')
+              <li><a class="dropdown-item" href="{{ route('tools.index') }}"><i class="bi bi-tools"></i>Tools</a></li>
+            @endif
             <li><a class="dropdown-item" href="{{ url('/rate') }}"><i class="bi bi-graph-up-arrow"></i>Rates</a></li>
             <li><a class="dropdown-item" href="{{ url('/rate-calculator') }}"><i class="bi bi-calculator-fill"></i>Rate calculator</a></li>
             <li><a class="dropdown-item" href="{{ route('forum.index') }}"><i class="bi bi-chat-square-heart"></i>Community</a></li>

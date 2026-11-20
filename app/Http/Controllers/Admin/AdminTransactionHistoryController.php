@@ -107,7 +107,7 @@ class AdminTransactionHistoryController extends Controller
                 $user = $type === 'transfer' ? $record->sender : $record->user;
                 $amount = match($type) {
                     'buy' => $record->naira_amount, 'sell' => $record->naira_amount ?? $record->amount,
-                    'crypto_deposit' => $record->received_amount ?? $record->expected_amount,
+                    'crypto_deposit' => $record->received_amount ?: $record->expectedCryptoAmount(),
                     'crypto_withdrawal' => $record->amount,
                     'bill_payment' => $record->amount + $record->fee,
                     'transfer' => $record->amount,

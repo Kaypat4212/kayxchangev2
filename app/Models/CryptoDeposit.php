@@ -63,4 +63,37 @@ class CryptoDeposit extends Model
     {
         return $this->status === 'pending';
     }
+
+    /** Return the provider's crypto invoice amount, never the USD invoice value. */
+    public function expectedCryptoAmount(): ?float
+    {
+        $expected = data_get($this->payment_data, 'expected_crypto_amount');
+        if (is_numeric($expected) && (float) $expected > 0) {
+            return (float) $expected;
+        }
+
+        // Manual fallback deposits historically store the payable coin amount
+        // in expected_amount. NOWPayments and Cryptomus store a USD amount there.
+        if (strtolower((string) data_get($this->payment_data, 'provider')) === 'manual'
+            && (float) $this->expected_amount > 0) {
+            return (float) $this->expected_amount;
+        }
+
+        return null;
+    }
+
+    /** Return the USD invoice value across provider and manual-fallback records. */
+    public function invoiceUsdAmount(): float
+    {
+        $provider = strtolower((string) data_get($this->payment_data, 'provider'));
+        if ($provider === 'manual') {
+            $inputUsd = data_get($this->payment_data, 'deposit_input.input_usd_amount');
+            if (is_numeric($inputUsd) && (float) $inputUsd > 0) return (float) $inputUsd;
+
+            $fallbackPrice = (float) data_get($this->payment_data, 'fallback_quote_price_usd', 0);
+            if ($fallbackPrice > 0) return (float) $this->expected_amount * $fallbackPrice;
+        }
+
+        return (float) $this->expected_amount;
+    }
 }

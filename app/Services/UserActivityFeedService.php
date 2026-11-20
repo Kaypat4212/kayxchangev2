@@ -95,14 +95,19 @@ class UserActivityFeedService
         });
         $append(CryptoDeposit::class, 'crypto_deposit', function ($row) use ($market, $usdtRate) {
             $coin = strtoupper((string)$row->currency);
-            $crypto = (float)($row->received_amount ?: $row->expected_amount);
-            $usd = $crypto * (float)($market[$coin] ?? 0);
+            $crypto = (float)($row->received_amount ?: $row->expectedCryptoAmount() ?: 0);
+            $usd = $crypto > 0
+                ? $crypto * (float)($market[$coin] ?? 0)
+                : $row->invoiceUsdAmount();
+            $cryptoLabel = $crypto > 0
+                ? number_format($crypto, 8) . ' ' . $coin
+                : '$' . number_format($row->invoiceUsdAmount(), 2) . ' invoice · crypto amount pending';
             $ngn = (float)($row->ngn_credited_amount ?? 0);
             $posted = strtolower((string)$row->status) === 'completed';
             return [
                 'title' => 'Crypto deposit',
-                'detail' => number_format($crypto, 8) . ' ' . $coin . ($posted ? ' · Crypto balance credited' : ' · Credit after provider confirmation'),
-                'amount' => $crypto, 'currency' => $coin, 'amount_usd' => $usd > 0 ? $usd : null,
+                'detail' => $cryptoLabel . ($posted ? ' · Crypto balance credited' : ' · Credit after provider confirmation'),
+                'amount' => $crypto > 0 ? $crypto : null, 'currency' => $coin, 'amount_usd' => $usd > 0 ? $usd : null,
                 'amount_ngn' => $ngn > 0 ? $ngn : ($usd > 0 && $usdtRate > 0 ? $usd * $usdtRate : null),
                 'balance_effect' => $posted ? 'Balance increased' : 'Awaiting credit',
                 'direction' => $posted ? 'in' : 'pending', 'status' => $row->status,

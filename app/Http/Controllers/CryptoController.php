@@ -96,8 +96,8 @@ class CryptoController extends Controller
         });
         $cryptoDepositTransactions = \App\Models\CryptoDeposit::where('user_id', $userId)->latest()->limit(5)->get()->map(function ($deposit) use ($walletMarket, $usdtRate) {
             $coin = strtoupper((string) $deposit->currency);
-            $crypto = (float) ($deposit->received_amount ?: $deposit->expected_amount);
-            $usd = $crypto * (float) ($walletMarket[$coin] ?? 0);
+            $crypto = (float) ($deposit->received_amount ?: $deposit->expectedCryptoAmount() ?: 0);
+            $usd = $crypto > 0 ? $crypto * (float) ($walletMarket[$coin] ?? 0) : $deposit->invoiceUsdAmount();
             $ngn = (float) ($deposit->ngn_credited_amount ?? 0);
             return ['created_at'=>$deposit->created_at, 'type'=>'deposit', 'coin'=>$coin . ' crypto wallet', 'amount_usd'=>$usd > 0 ? $usd : null, 'amount_ngn'=>$ngn > 0 ? $ngn : ($usdtRate > 0 && $usd > 0 ? $usd * $usdtRate : null), 'status'=>strtolower((string)$deposit->status), 'bank_account'=>null];
         });
@@ -875,7 +875,7 @@ class CryptoController extends Controller
         });
 
         $depositTransactions = $deposits->map(function ($deposit) use ($conversionRate) { $ngn = max(0, (float)$deposit->amount - (float)($deposit->fee_amount ?? 0)); return ['created_at'=>$deposit->created_at, 'type'=>'deposit', 'coin'=>'NGN wallet', 'amount_usd'=>$conversionRate > 0 ? $ngn / $conversionRate : null, 'amount_ngn'=>$ngn, 'status'=>strtolower((string)$deposit->status), 'bank_account'=>null]; });
-        $cryptoDepositTransactions = $cryptoDeposits->map(function ($deposit) use ($conversionRate, $marketRates) { $coin=strtoupper((string)$deposit->currency); $crypto=(float)($deposit->received_amount ?: $deposit->expected_amount); $usd=$crypto*(float)($marketRates[$coin] ?? 0); $ngn=(float)($deposit->ngn_credited_amount ?? 0); return ['created_at'=>$deposit->created_at, 'type'=>'deposit', 'coin'=>$coin.' crypto wallet', 'amount_usd'=>$usd > 0 ? $usd : null, 'amount_ngn'=>$ngn > 0 ? $ngn : ($usd > 0 && $conversionRate > 0 ? $usd*$conversionRate : null), 'status'=>strtolower((string)$deposit->status), 'bank_account'=>null]; });
+        $cryptoDepositTransactions = $cryptoDeposits->map(function ($deposit) use ($conversionRate, $marketRates) { $coin=strtoupper((string)$deposit->currency); $crypto=(float)($deposit->received_amount ?: $deposit->expectedCryptoAmount() ?: 0); $usd=$crypto > 0 ? $crypto*(float)($marketRates[$coin] ?? 0) : $deposit->invoiceUsdAmount(); $ngn=(float)($deposit->ngn_credited_amount ?? 0); return ['created_at'=>$deposit->created_at, 'type'=>'deposit', 'coin'=>$coin.' crypto wallet', 'amount_usd'=>$usd > 0 ? $usd : null, 'amount_ngn'=>$ngn > 0 ? $ngn : ($usd > 0 && $conversionRate > 0 ? $usd*$conversionRate : null), 'status'=>strtolower((string)$deposit->status), 'bank_account'=>null]; });
         $cryptoWithdrawalTransactions = $cryptoWithdrawals->map(function ($withdrawal) use ($conversionRate, $marketRates) { $coin=strtoupper((string)($withdrawal->wallet?->currency ?? 'CRYPTO')); $usd=(float)($withdrawal->usd_value_at_request ?? 0); if ($usd <= 0) $usd=(float)$withdrawal->amount*(float)($marketRates[$coin] ?? 0); return ['created_at'=>$withdrawal->created_at, 'type'=>'withdrawal', 'coin'=>$coin.' crypto wallet', 'amount_usd'=>$usd > 0 ? $usd : null, 'amount_ngn'=>$usd > 0 && $conversionRate > 0 ? $usd*$conversionRate : null, 'status'=>strtolower((string)$withdrawal->status), 'bank_account'=>$withdrawal->network ?: 'Crypto wallet']; });
 
         // Combine transactions using concat

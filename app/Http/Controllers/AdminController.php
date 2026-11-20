@@ -181,7 +181,12 @@ class AdminController extends Controller
         if (Schema::hasTable('crypto_deposits')) {
             $recentDepositActivity = $recentDepositActivity->merge(\App\Models\CryptoDeposit::with('user')->latest()->limit(6)->get()->map(fn ($d) => [
                 'kind' => 'CRYPTO · ' . strtoupper((string) $d->currency), 'id' => $d->id, 'user' => $d->user?->name ?? 'Unknown user',
-                'amount' => number_format((float) ($d->received_amount ?: $d->expected_amount), 8) . ' ' . strtoupper((string) $d->currency),
+                'amount' => $d->received_amount
+                    ? number_format((float) $d->received_amount, 8) . ' ' . strtoupper((string) $d->currency)
+                    : ('$' . number_format($d->invoiceUsdAmount(), 2) . ' USD invoice · '
+                        . ($d->expectedCryptoAmount() !== null
+                            ? 'expected ' . number_format((float) $d->expectedCryptoAmount(), 8) . ' ' . strtoupper((string) $d->currency)
+                            : 'crypto amount pending provider quote')),
                 'status' => (string) $d->status, 'created_at' => $d->created_at, 'url' => route('admin.manual-crypto-deposits.index'),
             ]));
         }
@@ -341,7 +346,7 @@ class AdminController extends Controller
                 \Illuminate\Support\Facades\Log::warning('Admin all-activity feed could not load a transaction module.', ['type'=>$type,'error'=>$exception->getMessage()]);
             }
         };
-        $loadActivity(\App\Models\CryptoDeposit::class, 'crypto_deposit', 'user', fn($r)=>[$r->user,strtoupper((string)$r->currency),$r->received_amount ?: $r->expected_amount,strtoupper((string)$r->currency),$r->transaction_hash,'Crypto wallet deposit']);
+        $loadActivity(\App\Models\CryptoDeposit::class, 'crypto_deposit', 'user', fn($r)=>[$r->user,strtoupper((string)$r->currency),$r->received_amount ?: $r->expectedCryptoAmount(),strtoupper((string)$r->currency),$r->transaction_hash,'Crypto wallet deposit']);
         $loadActivity(\App\Models\CryptoWithdrawal::class, 'crypto_withdrawal', ['user','wallet'], fn($r)=>[$r->user,strtoupper((string)($r->wallet?->currency ?? 'CRYPTO')),$r->amount,strtoupper((string)($r->wallet?->currency ?? 'CRYPTO')),$r->transaction_hash ?: $r->address,'Crypto wallet withdrawal']);
         $loadActivity(\App\Models\Conversion::class, 'crypto_swap', 'user', fn($r)=>[$r->user,strtoupper((string)$r->from_coin).' → '.strtoupper((string)$r->to_coin),$r->from_amount,strtoupper((string)$r->from_coin),$r->provider_conversion_id,'Crypto swap · receive '.number_format((float)$r->to_amount,8).' '.strtoupper((string)$r->to_coin)]);
         $loadActivity(\App\Models\BillPayment::class, 'bill_payment', 'user', fn($r)=>[$r->user,ucwords(str_replace('_',' ',(string)$r->category)),(float)$r->amount+(float)$r->fee,'NGN',$r->reference,'Bill or utility payment']);

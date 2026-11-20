@@ -452,6 +452,11 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                         <div id="nowpayments-ipn-secret-preview-status" class="field-desc mt-1" role="status" aria-live="polite">The saved IPN secret stays masked until you preview it.</div>
                         <button type="button" class="btn btn-sm btn-outline-success mt-2 me-2" onclick="saveNowPaymentsCredential('ipn_secret','nowpayments-ipn-secret-preview-status')"><i class="bi bi-floppy me-1"></i>Save IPN secret</button>
                         <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="clearNowPaymentsCredential('ipn_secret','nowpayments-ipn-secret-preview-status')"><i class="bi bi-trash3 me-1"></i>Clear saved IPN secret</button>
+                    @elseif($row->key === 'cardbincheck_api_key')
+                        <input type="password" name="{{ $row->key }}" id="cardbincheck-api-key-field" placeholder="{{ $row->display_value ?: 'Paste CardBinCheck API key' }}" autocomplete="new-password" spellcheck="false" oninput="credentialReplacementTyped(this)">
+                        <button type="button" class="btn btn-sm btn-outline-success mt-2" id="cardbincheck-api-key-save" onclick="saveCardBinCheckApiKey()"><i class="bi bi-floppy me-1"></i>Save CardBinCheck API key</button>
+                        <span id="cardbincheck-api-key-status" class="field-desc d-block mt-2" role="status" aria-live="polite">{{ $row->display_value ? 'A key is saved encrypted. Enter a new key to replace it.' : 'No database key saved yet.' }}</span>
+                        <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved CardBinCheck API key</label>
                     @elseif($row->is_encrypted)
                         <input type="password" name="{{ $row->key }}" placeholder="{{ $row->display_value ?: 'Enter secret key' }}" autocomplete="new-password" oninput="credentialReplacementTyped(this)">
                         <label class="field-desc d-inline-flex align-items-center gap-2 mt-2"><input type="checkbox" name="clear_settings[]" value="{{ $row->key }}" onchange="confirmCredentialClear(this)"> Clear saved {{ strtolower($row->label ?? 'credential') }}</label>
@@ -556,6 +561,12 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                             <option value="0" {{ ($row->value ?? '0') == '0' ? 'selected' : '' }}>✅ Live (normal)</option>
                             <option value="1" {{ ($row->value ?? '') == '1' ? 'selected' : '' }}>🔧 Maintenance Mode</option>
                         </select>
+                    @elseif($row->key === 'tools_page_enabled')
+                        <select id="tools-page-enabled" aria-label="User tools page availability" data-save-url="{{ route('admin.settings.tools-page') }}" data-csrf="{{ csrf_token() }}">
+                            <option value="1" {{ ($row->value ?? '1') == '1' ? 'selected' : '' }}>✅ On · available to users</option>
+                            <option value="0" {{ ($row->value ?? '1') == '0' ? 'selected' : '' }}>⏸ Off · hidden from the platform</option>
+                        </select>
+                        <span id="tools-page-save-status" class="field-desc d-block mt-2" role="status" aria-live="polite"></span>
                     @else
                         <input type="text" name="{{ $row->key }}" value="{{ $row->value ?? '' }}" placeholder="{{ $row->label }}">
                     @endif
@@ -574,6 +585,37 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 </div>
 
 <script>
+document.getElementById('tools-page-enabled')?.addEventListener('change', async (event) => {
+    const select = event.currentTarget;
+    const status = document.getElementById('tools-page-save-status');
+    const previousValue = select.dataset.savedValue || (select.value === '1' ? '0' : '1');
+    select.disabled = true;
+    status.textContent = 'Saving tools page availability…';
+    try {
+        const response = await fetch(select.dataset.saveUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'X-CSRF-TOKEN': select.dataset.csrf,
+                'Accept': 'application/json',
+            },
+            body: new URLSearchParams({enabled: select.value}),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.message || `Save failed (HTTP ${response.status}).`);
+        select.dataset.savedValue = select.value;
+        status.textContent = data.message;
+        status.style.color = '#75ef9a';
+    } catch (error) {
+        select.value = previousValue;
+        status.textContent = error.message || 'Could not save the tools page setting.';
+        status.style.color = '#ff8585';
+    } finally {
+        select.disabled = false;
+    }
+});
+
 function confirmCredentialClear(checkbox) {
     if (!checkbox.checked) return;
     if (!window.confirm('Clear this saved credential? Any feature using it may stop working until you save a replacement.')) {
@@ -604,6 +646,48 @@ function credentialReplacementTyped(input) {
     const clearCheckbox = Array.from(document.querySelectorAll('input[name="clear_settings[]"]'))
         .find(checkbox => checkbox.value === input.name);
     if (clearCheckbox?.checked) clearCheckbox.checked = false;
+}
+
+async function saveCardBinCheckApiKey() {
+    const field = document.getElementById('cardbincheck-api-key-field');
+    const button = document.getElementById('cardbincheck-api-key-save');
+    const status = document.getElementById('cardbincheck-api-key-status');
+    const apiKey = field?.value.trim() || '';
+    if (!apiKey) {
+        status.textContent = 'Paste your CardBinCheck API key, then save it.';
+        status.className = 'field-desc d-block mt-2 text-warning';
+        field?.focus();
+        return;
+    }
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Saving securely…';
+    status.textContent = 'Saving encrypted key to platform settings…';
+    status.className = 'field-desc d-block mt-2';
+    try {
+        const response = await fetch(@json(route('admin.settings.cardbincheck-credential')), {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+            },
+            body: JSON.stringify({api_key: apiKey}),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.message || `Save failed (HTTP ${response.status}).`);
+        field.value = '';
+        field.placeholder = 'Saved encrypted · paste a new key to replace';
+        status.textContent = result.message;
+        status.className = 'field-desc d-block mt-2 text-success';
+    } catch (error) {
+        status.textContent = error.message || 'Could not save the CardBinCheck API key. Try again.';
+        status.className = 'field-desc d-block mt-2 text-danger';
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-floppy me-1"></i>Save CardBinCheck API key';
+    }
 }
 
 function showGroup(name, el, ev) {
