@@ -157,6 +157,7 @@ body.light-mode .kwd-page{--kwd-text:#14231a;--kwd-muted:#687b71;color:#17261e}b
             @endforelse
         </div>
     </section>
+    @include('components.flow-resources', ['flow' => 'withdraw'])
 </main>
 
 <script>

@@ -50,14 +50,15 @@ document.addEventListener('DOMContentLoaded',function(){
     const body=document.getElementById('bodyEditor'),preview=document.getElementById('bodyPreview'),subject=document.getElementById('email-subject-input');
     const subjectBtn=document.getElementById('ai-subject-btn'),subjectOut=document.getElementById('ai-subject-out'),subjectError=document.getElementById('subject-error');
     const templateKey=@json($template->key);
+    const tokenOpen=String.fromCharCode(123,123),tokenClose=String.fromCharCode(125,125);
     function updatePreview(){
         const examples={user_name:'Alex',app_name:'KayXchange',amount:'25.00',currency:'USDT',naira_amount:'₦38,500.00',wallet_address:'Your wallet address',reference:'KX-EXAMPLE-1042',payment_method:'Crypto wallet',account_details:'Account details',reason:'Your request was reviewed'};
         let content=body.value;
-        Object.entries(examples).forEach(([key,value])=>{content=content.replaceAll('{{'+key+'}}',value)});
+        Object.entries(examples).forEach(([key,value])=>{content=content.replaceAll(tokenOpen+key+tokenClose,value)});
         preview.srcdoc='<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"><style>body{margin:0;padding:20px;background:#fff;color:#202620;font:15px/1.65 Arial,Helvetica,sans-serif;overflow-wrap:anywhere}img{max-width:100%;height:auto}table{max-width:100%}a{color:#168c3b}</style></head><body>'+content+'</body></html>';
     }
     body.addEventListener('input',updatePreview);updatePreview();
-    document.querySelectorAll('.ee-token').forEach(button=>button.addEventListener('click',()=>{const token='{{'+button.dataset.token+'}}',start=body.selectionStart,end=body.selectionEnd;body.setRangeText(token,start,end,'end');body.focus();updatePreview()}));
+    document.querySelectorAll('.ee-token').forEach(button=>button.addEventListener('click',()=>{const token=tokenOpen+button.dataset.token+tokenClose,start=body.selectionStart,end=body.selectionEnd;body.setRangeText(token,start,end,'end');body.focus();updatePreview()}));
     document.querySelectorAll('.ee-toggle button').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.ee-toggle button').forEach(other=>other.classList.toggle('active',other===button));preview.classList.toggle('mobile',button.dataset.size==='mobile')}));
     subjectBtn.addEventListener('click',async()=>{
         subjectBtn.disabled=true;subjectBtn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Thinking';subjectError.textContent='';subjectOut.replaceChildren();subjectOut.hidden=true;

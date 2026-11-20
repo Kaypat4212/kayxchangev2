@@ -76,6 +76,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
 
     @if(session('success'))<div class="kx-alert-success"><i class="bi bi-check-circle-fill"></i>{{ session('success') }}</div>@endif
     @if(session('error'))<div class="kx-alert-error"><i class="bi bi-exclamation-circle-fill"></i>{{ session('error') }}</div>@endif
+    @if($errors->any())<div class="kx-alert-error"><i class="bi bi-exclamation-circle-fill"></i><div>@foreach($errors->all() as $message)<div>{{ $message }}</div>@endforeach</div></div>@endif
 
     <div class="kx-stat-row">
         <div class="kx-stat"><div class="kx-stat-icon icon-yellow"><i class="bi bi-hourglass-split"></i></div>
@@ -249,7 +250,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                         <td>{{ strtoupper((string)data_get($meta,'provider','crypto')) }}<br><small style="color:var(--kx-muted)">{{ data_get($meta,'provider_payment_id') ?: 'Payment ID unavailable' }}</small></td>
                         <td><span class="kx-badge {{ $crypto->status==='completed'?'kx-badge-green':(in_array($crypto->status,['pending','awaiting_admin_review'])?'kx-badge-yellow':($crypto->status==='failed'?'kx-badge-red':'kx-badge-gray')) }}">{{ str_replace('_',' ',ucfirst($crypto->status)) }}</span><br><small style="color:var(--kx-muted)">{{ str_replace('_',' ',(string)data_get($meta,'provider_status','')) }}</small></td>
                         <td>{{ optional($crypto->created_at)->format('d M Y, H:i') }}</td>
-                        <td>@if(in_array($crypto->status,['pending','awaiting_admin_review']))<a class="btn-kx-edit" href="{{ route('admin.manual-crypto-deposits.index') }}"><i class="bi bi-eye"></i> Review queue</a>@else<span style="color:var(--kx-muted)">—</span>@endif</td>
+                        <td><button class="btn-kx-edit" type="button" data-bs-toggle="modal" data-bs-target="#editCryptoDeposit{{ $crypto->id }}"><i class="bi bi-pencil-square"></i>Edit details</button>@if(in_array($crypto->status,['pending','awaiting_admin_review']))<a class="btn-kx-outline mt-2" href="{{ route('admin.manual-crypto-deposits.index') }}"><i class="bi bi-eye"></i>Review queue</a>@endif</td>
                     </tr>
                 @empty
                     <tr><td colspan="8" style="text-align:center;color:var(--kx-muted);padding:2rem">No crypto deposits recorded yet.</td></tr>
@@ -259,6 +260,28 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
         </div>
         <div class="p-3">{{ $cryptoDeposits instanceof \Illuminate\Pagination\LengthAwarePaginator ? $cryptoDeposits->links() : '' }}</div>
     </div>
+
+    @foreach($cryptoDeposits as $crypto)
+        <div class="modal fade" id="editCryptoDeposit{{ $crypto->id }}" tabindex="-1" aria-labelledby="editCryptoDepositTitle{{ $crypto->id }}" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+                <form method="POST" action="{{ route('admin.deposits.crypto.update', $crypto) }}">
+                    @csrf @method('PUT')
+                    <div class="modal-header"><div><h2 class="modal-title fs-5" id="editCryptoDepositTitle{{ $crypto->id }}">Edit crypto deposit #{{ $crypto->id }}</h2><small class="text-secondary">{{ $crypto->user?->name ?? 'Unknown user' }} · {{ strtoupper($crypto->currency) }} · {{ ucfirst(str_replace('_',' ',$crypto->status)) }}</small></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                    <div class="modal-body"><div class="alert alert-warning py-2 small">Editing a completed deposit adjusts the credited wallet by the received amount difference and writes a wallet ledger entry. If the user has already spent those funds, a balance reduction is blocked.</div>
+                        <div class="row g-3">
+                            <div class="col-md-6"><label class="kx-label" for="invoiceUsd{{ $crypto->id }}">Invoice value (USD)</label><input class="form-control kx-input" id="invoiceUsd{{ $crypto->id }}" type="number" min="0.01" step="0.01" name="invoice_usd_amount" value="{{ number_format($crypto->invoiceUsdAmount(),2,'.','') }}" required></div>
+                            <div class="col-md-6"><label class="kx-label" for="expectedCrypto{{ $crypto->id }}">Expected crypto ({{ strtoupper($crypto->currency) }})</label><input class="form-control kx-input" id="expectedCrypto{{ $crypto->id }}" type="number" min="0" step="0.00000001" name="expected_crypto_amount" value="{{ $crypto->expectedCryptoAmount() !== null ? number_format((float)$crypto->expectedCryptoAmount(),8,'.','') : '' }}" placeholder="Provider quote pending"></div>
+                            <div class="col-md-6"><label class="kx-label" for="receivedCrypto{{ $crypto->id }}">Crypto received ({{ strtoupper($crypto->currency) }})</label><input class="form-control kx-input" id="receivedCrypto{{ $crypto->id }}" type="number" min="0" step="0.00000001" name="received_amount" value="{{ $crypto->received_amount !== null ? number_format((float)$crypto->received_amount,8,'.','') : '' }}" placeholder="0.00000000"></div>
+                            <div class="col-md-6"><label class="kx-label" for="depositTx{{ $crypto->id }}">Transaction hash</label><input class="form-control kx-input" id="depositTx{{ $crypto->id }}" type="text" maxlength="180" name="transaction_hash" value="{{ $crypto->transaction_hash }}"></div>
+                            <div class="col-12"><label class="kx-label" for="depositAddress{{ $crypto->id }}">Payment address</label><input class="form-control kx-input" id="depositAddress{{ $crypto->id }}" type="text" maxlength="255" name="payment_address" value="{{ $crypto->payment_address }}"></div>
+                            <div class="col-12"><label class="kx-label" for="depositEditReason{{ $crypto->id }}">Reason for change</label><textarea class="form-control kx-input" id="depositEditReason{{ $crypto->id }}" name="reason" rows="2" minlength="3" maxlength="500" required placeholder="Explain why these deposit details need correction"></textarea></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn-kx-outline" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn-kx-green"><i class="bi bi-check2-circle"></i>Save deposit details</button></div>
+                </form>
+            </div></div>
+        </div>
+    @endforeach
 </div>
 
 {{-- Deposit Confirmation Modal --}}

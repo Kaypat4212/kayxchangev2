@@ -405,6 +405,8 @@
 </div>
 </div>
 
+@include('components.flow-resources', ['flow' => 'sell'])
+
 {{-- Toast --}}
 <div id="kxToast"></div>
 @endsection

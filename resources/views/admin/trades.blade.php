@@ -234,9 +234,15 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <thead><tr><th>Date</th><th>Type</th><th>Customer</th><th>Asset / service</th><th>Amount</th><th>Status</th><th>Reference</th><th>Open</th></tr></thead>
                     <tbody>
                     @forelse($allActivity as $activity)
-                        @php($activityTypeLabel=ucwords(str_replace('_',' ',$activity->type)))
-                        @php($activityStatusKey=strtolower($activity->status))
-                        @php($activityBadgeClass=in_array($activityStatusKey,['completed','approved','successful'],true)?'kx-badge-green':(in_array($activityStatusKey,['failed','rejected','cancelled','expired'],true)?'kx-badge-red':'kx-badge-yellow'))
+                        @php
+                            $activityTypeLabel = ucwords(str_replace('_', ' ', $activity->type));
+                            $activityStatusKey = strtolower($activity->status);
+                            $activityBadgeClass = in_array($activityStatusKey, ['completed', 'approved', 'successful'], true)
+                                ? 'kx-badge-green'
+                                : (in_array($activityStatusKey, ['failed', 'rejected', 'cancelled', 'expired'], true)
+                                    ? 'kx-badge-red'
+                                    : 'kx-badge-yellow');
+                        @endphp
                         <tr data-activity-search="{{ strtolower($activityTypeLabel.' '.($activity->user?->name ?? '').' '.($activity->user?->email ?? '').' '.$activity->asset.' '.$activity->reference.' '.$activity->detail) }}" data-activity-status="{{ strtolower($activity->status) }}">
                             <td style="white-space:nowrap">{{ $activity->created_at?->format('d M Y, H:i') }}</td>
                             <td><span class="kx-badge kx-badge-blue">{{ $activityTypeLabel }}</span></td>

@@ -316,6 +316,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('telegram/ai-config/test', [AdminAiBotController::class, 'testChat'])->name('admin.telegram.ai-config.test');
 
     Route::get('deposits', [AdminDepositController::class, 'index'])->name('admin.deposits.index');
+    Route::put('deposits/crypto/{deposit}', [AdminDepositController::class, 'updateCrypto'])->whereNumber('deposit')->middleware('throttle:20,1')->name('admin.deposits.crypto.update');
     Route::put('deposits/{deposit}', [AdminDepositController::class, 'update'])->name('admin.deposits.update');
     Route::post('deposits/{deposit}/update', [AdminDepositController::class, 'update'])->name('admin.deposits.update.post');
     Route::get('deposits/{deposit}', function () {

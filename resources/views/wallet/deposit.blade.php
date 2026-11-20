@@ -24,6 +24,7 @@
   </section></div>
   <div class="col-lg-5"><section class="dep-card"><div class="small text-success fw-bold text-uppercase">Supported assets</div><h2 class="h5 fw-bold mt-2">Deposit choices</h2><p class="dep-muted small">Select the network shown on the invoice carefully. Only send the selected asset over the matching network.</p><div class="dep-assets">@foreach($supportedCryptos as $symbol=>$asset)<div class="dep-asset"><strong>{{ $symbol }}</strong><span>{{ implode(' / ', $asset['networks']) }}</span></div>@endforeach</div><div class="border-top border-secondary border-opacity-25 mt-4 pt-3 dep-muted small">Your invoice address and QR code are provided by the payment provider after you continue. Never pay an address from an old or unrelated invoice.</div></section></div>
  </div>
+ @include('components.flow-resources', ['flow' => 'deposit'])
 </main>
 <script>
 (()=>{

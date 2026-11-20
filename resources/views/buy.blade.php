@@ -332,6 +332,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
 </div>
 </div>
 </div><!-- /container -->
+@include('components.flow-resources', ['flow' => 'buy'])
 @endsection
 
 @push('scripts')
