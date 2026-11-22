@@ -356,7 +356,7 @@ class AdminSettingsController extends Controller
         $criticalKeys = [
             'runtime_mode', 'site_maintenance', 'nowpayments_enabled', 'nowpayments_sandbox',
             'crypto_deposit_provider', 'convert_mode', 'blocked_countries', 'homepage_captcha_mode',
-            'cf_enabled', 'cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_conversion_enabled', 'nowpayments_crypto_withdrawals_enabled',
+            'cf_enabled', 'cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_conversion_enabled', 'nowpayments_wallet_sell_enabled', 'nowpayments_crypto_withdrawals_enabled',
         ];
 
         DB::transaction(function () use ($data, $requestedCredentialClears, $request, $criticalKeys, &$changedCredentials, &$clearedCredentials, &$changedCriticalSettings): void {

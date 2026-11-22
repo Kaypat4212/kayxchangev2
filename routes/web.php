@@ -210,6 +210,9 @@ Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () 
     Route::get('/market-prices', [\App\Http\Controllers\WalletController::class, 'marketPrices'])->middleware('throttle:30,1')->name('market-prices');
     Route::get('/usd',       [\App\Http\Controllers\WalletController::class, 'usd'])->name('usd');
     Route::post('/usd/withdraw-to-naira', [\App\Http\Controllers\WalletController::class, 'withdrawUsdToNaira'])->middleware('throttle:5,1')->name('usd.withdraw-to-naira');
+    Route::get('/crypto/sell', [\App\Http\Controllers\WalletController::class, 'cryptoSellForm'])->name('crypto.sell');
+    Route::post('/crypto/sell', [\App\Http\Controllers\WalletController::class, 'submitCryptoSell'])->middleware('throttle:5,1')->name('crypto.sell.submit');
+    Route::get('/crypto/sell/{conversion}', [\App\Http\Controllers\WalletController::class, 'cryptoSellShow'])->whereNumber('conversion')->middleware('throttle:10,1')->name('crypto.sell.show');
     Route::get('/crypto/statement.csv', [\App\Http\Controllers\WalletController::class, 'cryptoStatement'])->name('crypto.statement');
     Route::get('/crypto',    [\App\Http\Controllers\WalletController::class, 'crypto'])->name('crypto');
     Route::get('/deposit',   [\App\Http\Controllers\WalletController::class, 'deposit'])->name('deposit');

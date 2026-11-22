@@ -301,6 +301,112 @@ class WalletController extends Controller
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    public function cryptoSellForm(\App\Services\NowPaymentsConversionService $selling): \Illuminate\Http\Response|\Illuminate\Contracts\View\View
+    {
+        abort_unless(AdminSetting::getSetting('nowpayments_wallet_sell_enabled', '0') === '1', 404);
+        $user = Auth::user();
+        $this->cryptoWalletService->getUserWallets($user);
+        $supported = $selling->supportedCoins();
+        $wallets = $user->wallets()->where('is_active', true)->whereIn('currency', $supported)->orderBy('currency')->get();
+        $market = app(ExchangeRateService::class)->getUsdRates();
+        $marketPrices = [];
+        foreach ($wallets as $wallet) {
+            $coin = strtoupper((string) $wallet->currency);
+            if (is_numeric($market[$coin] ?? null) && (float) $market[$coin] > 0) $marketPrices[$coin] = (float) $market[$coin];
+        }
+        $ngnRate = $this->ngnPerUsdRate();
+        $feePercent = $selling->totalFeePercent();
+        $minimumUsd = max(0.01, (float) AdminSetting::getSetting('convert_min_usd', '1'));
+        $maximumUsd = max($minimumUsd, (float) AdminSetting::getSetting('convert_max_usd', '1000'));
+        $marketFresh = !($market['_stale'] ?? true) && ($market['_source'] ?? 'fallback') !== 'fallback';
+        $providerReady = app(\App\Services\NowPaymentsService::class)->isWalletSellReady();
+        return view('wallet.crypto-sell', compact('wallets', 'marketPrices', 'ngnRate', 'feePercent', 'minimumUsd', 'maximumUsd', 'marketFresh', 'providerReady'));
+    }
+
+    public function submitCryptoSell(Request $request, \App\Services\NowPaymentsConversionService $selling)
+    {
+        abort_unless(AdminSetting::getSetting('nowpayments_wallet_sell_enabled', '0') === '1', 404);
+        $data = $request->validate([
+            'wallet_id' => ['required', 'integer'],
+            'amount' => ['required', 'numeric', 'gt:0', 'max:1000000000'],
+            'pin' => ['required', 'digits:4'],
+            'request_key' => ['required', 'uuid'],
+        ]);
+        $user = Auth::user();
+        $wallet = $user->wallets()->whereKey($data['wallet_id'])->where('is_active', true)->firstOrFail();
+        $coin = strtoupper((string) $wallet->currency);
+        if (!in_array($coin, $selling->supportedCoins(), true)) return back()->withErrors(['wallet_id' => 'That asset is not currently enabled for NOWPayments wallet sales.'])->withInput();
+
+        $pinResult = DB::transaction(function () use ($user, $data): ?string {
+            $lockedUser = \App\Models\User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if ($lockedUser->pin_locked_until && Carbon::now()->lt($lockedUser->pin_locked_until)) {
+                $minutes = max(1, (int) ceil(Carbon::now()->diffInSeconds($lockedUser->pin_locked_until) / 60));
+                return "PIN locked. Try again in {$minutes} minute(s).";
+            }
+            if (!$lockedUser->transaction_pin || !Hash::check($data['pin'], $lockedUser->transaction_pin)) {
+                $lockedUser->pin_attempts = (int) ($lockedUser->pin_attempts ?? 0) + 1;
+                if ($lockedUser->pin_attempts >= 5) $lockedUser->pin_locked_until = Carbon::now()->addMinutes(15);
+                $lockedUser->save();
+                return 'Incorrect transaction PIN.';
+            }
+            $lockedUser->pin_attempts = 0;
+            $lockedUser->pin_locked_until = null;
+            $lockedUser->save();
+            return null;
+        });
+        if ($pinResult) return back()->withErrors(['pin' => $pinResult])->withInput($request->except('pin'));
+
+        $market = app(ExchangeRateService::class)->getUsdRates();
+        $liveCoins = $market['_live_coins'] ?? [];
+        $marketPrice = (float) ($market[$coin] ?? 0);
+        if (($market['_stale'] ?? true) || !in_array($coin, $liveCoins, true) || $marketPrice <= 0) {
+            return back()->withErrors(['amount' => 'A fresh market price for ' . $coin . ' is unavailable. Your wallet has not been changed; try again shortly.'])->withInput($request->except('pin'));
+        }
+        $amount = round((float) $data['amount'], 8);
+        $usdValue = round($amount * $marketPrice, 8);
+        $minimumUsd = max(0.01, (float) AdminSetting::getSetting('convert_min_usd', '1'));
+        $maximumUsd = max($minimumUsd, (float) AdminSetting::getSetting('convert_max_usd', '1000'));
+        if ($usdValue < $minimumUsd || $usdValue > $maximumUsd) {
+            return back()->withErrors(['amount' => 'This sell must be between $' . number_format($minimumUsd, 2) . ' and $' . number_format($maximumUsd, 2) . ' at the current market price.'])->withInput($request->except('pin'));
+        }
+        $nairaRate = $this->ngnPerUsdRate();
+        if ($nairaRate <= 0) return back()->withErrors(['amount' => 'The current Naira conversion rate is unavailable.'])->withInput($request->except('pin'));
+        $estimatedNaira = round($usdValue * $nairaRate * (1 - $selling->totalFeePercent() / 100), 2);
+        if (!$user->kyc_verified && $estimatedNaira > 500000) {
+            return back()->withErrors(['amount' => 'Unverified users can sell up to ₦500,000 per transaction. Complete KYC to increase your limit.'])->withInput($request->except('pin'));
+        }
+
+        try {
+            $conversion = $selling->submitWalletSell($user, $wallet, $amount, [
+                'usd_value' => $usdValue,
+                'market_price_usd' => $marketPrice,
+                'ngn_rate' => $nairaRate,
+                'estimated_naira' => $estimatedNaira,
+            ], $data['request_key']);
+            return redirect()->route('wallet.crypto.sell.show', $conversion)->with('success', $conversion->status === 'completed'
+                ? 'Crypto sale completed and your Naira wallet was credited.'
+                : 'Crypto sale submitted. Your crypto is reserved while NOWPayments confirms the conversion.');
+        } catch (\Throwable $exception) {
+            Log::warning('NOWPayments crypto wallet sell submission failed.', [
+                'user_id' => $user->id, 'coin' => $coin, 'exception_class' => $exception::class,
+                'message' => mb_substr($exception->getMessage(), 0, 240),
+            ]);
+            return back()->withErrors(['amount' => $exception->getMessage()])->withInput($request->except('pin'));
+        }
+    }
+
+    public function cryptoSellShow(int $conversionId, \App\Services\NowPaymentsConversionService $selling)
+    {
+        $conversion = \App\Models\Conversion::query()->whereKey($conversionId)->where('user_id', Auth::id())
+            ->where('mode', 'nowpayments')->firstOrFail();
+        abort_unless((bool) data_get($conversion->cryptomus_response, 'wallet_sell_to_ngn'), 404);
+        if (in_array($conversion->status, ['pending', 'processing'], true) && $conversion->provider_conversion_id) {
+            try { $conversion = $selling->refresh($conversion); }
+            catch (\Throwable $exception) { Log::info('User crypto sale status refresh was unavailable.', ['conversion_id' => $conversion->id, 'exception_class' => $exception::class]); }
+        }
+        return view('wallet.crypto-sell-status', compact('conversion'));
+    }
+
     /**
      * Show crypto deposit page
      */

@@ -210,6 +210,140 @@ class NowPaymentsConversionService
         }
     }
 
+    /** Sell an existing KayXchange crypto-wallet balance through NOWPayments Custody and settle NGN after provider confirmation. */
+    public function submitWalletSell(User $user, Wallet $wallet, float $amount, array $quote, string $requestKey): Conversion
+    {
+        if (!$this->provider->isWalletSellReady()) {
+            throw new RuntimeException('NOWPayments wallet selling is currently disabled or not fully configured.');
+        }
+        $this->provider->prepareCustodyAccess();
+        $coin = strtoupper((string) $wallet->currency);
+        if (!$this->supportsCoin($coin)) throw new RuntimeException('This asset is not enabled for NOWPayments wallet sales.');
+        $amount = round($amount, 8);
+        if ($amount <= 0) throw new RuntimeException('Enter a valid amount to sell.');
+
+        $existing = Conversion::query()->where('idempotency_key', $requestKey)->where('user_id', $user->id)->first();
+        if ($existing) {
+            if (strtoupper($existing->from_coin) !== $coin || strtoupper($existing->to_coin) !== 'NGN' || abs((float) $existing->from_amount - $amount) > 0.00000001) {
+                throw new RuntimeException('This sell confirmation was already used for a different request. Refresh and try again.');
+            }
+            return $existing;
+        }
+        $duplicate = Conversion::query()->where('user_id', $user->id)->where('mode', 'nowpayments')
+            ->where('from_coin', $coin)->where('to_coin', 'NGN')->where('from_amount', $amount)
+            ->whereIn('status', ['pending', 'processing'])->where('created_at', '>=', now()->subMinutes(3))->latest('id')->first();
+        if ($duplicate) return $duplicate;
+
+        $lock = Cache::lock('nowpayments-custody-swap:' . $coin, 90);
+        try {
+            return $lock->block(10, function () use ($user, $wallet, $coin, $amount, $quote, $requestKey): Conversion {
+                $existing = Conversion::query()->where('idempotency_key', $requestKey)->where('user_id', $user->id)->first();
+                if ($existing) return $existing;
+                $source = $user->wallets()->whereKey($wallet->id)->where('currency', $coin)->where('is_active', true)->first();
+                if (!$source || (float) $source->balance + 0.00000001 < $amount) {
+                    throw new RuntimeException('Your ' . $coin . ' wallet does not have enough available balance.');
+                }
+
+                $network = strtoupper((string) $source->network);
+                $fromProviderCode = $this->providerCurrencyCode($coin, $network);
+                $toProviderCode = $this->providerCurrencyCode('USDT', 'TRC20');
+                $providerAvailable = $this->provider->custodyAvailableBalance($fromProviderCode);
+                $liabilities = (float) Wallet::query()->where('currency', $coin)
+                    ->where(function ($query) use ($network) { $query->where('network', $network)->orWhereNull('network'); })
+                    ->sum('balance');
+                if ($providerAvailable + 0.00000001 < $liabilities) {
+                    Log::warning('NOWPayments wallet sale reserve check blocked a request.', [
+                        'user_id' => $user->id, 'asset' => $coin, 'network' => $network,
+                        'requested_amount' => $amount, 'provider_available' => $providerAvailable, 'wallet_liabilities' => $liabilities,
+                    ]);
+                    throw new RuntimeException('NOWPayments Custody reserves do not currently cover ' . $coin . ' wallet balances. Your crypto is unchanged; please try later or contact support.');
+                }
+
+                $conversion = DB::transaction(function () use ($user, $source, $coin, $network, $amount, $quote, $requestKey, $fromProviderCode, $toProviderCode): Conversion {
+                    User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                    $lockedSource = Wallet::query()->whereKey($source->id)->lockForUpdate()->first();
+                    if (!$lockedSource || !$lockedSource->is_active || (float) $lockedSource->balance + 0.00000001 < $amount) {
+                        throw new RuntimeException('Your ' . $coin . ' wallet balance changed. Refresh the page and try again.');
+                    }
+                    $lockedSource->balance = round((float) $lockedSource->balance - $amount, 8);
+                    $lockedSource->save();
+                    app(WalletLedgerService::class)->record($lockedSource, -$amount, 'crypto_wallet_sell.reserved', $requestKey);
+
+                    return Conversion::create([
+                        'user_id' => $user->id,
+                        'from_coin' => $coin,
+                        'to_coin' => 'NGN',
+                        'from_amount' => $amount,
+                        'to_amount' => round((float) $quote['estimated_naira'], 8),
+                        'fee_amount' => 0,
+                        'rate_used' => round((float) $quote['estimated_naira'] / $amount, 8),
+                        'status' => 'pending',
+                        'mode' => 'nowpayments',
+                        'idempotency_key' => $requestKey,
+                        'cryptomus_response' => [
+                            'wallet_sell_to_ngn' => true,
+                            'source_network' => $network,
+                            'source_provider_currency' => $fromProviderCode,
+                            'provider_destination_currency' => $toProviderCode,
+                            'ngn_rate_used' => (float) $quote['ngn_rate'],
+                            'market_price_usd' => (float) $quote['market_price_usd'],
+                            'quoted_usd_value' => (float) $quote['usd_value'],
+                            'estimated_quoted_naira' => (float) $quote['estimated_naira'],
+                            'platform_fee_percent' => max(0, min(19.5, (float) AdminSetting::getSetting('convert_fee_percent', '0.5'))),
+                            'provider_fee_percent_estimate' => self::PROVIDER_FEE_PERCENT,
+                            'source_reserved_at' => now()->toIso8601String(),
+                        ],
+                    ]);
+                });
+
+                try {
+                    if ($coin === 'USDT') {
+                        // USDT is already the settlement asset; after the provider
+                        // reserve check there is no useful USDT→USDT conversion to request.
+                        $conversion->update(['status' => 'processing', 'provider_status' => 'custody_balance_reserved']);
+                        $this->settleWalletSale($conversion->fresh(), ['status' => 'finished', 'source' => 'custody_balance_reserve_check'], $amount);
+                        return $conversion->fresh();
+                    }
+                    $response = $this->provider->createCustodyConversion($fromProviderCode, $toProviderCode, number_format($amount, 8, '.', ''));
+                    $externalId = (string) ($response['id'] ?? $response['conversion_id'] ?? '');
+                    $status = strtolower((string) ($response['status'] ?? 'created'));
+                    if ($externalId === '') {
+                        $conversion->update([
+                            'status' => 'processing', 'provider_status' => $status,
+                            'failure_reason' => 'NOWPayments may have accepted the sale but returned no conversion ID. The crypto remains reserved until it is reconciled.',
+                            'cryptomus_response' => array_merge($conversion->cryptomus_response ?? [], ['provider_response' => $response]),
+                        ]);
+                    } else {
+                        $conversion->update([
+                            'provider_conversion_id' => $externalId, 'provider_status' => $status, 'status' => 'processing',
+                            'cryptomus_response' => array_merge($conversion->cryptomus_response ?? [], ['provider_response' => $response]),
+                        ]);
+                        $this->applyProviderStatus($conversion->fresh(), $response);
+                    }
+                } catch (NowPaymentsApiException $exception) {
+                    if ($exception->httpStatus === 0 || $exception->httpStatus >= 500) {
+                        $conversion->update(['status' => 'processing', 'failure_reason' => 'NOWPayments response is uncertain. The reserved amount will be reconciled before any refund or Naira credit.']);
+                    } else {
+                        $this->refundSource($conversion, 'NOWPayments rejected the wallet sale.');
+                        throw new RuntimeException('NOWPayments could not start the wallet sale. Your crypto balance has been restored.');
+                    }
+                } catch (\Throwable $exception) {
+                    if ($conversion->provider_conversion_id) {
+                        Log::warning('NOWPayments wallet sale status check failed after creation.', ['conversion_id' => $conversion->id, 'error' => $exception->getMessage()]);
+                        $conversion->update(['status' => 'processing']);
+                    } else {
+                        $this->refundSource($conversion, $exception->getMessage());
+                        throw $exception;
+                    }
+                }
+
+                return $conversion->fresh();
+            });
+        } catch (\Illuminate\Cache\LockTimeoutException) {
+            throw new RuntimeException('A transaction for this crypto asset is already processing. Please try again shortly.');
+        }
+    }
+
     public function refresh(Conversion $conversion): Conversion
     {
         if ($conversion->mode !== 'nowpayments' || !in_array($conversion->status, ['pending', 'processing'], true) || !$conversion->provider_conversion_id) {
@@ -240,6 +374,10 @@ class NowPaymentsConversionService
             }
 
             $actualProviderOutput = (float) $providerAmount;
+            if (!empty(data_get($conversion->cryptomus_response, 'wallet_sell_to_ngn'))) {
+                $this->settleWalletSale($conversion, $payload, $actualProviderOutput);
+                return;
+            }
             $platformFeePercent = max(0, min(19.5, (float) data_get($conversion->cryptomus_response, 'platform_fee_percent', 0)));
             $platformFee = round($actualProviderOutput * $platformFeePercent / 100, 8);
             $receiveAmount = round($actualProviderOutput - $platformFee, 8);
@@ -302,6 +440,60 @@ class NowPaymentsConversionService
         $conversion->save();
     }
 
+    private function settleWalletSale(Conversion $conversion, array $payload, float $providerUsdtOutput): void
+    {
+        $result = DB::transaction(function () use ($conversion, $payload, $providerUsdtOutput): ?float {
+            $locked = Conversion::query()->whereKey($conversion->id)->lockForUpdate()->first();
+            if (!$locked || in_array($locked->status, ['completed', 'failed'], true)) return null;
+            $platformFeePercent = max(0, min(19.5, (float) data_get($locked->cryptomus_response, 'platform_fee_percent', 0)));
+            $platformFeeUsdt = round($providerUsdtOutput * $platformFeePercent / 100, 8);
+            $netUsdt = round($providerUsdtOutput - $platformFeeUsdt, 8);
+            $ngnRate = (float) data_get($locked->cryptomus_response, 'ngn_rate_used', 0);
+            $naira = round($netUsdt * $ngnRate, 2);
+            if ($netUsdt <= 0 || $ngnRate <= 0 || $naira <= 0) {
+                $locked->status = 'processing';
+                $locked->failure_reason = 'NOWPayments completed the crypto conversion, but a valid Naira settlement amount could not be calculated. Admin review is required.';
+                $locked->cryptomus_response = array_merge($locked->cryptomus_response ?? [], [
+                    'actual_provider_output_usdt' => round($providerUsdtOutput, 8),
+                    'settlement_status' => 'needs_admin_review',
+                    'provider_result' => $payload,
+                ]);
+                $locked->save();
+                return 0.0;
+            }
+            app(BalanceSettlementService::class)->creditNgnBalance((int) $locked->user_id, $naira, 'crypto_wallet_sell.completed', 'conversion:' . $locked->id);
+            $locked->to_amount = $naira;
+            $locked->fee_amount = round($platformFeeUsdt, 8);
+            $locked->status = 'completed';
+            $locked->provider_status = strtolower((string) ($payload['status'] ?? 'finished'));
+            $locked->completed_at = now();
+            $locked->failure_reason = null;
+            $locked->cryptomus_response = array_merge($locked->cryptomus_response ?? [], [
+                'actual_provider_output_usdt' => round($providerUsdtOutput, 8),
+                'actual_platform_fee_usdt' => $platformFeeUsdt,
+                'actual_net_usdt' => $netUsdt,
+                'actual_naira_credited' => $naira,
+                'provider_result' => $payload,
+                'settled_at' => now()->toIso8601String(),
+            ]);
+            $locked->save();
+            return $naira;
+        });
+
+        if ($result === null || $result <= 0) return;
+        try {
+            \App\Models\Notification::createForUser(
+                (int) $conversion->user_id,
+                'success',
+                'Crypto sale completed',
+                'Your ' . $conversion->from_coin . ' sale completed and ₦' . number_format($result, 2) . ' was credited to your Naira wallet.',
+                ['conversion_id' => $conversion->id, 'type' => 'crypto_wallet_sell']
+            );
+        } catch (\Throwable $exception) {
+            Log::warning('NOWPayments crypto wallet sale notification failed.', ['conversion_id' => $conversion->id, 'error' => $exception->getMessage()]);
+        }
+    }
+
     private function refundSource(Conversion $conversion, string $reason): void
     {
         $refunded = DB::transaction(function () use ($conversion, $reason): bool {
@@ -311,7 +503,7 @@ class NowPaymentsConversionService
             if (!$wallet) throw new RuntimeException('Source wallet is missing; the reserved swap amount could not be restored.');
             $wallet->balance = round((float) $wallet->balance + (float) $locked->from_amount, 8);
             $wallet->save();
-            app(WalletLedgerService::class)->record($wallet, (float) $locked->from_amount, 'crypto_swap.refund', 'conversion:' . $locked->id);
+            app(WalletLedgerService::class)->record($wallet, (float) $locked->from_amount, !empty(data_get($locked->cryptomus_response, 'wallet_sell_to_ngn')) ? 'crypto_wallet_sell.refund' : 'crypto_swap.refund', 'conversion:' . $locked->id);
             $locked->status = 'failed';
             $locked->failure_reason = $reason;
             $locked->completed_at = now();
@@ -320,12 +512,13 @@ class NowPaymentsConversionService
         });
         if ($refunded) {
             try {
+                $isWalletSale = !empty(data_get($conversion->cryptomus_response, 'wallet_sell_to_ngn'));
                 \App\Models\Notification::createForUser(
                     (int) $conversion->user_id,
                     'error',
-                    'Crypto swap failed',
-                    'The swap could not be completed. Your ' . $conversion->from_coin . ' balance has been restored.',
-                    ['conversion_id' => $conversion->id]
+                    $isWalletSale ? 'Crypto sale failed' : 'Crypto swap failed',
+                    'The ' . ($isWalletSale ? 'sale' : 'swap') . ' could not be completed. Your ' . $conversion->from_coin . ' balance has been restored.',
+                    ['conversion_id' => $conversion->id, 'type' => $isWalletSale ? 'crypto_wallet_sell' : 'crypto_swap']
                 );
             } catch (\Throwable $e) {
                 Log::warning('NOWPayments swap refund notification failed', ['conversion_id' => $conversion->id, 'error' => $e->getMessage()]);

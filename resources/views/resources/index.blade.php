@@ -29,7 +29,7 @@ body.light-mode .kx-resources{color:#1d3124}body.light-mode .kr-hero{background:
                         <div class="kr-no-video mt-3"><i class="bi bi-camera-video me-1"></i>Video walkthrough will appear here when added by an admin.</div>
                     @endif
                     <ol>@foreach($guide['steps'] as $step)<li>{{ $step }}</li>@endforeach</ol>
-                    <div class="kr-actions"><a class="primary" href="{{ $guide['url'] }}"><i class="bi bi-arrow-right-circle"></i>Open {{ strtolower($guide['title']) }}</a>@if($key === 'sell')<a href="{{ route('wallet.usd', ['withdraw' => 1]) }}"><i class="bi bi-wallet2"></i>Sell from crypto wallet</a>@endif<a href="{{ route('transactions.history') }}"><i class="bi bi-clock-history"></i>Transaction history</a></div>
+                    <div class="kr-actions"><a class="primary" href="{{ $guide['url'] }}"><i class="bi bi-arrow-right-circle"></i>Open {{ strtolower($guide['title']) }}</a>@if($key === 'sell')<a href="{{ \App\Models\AdminSetting::getSetting('nowpayments_wallet_sell_enabled', '0') === '1' ? route('wallet.crypto.sell') : route('wallet.usd', ['withdraw' => 1]) }}"><i class="bi bi-wallet2"></i>Sell from crypto wallet</a>@endif<a href="{{ route('transactions.history') }}"><i class="bi bi-clock-history"></i>Transaction history</a></div>
                 </div>
             </article>
         @endforeach

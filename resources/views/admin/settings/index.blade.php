@@ -390,7 +390,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                     @elseif($row->description)<div class="field-desc">{{ $row->description }}</div>@endif
                 </div>
                 <div class="field-input">
-                    @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_enabled', 'nowpayments_sandbox', 'nowpayments_conversion_enabled', 'nowpayments_crypto_withdrawals_enabled']))
+                    @if(in_array($row->key, ['cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_enabled', 'nowpayments_sandbox', 'nowpayments_conversion_enabled', 'nowpayments_wallet_sell_enabled', 'nowpayments_crypto_withdrawals_enabled']))
                         @php
                             $toggleVal = $row->value ?? (in_array($row->key, ['cryptomus_convert_enabled', 'nowpayments_sandbox'], true) ? '1' : '0');
                             $toggleOn  = $toggleVal === '1';

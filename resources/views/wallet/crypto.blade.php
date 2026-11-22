@@ -32,6 +32,7 @@
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <a class="btn btn-success rounded-pill px-3" href="{{ route('wallet.deposit') }}"><i class="bi bi-plus-circle me-1"></i> Deposit</a>
+                    @if(\App\Models\AdminSetting::getSetting('nowpayments_wallet_sell_enabled', '0') === '1')<a class="btn btn-outline-success rounded-pill px-3" href="{{ route('wallet.crypto.sell') }}"><i class="bi bi-cash-coin me-1"></i> Sell crypto</a>@endif
                     <a class="btn btn-outline-light rounded-pill px-3" href="{{ route('wallet.crypto.statement') }}"><i class="bi bi-download me-1"></i> Download statement</a>
                     <a class="btn btn-outline-success rounded-pill px-3" href="{{ route('price-alerts.index') }}"><i class="bi bi-bell me-1"></i> Price alerts</a>
                 </div>

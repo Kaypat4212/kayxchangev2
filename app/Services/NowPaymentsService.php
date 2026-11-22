@@ -56,6 +56,12 @@ class NowPaymentsService
             && $this->hasCustodyCredentials();
     }
 
+    public function isWalletSellReady(): bool
+    {
+        return AdminSetting::getSetting('nowpayments_wallet_sell_enabled', '0') === '1'
+            && $this->hasCustodyCredentials();
+    }
+
     private function hasCustodyCredentials(): bool
     {
         return $this->apiKey !== '' && $this->accountEmail !== '' && $this->accountPassword !== '';
@@ -99,7 +105,7 @@ class NowPaymentsService
     /** Create a merchant-Custody conversion; this does not send funds to an external address. */
     public function createCustodyConversion(string $fromCurrency, string $toCurrency, string $amount): array
     {
-        if (!$this->isCustodyConversionReady()) throw new \RuntimeException('NOWPayments Custody swaps are currently disabled or not fully configured.');
+        if (!$this->isCustodyConversionReady() && !$this->isWalletSellReady()) throw new \RuntimeException('NOWPayments Custody conversions are currently disabled or not fully configured.');
         $token = $this->custodyToken();
         try {
             $response = Http::acceptJson()->asJson()->withHeaders([
