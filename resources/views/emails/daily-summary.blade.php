@@ -35,7 +35,7 @@ body{margin:0;padding:0;background:#f4f6f8;font-family:'Segoe UI',Arial,sans-ser
 <body>
 <div class="wrap">
     <div class="header">
-        <h1>📊 Daily Trade Summary</h1>
+        <h1>Daily Trade Summary</h1>
         <p>{{ $date }}</p>
     </div>
     <div class="body">
@@ -108,7 +108,7 @@ body{margin:0;padding:0;background:#f4f6f8;font-family:'Segoe UI',Arial,sans-ser
         </div>
     </div>
     <div class="footer">
-        <p>KayXchange Admin Digest — auto-generated on {{ now()->format('d M Y H:i') }} UTC</p>
+        <p>KayXchange Admin Digest — auto-generated on {{ now()->format('d M Y H:i') }}</p>
     </div>
 </div>
 </body>

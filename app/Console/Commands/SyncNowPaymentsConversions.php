@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Conversion;
 use App\Services\NowPaymentsConversionService;
 use Illuminate\Console\Command;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 
 class SyncNowPaymentsConversions extends Command
@@ -15,13 +16,22 @@ class SyncNowPaymentsConversions extends Command
 
     public function handle(NowPaymentsConversionService $service): int
     {
-        $conversions = Conversion::query()
-            ->where('mode', 'nowpayments')
-            ->whereIn('status', ['pending', 'processing'])
-            ->whereNotNull('provider_conversion_id')
-            ->oldest('updated_at')
-            ->limit(max(1, min(500, (int) $this->option('limit'))))
-            ->get();
+        try {
+            $conversions = Conversion::query()
+                ->where('mode', 'nowpayments')
+                ->whereIn('status', ['pending', 'processing'])
+                ->whereNotNull('provider_conversion_id')
+                ->oldest('updated_at')
+                ->limit(max(1, min(500, (int) $this->option('limit'))))
+                ->get();
+        } catch (QueryException $exception) {
+            Log::error('Scheduled NOWPayments sync skipped because the database is unavailable.', [
+                'exception_class' => $exception::class,
+                'sql_state' => $exception->errorInfo[0] ?? null,
+            ]);
+            $this->error('Could not connect to the application database. Check the production DB_HOST, DB_PORT, and DB_SOCKET settings. No swaps were changed.');
+            return self::FAILURE;
+        }
 
         $completed = 0;
         $failed = 0;

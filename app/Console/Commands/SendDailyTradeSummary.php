@@ -6,6 +6,8 @@ use App\Models\BuyTrade;
 use App\Models\SellTrade;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Carbon;
 
@@ -14,15 +16,24 @@ class SendDailyTradeSummary extends Command
     protected $signature = 'digest:daily';
     protected $description = 'Send daily trade summary email digest to admin';
 
-    public function handle(): void
+    public function handle(): int
     {
         $yesterday = Carbon::yesterday();
         $todayStart = $yesterday->copy()->startOfDay();
         $todayEnd   = $yesterday->copy()->endOfDay();
 
-        $sellTrades = SellTrade::whereBetween('created_at', [$todayStart, $todayEnd])->get();
-        $buyTrades  = BuyTrade::whereBetween('created_at', [$todayStart, $todayEnd])->get();
-        $newUsers   = User::whereBetween('created_at', [$todayStart, $todayEnd])->count();
+        try {
+            $sellTrades = SellTrade::whereBetween('created_at', [$todayStart, $todayEnd])->get();
+            $buyTrades  = BuyTrade::whereBetween('created_at', [$todayStart, $todayEnd])->get();
+            $newUsers   = User::whereBetween('created_at', [$todayStart, $todayEnd])->count();
+        } catch (QueryException $exception) {
+            Log::error('Daily trade digest skipped because the database is unavailable.', [
+                'exception_class' => $exception::class,
+                'sql_state' => $exception->errorInfo[0] ?? null,
+            ]);
+            $this->error('Could not connect to the application database. Check the production DB_HOST, DB_PORT, and DB_SOCKET settings. No digest was sent.');
+            return self::FAILURE;
+        }
 
         $sellCompleted  = $sellTrades->where('status', 'completed');
         $buyApproved    = $buyTrades->whereIn('status', ['completed', 'approved']);
@@ -46,11 +57,21 @@ class SendDailyTradeSummary extends Command
 
         $adminEmail = config('mail.admin_email', env('ADMIN_EMAIL', config('mail.from.address')));
 
-        Mail::send('emails.daily-summary', $data, function ($m) use ($adminEmail, $data) {
+        try {
+            Mail::send(['html' => 'emails.daily-summary', 'text' => 'emails.daily-summary-text'], $data, function ($m) use ($adminEmail, $data) {
             $m->to($adminEmail)
-              ->subject('📊 Daily Trade Summary — ' . $data['date']);
-        });
+              ->subject('Daily KayXchange trade summary - ' . $data['date']);
+            });
+        } catch (\Throwable $exception) {
+            Log::warning('Daily trade digest was rejected by the configured mail transport.', [
+                'exception_class' => $exception::class,
+                'transport_message' => mb_substr($exception->getMessage(), 0, 500),
+            ]);
+            $this->error('The SMTP provider rejected the digest. Check the mail provider response and sender domain authentication (SPF, DKIM, and DMARC).');
+            return self::FAILURE;
+        }
 
-        $this->info('Daily digest sent to ' . $adminEmail);
+        $this->info('Daily digest accepted by the configured mail transport for ' . $adminEmail);
+        return self::SUCCESS;
     }
 }
