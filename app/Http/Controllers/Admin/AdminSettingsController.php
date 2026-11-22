@@ -225,7 +225,7 @@ class AdminSettingsController extends Controller
         );
 
         $themeLabel = [
-            'classic' => 'Classic', 'festive' => 'Festive 2027', 'christmas' => 'Christmas',
+            'classic' => 'Original KayXchange intro', 'festive' => 'Festive 2027', 'christmas' => 'Christmas',
             'aurora' => 'Aurora Glow', 'orbit' => 'Neon Orbit', 'gold' => 'Golden Luxe',
             'ocean' => 'Ocean Wave', 'cosmic' => 'Cosmic Pulse', 'matrix' => 'Matrix Grid', 'neon' => 'Neon Pulse',
         ][$validated['loader_theme']];
@@ -329,6 +329,17 @@ class AdminSettingsController extends Controller
         }
         if (isset($data['homepage_captcha_mode']) && !in_array($data['homepage_captcha_mode'], ['off', 'custom', 'turnstile'], true)) {
             return back()->with('error', 'Choose Off, Custom CAPTCHA, or Cloudflare Turnstile.');
+        }
+
+        // Do not silently discard a form field when its AdminSetting row was
+        // never seeded. This makes settings form failures visible instead of
+        // telling the administrator that unsaved values were applied.
+        $unregisteredKeys = [];
+        foreach (array_keys($data) as $key) {
+            if (!AdminSetting::where('key', $key)->exists()) $unregisteredKeys[] = $key;
+        }
+        if ($unregisteredKeys) {
+            return back()->with('error', 'These settings have no registered database entry and were not saved: ' . implode(', ', $unregisteredKeys) . '.');
         }
 
         $changedCredentials = [];

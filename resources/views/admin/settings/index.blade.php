@@ -101,12 +101,12 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     <section class="kx-card" aria-labelledby="loader-theme-title">
         <div class="d-flex align-items-center gap-3 flex-wrap">
             <div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(145deg,#123f28,#0c1a13);color:#69ef9a;font-size:1.4rem"><i class="bi bi-stars"></i></div>
-            <div class="flex-grow-1"><h2 id="loader-theme-title" class="h5 fw-bold mb-1">Platform loading experience</h2><p class="field-desc mb-0">Pick from ten animated designs. Your choice is saved and used on the opening splash and shared page loader.</p></div>
+            <div class="flex-grow-1"><h2 id="loader-theme-title" class="h5 fw-bold mb-1">Platform loading experience</h2><p class="field-desc mb-0">Choose one of ten designs. “Original KayXchange intro” keeps the branded KayXchange logo, “Trade with Kay” headline, and ₿ Ξ ₮ animation. Your saved selection is used on the opening splash and shared page loader.</p></div>
         </div>
         <form method="POST" action="{{ route('admin.settings.loader-theme') }}" class="mt-3 d-flex gap-2 flex-wrap align-items-center">
             @csrf
             <select class="form-select" name="loader_theme" id="loaderThemeSelect" aria-label="Platform loader theme" style="max-width:300px">
-                <option value="classic" {{ ($siteLoaderTheme ?? 'classic') === 'classic' ? 'selected' : '' }}>Classic loader</option>
+                <option value="classic" {{ ($siteLoaderTheme ?? 'classic') === 'classic' ? 'selected' : '' }}>Original KayXchange intro · Classic</option>
                 <option value="festive" {{ ($siteLoaderTheme ?? 'classic') === 'festive' ? 'selected' : '' }}>Festive 2027 intro</option>
                 <option value="christmas" {{ ($siteLoaderTheme ?? 'classic') === 'christmas' ? 'selected' : '' }}>Christmas loader</option>
                 <option value="aurora" {{ ($siteLoaderTheme ?? 'classic') === 'aurora' ? 'selected' : '' }}>Aurora Glow</option>
@@ -129,7 +129,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
             preview.addEventListener('click', function () {
                 const theme = selector.value;
                 overlay.className = 'kx-loader kx-loader--' + theme;
-                const labels = {classic:['Loading…','Please wait'],festive:['Welcome to 2027','A bright new year. A little festive magic.'],christmas:['Merry Christmas','Warm wishes from KayXchange.'],aurora:['Aurora Glow','A calm, luminous loading experience.'],orbit:['Neon Orbit','Your KayXchange experience is coming into orbit.'],gold:['Golden Luxe','A refined loading experience, prepared for you.'],ocean:['Ocean Wave','Smoothly preparing your secure experience.'],cosmic:['Cosmic Pulse','Connecting your KayXchange universe.'],matrix:['Matrix Grid','Secure connection in progress.'],neon:['Neon Pulse','Powering up your KayXchange experience.']};
+                const labels = {classic:['Trade with Kay','Fast · Secure · Best Rates'],festive:['Welcome to 2027','A bright new year. A little festive magic.'],christmas:['Merry Christmas','Warm wishes from KayXchange.'],aurora:['Aurora Glow','A calm, luminous loading experience.'],orbit:['Neon Orbit','Your KayXchange experience is coming into orbit.'],gold:['Golden Luxe','A refined loading experience, prepared for you.'],ocean:['Ocean Wave','Smoothly preparing your secure experience.'],cosmic:['Cosmic Pulse','Connecting your KayXchange universe.'],matrix:['Matrix Grid','Secure connection in progress.'],neon:['Neon Pulse','Powering up your KayXchange experience.']};
                 const copy = labels[theme] || labels.classic;
                 window.kxLoading?.show(copy[0], copy[1]);
                 window.setTimeout(() => window.kxLoading?.hide(), 2600);
@@ -262,7 +262,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
                 </div>
                 <div class="mt-2">
                     <div class="field-label mb-1" style="font-size:.78rem;">Purge specific URLs (one per line)</div>
-                    <textarea name="_cf_purge_urls" id="cfPurgeUrls" rows="2" style="width:100%;background:rgba(0,0,0,.35);border:1px solid var(--kx-border);color:var(--kx-text);border-radius:8px;padding:.5rem;font-size:.8rem;" placeholder="https://tradewithkay.com/&#10;https://tradewithkay.com/rates"></textarea>
+                    <textarea id="cfPurgeUrls" rows="2" style="width:100%;background:rgba(0,0,0,.35);border:1px solid var(--kx-border);color:var(--kx-text);border-radius:8px;padding:.5rem;font-size:.8rem;" placeholder="https://tradewithkay.com/&#10;https://tradewithkay.com/rates"></textarea>
                     <button type="button" class="btn-cf btn-purge mt-1" onclick="cfAction('purge_url')">🔄 Purge These URLs</button>
                 </div>
                 <div id="cfActionResult" class="mt-2" style="font-size:.82rem;color:#4ade80;display:none;"></div>
@@ -693,13 +693,23 @@ async function saveCardBinCheckApiKey() {
 }
 
 function showGroup(name, el, ev) {
+    const validGroups = ['cloudflare', 'ai', 'payment', 'telegram', 'general'];
+    if (!validGroups.includes(name)) name = 'cloudflare';
     document.querySelectorAll('.group-section').forEach(s => s.style.display = 'none');
     document.querySelectorAll('.group-tab a').forEach(a => a.classList.remove('active'));
-    document.getElementById('group-' + name).style.display = '';
-    el.classList.add('active');
+    const section = document.getElementById('group-' + name);
+    if (!section) return;
+    section.style.display = '';
+    el = el || document.querySelector(`.group-tab a[href="#${name}"]`);
+    el?.classList.add('active');
     ev?.preventDefault();
     history.replaceState(null, '', '#' + name);
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const initialGroup = window.location.hash.replace(/^#/, '');
+    if (initialGroup) showGroup(initialGroup);
+});
 
 async function cfAction(action) {
     const resultEl = document.getElementById('cfActionResult');

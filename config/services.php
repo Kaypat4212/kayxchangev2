@@ -8,6 +8,9 @@ return [
     'cardbincheck' => [
         'api_key' => env('CARDBINCHECK_API_KEY', ''),
     ],
+    'rapidapi' => [
+        'key' => env('RAPIDAPI_KEY', ''),
+    ],
 
     /*
     |--------------------------------------------------------------------------

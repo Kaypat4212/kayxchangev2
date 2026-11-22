@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -10,6 +11,117 @@ use Illuminate\Support\Facades\Validator;
 
 class ToolsController extends Controller
 {
+    private function rapidApiKey(): string
+    {
+        return trim((string) AdminSetting::getSetting('rapidapi_key', ''))
+            ?: trim((string) config('services.rapidapi.key', ''));
+    }
+
+    public function currency(Request $request): JsonResponse
+    {
+        $amount = $request->query('amount');
+        $from = strtoupper((string) $request->query('from', ''));
+        $to = strtoupper((string) $request->query('to', ''));
+        $currencies = ['USD','NGN','EUR','GBP','GHS','ZAR','CAD','AUD','JPY','INR','KES','BRL'];
+        abort_unless(is_numeric($amount) && (float) $amount > 0 && (float) $amount <= 1000000000000, 422, 'Enter an amount greater than zero and no more than 1 trillion.');
+        abort_unless(in_array($from, $currencies, true) && in_array($to, $currencies, true), 422, 'Choose supported currencies.');
+
+        $data = Cache::remember("tools:currency:{$from}:{$to}:" . (string) $amount, now()->addMinutes(10), function () use ($amount, $from, $to) {
+            try {
+                $response = Http::acceptJson()->timeout(8)->get("https://open.er-api.com/v6/latest/{$from}");
+            } catch (\Illuminate\Http\Client\ConnectionException) {
+                abort(502, 'Currency conversion provider could not be reached. Try again later.');
+            }
+            $rate = $response->json("rates.{$to}");
+            if (!$response->successful() || $response->json('result') !== 'success' || !is_numeric($rate) || (float) $rate <= 0) {
+                abort(502, 'That currency pair is temporarily unavailable.');
+            }
+            return ['from' => $from, 'to' => $to, 'amount' => (float) $amount, 'converted' => (float) $amount * (float) $rate, 'rate' => (float) $rate, 'provider' => 'ExchangeRate-API', 'updated_at' => $response->json('time_last_update_utc')];
+        });
+
+        return response()->json($data)->header('Cache-Control', 'private, max-age=60');
+    }
+
+    public function weather(Request $request): JsonResponse
+    {
+        $query = trim((string) $request->query('q', ''));
+        abort_unless(mb_strlen($query) >= 2 && mb_strlen($query) <= 100 && preg_match('/^[\pL\pN .,_\-\']+$/u', $query), 422, 'Enter a city or place name using letters, numbers, spaces, commas, periods, or hyphens.');
+        $key = $this->rapidApiKey();
+        abort_if($key === '', 503, 'Weather lookup is not configured yet. An admin must save the RapidAPI key and enable the free WeatherAPI.com plan.');
+
+        $cacheKey = 'tools:weather:' . mb_strtolower($query);
+        $data = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($query, $key) {
+            try {
+                $response = Http::acceptJson()->withHeaders([
+                    'X-RapidAPI-Key' => $key,
+                    'X-RapidAPI-Host' => 'weatherapi-com.p.rapidapi.com',
+                ])->timeout(8)->get('https://weatherapi-com.p.rapidapi.com/current.json', ['q' => $query, 'aqi' => 'yes']);
+            } catch (\Illuminate\Http\Client\ConnectionException) {
+                abort(502, 'Weather provider could not be reached. Try again later.');
+            }
+            if ($response->status() === 429) abort(429, 'WeatherAPI free-plan limit reached. Try again later.');
+            if (in_array($response->status(), [401, 403], true)) abort(503, 'RapidAPI key or free WeatherAPI.com subscription is not enabled.');
+            if ($response->status() === 400) abort(404, 'No weather location was found. Check the city name and try again.');
+            if (!$response->successful()) abort(502, 'Weather data is temporarily unavailable.');
+
+            $json = $response->json();
+            return [
+                'location' => trim((string) data_get($json, 'location.name', $query)) . (data_get($json, 'location.country') ? ', ' . data_get($json, 'location.country') : ''),
+                'local_time' => data_get($json, 'location.localtime'),
+                'condition' => data_get($json, 'current.condition.text'),
+                'icon' => data_get($json, 'current.condition.icon'),
+                'temperature_c' => data_get($json, 'current.temp_c'),
+                'feelslike_c' => data_get($json, 'current.feelslike_c'),
+                'humidity' => data_get($json, 'current.humidity'),
+                'wind_kph' => data_get($json, 'current.wind_kph'),
+                'air_quality_index' => data_get($json, 'current.air_quality[' . (string) config('services.weatherapi.index_key', 'us-epa-index') . ']'),
+                'updated_at' => data_get($json, 'current.last_updated'),
+                'provider' => 'WeatherAPI.com via RapidAPI',
+            ];
+        });
+
+        return response()->json($data)->header('Cache-Control', 'private, max-age=60');
+    }
+
+    public function jobs(Request $request): JsonResponse
+    {
+        $query = trim((string) $request->query('q', ''));
+        abort_unless(mb_strlen($query) >= 2 && mb_strlen($query) <= 100 && preg_match('/^[\pL\pN .,_+()\/#&\-]+$/u', $query), 422, 'Enter a role, skill, or location using ordinary text.');
+        $key = $this->rapidApiKey();
+        abort_if($key === '', 503, 'Job search is not configured yet. An admin must save the RapidAPI key and enable the free JSearch plan.');
+
+        $cacheKey = 'tools:jsearch:' . sha1(mb_strtolower($query));
+        $data = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($query, $key) {
+            try {
+                $response = Http::acceptJson()->withHeaders([
+                    'X-RapidAPI-Key' => $key,
+                    'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
+                ])->timeout(12)->get('https://jsearch.p.rapidapi.com/search', [
+                    'query' => $query, 'page' => '1', 'num_pages' => '1', 'date_posted' => 'all',
+                ]);
+            } catch (\Illuminate\Http\Client\ConnectionException) {
+                abort(502, 'Job search provider could not be reached. Try again later.');
+            }
+            if ($response->status() === 429) abort(429, 'JSearch free-plan limit reached. Try again later.');
+            if (in_array($response->status(), [401, 403], true)) abort(503, 'RapidAPI key or free JSearch subscription is not enabled.');
+            if (!$response->successful()) abort(502, 'Job listings are temporarily unavailable.');
+
+            return collect($response->json('data', []))->take(8)->map(fn ($job) => [
+                'title' => (string) data_get($job, 'job_title', 'Job listing'),
+                'company' => (string) data_get($job, 'employer_name', ''),
+                'location' => trim(implode(', ', array_filter([
+                    data_get($job, 'job_is_remote') ? 'Remote' : data_get($job, 'job_city'),
+                    data_get($job, 'job_country'),
+                ]))),
+                'type' => (string) data_get($job, 'job_employment_type', ''),
+                'posted_at' => (string) data_get($job, 'job_posted_at_datetime_utc', ''),
+                'url' => (string) data_get($job, 'job_apply_link', ''),
+            ])->filter(fn ($job) => filter_var($job['url'], FILTER_VALIDATE_URL) && in_array(parse_url($job['url'], PHP_URL_SCHEME), ['http', 'https'], true))->values()->all();
+        });
+
+        return response()->json(['jobs' => $data, 'provider' => 'JSearch via RapidAPI'])->header('Cache-Control', 'private, max-age=60');
+    }
+
     public function bin(Request $request): JsonResponse
     {
         $bin = (string) $request->query('bin', '');
@@ -63,6 +175,28 @@ class ToolsController extends Controller
                     ]];
                 },
             ];
+
+            $rapidApiKey = $this->rapidApiKey();
+            if ($rapidApiKey !== '') {
+                array_splice($providers, 1, 0, [function () use ($bin, $rapidApiKey) {
+                    $response = Http::acceptJson()->withHeaders([
+                        'X-RapidAPI-Key' => $rapidApiKey,
+                        'X-RapidAPI-Host' => 'bin-ip-checker.p.rapidapi.com',
+                    ])->timeout(8)->get('https://bin-ip-checker.p.rapidapi.com/', ['bin' => $bin]);
+                    if (!$response->successful()) return ['status' => $response->status(), 'data' => null];
+                    $record = $response->json('BIN', []);
+                    if (!is_array($record) || empty($record)) return ['status' => 502, 'data' => null];
+                    return ['status' => 200, 'data' => [
+                        'scheme' => data_get($record, 'scheme'),
+                        'type' => data_get($record, 'type'),
+                        'brand' => data_get($record, 'brand'),
+                        'bank' => ['name' => data_get($record, 'issuer.name')],
+                        'country' => ['name' => data_get($record, 'country.name'), 'alpha2' => data_get($record, 'country.alpha2')],
+                        'matched_bin' => data_get($record, 'number', $bin),
+                        'provider' => 'BIN/IP Checker via RapidAPI',
+                    ]];
+                }]);
+            }
 
             // Optional authenticated dataset for improved international
             // matching. Keep its key in server environment only.
@@ -137,7 +271,7 @@ class ToolsController extends Controller
         $name = strtolower(rtrim((string) $request->query('name', ''), '.'));
         $type = strtoupper((string) $request->query('type', 'A'));
         abort_unless(preg_match('/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i', $name), 422, 'Enter a valid domain or hostname.');
-        abort_unless(in_array($type, ['A','AAAA','MX','TXT','NS','CNAME'], true), 422, 'Unsupported DNS record type.');
+        abort_unless(in_array($type, ['A','AAAA','MX','TXT','NS','CNAME','PTR','SRV','SOA','CAA'], true), 422, 'Unsupported DNS record type.');
 
         $data = Cache::remember("tools:dns:{$name}:{$type}", now()->addMinutes(5), function () use ($name, $type) {
             try {
@@ -146,8 +280,8 @@ class ToolsController extends Controller
                 abort(502, 'The DNS provider could not be reached. Try again later.');
             }
             if (!$response->successful()) abort(502, 'The DNS provider is temporarily unavailable.');
-            $expected = ['A'=>1,'NS'=>2,'CNAME'=>5,'MX'=>15,'TXT'=>16,'AAAA'=>28][$type];
-            return ['status' => $response->json('Status'), 'comment' => $response->json('Comment'), 'answers' => collect($response->json('Answer', []))->where('type', $expected)->map(fn ($answer) => ['type' => $answer['type'], 'ttl' => $answer['TTL'] ?? null, 'data' => $answer['data'] ?? ''])->values()->all()];
+            $expected = ['A'=>1,'NS'=>2,'CNAME'=>5,'SOA'=>6,'PTR'=>12,'MX'=>15,'TXT'=>16,'SRV'=>33,'AAAA'=>28,'CAA'=>257][$type];
+            return ['status' => $response->json('Status'), 'comment' => $response->json('Comment'), 'answers' => collect($response->json('Answer', []))->where('type', $expected)->map(fn ($answer) => ['type' => $answer['type'], 'ttl' => $answer['TTL'] ?? null, 'data' => $answer['data'] ?? ''])->values()->all(), 'provider' => 'Google DNS'];
         });
         return response()->json($data);
     }

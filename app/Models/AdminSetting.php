@@ -89,6 +89,7 @@ class AdminSetting extends Model
     {
         $defaults = [
             ['key' => 'tools_page_enabled', 'group' => 'general', 'is_encrypted' => false, 'label' => 'User tools page', 'description' => 'Show or hide the tools page and its lookup endpoints for users (1 = on, 0 = off).'],
+            ['key' => 'rapidapi_key', 'group' => 'payment', 'is_encrypted' => true, 'label' => 'RapidAPI Key for user tools', 'description' => 'Optional shared X-RapidAPI-Key for WeatherAPI.com, JSearch and BIN/IP Checker. Stored encrypted and used server-side. Subscribe to each plan in RapidAPI first and check its quota and usage terms.'],
             ['key' => 'cardbincheck_api_key', 'group' => 'payment', 'is_encrypted' => true, 'label' => 'CardBinCheck API Key', 'description' => 'Optional X-Api-Key for higher lookup quota. Stored encrypted and used server-side only; leave blank to use the public quota.'],
             // ── Cloudflare ─────────────────────────────────────────────────
             ['key' => 'cf_api_token',    'group' => 'cloudflare', 'is_encrypted' => true,  'label' => 'API Token',        'description' => 'Cloudflare API Token (Global or scoped to Zone:Edit, Cache Purge)'],

@@ -652,6 +652,9 @@ Route::middleware(['auth', 'verified_or_backdoor'])->group(function () {
     Route::get('/tools/api/bin', [\App\Http\Controllers\ToolsController::class, 'bin'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:30,1'])->name('tools.api.bin');
     Route::get('/tools/api/username', [\App\Http\Controllers\ToolsController::class, 'username'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:30,1'])->name('tools.api.username');
     Route::get('/tools/api/dns', [\App\Http\Controllers\ToolsController::class, 'dns'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:30,1'])->name('tools.api.dns');
+    Route::get('/tools/api/currency', [\App\Http\Controllers\ToolsController::class, 'currency'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:20,1'])->name('tools.api.currency');
+    Route::get('/tools/api/weather', [\App\Http\Controllers\ToolsController::class, 'weather'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:20,1'])->name('tools.api.weather');
+    Route::get('/tools/api/jobs', [\App\Http\Controllers\ToolsController::class, 'jobs'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:10,1'])->name('tools.api.jobs');
     Route::get('/tools/api/github-repository', [\App\Http\Controllers\ToolsController::class, 'githubRepository'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:30,1'])->name('tools.api.github-repository');
     Route::post('/tools/api/smtp-probe', [\App\Http\Controllers\ToolsController::class, 'smtpProbe'])->middleware([\App\Http\Middleware\EnsureToolsPageEnabled::class, 'throttle:5,1'])->name('tools.api.smtp-probe');
     Route::get('/dashboard', [CryptoController::class, 'dashboard'])->name('dashboard');
