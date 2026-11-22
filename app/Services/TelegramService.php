@@ -4006,9 +4006,9 @@ class TelegramService
                   "• Reference: #{$withdrawal->id}\n" .
                   "• Time: " . now()->format('Y-m-d H:i:s') . "\n\n";
 
-        if ($withdrawal->status === 'completed') {
-            $message .= "✅ Funds have been sent to your bank account.\n" .
-                       "Please allow 1-24 hours for bank processing.\n\n";
+        if (in_array(strtolower((string) $withdrawal->status), ['approved', 'successful', 'completed'], true)) {
+            $message .= "✅ ₦{$amount} NGN has been sent to your bank account.\n" .
+                       "Please allow a little time for your bank to reflect the transfer.\n\n";
         } elseif (in_array($withdrawal->status, ['cancelled', 'rejected'])) {
             $message .= "💰 The amount has been refunded to your account balance.\n\n";
         } else {

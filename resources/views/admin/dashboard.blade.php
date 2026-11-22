@@ -999,6 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const escapeAdminText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const adminNotificationUrl = @json(route('admin.notifications.show', ['id' => '__NOTIFICATION_ID__']));
     // Keep admin alerts fresh while the dashboard stays open.
     const loadAdminRecentNotifications = () => fetch('{{ route("admin.notifications.index") }}?per_page=5', {
         headers: {
@@ -1037,6 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${n.is_broadcast ? '<span class="tag-broadcast">Broadcast</span>' : ''}
                         ${!n.is_read     ? '<span class="tag-unread">Unread</span>' : ''}
                     </div>
+                    <a href="${adminNotificationUrl.replace('__NOTIFICATION_ID__', encodeURIComponent(n.id))}" style="display:inline-flex;align-items:center;gap:5px;margin-top:7px;color:var(--kx-green);font-size:.7rem;font-weight:700;text-decoration:none"><i class="bi bi-arrow-up-right-circle"></i>View now</a>
                 </div>
             </div>`).join('');
     })

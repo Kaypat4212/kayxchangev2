@@ -166,6 +166,44 @@ class NotificationController extends Controller
         return view('admin.notifications.index', compact('notifications', 'stats', 'users'));
     }
 
+    public function adminShow($id)
+    {
+        $notification = Notification::with(['user', 'admin'])->findOrFail($id);
+        if (!$notification->is_read) $notification->markAsRead();
+
+        $data = is_array($notification->data) ? $notification->data : [];
+        $actionUrl = null;
+        $actionLabel = null;
+        $caseId = filter_var($data['support_case_id'] ?? null, FILTER_VALIDATE_INT);
+        if ($caseId && \App\Models\SupportCase::whereKey($caseId)->exists()) {
+            $actionUrl = route('admin.support-cases.index', ['case_id' => $caseId]) . '#support-case-' . $caseId;
+            $actionLabel = 'Open case and reply';
+        } elseif (($data['type'] ?? null) === 'crypto_withdrawal' || !empty($data['withdrawal_id'])) {
+            $actionUrl = route('admin.crypto-withdrawals.index');
+            $actionLabel = 'Review crypto withdrawal';
+        } elseif (!empty($data['trade_type']) || !empty($data['reference'])) {
+            $actionUrl = route('admin.trades');
+            $actionLabel = 'Open trades and transactions';
+        } else {
+            $actionUrl = $this->trustedAdminNotificationUrl($data['url'] ?? null);
+            if ($actionUrl) $actionLabel = 'Open related admin page';
+        }
+
+        return view('admin.notifications.show', compact('notification', 'data', 'actionUrl', 'actionLabel'));
+    }
+
+    private function trustedAdminNotificationUrl($candidate): ?string
+    {
+        if (!is_string($candidate) || trim($candidate) === '') return null;
+        $target = parse_url(trim($candidate));
+        if (!$target || isset($target['user']) || isset($target['pass'])) return null;
+        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+        if (isset($target['host']) && strtolower($target['host']) !== strtolower((string) $appHost)) return null;
+        $path = $target['path'] ?? '';
+        if (!str_starts_with($path, '/admin/') || str_contains($path, '..')) return null;
+        return $path . (isset($target['query']) ? '?' . $target['query'] : '') . (isset($target['fragment']) ? '#' . $target['fragment'] : '');
+    }
+
     public function adminCreate()
     {
         $users = User::select('id', 'name', 'email')->get();

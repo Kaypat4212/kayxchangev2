@@ -134,6 +134,9 @@ body{background:var(--kx-dark);color:var(--kx-text);font-family:'Poppins',sans-s
 .trm-cmd-card{padding:clamp(18px,2.5vw,26px);margin-bottom:16px}.trm-quick-label,.trm-cmd-label,.trm-allowed-title{color:#dce8e4;font-size:.75rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.trm-hdr-sub{max-width:none}
 .trm-quick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.trm-quick-btn{padding:10px 12px;text-align:left;background:#111922;border-color:rgba(148,163,184,.13);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#b8c7d1;transition:transform .16s,border-color .16s,background .16s}.trm-quick-btn:before{content:'›';color:#4ade80;margin-right:7px;font-weight:900}.trm-quick-btn:hover{transform:translateY(-1px);background:rgba(34,197,94,.07)}
 .trm-cmd-row{gap:9px}.trm-cmd-inp{background:#0a1016;border-color:rgba(148,163,184,.2);border-radius:12px;color:#f2f7f5}.trm-run-btn{border-radius:12px;padding:10px 18px;box-shadow:0 7px 20px rgba(0,204,0,.14)}
+.trm-cmd-inp.trm-cmd-textarea{display:block;width:100%;min-height:150px;resize:vertical;line-height:1.65;white-space:pre;}
+.trm-batch-note{padding:11px 13px;margin:0 0 13px;border-radius:11px;border:1px solid rgba(56,189,248,.16);background:rgba(56,189,248,.055);color:#a9c6d5;font-size:.76rem;line-height:1.55}
+.trm-batch-note code{color:#8df2aa}
 .trm-output-wrap{position:relative;margin-top:14px;padding:14px;border:1px solid rgba(148,163,184,.14);border-radius:15px;background:#090e13}.trm-output-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;color:#8495a0;font-size:.69rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.trm-output-head span:first-child:before{content:'';display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#4ade80}.trm-output{margin:0;padding:12px 2px 2px;min-height:150px;max-height:440px;border:0;border-radius:0;background:transparent;font-size:.8rem;line-height:1.75;overflow-wrap:anywhere}.trm-output-action{padding:5px 8px;border:1px solid rgba(148,163,184,.15);border-radius:8px;background:rgba(255,255,255,.04);color:#b7c6ce;font-size:.68rem}.trm-output-action:hover{color:#fff;border-color:rgba(74,222,128,.4)}
 .trm-allowed-card{padding:20px}.trm-allowed-list{gap:7px}.trm-allowed-tag{padding:6px 9px;border-radius:8px;background:#101820;color:#9fb1bd;border-color:rgba(148,163,184,.13)}.trm-side-note{margin-top:12px;padding:17px;border-color:rgba(56,189,248,.15);background:rgba(13,26,34,.64);border-radius:16px}.trm-side-note strong{color:#dcecf4}
 .trm-pin-screen{align-items:center;min-height:calc(100vh - 340px);padding:25px 0}.trm-pin-card{position:relative;overflow:hidden;max-width:480px;padding:clamp(25px,5vw,42px);border:1px solid rgba(148,163,184,.17);border-radius:25px;background:radial-gradient(ellipse at 50% 0,rgba(34,197,94,.12),transparent 43%),linear-gradient(145deg,#17212b,#10171e);box-shadow:0 26px 80px rgba(0,0,0,.32)}.trm-pin-icon{display:grid;place-items:center;width:62px;height:62px;margin:0 auto 17px;border-radius:20px;background:rgba(34,197,94,.12);color:#68e897;font-size:1.6rem}.trm-pin-title{color:#f3f7f5;font-size:1.32rem;font-weight:850}.trm-pin-sub{max-width:340px;margin:0 auto 22px;color:#9aaab5;line-height:1.65}.trm-pin-inp{background:#0a1016;border-color:rgba(148,163,184,.2);border-radius:12px}.trm-pin-btn{border-radius:12px;box-shadow:0 8px 23px rgba(0,204,0,.14)}
@@ -239,14 +242,14 @@ body{background:var(--kx-dark);color:var(--kx-text);font-family:'Poppins',sans-s
 
     {{-- Command runner --}}
     <div class="trm-cmd-card">
-        <p class="trm-cmd-label"><i class="bi bi-code-slash me-2" style="color:#55df83"></i>Command runner</p>
-        <p class="trm-hdr-sub mb-3">Only commands on the server allowlist can run. Command arguments are validated by Laravel.</p>
+        <p class="trm-cmd-label"><i class="bi bi-clipboard2-code me-2" style="color:#55df83"></i>Paste a maintenance runbook</p>
+        <p class="trm-hdr-sub mb-3">Paste up to 10 approved Artisan commands, one per line. Lines run in order and stop on the first failure.</p>
+        <div class="trm-batch-note"><i class="bi bi-shield-lock me-1"></i>Only allowlisted <code>php artisan</code> commands run here. Shell commands and arbitrary PHP are blocked. Use <code>#</code> for comment lines.</div>
         <div class="trm-cmd-row">
-            <input type="text" id="cmdInput" class="trm-cmd-inp"
-                placeholder="e.g. migrate:status"
-                onkeydown="if(event.key==='Enter')runCmd()">
-            <button class="trm-run-btn" id="runBtn" onclick="runCmd()">▶ Run</button>
+            <textarea id="cmdInput" class="trm-cmd-inp trm-cmd-textarea" rows="5" maxlength="4000" placeholder="php artisan view:clear&#10;php artisan view:cache" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();runCmd()}"></textarea>
+            <button class="trm-run-btn" id="runBtn" onclick="runCmd()"><i class="bi bi-play-fill me-1"></i>Run commands</button>
         </div>
+        <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2"><small style="color:#8495a0">Tip: Ctrl + Enter runs the pasted commands.</small><button type="button" class="trm-output-action" onclick="document.getElementById('cmdInput').value='';document.getElementById('cmdInput').focus()"><i class="bi bi-eraser me-1"></i>Clear box</button></div>
         <div class="trm-output-wrap"><div class="trm-output-head"><span>Execution output</span><span class="d-flex gap-2"><button class="trm-output-action" type="button" onclick="copyOutput()"><i class="bi bi-copy me-1"></i>Copy</button><button class="trm-output-action" type="button" onclick="clearOutput()"><i class="bi bi-eraser me-1"></i>Clear</button></span></div><div id="output" class="trm-output" aria-live="polite"><span style="color:var(--kx-muted);">Choose a quick action or enter an allowlisted command to get started.</span></div></div>
     </div>
     </div>
@@ -428,7 +431,7 @@ async function runCmd() {
 
     runBtn.disabled = true;
     runBtn.textContent = '⏳ Running…';
-    output.innerHTML = '<span style="color:#7a8599;">Running: php artisan ' + escHtml(cmd) + ' …</span>\n';
+    output.textContent = 'Running the allowlisted Artisan command batch…';
 
     try {
         const res = await fetch(RUN_URL, {
@@ -444,24 +447,15 @@ async function runCmd() {
 
         if (!res.ok || data.error) {
             const message = data.output || data.error || data.message || ('Request failed with HTTP ' + res.status);
-            output.innerHTML = '<span class="trm-prompt">$ php artisan ' + escHtml(cmd) + '</span>\n' +
-                '<span class="trm-err">❌ ' + escHtml(message) + '</span>\n' +
-                '<span class="trm-output-status">Request failed · HTTP ' + res.status + '</span>';
+            output.textContent = message + '\n\nRequest failed · HTTP ' + res.status;
         } else {
-            const out = data.output?.trim() || '(no output)';
-            const exitCode = data.exit_code ?? 0;
-            const statusClass = exitCode === 0 ? 'trm-ok' : 'trm-err';
-            const statusIcon = exitCode === 0 ? '✅' : '❌';
-            output.innerHTML =
-                '<span class="trm-prompt">$ php artisan ' + escHtml(cmd) + '</span>\n' +
-                escHtml(out) + '\n\n' +
-                '<span class="' + statusClass + '">' + statusIcon + ' Exited with code ' + exitCode + '</span>';
+            output.textContent = (data.output?.trim() || '(no output)') + '\n\n✅ Completed ' + (data.commands_run || 1) + ' command(s).';
         }
     } catch (e) {
         output.innerHTML = '<span class="trm-err">❌ Request failed: ' + escHtml(e.message) + '</span>';
     } finally {
         runBtn.disabled = false;
-        runBtn.textContent = '▶ Run';
+        runBtn.innerHTML = '<i class="bi bi-play-fill me-1"></i>Run commands';
     }
 }
 

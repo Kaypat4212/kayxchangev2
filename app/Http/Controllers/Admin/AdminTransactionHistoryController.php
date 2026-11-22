@@ -38,7 +38,7 @@ class AdminTransactionHistoryController extends Controller
             'status' => ['required', 'in:pending,approved,successful,completed,rejected,failed,cancelled'],
             'reason' => ['required', 'string', 'min:5', 'max:500'],
         ]);
-        $delta = DB::transaction(function () use ($request, $type, $id, $data) {
+        $editResult = DB::transaction(function () use ($request, $type, $id, $data) {
             $model = match ($type) { 'deposit' => Deposit::class, 'withdrawal' => Withdrawal::class, 'sell' => SellTrade::class, 'buy' => BuyTrade::class };
             $record = $model::query()->lockForUpdate()->findOrFail($id);
             $before = $record->only(['amount', 'fee_amount', 'naira_amount', 'status']);
@@ -62,9 +62,22 @@ class AdminTransactionHistoryController extends Controller
                 'after' => $record->only(['amount', 'fee_amount', 'naira_amount', 'status']) + ['reason' => $data['reason'], 'ngn_balance_delta' => $balanceDelta],
                 'ip_address' => $request->ip(), 'user_agent' => substr((string) $request->userAgent(), 0, 1000),
             ]);
-            return $balanceDelta;
+            return ['delta' => $balanceDelta, 'old_status' => strtolower((string) $before['status'])];
         });
-        return back()->with('success', 'Transaction updated directly. Balance adjustment: ₦' . number_format($delta, 2) . '.');
+        if ($type === 'withdrawal'
+            && !in_array($editResult['old_status'], ['approved', 'successful', 'completed'], true)
+            && in_array(strtolower((string) $data['status']), ['approved', 'successful', 'completed'], true)) {
+            try {
+                $withdrawal = Withdrawal::with('user')->find($id);
+                if ($withdrawal) app(\App\Services\WithdrawalNotificationService::class)->approved($withdrawal);
+            } catch (\Throwable $notificationError) {
+                \Illuminate\Support\Facades\Log::warning('Approved withdrawal notification follow-up failed after transaction edit.', [
+                    'withdrawal_id' => $id,
+                    'error' => $notificationError->getMessage(),
+                ]);
+            }
+        }
+        return back()->with('success', 'Transaction updated directly. Balance adjustment: ₦' . number_format($editResult['delta'], 2) . '.');
     }
 
     private function updateCryptoWithdrawal(Request $request, int $id)

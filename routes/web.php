@@ -535,6 +535,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::get('/', [App\Http\Controllers\NotificationController::class, 'adminIndex'])->name('index');
         Route::get('/create', [App\Http\Controllers\NotificationController::class, 'adminCreate'])->name('create');
         Route::post('/', [App\Http\Controllers\NotificationController::class, 'adminStore'])->name('store');
+        Route::get('/{id}', [App\Http\Controllers\NotificationController::class, 'adminShow'])->whereNumber('id')->name('show');
         Route::get('/{id}/edit', [App\Http\Controllers\NotificationController::class, 'adminEdit'])->name('edit');
         Route::put('/{id}', [App\Http\Controllers\NotificationController::class, 'adminUpdate'])->name('update');
         Route::delete('/{id}', [App\Http\Controllers\NotificationController::class, 'adminDelete'])->name('delete');

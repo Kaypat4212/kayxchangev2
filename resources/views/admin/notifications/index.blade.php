@@ -119,6 +119,7 @@ select.kx-input option{background:var(--kx-card2);color:var(--kx-text);}
                     <td style="font-size:.75rem;color:var(--kx-muted)">{{ $n->created_at ? $n->created_at->diffForHumans() : '—' }}</td>
                     <td>
                         <div class="d-flex gap-1">
+                            <a href="{{ route('admin.notifications.show', $n->id) }}" class="btn-kx-edit"><i class="bi bi-box-arrow-up-right"></i> View now</a>
                             <form action="{{ route('admin.notifications.delete', $n->id) }}" method="POST" style="display:inline" onsubmit="return confirm('Delete this notification?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn-kx-danger"><i class="bi bi-trash"></i></button>

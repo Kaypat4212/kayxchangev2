@@ -6,6 +6,7 @@ use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -191,12 +192,11 @@ class User extends Authenticatable implements MustVerifyEmail
                     ->orderBy('user_badges.awarded_at');
     }
 
-    public function pinnedBadges()
+    public function pinnedBadges(): HasMany
     {
-        return $this->belongsToMany(Badge::class, 'user_badges')
-                    ->withPivot(['awarded_at', 'pin_position'])
-                    ->wherePivot('is_pinned', true)
-                    ->orderBy('user_badges.pin_position');
+        return $this->hasMany(UserBadge::class)
+                    ->where('is_pinned', true)
+                    ->orderBy('pin_position');
     }
 
     public function userBadges()

@@ -143,48 +143,78 @@ class AdminTerminalController extends Controller
             return response()->json(['output' => '⛔ Terminal locked. Enter PIN first.'], 403);
         }
 
-        $request->validate(['command' => 'required|string|max:500']);
+        $request->validate(['command' => 'required|string|max:4000']);
 
-        $input   = trim($request->command);
-        // Strip leading "php artisan " or "artisan " if user typed it
-        $input   = preg_replace('/^(php\s+)?artisan\s+/', '', $input);
-        $parts   = explode(' ', $input, 2);
-        $command = $parts[0];
-        $args    = $parts[1] ?? '';
-
-        // Allowlist check
-        if (!in_array($command, self::ALLOWED_ARTISAN, true)) {
-            Log::warning('Terminal: blocked artisan command', [
-                'admin_id' => auth()->id(),
-                'command'  => $input,
-            ]);
-            return response()->json([
-                'output' => "⛔ Command [{$command}] is not in the allowed list.\n\nAllowed: " . implode(', ', self::ALLOWED_ARTISAN),
-            ], 403);
+        $lines = preg_split('/\R/u', trim((string) $request->input('command'))) ?: [];
+        $commands = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#')) continue;
+            $line = preg_replace('/^(php\s+)?artisan\s+/', '', $line);
+            $commands[] = trim($line);
         }
 
-        Log::info('Terminal: running artisan command', [
-            'admin_id' => auth()->id(),
-            'command'  => $input,
-        ]);
-
-        try {
-            $exitCode = Artisan::call($command . ($args ? ' ' . $args : ''), [], new \Symfony\Component\Console\Output\BufferedOutput());
-            $output   = Artisan::output();
-
-            return response()->json([
-                'output'    => $output ?: "✅ Done. Exit code: {$exitCode}",
-                'exit_code' => $exitCode,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Terminal: artisan command exception', [
-                'command' => $input,
-                'error'   => $e->getMessage(),
-            ]);
-            return response()->json([
-                'output' => "❌ Error: " . $e->getMessage(),
-            ], 500);
+        if (!$commands || count($commands) > 10) {
+            return response()->json(['output' => 'Paste between 1 and 10 allowlisted Artisan commands, one command per line.'], 422);
         }
+
+        $results = [];
+        $finalExitCode = 0;
+        foreach ($commands as $input) {
+            // This is an Artisan-only console. Reject shell syntax and control operators.
+            if (preg_match('/[;&|`$<>\r\n]/', $input)
+                || !preg_match('/^([a-zA-Z0-9:_-]+)(?:\s+(.+))?$/', $input, $matches)) {
+                return response()->json(['output' => 'Only plain Artisan command lines are accepted. Shell syntax and pasted PHP are not supported.'], 422);
+            }
+
+            $command = $matches[1];
+            $args = trim($matches[2] ?? '');
+            if (!in_array($command, self::ALLOWED_ARTISAN, true)) {
+                Log::warning('Terminal: blocked Artisan command', ['admin_id' => auth()->id(), 'command_name' => $command]);
+                return response()->json([
+                    'output' => "⛔ Command [{$command}] is not in the allowed list.\n\nAllowed: " . implode(', ', self::ALLOWED_ARTISAN),
+                ], 403);
+            }
+
+            if ($args !== '' && !$this->validArtisanArguments($command, $args)) {
+                return response()->json(['output' => "⛔ Arguments are not allowed for [{$command}]. Remove options or use an approved maintenance command."], 422);
+            }
+
+            Log::info('Terminal: running allowlisted Artisan command', ['admin_id' => auth()->id(), 'command_name' => $command]);
+            try {
+                $buffer = new \Symfony\Component\Console\Output\BufferedOutput();
+                $finalExitCode = Artisan::call($input, [], $buffer);
+                $results[] = '$ php artisan ' . $input . "\n" . (trim($buffer->fetch()) ?: "Done. Exit code: {$finalExitCode}");
+                if ($finalExitCode !== 0) break;
+            } catch (\Throwable $e) {
+                Log::error('Terminal: Artisan command exception', ['command_name' => $command, 'error' => $e->getMessage()]);
+                $results[] = '$ php artisan ' . $command . "\n❌ Error: " . $e->getMessage();
+                $finalExitCode = 1;
+                break;
+            }
+        }
+
+        return response()->json([
+            'output' => implode("\n\n", $results),
+            'exit_code' => $finalExitCode,
+            'commands_run' => count($results),
+        ], $finalExitCode === 0 ? 200 : 422);
+    }
+
+    private function validArtisanArguments(string $command, string $args): bool
+    {
+        $tokens = preg_split('/\s+/', $args) ?: [];
+        foreach ($tokens as $token) {
+            $allowed = match ($command) {
+                'migrate' => in_array($token, ['--force', '--pretend'], true),
+                'migrate:rollback' => in_array($token, ['--force', '--pretend'], true) || preg_match('/^--step=\d{1,3}$/', $token),
+                'db:seed' => $token === '--force' || preg_match('/^--class=[A-Za-z_][A-Za-z0-9_]*$/', $token),
+                'telescope:prune' => preg_match('/^--hours=\d{1,4}$/', $token),
+                default => false,
+            };
+            if (!$allowed) return false;
+        }
+        return true;
     }
 
     // ─────────────────────────── Admin: Bug Reports ───────────────────────────

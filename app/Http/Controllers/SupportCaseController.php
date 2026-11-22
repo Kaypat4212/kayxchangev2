@@ -133,9 +133,11 @@ class SupportCaseController extends Controller
         return redirect()->route('support.cases.index')->with('success', ($isComplaint ? 'Complaint #' : 'Support case #') . $case->id . ' was sent to support and the admin team.');
     }
 
-    public function adminIndex()
+    public function adminIndex(Request $request)
     {
-        $cases = SupportCase::with(['user', 'deposit', 'assignedAdmin', 'messages'])->latest()->paginate(25);
+        $query = SupportCase::with(['user', 'deposit', 'assignedAdmin', 'messages'])->latest();
+        if ($request->filled('case_id')) $query->whereKey($request->integer('case_id'));
+        $cases = $query->paginate(25)->appends($request->query());
         return view('admin.support-cases', compact('cases'));
     }
 

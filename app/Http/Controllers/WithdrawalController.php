@@ -270,34 +270,30 @@ class WithdrawalController extends Controller
             $withdrawal = Withdrawal::with('user')->findOrFail($id);
             $user = $withdrawal->user;
 
-            // Send Telegram notification for approval
-            $bankDetails = $withdrawal->bank_account;
-            $this->sendTelegramNotification($user, $withdrawal, $bankDetails, true);
+            app(\App\Services\WithdrawalNotificationService::class)->approved($withdrawal);
 
-            // Send withdrawal approved email
             try {
-                $bd = is_array($bankDetails) ? $bankDetails : (json_decode($bankDetails, true) ?? []);
-                $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — ' . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
-                Mail::to($user->email)->send(new TradeNotification(
-                    user: $user,
-                    templateKey: 'withdrawal_approved',
-                    data: [
-                        'amount'          => number_format((float)($withdrawal->amount ?? 0), 2),
-                        'payment_method'  => 'Bank Transfer',
-                        'account_details' => $accountDetails,
-                    ],
-                    badge: ['text' => 'Payment Sent', 'color' => '#00cc00'],
-                    ctaUrl: url('/dashboard'),
-                    ctaText: 'Go to Dashboard',
-                ));
-            } catch (\Exception $mailEx) {
-                Log::warning('Withdrawal approved email failed: ' . $mailEx->getMessage());
+                app(AdminTradeAlertService::class)->sendStatusChangeAlert('withdrawal', [
+                    'reference' => $withdrawal->reference,
+                    'user_name' => $user->name ?? 'N/A',
+                    'old_status' => 'pending',
+                    'new_status' => $withdrawal->status,
+                ]);
+            } catch (\Throwable $alertEx) {
+                Log::warning('Withdrawal approval admin alert failed.', ['withdrawal_id' => $withdrawal->id, 'error' => $alertEx->getMessage()]);
             }
 
             Log::info('Withdrawal approved: ', $withdrawal->toArray());
 
             // ── Auto-payout after commit ────────────────────────────────
-            $this->attemptAutoPayout($withdrawal, $user);
+            try {
+                $this->attemptAutoPayout($withdrawal, $user);
+            } catch (\Throwable $payoutEx) {
+                Log::error('Withdrawal was approved, but the auto-payout follow-up failed.', [
+                    'withdrawal_id' => $withdrawal->id,
+                    'error' => $payoutEx->getMessage(),
+                ]);
+            }
 
             return response()->json(['message' => 'Transaction approved, funds sent.']);
         } catch (\Exception $e) {
@@ -694,36 +690,40 @@ class WithdrawalController extends Controller
                 $oldStatus !== $request->status
             ) {
                 $wUser = $withdrawal->user;
-                $bd = (array) ($withdrawal->bank_account ?? []);
-                $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — '
-                    . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
+                if ($isApprovedNow) {
+                    app(\App\Services\WithdrawalNotificationService::class)->approved($withdrawal);
+                } else {
+                    $bd = is_array($withdrawal->bank_account)
+                        ? $withdrawal->bank_account
+                        : (json_decode((string) $withdrawal->bank_account, true) ?: []);
+                    $accountDetails = ($bd['account_name'] ?? 'N/A') . ' — '
+                        . ($bd['account_number'] ?? 'N/A') . ' (' . ($bd['bank_name'] ?? 'N/A') . ')';
 
-                $templateKey = $isApprovedNow ? 'withdrawal_approved' : 'withdrawal_cancelled';
+                    try {
+                        Mail::to($wUser->email)->send(new TradeNotification(
+                            user: $wUser,
+                            templateKey: 'withdrawal_cancelled',
+                            data: [
+                                'amount' => number_format((float) $withdrawal->amount, 2),
+                                'payment_method' => 'Bank Transfer',
+                                'account_details' => $accountDetails,
+                                'reason' => 'Please contact support for more details.',
+                            ],
+                            badge: ['text' => 'Withdrawal Cancelled', 'color' => '#dc3545'],
+                            ctaUrl: url('/dashboard'),
+                            ctaText: 'Go to Dashboard',
+                        ));
+                    } catch (\Throwable $mailEx) {
+                        Log::warning('Withdrawal updateStatus email failed: ' . $mailEx->getMessage());
+                    }
 
-                try {
-                    Mail::to($wUser->email)->send(new TradeNotification(
-                        user: $wUser,
-                        templateKey: $templateKey,
-                        data: [
-                            'amount'          => number_format((float)$withdrawal->amount, 2),
-                            'payment_method'  => 'Bank Transfer',
-                            'account_details' => $accountDetails,
-                            'reason'          => 'Please contact support for more details.',
-                        ],
-                        badge: [
-                            'text'  => $isApprovedNow ? 'Payment Sent' : 'Withdrawal Cancelled',
-                            'color' => $isApprovedNow ? '#00cc00' : '#dc3545',
-                        ],
-                        ctaUrl: url('/dashboard'),
-                        ctaText: 'Go to Dashboard',
-                    ));
-                } catch (\Exception $mailEx) {
-                    Log::warning('Withdrawal updateStatus email failed: ' . $mailEx->getMessage());
-                }
-
-                // Also send Telegram if chat ID set
-                if ($wUser->telegram_chat_id) {
-                    $this->sendTelegramNotification($wUser, $withdrawal, $bd, $isApprovedNow);
+                    if ($wUser->telegram_chat_id) {
+                        try {
+                            $this->sendTelegramNotification($wUser, $withdrawal, $bd, false);
+                        } catch (\Throwable $notifyEx) {
+                            Log::warning('Withdrawal cancellation Telegram notification failed.', ['withdrawal_id' => $withdrawal->id, 'error' => $notifyEx->getMessage()]);
+                        }
+                    }
                 }
 
                 // Standardized admin status-change alert
@@ -740,7 +740,14 @@ class WithdrawalController extends Controller
             }
 
             if ($request->status === 'approved' && $oldStatus === 'pending' && $withdrawal->user) {
-                $this->attemptAutoPayout($withdrawal, $withdrawal->user);
+                try {
+                    $this->attemptAutoPayout($withdrawal, $withdrawal->user);
+                } catch (\Throwable $payoutEx) {
+                    Log::error('Withdrawal was approved, but the auto-payout follow-up failed.', [
+                        'withdrawal_id' => $withdrawal->id,
+                        'error' => $payoutEx->getMessage(),
+                    ]);
+                }
             }
 
             return back()->with('success', 'Withdrawal status updated successfully.');
