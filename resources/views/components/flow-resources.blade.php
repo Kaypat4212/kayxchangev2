@@ -7,8 +7,8 @@
         ],
         'sell' => [
             'title' => 'Selling crypto', 'intro' => 'Get a Naira payout estimate before you submit your trade.',
-            'steps' => ['Choose the coin and enter the amount you want to sell.', 'Review the sell rate, payout estimate, and your bank details.', 'Send crypto only to the address and network shown for your order, then track verification and payout status.'],
-            'note' => 'A quote is an estimate until the platform confirms the correct amount on the selected network. Never send funds to an old order address.',
+            'steps' => ['Choose a coin and enter the amount for a new sell order, or convert crypto already in your KayXchange wallet.', 'Review the sell rate, Naira estimate, and selected payout destination.', 'For a new order, send crypto only to its displayed address and network. For a wallet conversion, confirm with your transaction PIN.'],
+            'note' => 'Wallet conversions use the current market price and platform sell rate. A new sell order is reviewed after the platform confirms the incoming transfer.',
         ],
         'deposit' => [
             'title' => 'Depositing crypto', 'intro' => 'Create a fresh payment request for the coin and network you plan to use.',

@@ -148,6 +148,10 @@ class AdminSetting extends Model
             ['key' => 'blocked_countries', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Blocked countries', 'description' => 'Choose countries to restrict, then add any other two-letter ISO country codes if needed. Uses Cloudflare country headers or IP geolocation.'],
             ['key' => 'support_whatsapp',  'group' => 'general', 'is_encrypted' => false, 'label' => 'Support WhatsApp', 'description' => 'Phone number for support WhatsApp button'],
             ['key' => 'withdrawal_security_cooldown_hours', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Payout destination safety hold (hours)', 'description' => 'Block new Naira withdrawal requests for this many hours after saved bank payout details change. Set 0 to disable.'],
+            ['key' => 'resource_video_buy_url', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Buy crypto guide video URL', 'description' => 'Optional YouTube or Vimeo walkthrough shown on the user Resources page.'],
+            ['key' => 'resource_video_sell_url', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Sell crypto guide video URL', 'description' => 'Optional YouTube or Vimeo walkthrough shown on the user Resources page.'],
+            ['key' => 'resource_video_deposit_url', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Deposit guide video URL', 'description' => 'Optional YouTube or Vimeo walkthrough shown on the user Resources page.'],
+            ['key' => 'resource_video_withdraw_url', 'group' => 'general', 'is_encrypted' => false, 'label' => 'Withdraw guide video URL', 'description' => 'Optional YouTube or Vimeo walkthrough shown on the user Resources page.'],
         ];
 
         foreach ($defaults as $def) {

@@ -244,6 +244,11 @@
         <p>Get a clear naira payout quote for your crypto before you submit your trade.</p>
     </div>
 
+    <div class="kx-alert kx-alert-info d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-start gap-2"><i class="bi bi-wallet2" style="margin-top:2px"></i><span><strong>Already have crypto in your KayXchange wallet?</strong><br>Convert available wallet balances to Naira with a live price estimate and transaction PIN.</span></div>
+        <a class="btn btn-success fw-bold text-nowrap" href="{{ route('wallet.usd', ['withdraw' => 1]) }}"><i class="bi bi-arrow-left-right me-1"></i>Sell from wallet</a>
+    </div>
+
     {{-- Progress --}}
     <div class="kx-steps">
         <div class="kx-step active">

@@ -6,6 +6,7 @@ use App\Models\Notification;
 use App\Models\PriceAlert;
 use App\Models\CryptoRate;
 use App\Services\CoinGeckoService;
+use App\Services\ExchangeRateService;
 use App\Services\TelegramService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
@@ -15,15 +16,6 @@ class CheckPriceAlerts extends Command
 {
     protected $signature   = 'alerts:check';
     protected $description = 'Check all active price alerts and notify users when triggered';
-
-    // CoinGecko coin IDs for market price lookup
-    private const COIN_IDS = [
-        'BTC'  => 'bitcoin',
-        'ETH'  => 'ethereum',
-        'USDT' => 'tether',
-        'SOL'  => 'solana',
-        'BNB'  => 'binancecoin',
-    ];
 
     public function handle(CoinGeckoService $coingecko, TelegramService $telegram): int
     {
@@ -43,10 +35,19 @@ class CheckPriceAlerts extends Command
         $marketCoins   = $alerts->where('type', 'market')->pluck('coin')->unique()->values();
         $marketPrices  = [];
         if ($marketCoins->isNotEmpty()) {
-            $ids = $marketCoins->map(fn($c) => self::COIN_IDS[strtoupper($c)] ?? strtolower($c))->all();
+            $ids = $marketCoins
+                ->map(fn ($coin) => ExchangeRateService::SUPPORTED_COINS[strtoupper((string) $coin)]['coingecko'] ?? null)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
             $raw = $coingecko->getCryptoPrices($ids);
+            $symbolsById = [];
+            foreach (ExchangeRateService::SUPPORTED_COINS as $symbol => $mapping) {
+                $symbolsById[$mapping['coingecko']] = $symbol;
+            }
             foreach ($raw as $item) {
-                $sym = strtoupper($item['symbol'] ?? '');
+                $sym = $symbolsById[$item['id'] ?? ''] ?? strtoupper($item['symbol'] ?? '');
                 $marketPrices[$sym] = $item['price_usd'] ?? 0;
             }
         }

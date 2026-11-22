@@ -340,7 +340,8 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
             <i class="bi bi-compass"></i>Explore
           </a>
           <ul class="dropdown-menu dropdown-menu-dark kx-nav-category-menu">
-            <li class="kx-wallet-menu-head">Rates & community</li>
+            <li class="kx-wallet-menu-head">Rates, guides & community</li>
+            <li><a class="dropdown-item" href="{{ route('resources.index') }}"><i class="bi bi-journal-richtext"></i>Guides & resources</a></li>
             @if((string) (\App\Models\AdminSetting::getSetting('tools_page_enabled') ?? '1') === '1')
               <li><a class="dropdown-item" href="{{ route('tools.index') }}"><i class="bi bi-tools"></i>Tools</a></li>
             @endif
@@ -387,6 +388,11 @@ body.light-mode #kxMainNav .kx-more-menu .kx-nav-link { color: rgba(20,20,20,.8)
         <li class="nav-item">
           <a class="kx-nav-link @if(request()->is('blog*')) kx-active @endif" href="{{ url('/blog') }}" title="Blog">
             <i class="bi bi-newspaper"></i>Blog
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="kx-nav-link @if(request()->is('resources*')) kx-active @endif" href="{{ route('resources.index') }}" title="Guides & resources">
+            <i class="bi bi-journal-richtext"></i>Resources
           </a>
         </li>
         <li class="nav-item">

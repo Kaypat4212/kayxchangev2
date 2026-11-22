@@ -7,6 +7,8 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\Facades\Event;
 
 class EventServiceProvider extends ServiceProvider
@@ -26,6 +28,12 @@ class EventServiceProvider extends ServiceProvider
         ],
         Failed::class => [
             \App\Listeners\HandleFailedLogin::class,
+        ],
+        MessageSending::class => [
+            \App\Listeners\TrackOutboundMail::class,
+        ],
+        MessageSent::class => [
+            \App\Listeners\TrackOutboundMail::class,
         ],
     ];
 

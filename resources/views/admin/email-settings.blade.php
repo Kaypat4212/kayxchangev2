@@ -73,6 +73,10 @@ body{background:var(--kx-dark);color:var(--kx-text);}
     <div class="kx-page-header">
         <h1><i class="bi bi-envelope-gear-fill me-2" style="color:var(--kx-green);"></i>Email Settings & Login Logs</h1>
         <p>Configure SMTP settings, manage email notifications, and view login activity</p>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <a class="btn-kx-outline text-decoration-none" href="{{ route('admin.mail-delivery.index') }}"><i class="bi bi-send-check me-1"></i>Mail delivery logs &amp; retries</a>
+            <a class="btn-kx-outline text-decoration-none" href="{{ route('admin.logs.index') }}"><i class="bi bi-journal-text me-1"></i>Laravel error logs</a>
+        </div>
     </div>
 
     <div class="row g-3">

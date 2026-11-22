@@ -76,6 +76,7 @@ Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('h
 Route::post('/human-check', [\App\Http\Controllers\HomeController::class, 'verifyCaptcha'])->middleware('throttle:10,1')->name('home.captcha.verify');
 Route::get('/home', [\App\Http\Controllers\HomeController::class, 'secondary']);
 Route::get('/faqs', fn() => view('faqs'))->name('faqs');
+Route::get('/resources', [\App\Http\Controllers\ResourcesController::class, 'index'])->name('resources.index');
 Route::get('/about', fn() => view('about'))->name('about');
 Route::get('/install-app', fn() => view('install-app'))->name('install.app.public');
 Route::get('/app/android.apk', function () {
@@ -209,6 +210,7 @@ Route::middleware('auth')->prefix('wallet')->name('wallet.')->group(function () 
     Route::get('/market-prices', [\App\Http\Controllers\WalletController::class, 'marketPrices'])->middleware('throttle:30,1')->name('market-prices');
     Route::get('/usd',       [\App\Http\Controllers\WalletController::class, 'usd'])->name('usd');
     Route::post('/usd/withdraw-to-naira', [\App\Http\Controllers\WalletController::class, 'withdrawUsdToNaira'])->middleware('throttle:5,1')->name('usd.withdraw-to-naira');
+    Route::get('/crypto/statement.csv', [\App\Http\Controllers\WalletController::class, 'cryptoStatement'])->name('crypto.statement');
     Route::get('/crypto',    [\App\Http\Controllers\WalletController::class, 'crypto'])->name('crypto');
     Route::get('/deposit',   [\App\Http\Controllers\WalletController::class, 'deposit'])->name('deposit');
     Route::get('/deposit/minimum', [\App\Http\Controllers\WalletController::class, 'depositMinimum'])->middleware('throttle:30,1')->name('deposit.minimum');
@@ -250,6 +252,9 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('logs/analyze', [\App\Http\Controllers\Admin\AdminLogController::class, 'analyze'])->middleware('throttle:5,1')->name('admin.logs.analyze');
     Route::get('logs/download', [\App\Http\Controllers\Admin\AdminLogController::class, 'download'])->name('admin.logs.download');
     Route::delete('logs/clear', [\App\Http\Controllers\Admin\AdminLogController::class, 'clear'])->name('admin.logs.clear');
+    Route::get('mail-delivery', [\App\Http\Controllers\Admin\MailDeliveryController::class, 'index'])->name('admin.mail-delivery.index');
+    Route::post('mail-delivery/{mailDeliveryLog}/retry', [\App\Http\Controllers\Admin\MailDeliveryController::class, 'retry'])->middleware('throttle:6,1')->name('admin.mail-delivery.retry');
+    Route::post('mail-delivery/{mailDeliveryLog}/diagnose', [\App\Http\Controllers\Admin\MailDeliveryController::class, 'diagnose'])->middleware('throttle:6,1')->name('admin.mail-delivery.diagnose');
     Route::get('forum', [\App\Http\Controllers\Admin\AdminForumController::class, 'index'])->name('admin.forum.index');
     Route::post('forum/official-posts', [\App\Http\Controllers\Admin\AdminForumController::class, 'storeOfficialTopic'])->middleware('throttle:10,1')->name('admin.forum.official-posts.store');
     Route::post('forum/topics/{topic}/official-replies', [\App\Http\Controllers\Admin\AdminForumController::class, 'replyOfficial'])->middleware('throttle:20,1')->name('admin.forum.official-replies.store');

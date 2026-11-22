@@ -9,6 +9,7 @@ use App\Services\CloudflareService;
 use App\Services\NowPaymentsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class AdminSettingsController extends Controller
@@ -331,6 +332,13 @@ class AdminSettingsController extends Controller
             return back()->with('error', 'Choose Off, Custom CAPTCHA, or Cloudflare Turnstile.');
         }
 
+        $request->validate([
+            'resource_video_buy_url' => ['nullable', 'url', 'max:500', 'regex:/^https:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)(?:\/|$)|^https:\/\/(?:www\.|player\.)?vimeo\.com(?:\/|$)/i'],
+            'resource_video_sell_url' => ['nullable', 'url', 'max:500', 'regex:/^https:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)(?:\/|$)|^https:\/\/(?:www\.|player\.)?vimeo\.com(?:\/|$)/i'],
+            'resource_video_deposit_url' => ['nullable', 'url', 'max:500', 'regex:/^https:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)(?:\/|$)|^https:\/\/(?:www\.|player\.)?vimeo\.com(?:\/|$)/i'],
+            'resource_video_withdraw_url' => ['nullable', 'url', 'max:500', 'regex:/^https:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)(?:\/|$)|^https:\/\/(?:www\.|player\.)?vimeo\.com(?:\/|$)/i'],
+        ]);
+
         // Do not silently discard a form field when its AdminSetting row was
         // never seeded. This makes settings form failures visible instead of
         // telling the administrator that unsaved values were applied.
@@ -351,6 +359,7 @@ class AdminSettingsController extends Controller
             'cf_enabled', 'cryptomus_enabled', 'cryptomus_convert_enabled', 'nowpayments_conversion_enabled', 'nowpayments_crypto_withdrawals_enabled',
         ];
 
+        DB::transaction(function () use ($data, $requestedCredentialClears, $request, $criticalKeys, &$changedCredentials, &$clearedCredentials, &$changedCriticalSettings): void {
         foreach ($data as $key => $value) {
             $row = AdminSetting::where('key', $key)->first();
             if (! $row) continue;
@@ -404,6 +413,7 @@ class AdminSettingsController extends Controller
                 ]);
             }
         }
+        });
 
         if ($changedCredentials) $securityAlerts->credentialChanged($request->user(), array_values(array_unique($changedCredentials)));
         if ($clearedCredentials) $securityAlerts->credentialCleared($request->user(), array_values(array_unique($clearedCredentials)));

@@ -547,6 +547,7 @@ body{background:var(--kx-dark);color:var(--kx-text);}
         {{-- ─── GENERAL ─────────────────────────────────────────────────── --}}
         <div id="group-general" class="kx-card group-section" style="display:none;">
             <h5 class="mb-3 fw-bold">⚙️ General</h5>
+            <div class="alert alert-info py-2 small mb-3"><i class="bi bi-camera-video me-1"></i>Paste optional YouTube or Vimeo links into the four guide video fields below. Save settings to publish them on <code>/resources</code>; unsafe or unsupported video hosts are rejected.</div>
             @foreach($grouped['general'] ?? [] as $row)
             <div class="field-row">
                 <div>

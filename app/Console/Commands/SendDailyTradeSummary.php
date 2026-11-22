@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Models\BuyTrade;
 use App\Models\SellTrade;
 use App\Models\User;
+use App\Listeners\TrackOutboundMail;
+use App\Services\EmailTransportConfigurator;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -13,10 +15,10 @@ use Illuminate\Support\Carbon;
 
 class SendDailyTradeSummary extends Command
 {
-    protected $signature = 'digest:daily';
+    protected $signature = 'digest:daily {--to= : Optional admin retry recipient} {--retry-of= : Failed delivery log id being retried}';
     protected $description = 'Send daily trade summary email digest to admin';
 
-    public function handle(): int
+    public function handle(EmailTransportConfigurator $transport): int
     {
         $yesterday = Carbon::yesterday();
         $todayStart = $yesterday->copy()->startOfDay();
@@ -55,14 +57,24 @@ class SendDailyTradeSummary extends Command
             'total_volume_ngn'  => $sellCompleted->sum('naira_amount') + $buyApproved->sum('naira_amount'),
         ];
 
-        $adminEmail = config('mail.admin_email', env('ADMIN_EMAIL', config('mail.from.address')));
+        $adminEmail = trim((string) ($this->option('to') ?: config('mail.admin_email', env('ADMIN_EMAIL', config('mail.from.address')))));
+        if (!filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+            $this->error('Set a valid ADMIN_EMAIL or MAIL_FROM_ADDRESS before sending the digest.');
+            return self::FAILURE;
+        }
 
         try {
+            $transport->applySavedSmtpSettings();
             Mail::send(['html' => 'emails.daily-summary', 'text' => 'emails.daily-summary-text'], $data, function ($m) use ($adminEmail, $data) {
             $m->to($adminEmail)
               ->subject('Daily KayXchange trade summary - ' . $data['date']);
+            $retryOf = $this->option('retry-of');
+            if (ctype_digit((string) $retryOf) && method_exists($m, 'getSymfonyMessage')) {
+                $m->getSymfonyMessage()->getHeaders()->addTextHeader('X-KayXchange-Retry-Of', (string) $retryOf);
+            }
             });
         } catch (\Throwable $exception) {
+            TrackOutboundMail::markLatestFailure($adminEmail, 'Daily KayXchange trade summary - ' . $data['date'], $exception->getMessage());
             Log::warning('Daily trade digest was rejected by the configured mail transport.', [
                 'exception_class' => $exception::class,
                 'transport_message' => mb_substr($exception->getMessage(), 0, 500),

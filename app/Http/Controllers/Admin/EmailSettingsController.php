@@ -8,6 +8,8 @@ use App\Models\EmailSetting;
 use App\Models\EmailTemplate;
 use App\Models\LoginLog;
 use App\Models\User;
+use App\Listeners\TrackOutboundMail;
+use App\Services\EmailTransportConfigurator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -82,7 +84,7 @@ class EmailSettingsController extends Controller
         return back()->with('success', 'Email settings saved successfully.');
     }
 
-    public function sendTest(Request $request)
+    public function sendTest(Request $request, EmailTransportConfigurator $transport)
     {
         $request->validate([
             'test_email' => 'required|email|max:255',
@@ -90,23 +92,7 @@ class EmailSettingsController extends Controller
 
         try {
             $settings = EmailSetting::current();
-            if ($settings->mail_host) {
-                config([
-                    'mail.default'                 => 'smtp',
-                    'mail.mailers.smtp.transport'  => 'smtp',
-                    'mail.mailers.smtp.host'       => $settings->mail_host,
-                    'mail.mailers.smtp.port'       => (int) $settings->mail_port,
-                    'mail.mailers.smtp.username'   => $settings->mail_username,
-                    'mail.mailers.smtp.password'   => $settings->mail_password ? decrypt($settings->mail_password) : null,
-                    'mail.mailers.smtp.encryption' => $settings->mail_encryption ?: null,
-                    'mail.from.address'            => $settings->mail_from_address,
-                    'mail.from.name'               => $settings->mail_from_name,
-                ]);
-
-                // CRITICAL: purge cached mailer so Laravel rebuilds the transport
-                // with the updated runtime config (without this, the old .env transport is used)
-                Mail::forgetMailers();
-            }
+            $transport->applySavedSmtpSettings();
 
             // Warn if FROM domain doesn't match SMTP username domain (cPanel anti-spoofing)
             if ($settings->mail_username && $settings->mail_from_address) {
@@ -124,8 +110,9 @@ class EmailSettingsController extends Controller
 
             return back()->with('success', 'Test email sent successfully to ' . $request->test_email);
         } catch (\Throwable $e) {
-            Log::error('Test email failed: ' . $e->getMessage());
-            return back()->with('error', 'Failed to send test email: ' . $e->getMessage());
+            TrackOutboundMail::markLatestFailure($request->test_email, 'SMTP Configuration Test', $e->getMessage());
+            Log::error('Test email failed.', ['exception_class' => $e::class, 'recipient' => '[redacted]']);
+            return back()->with('error', 'The SMTP test failed. Open Mail Delivery to inspect the redacted provider response and suggested fixes.');
         }
     }
 

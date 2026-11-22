@@ -226,11 +226,79 @@ class WalletController extends Controller
         $this->cryptoWalletService->getUserWallets(Auth::user());
         $wallets = Auth::user()->wallets()->where('is_active', true)->whereNotIn('currency', ['NGN', 'USD', 'EUR'])->orderBy('currency')->get();
         $rates = $tradeRates->rates($wallets->pluck('currency')->map(fn ($coin) => strtoupper($coin))->all());
+        $market = app(ExchangeRateService::class)->getUsdRates();
+        $marketPrices = [];
+        foreach ($wallets as $wallet) {
+            $currency = strtoupper((string) $wallet->currency);
+            if (is_numeric($market[$currency] ?? null) && (float) $market[$currency] > 0) {
+                $marketPrices[$currency] = [
+                    'usd' => (float) $market[$currency],
+                    'change_24h' => $market['_change_24h'][$currency] ?? null,
+                    'live' => in_array($currency, $market['_live_coins'] ?? [], true),
+                ];
+            }
+        }
+        $portfolioUsd = 0.0;
+        $valuationComplete = true;
+        foreach ($wallets as $wallet) {
+            $currency = strtoupper((string) $wallet->currency);
+            if (isset($marketPrices[$currency])) {
+                $portfolioUsd += (float) $wallet->balance * $marketPrices[$currency]['usd'];
+            } elseif ((float) $wallet->balance > 0) {
+                $valuationComplete = false;
+            }
+        }
+        if (!$valuationComplete) $portfolioUsd = null;
+        $ngnPerUsd = $this->ngnPerUsdRate();
+        $portfolioNgn = $portfolioUsd !== null && $ngnPerUsd > 0 ? $portfolioUsd * $ngnPerUsd : null;
         $completedDeposits = CryptoDeposit::where('user_id', Auth::id())->where('status', 'completed')->get(['currency', 'received_amount', 'payment_data']);
         $depositedTotals = $completedDeposits->groupBy(fn ($deposit) => strtoupper((string) $deposit->currency))
             ->map(fn ($items) => (float) $items->sum(fn ($deposit) => (float) ($deposit->received_amount ?? 0)))->all();
         $depositedValueUsd = (float) $completedDeposits->sum(fn ($deposit) => (float) data_get($deposit->payment_data, 'deposit_valuation.market_value_usd', 0));
-        return view('wallet.crypto', compact('wallets', 'rates', 'depositedTotals', 'depositedValueUsd', 'completedDeposits'));
+        $marketUpdatedAt = $market['_updated_at'] ?? null;
+        $marketSource = $market['_source'] ?? 'unavailable';
+        $marketStale = (bool) ($market['_stale'] ?? false) || $marketSource === 'fallback';
+        $logoFiles = ['BTC' => 'btc.svg', 'ETH' => 'eth.svg', 'LTC' => 'ltc.svg'];
+        $logoGlyphs = ['BTC' => '₿', 'ETH' => 'Ξ', 'USDT' => '₮', 'USDC' => '$', 'BNB' => '◆', 'SOL' => '◎', 'XRP' => 'X', 'DOGE' => 'Ð', 'LTC' => 'Ł', 'TRX' => 'T', 'ADA' => '₳', 'TON' => 'TON'];
+        return view('wallet.crypto', compact('wallets', 'rates', 'depositedTotals', 'depositedValueUsd', 'completedDeposits', 'marketPrices', 'portfolioUsd', 'portfolioNgn', 'marketUpdatedAt', 'marketSource', 'marketStale', 'logoFiles', 'logoGlyphs'));
+    }
+
+    /** Download the signed-in user's crypto wallet ledger as a CSV statement. */
+    public function cryptoStatement(Request $request)
+    {
+        $filters = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
+
+        abort_unless(\Illuminate\Support\Facades\Schema::hasTable('wallet_ledger_entries'), 503, 'Wallet statements are temporarily unavailable.');
+
+        $query = \App\Models\WalletLedgerEntry::query()
+            ->where('user_id', Auth::id())
+            ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(currency)'), ['NGN', 'USD', 'EUR'])
+            ->orderBy('created_at');
+        if (!empty($filters['from'])) $query->where('created_at', '>=', Carbon::parse($filters['from'])->startOfDay());
+        if (!empty($filters['to'])) $query->where('created_at', '<=', Carbon::parse($filters['to'])->endOfDay());
+
+        $filename = 'crypto-wallet-statement-' . now()->format('Y-m-d') . '.csv';
+        return response()->streamDownload(function () use ($query) {
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Date (UTC)', 'Asset', 'Entry type', 'Amount', 'Balance after', 'Source', 'Reference']);
+            $query->chunk(500, function ($entries) use ($output) {
+                foreach ($entries as $entry) {
+                    fputcsv($output, [
+                        optional($entry->created_at)->utc()->toIso8601String(),
+                        strtoupper((string) $entry->currency),
+                        (string) $entry->entry_type,
+                        (string) $entry->amount,
+                        (string) $entry->balance_after,
+                        (string) $entry->source,
+                        (string) $entry->reference,
+                    ]);
+                }
+            });
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**

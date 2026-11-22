@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PriceAlert;
 use App\Models\CryptoRate;
+use App\Services\ExchangeRateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,7 +17,7 @@ class PriceAlertController extends Controller
             ->paginate(20);
 
         $platformCoins = CryptoRate::query()->orderBy('coin')->pluck('coin')->map(fn ($coin) => trim(strtoupper((string) $coin)))->filter()->unique()->values();
-        $marketCoins = ['BTC', 'ETH', 'USDT', 'SOL', 'BNB'];
+        $marketCoins = array_keys(ExchangeRateService::SUPPORTED_COINS);
 
         return view('price-alerts.index', compact('alerts', 'platformCoins', 'marketCoins'));
     }
@@ -36,7 +37,7 @@ class PriceAlertController extends Controller
         $coin = strtoupper(trim($data['coin']));
         $coinAvailable = $data['type'] === 'platform'
             ? CryptoRate::query()->whereRaw('UPPER(coin) = ?', [$coin])->exists()
-            : in_array($coin, ['BTC', 'ETH', 'USDT', 'SOL', 'BNB'], true);
+            : in_array($coin, array_keys(ExchangeRateService::SUPPORTED_COINS), true);
         if (!$coinAvailable) {
             return back()->withInput()->withErrors(['coin' => 'Choose a coin that has a platform rate or a supported live market feed.']);
         }
