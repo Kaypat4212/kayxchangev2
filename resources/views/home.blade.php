@@ -1500,8 +1500,10 @@
     [data-bs-theme="light"] .kx-card     { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.07); }
 
     /* ── About ── */
-    .kx-about-img { border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-    .kx-about-img .carousel-item img { border-radius: 20px; height: 340px; object-fit: cover; }
+    .kx-about-img { border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); background: #080d0a; }
+    .kx-about-img .carousel-item { text-align: center; }
+    .kx-about-img .carousel-item img { display: block; width: 100%; height: auto; max-height: min(72vh, 680px); object-fit: contain; object-position: center; margin-inline: auto; }
+    [data-bs-theme="light"] .kx-about-img { background: #eef2ee; }
     .kx-about-label { background: rgba(0,204,0,0.1); border: 1px solid rgba(0,204,0,0.25); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 14px; }
     .kx-about-label i { font-size: 1.4rem; color: #00cc00; flex-shrink:0; }
     .kx-about-label-t { font-size: 0.8rem; color: rgba(255,255,255,0.45); }
